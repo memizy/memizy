@@ -1,39 +1,38 @@
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/Tebou-Nahrana-Ikona/raketa.png" alt="Memizy Logo" width="120" height="120" />
 # 🚀 Memizy
 ### (Zlehčito)
 
 **Memorizing, made easy.**
 
-[![Status](https://img.shields.io/badge/Status-In%20Development-orange?style=for-the-badge)](https://github.com/memizy/memizy)
-[![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
+![Status](https://img.shields.io/badge/Status-In%20Development-orange?style=for-the-badge)
+![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)
 
 <br>
 
-**Memizy** (v ČR známo jako **Zlehčito**) je moderní, open-source platforma pro generování studijních materiálů pomocí AI.
-Funguje lokálně ve vašem prohlížeči. Žádné přihlašování. Soukromí na prvním místě.
+**Memizy** (also known as **Zlehčito** in Czechia) is a modern, open-source educational platform for generating study materials using AI.
+Designed to be **Local-First**, **Privacy-Focused**, and fully accessible directly in your browser.
 
 <br>
 
 ### 🚧 Coming Soon 🚧
-Tento repozitář prochází přípravou na první veřejné vydání (Release 1.0).
-Zdrojový kód bude zveřejněn v následujících týdnech.
+This repository is currently undergoing final preparations for the **v1.0 Release**.
+The full source code will be published in the coming weeks.
 
 ---
 
-### 🌟 Co přinášíme?
+### 🌟 Key Features
 
-| Funkce | Popis |
+| Feature | Description |
 | :--- | :--- |
-| **🌍 Offline-First** | PWA architektura běžící kompletně v prohlížeči. |
-| **🤖 AI Power** | Generování otázek pomocí Mistral AI & Groq. |
-| **🎮 Gamifikace** | Unikátní systém terraformace planet za studijní úsilí. |
-| **🔌 Pluginy** | Rozšiřitelný systém her a výukových metod. |
-| **🔒 Soukromí** | Žádná registrace. Vaše data neopouští vaše zařízení. |
+| **🌍 Offline-First** | Hybrid MPA architecture running entirely in the browser (PWA). |
+| **🤖 AI Powered** | Question generation powered by Mistral AI & Groq free APIs. |
+| **🎮 Gamification** | Unique terraformation system where learning fuels your planet base. |
+| **🔌 Plugin System** | Extensible game engine allowing custom study activities. |
+| **🔒 Privacy** | No login required. Your data never leaves your device. |
 
 ---
 
-*Sledujte tento repozitář (Star ⭐), ať vám neuteče spuštění!*
+*Star this repository ⭐ to get notified when we launch!*
 
 </div>
