@@ -1,7 +1,6 @@
 <div align="center">
 
-# 🚀 Memizy
-### (Zlehčito)
+# 🚀 Memizy (Zlehčito)
 
 **Memorizing, made easy.**
 
