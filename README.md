@@ -9,9 +9,9 @@
 
 <br>
 
-**Memizy** (known regionally as **Zlehčito**) is a modern, local-first educational platform for students, medics, and lifelong learners. It combines the power of Spaced Repetition, continuous reading (Notes), and gamification, all running blazingly fast directly in your browser.
+**Memizy** (known as **Zlehčito** in Czechia) is a modern, local-first educational platform for students, medics, and lifelong learners. It combines the power of Spaced Repetition, systematic note learning, and gamification, all running blazingly fast directly in your browser.
 
-🌐 **[Try Memizy Now](https://memizy.com)** *(Add your real URL here)*
+🌐 **[Try Memizy Now](https://memizy.com)**
 
 </div>
 
@@ -19,7 +19,7 @@
 
 ## 🗺️ The Memizy Ecosystem
 
-While the core Memizy engine is proprietary to ensure the best, secure, and unified user experience, **our data formats, plugins, and study libraries are 100% Open-Source.** This repository serves as the **Central Hub, Issue Tracker, and Discussion Board** for the entire Memizy ecosystem.
+While the core Memizy engine is proprietary to ensure the best, secure, and unified user experience, **our data formats, plugins, and official study library are 100% Open-Source.** This repository serves as the **Central Hub, Issue Tracker, and Discussion Board** for the entire Memizy ecosystem.
 
 ### 📚 Data & Content
 * **[`oqse-specification`](https://github.com/memizy/oqse-specification)**: The official documentation and TypeScript types for the Open Question Set Exchange (OQSE) format. Learn how to create your own study sets here.
