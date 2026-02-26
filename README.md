@@ -26,7 +26,7 @@ While the core Memizy engine is proprietary to ensure the best, secure, and unif
 * **[`open-library`](https://github.com/memizy/open-library)**: The central registry of all public, community-driven study sets.
 
 ### 🧩 Developers & Plugins
-* **[`plugin-api`](https://github.com/memizy/plugin-api)**: Want to build a 3D anatomy minigame or a math visualizer? Start here. Contains the SDK, documentation, and a Vite starter template for Memizy plugins.
+* **[`plugin-sdk`](https://github.com/memizy/plugin-sdk)**: Want to build a 3D anatomy minigame or a math visualizer? Start here. Contains the SDK, documentation, and a Vite starter template for Memizy plugins.
 * **[`plugin-registry`](https://github.com/memizy/plugin-registry)**: The official index of approved community plugins available within the Memizy app.
 
 ---
