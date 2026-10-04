@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OQSE Validator</title>
+    
+    <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+    <style type="text/tailwindcss">
+        @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap");
+        @import "tailwindcss";
+        
+        @theme {
+            --color-primary-blue: #1E88E5;
+            --color-primary-blue-dark: #1565C0;
+            --color-accent-orange: #FF6F00;
+            --color-accent-orange-light: #FF8F00;
+            --color-accent-orange-dark: #E65100;
+            --color-off-white: #F8F9FA;
+            --color-text-dark: #212529;
+            --color-text-gray: #6C757D;
+            
+            --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+            --shadow-soft: 0 4px 24px rgba(0, 0, 0, 0.08);
+            --shadow-soft-hover: 0 8px 32px rgba(0, 0, 0, 0.12);
+
+            --animate-scale-in: scale-in 0.2s ease-out;
+
+            @keyframes scale-in {
+                from { transform: scale(0.95); opacity: 0; }
+                to { transform: scale(1); opacity: 1; }
+            }
+        }
+
+        @layer utilities {
+            .btn-primary-gradient {
+                background: linear-gradient(135deg, var(--color-accent-orange) 0%, var(--color-accent-orange-light) 100%);
+            }
+            .text-shadow {
+                text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+        }
+
+        body {
+            background-color: var(--color-off-white);
+            color: var(--color-text-dark);
+            font-family: var(--font-sans);
+        }
+        
+        button:hover {
+            cursor:pointer;
+        }
+
+        .tab.active {
+            color: var(--color-primary-blue);
+            border-bottom-color: var(--color-primary-blue);
+            font-weight: 600;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body class="bg-off-white text-text-dark min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-3xl bg-white p-8 rounded-2xl shadow-soft animate-scale-in">
+        <div class="flex flex-col sm:flex-row items-center justify-between mb-6 gap-4">
+            <div class="flex items-center gap-3">
+                <span class="text-4xl">🚀</span>
+                <h1 class="text-3xl font-extrabold text-primary-blue-dark">OQSE Validator</h1>
+            </div>
+            <a href="https://memizy.com" target="_blank" class="text-sm font-medium text-text-gray hover:text-primary-blue transition-colors flex items-center gap-1 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-200">
+                Powered by <strong class="text-primary-blue-dark">Memizy</strong>
+            </a>
+        </div>
+        <p class="text-text-gray mb-8">Check the validity of Open Quiz & Study Exchange (OQSE) format files. Tools use the official Zod schema from <code class="bg-gray-100 px-1 py-0.5 rounded text-primary-blue font-mono text-sm">@memizy/oqse</code>.</p>
+        
+        <div class="mb-8 p-6 border border-gray-200 rounded-xl bg-gray-50">
+            <label for="validationType" class="block font-semibold text-text-dark mb-2">Select Document Type to Validate:</label>
+            <select id="validationType" class="w-full p-3 border border-gray-300 rounded-lg text-text-dark bg-white focus:ring-2 focus:ring-primary-blue focus:border-primary-blue outline-none transition-all">
+                <option value="oqse">📝 OQSE</option>
+                <option value="manifest">📦 OQSEM</option>
+                <option value="progress">📈 OQSEP</option>
+                <option value="header">🪪 OQSEH</option>
+            </select>
+            <div id="oqseSampleAction" class="mt-4">
+                <button id="loadSampleSetBtn" class="w-full sm:w-auto px-4 py-2 rounded-lg border border-blue-200 bg-blue-50 text-primary-blue-dark font-semibold hover:bg-blue-100 transition-colors">
+                    Try OQSE Sample Set
+                </button>
+                <p id="sampleSetStatus" class="mt-2 text-sm text-text-gray"></p>
+            </div>
+        </div>
+
+        <div class="flex gap-6 mb-6 border-b border-gray-200">
+            <button class="tab active pb-3 px-2 text-lg text-text-gray border-b-2 border-transparent hover:text-primary-blue transition-colors" data-target="json-tab">Paste JSON</button>
+            <button class="tab pb-3 px-2 text-lg text-text-gray border-b-2 border-transparent hover:text-primary-blue transition-colors" data-target="url-tab">Fetch from URL</button>
+        </div>
+
+        <div id="json-tab" class="tab-content active mb-6">
+            <div class="mb-6">
+                <label id="jsonInputLabel" for="jsonInput" class="block font-semibold text-text-dark mb-2">OQSE JSON content:</label>
+                <textarea id="jsonInput" class="w-full p-4 border border-gray-300 rounded-lg font-mono text-sm h-64 focus:ring-2 focus:ring-primary-blue focus:border-primary-blue outline-none transition-all" placeholder="{&#10;  &quot;meta&quot;: { ... },&#10;  &quot;items&quot;: [ ... ]&#10;}"></textarea>
+            </div>
+            <button id="validateJsonBtn" class="btn-primary-gradient text-white w-full py-4 rounded-xl text-lg font-bold shadow-soft hover:shadow-soft-hover transition-all transform hover:-translate-y-0.5">Validate JSON</button>
+        </div>
+
+        <div id="url-tab" class="tab-content mb-6">
+            <div class="mb-6">
+                <label id="urlInputLabel" for="urlInput" class="block font-semibold text-text-dark mb-2">URL with OQSE JSON (CORS allowed):</label>
+                <input type="url" id="urlInput" class="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-blue focus:border-primary-blue outline-none transition-all" placeholder="https://example.com/dataset.json">
+            </div>
+            <button id="validateUrlBtn" class="btn-primary-gradient text-white w-full py-4 rounded-xl text-lg font-bold shadow-soft hover:shadow-soft-hover transition-all transform hover:-translate-y-0.5">Fetch and Validate</button>
+        </div>
+
+        <div id="resultArea" class="hidden mt-8 p-6 rounded-xl border border-gray-200">
+            <h2 id="resultTitle" class="text-2xl font-bold mb-4">Validation Result</h2>
+            <div id="resultContent" class="text-lg"></div>
+            <div id="llmPrompt" class="hidden mt-6 pt-4 border-t border-gray-200">
+                <div class="flex flex-col gap-3">
+                    <div class="flex items-center gap-2">
+                        <input type="checkbox" id="includeSpecCheckbox" checked class="w-4 h-4 text-primary-blue bg-gray-100 border-gray-300 rounded focus:ring-primary-blue">
+                        <label for="includeSpecCheckbox" class="text-sm font-medium text-text-dark cursor-pointer">Include full specification markdown in AI prompt</label>
+                    </div>
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-blue-50 p-4 rounded-lg border border-blue-200 gap-4">
+                        <div class="text-sm text-blue-900">
+                            <strong class="text-base mb-1 flex items-center gap-2">💡 <span class="text-primary-blue-dark">LLM Assistant</span></strong>
+                            Automatically format these errors with instructions for AI (ChatGPT, Claude) to fix your JSON.
+                        </div>
+                        <button id="copyLlmPromptBtn" class="flex-shrink-0 flex items-center justify-center gap-2 px-5 py-2.5 bg-white border border-blue-300 rounded-lg shadow-sm hover:bg-blue-100 text-sm font-bold text-primary-blue-dark transition-all active:scale-95">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
+                            <span>Copy Errors for AI</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ensure module matches library export syntax -->
+    <script type="module">
+        // Import from unpkg to support local development and browser environments immediately
+        import { safeValidateOQSEFile, safeValidateOQSEManifest, safeValidateOQSEProgress, safeValidateOQSEHeader, formatOQSEErrors } from 'https://esm.sh/@memizy/oqse@latest';
+
+        const tabs = document.querySelectorAll('.tab');
+        const tabContents = document.querySelectorAll('.tab-content');
+        const jsonInput = document.getElementById('jsonInput');
+        const urlInput = document.getElementById('urlInput');
+        const validateJsonBtn = document.getElementById('validateJsonBtn');
+        const validateUrlBtn = document.getElementById('validateUrlBtn');
+        const resultArea = document.getElementById('resultArea');
+        const resultTitle = document.getElementById('resultTitle');
+        const resultContent = document.getElementById('resultContent');
+        const llmPrompt = document.getElementById('llmPrompt');
+        const copyLlmPromptBtn = document.getElementById('copyLlmPromptBtn');
+        const includeSpecCheckbox = document.getElementById('includeSpecCheckbox');
+        const validationType = document.getElementById('validationType');
+        const jsonInputLabel = document.getElementById('jsonInputLabel');
+        const urlInputLabel = document.getElementById('urlInputLabel');
+        const oqseSampleAction = document.getElementById('oqseSampleAction');
+        const loadSampleSetBtn = document.getElementById('loadSampleSetBtn');
+        const sampleSetStatus = document.getElementById('sampleSetStatus');
+
+        const OQSE_SAMPLE_SET_URL = 'https://cdn.jsdelivr.net/gh/memizy/set-test-suite@main/data.oqse.json';
+
+        let currentValidationErrors = [];
+        let lastSetState = '';
+
+        const validatorLabels = {
+            oqse: {
+                jsonLabel: 'OQSE JSON content:',
+                jsonPlaceholder: '{\n  "meta": { ... },\n  "items": [ ... ]\n}',
+                urlLabel: 'URL with OQSE JSON (CORS allowed):',
+                urlPlaceholder: 'https://example.com/dataset.json'
+            },
+            manifest: {
+                jsonLabel: 'OQSEM JSON content:',
+                jsonPlaceholder: '{\n  "meta": { ... },\n  "permissions": [ ... ]\n}',
+                urlLabel: 'URL with OQSEM JSON (CORS allowed):',
+                urlPlaceholder: 'https://example.com/manifest.json'
+            },
+            progress: {
+                jsonLabel: 'OQSEP JSON content:',
+                jsonPlaceholder: '{\n  "meta": { ... },\n  "state": { ... }\n}',
+                urlLabel: 'URL with OQSEP JSON (CORS allowed):',
+                urlPlaceholder: 'https://example.com/progress.json'
+            },
+            header: {
+                jsonLabel: 'OQSEH JSON content (single object or array):',
+                jsonPlaceholder: '{\n  "id": "...",\n  "title": "...",\n  "language": "en",\n  "updatedAt": "...",\n  "url": "https://..."\n}',
+                urlLabel: 'URL with OQSEH JSON (CORS allowed):',
+                urlPlaceholder: 'https://example.com/headers.json'
+            }
+        };
+
+        function syncValidationLabels() {
+            const type = validationType.value;
+            const labels = validatorLabels[type] ?? validatorLabels.oqse;
+            jsonInputLabel.textContent = labels.jsonLabel;
+            jsonInput.placeholder = labels.jsonPlaceholder;
+            urlInputLabel.textContent = labels.urlLabel;
+            urlInput.placeholder = labels.urlPlaceholder;
+
+            if (type === 'oqse') {
+                oqseSampleAction.classList.remove('hidden');
+            } else {
+                oqseSampleAction.classList.add('hidden');
+                sampleSetStatus.textContent = '';
+            }
+        }
+
+        syncValidationLabels();
+        validationType.addEventListener('change', syncValidationLabels);
+
+        function activateTab(targetId) {
+            tabs.forEach(t => t.classList.remove('active'));
+            tabContents.forEach(c => c.classList.remove('active'));
+
+            const tabButton = document.querySelector(`.tab[data-target="${targetId}"]`);
+            if (tabButton) {
+                tabButton.classList.add('active');
+            }
+
+            const targetElement = document.getElementById(targetId);
+            if (targetElement) {
+                targetElement.classList.add('active');
+            }
+
+            resultArea.className = 'hidden';
+        }
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => activateTab(tab.dataset.target));
+        });
+
+        loadSampleSetBtn.addEventListener('click', async () => {
+            sampleSetStatus.textContent = 'Loading sample set...';
+            loadSampleSetBtn.disabled = true;
+
+            try {
+                const response = await fetch(OQSE_SAMPLE_SET_URL);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status} ${response.statusText}`);
+                }
+
+                const rawText = await response.text();
+                let formatted = rawText;
+
+                try {
+                    formatted = JSON.stringify(JSON.parse(rawText), null, 2);
+                } catch {
+                    // Keep original text if not parseable.
+                }
+
+                activateTab('json-tab');
+                jsonInput.value = formatted;
+                validateData(formatted);
+                sampleSetStatus.textContent = 'Sample set loaded and validated.';
+            } catch (error) {
+                sampleSetStatus.textContent = `Failed to load sample set: ${error.message}`;
+            } finally {
+                loadSampleSetBtn.disabled = false;
+            }
+        });
+
+        function showResult(success, message, errors = []) {
+            currentValidationErrors = errors;
+            resultArea.className = success 
+                ? 'mt-8 p-6 rounded-xl border border-green-300 bg-green-50 text-green-800 block scale-in'
+                : 'mt-8 p-6 rounded-xl border border-red-300 bg-red-50 block scale-in';
+            
+            resultTitle.className = success ? 'text-2xl font-bold mb-4 text-green-700' : 'text-2xl font-bold mb-4 text-red-600 flex items-center gap-2 mb-6';
+            resultTitle.innerHTML = success ? '✅ Validation Successful!' : '<svg class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> Validation Failed';
+            
+            if (success) {
+                resultContent.innerHTML = `<p class="text-lg">${message}</p>`;
+                llmPrompt.classList.add('hidden');
+                llmPrompt.classList.remove('block');
+            } else {
+                let errorHtml = `<p class="text-lg mb-4 text-text-dark font-medium">${message}</p>`;
+                if (errors.length > 0) {
+                    errorHtml += `<ul class="error-list list-none pl-0 font-mono text-sm space-y-2 bg-white p-5 rounded border border-gray-200 overflow-x-auto max-w-[calc(100vw-6rem)] shadow-sm">`;
+                    errors.forEach(err => {
+                        errorHtml += `<li class="break-words w-full whitespace-pre-wrap text-text-gray flex"><span class="text-red-500 mr-2 font-bold">•</span><span>${err}</span></li>\n`;
+                    });
+                    errorHtml += `</ul>`;
+                }
+                resultContent.innerHTML = errorHtml;
+                llmPrompt.classList.remove('hidden');
+                llmPrompt.classList.add('block');
+                
+                // Reset copy button state on new errors
+                const btnContent = copyLlmPromptBtn.querySelector('span');
+                btnContent.textContent = 'Copy Errors for AI';
+                copyLlmPromptBtn.classList.remove('bg-green-100', 'border-green-300', 'text-green-700');
+                copyLlmPromptBtn.classList.add('bg-white', 'border-blue-300', 'text-primary-blue-dark');
+            }
+        }
+        
+        copyLlmPromptBtn.addEventListener('click', async () => {
+            // Provide visual feedback immediately that we are working on it
+            const btnContent = copyLlmPromptBtn.querySelector('span');
+            const originalText = btnContent.textContent;
+            btnContent.textContent = 'Formatting...';
+            
+            const validationTypeElem = document.getElementById('validationType');
+            const typeValue = validationTypeElem.value;
+            // Removes the emoji from text (e.g. "📝 OQSE" -> "OQSE")
+            const type = validationTypeElem.options[validationTypeElem.selectedIndex].text.replace(/^[^\w]+/, '').trim();
+            
+            let promptText = `I have a JSON file that is failing validation according to the ${type} specification rules natively implemented in Zod.\n\n`;
+            promptText += `Here are the strict Zod validation errors my file is producing:\n\n`;
+            promptText += currentValidationErrors.map(e => '- ' + e).join('\n') + '\n\n';
+
+            const currentSetState = (jsonInput.value && jsonInput.value.trim()) || lastSetState;
+            if (currentSetState) {
+                promptText += `Current JSON state (exact content):\n\n`;
+                promptText += `\`\`\`json\n${currentSetState}\n\`\`\`\n\n`;
+            }
+
+            if (includeSpecCheckbox.checked) {
+                try {
+                    let mdFile = 'oqse.md';
+                    if (typeValue === 'manifest') mdFile = 'oqse-manifest.md';
+                    if (typeValue === 'progress') mdFile = 'oqse-progress.md';
+                    if (typeValue === 'header') mdFile = 'oqse-header.md';
+                    
+                    // Fetch the raw markdown of the specification
+                    const response = await fetch(`https://raw.githubusercontent.com/memizy/oqse-specification/main/${mdFile}`);
+                    if (response.ok) {
+                        const specContent = await response.text();
+                        promptText += `To help you fix this, here is the complete official ${type} specification. Please use it as the definitive source of truth:\n\n`;
+                        promptText += `\`\`\`markdown\n${specContent}\n\`\`\`\n\n`;
+                    }
+                } catch (e) {
+                    console.error('Could not fetch specification markdown', e);
+                }
+            }
+
+            promptText += `Please analyze these specific constraint violations and produce ONE of the following outputs:\n`;
+            promptText += `1) The full corrected JSON (complete final state, valid and ready to use), or\n`;
+            promptText += `2) An exact list of minimal corrections (path + what to change).\n\n`;
+            promptText += `Do not provide generic advice without concrete corrections.`;
+            
+            try {
+                await navigator.clipboard.writeText(promptText);
+                
+                // Visual feedback
+                btnContent.textContent = 'Copied!';
+                copyLlmPromptBtn.classList.remove('bg-white', 'border-blue-300', 'text-primary-blue-dark');
+                copyLlmPromptBtn.classList.add('bg-green-100', 'border-green-300', 'text-green-700');
+                
+                setTimeout(() => {
+                    btnContent.textContent = 'Copy Errors for AI';
+                    copyLlmPromptBtn.classList.remove('bg-green-100', 'border-green-300', 'text-green-700');
+                    copyLlmPromptBtn.classList.add('bg-white', 'border-blue-300', 'text-primary-blue-dark');
+                }, 3000);
+            } catch (err) {
+                console.error("Failed to copy:", err);
+                copyLlmPromptBtn.querySelector('span').textContent = 'Failed to copy';
+            }
+        });
+
+        function validateData(dataStr) {
+            try {
+                lastSetState = dataStr;
+                const parsed = JSON.parse(dataStr);
+                const type = validationType.value;
+                
+                let result;
+                let typeName = '';
+                
+                if (type === 'oqse') {
+                    result = safeValidateOQSEFile(parsed);
+                    typeName = 'OQSE Dataset';
+                } else if (type === 'manifest') {
+                    result = safeValidateOQSEManifest(parsed);
+                    typeName = 'OQSE Manifest';
+                } else if (type === 'progress') {
+                    result = safeValidateOQSEProgress(parsed);
+                    typeName = 'OQSEP Progress';
+                } else if (type === 'header') {
+                    typeName = 'OQSE Header';
+
+                    if (Array.isArray(parsed)) {
+                        const arrayErrors = [];
+
+                        parsed.forEach((entry, index) => {
+                            const itemResult = safeValidateOQSEHeader(entry);
+                            if (!itemResult.success) {
+                                const itemErrors = formatOQSEErrors(itemResult.error);
+                                itemErrors.forEach(err => arrayErrors.push(`[${index}] ${err}`));
+                            }
+                        });
+
+                        if (arrayErrors.length === 0) {
+                            showResult(true, `JSON array is fully valid according to the ${typeName} specification.`);
+                        } else {
+                            showResult(false, `Found ${arrayErrors.length} validation error(s) in the ${typeName} array:`, arrayErrors);
+                        }
+                        return;
+                    }
+
+                    result = safeValidateOQSEHeader(parsed);
+                }
+                
+                if (result.success) {
+                    showResult(true, `JSON is fully valid according to the ${typeName} specification.`);
+                } else {
+                    const formattedErrors = formatOQSEErrors(result.error);
+                    showResult(false, `Found ${formattedErrors.length} validation error(s) in the ${typeName} structure:`, formattedErrors);
+                }
+            } catch (e) {
+                if (e instanceof SyntaxError) {
+                    showResult(false, `JSON parsing error. Your input is not valid JSON Data. Check for missing quotes or brackets:\n\n${e.message}`);
+                } else {
+                    showResult(false, `An unexpected error occurred:\n\n${e.message}`);
+                }
+            }
+        }
+
+        validateJsonBtn.addEventListener('click', () => {
+            const val = jsonInput.value.trim();
+            if (!val) {
+                showResult(false, 'Please provide JSON to validate.');
+                return;
+            }
+            validateData(val);
+        });
+
+        validateUrlBtn.addEventListener('click', async () => {
+            const url = urlInput.value.trim();
+            if (!url) {
+                showResult(false, 'Please provide a valid URL.');
+                return;
+            }
+            
+            validateUrlBtn.textContent = 'Fetching...';
+            validateUrlBtn.disabled = true;
+            
+            try {
+                const res = await fetch(url);
+                if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+                const text = await res.text();
+                validateData(text);
+            } catch (e) {
+                showResult(false, `Failed to load data from URL:\\n\n${e.message}`);
+            } finally {
+                validateUrlBtn.textContent = 'Fetch and Validate';
+                validateUrlBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
