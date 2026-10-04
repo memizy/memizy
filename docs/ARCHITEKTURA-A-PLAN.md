@@ -404,7 +404,17 @@ Bez čeho se prezentace neobejde: kontrakt v1, lab s testy, relay server na Netc
 
 ## 13. Po prezentaci
 
-- Integrace `host-sdk` + labu do hlavní aplikace (`platform`), včetně jednorázové migrace sad v IndexedDB na OQSE 0.2 (`math` → `latex`, `version` → `0.2`).
+- Integrace `host-sdk` + labu do hlavní aplikace (`platform`), včetně jednorázové migrace sad v IndexedDB na OQSE 0.2 (stejná pravidla jako níže).
+- **Migrace vlastních sad na OQSE 0.2** (`code/courses`, 24 sad). Dělá se najednou, až bude hotová celá nová vrstva. Skript: `archive/scripts/migrate-oqse-0.2.ts` (spuštění bez `--apply` jen vypíše změny a výsledek validace; při posledním běhu bylo všech 24 sad po migraci validních). Pravidla:
+  - `$schema` → `https://cdn.jsdelivr.net/npm/@memizy/oqse@0.2/schemas/oqse-v0.2.json`
+  - `version` → `0.2` (včetně tří sad omylem ve verzi `1.0`: `nswi166-…` 2× a `set-anatomie-3d`)
+  - `meta.requirements.features`: `math` → `latex`
+  - `true-false.answer` → `correctAnswer`, `numeric-input.value` → `correctAnswer`, `short-answer.answers` → `correctAnswers`, `chess-puzzle.answers` → `correctAnswers`
+  - `shuffleOptions` (MCQ) a `randomize` (timeline) → `shuffle`
+  - `math-input`: odstranit `$` kolem `correctAnswer` a `alternativeAnswers`
+  - Upravit `course-mff-informatika/bakalarske-statnice/Instrukce.md`: `math` → `latex`; dlouhodobě instrukce přepsat na Markdown poznámky (odpadne zdvojování zpětných lomítek).
+  - Pozor: repo `course-standalone-sets/sets-mff-informatika` mělo při kontrole necommitnutou změnu.
+- **Import obecného Markdownu do poznámek** (`@memizy/oqse`): samostatná, ztrátová funkce (např. `importMarkdownAsNotes(md, { headingLevel })`), která rozdělí běžný Markdown podle nadpisů zvolené úrovně na note položky (nadpis → `title`, vygenerované `id`, případný callout `[!hidden]` → `hiddenContent`). Oddělená od striktní bezztrátové serializace.
 - Standalone hry: `game-client` (MessagePack), authoritative režim, API klíče a kvóty.
 - P2P přes nový transport v `host-sdk`.
 - Obsidian plugin (bucketový systém nad Markdown poznámkami).

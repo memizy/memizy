@@ -389,7 +389,7 @@ function checkShortAnswer(
   const norm = (t: string) =>
     item.caseSensitive === true ? t : t.toLowerCase();
   const user = norm(s);
-  return item.answers.some((a) => {
+  return item.correctAnswers.some((a) => {
     let t = item.trimWhitespace !== false ? a.trim() : a;
     t = norm(t);
     return t === user;
@@ -479,7 +479,7 @@ function renderMCQ(item: Extract<OQSEItem, { type: 'mcq-single' }>): void {
   const pos      = currentPos();
   const letters  = ['A', 'B', 'C', 'D', 'E', 'F'];
 
-  const order = item.shuffleOptions !== false ? shuffleIndices(item.options.length) : item.options.map((_, i) => i);
+  const order = item.shuffle !== false ? shuffleIndices(item.options.length) : item.options.map((_, i) => i);
 
   const optionsHtml = order
     .map((i) => {
@@ -573,7 +573,7 @@ function renderMCQMulti(item: Extract<OQSEItem, { type: 'mcq-multi' }>): void {
   const bucket   = progress[item.id]?.bucket ?? 0;
   const pos      = currentPos();
   const letters  = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
-  const order    = item.shuffleOptions !== false ? shuffleIndices(item.options.length) : item.options.map((_, i) => i);
+  const order    = item.shuffle !== false ? shuffleIndices(item.options.length) : item.options.map((_, i) => i);
 
   const optsHtml = order
     .map((i) => {
@@ -695,7 +695,7 @@ function renderTrueFalse(item: Extract<OQSEItem, { type: 'true-false' }>): void 
   $id('bucket-label').textContent = `Bucket ${bucket} — ${bucketName(bucket)}`;
 
   const submit = (picked: boolean): void => {
-    const ok = picked === item.answer;
+    const ok = picked === item.correctAnswer;
     const rec = sdk.store.answer(item.id, ok, { confidence: ok ? 3 : 1, hintsUsed: hintsUsedThisItem });
     answeredCount++;
     updateStudyStats(item.id);

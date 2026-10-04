@@ -54,8 +54,7 @@ export function formatOQSEErrors(error: ZodError): string[] {
       if (typeof part === 'number') {
         pathStr += `[${part}]`;
       } else {
-        const isFirstOrAfterNumber = index === 0 || typeof err.path[index - 1] === 'number';
-        pathStr += (isFirstOrAfterNumber ? '' : '.') + String(part);
+        pathStr += (index === 0 ? '' : '.') + String(part);
       }
     });
     return pathStr ? `${pathStr}: ${err.message}` : err.message;

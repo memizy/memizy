@@ -9,6 +9,7 @@ import {
   CategorizeItemSchema,
   TimelineEventSchema,
   FillInBlanksItemSchema,
+  OQSEItemSchema,
 } from './oqseValidation';
 import { formatOQSEErrors } from './utils';
 
@@ -254,5 +255,39 @@ describe('Complex Constraints & Referential Integrity', () => {
       expect(errors.length).toBeGreaterThan(0);
       expect(errors.some((e) => e.includes('meta'))).toBe(true);
     }
+  });
+});
+
+describe('OQSE 0.2 item shape', () => {
+  const id = '0192f0c4-7a1e-7c3b-9a52-2f1d8e4b6a10';
+
+  it('uses correctAnswer / correctAnswers consistently', () => {
+    expect(OQSEItemSchema.safeParse({ id, type: 'true-false', question: 'Q', correctAnswer: true }).success).toBe(true);
+    expect(OQSEItemSchema.safeParse({ id, type: 'true-false', question: 'Q', answer: true }).success).toBe(false);
+    expect(OQSEItemSchema.safeParse({ id, type: 'numeric-input', question: 'Q', correctAnswer: 9.81 }).success).toBe(true);
+    expect(OQSEItemSchema.safeParse({ id, type: 'short-answer', question: 'Q', correctAnswers: ['Praha'] }).success).toBe(true);
+    expect(OQSEItemSchema.safeParse({ id, type: 'chess-puzzle', question: 'Q', fen: '8/8/8/8/8/8/8/K6k w - - 0 1', correctAnswers: [['Ka2']] }).success).toBe(true);
+  });
+
+  it('math-input answers are raw LaTeX without $ delimiters', () => {
+    const base = { id, type: 'math-input', question: 'Q' };
+    expect(OQSEItemSchema.safeParse({ ...base, correctAnswer: '2x + 2', alternativeAnswers: ['2+2x'] }).success).toBe(true);
+    expect(OQSEItemSchema.safeParse({ ...base, correctAnswer: '$2x + 2$' }).success).toBe(false);
+    expect(OQSEItemSchema.safeParse({ ...base, correctAnswer: '2x', alternativeAnswers: ['$$2x$$'] }).success).toBe(false);
+  });
+
+  it('slider tolerance is optional', () => {
+    expect(OQSEItemSchema.safeParse({ id, type: 'slider', question: 'Q', min: 0, max: 10, step: 1, correctAnswer: 5 }).success).toBe(true);
+  });
+
+  it('note content allows up to 100 000 characters', () => {
+    expect(OQSEItemSchema.safeParse({ id, type: 'note', content: 'x'.repeat(100_000) }).success).toBe(true);
+    expect(OQSEItemSchema.safeParse({ id, type: 'note', content: 'x'.repeat(100_001) }).success).toBe(false);
+  });
+
+  it('formatOQSEErrors joins nested paths with dots', () => {
+    const result = OQSEItemSchema.safeParse({ id, type: 'note', content: 'x', sources: [{}] });
+    expect(result.success).toBe(false);
+    if (!result.success) expect(formatOQSEErrors(result.error)).toContain('sources[0].id: Invalid input: expected string, received undefined');
   });
 });

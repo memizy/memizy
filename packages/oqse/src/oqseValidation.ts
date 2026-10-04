@@ -66,6 +66,14 @@ export const AssetKeySchema = z.string().regex(
 export const PlainTextSchema = z.string().min(1, 'Text must not be empty');
 
 /**
+ * Raw LaTeX expression without `$` / `$$` delimiters (e.g., `2x + 2`)
+ */
+export const RawLatexSchema = PlainTextSchema.refine(
+  (value) => !/^\s*\$|\$\s*$/.test(value),
+  'LaTeX answer must not be wrapped in $ delimiters (write "2x + 2", not "$2x + 2$")',
+);
+
+/**
  * Rich content (Markdown, LaTeX, Media Tags)
  */
 export const RichContentSchema = z.string().min(1, 'Content must not be empty');
@@ -458,7 +466,7 @@ export const CameraSetupSchema = z.object({
 /**
  * Categorize item
  */
-export const CategorizeItemObjectSchema = z.object({
+export const CategorizeEntrySchema = z.object({
   id: PlainTextSchema,
   text: RichContentSchema,
   correctCategoryIndex: z.number().int().nonnegative(),
@@ -531,8 +539,8 @@ export const NumericRangeSchema = z.object({
 export const NoteItemSchema = BaseItemSchema.extend({
   type: z.literal('note'),
   title: z.string().optional(),
-  content: RichContentSchema.max(10000, 'Content must not be longer than 10000 characters'),
-  hiddenContent: RichContentSchema.max(10000, 'Content must not be longer than 10000 characters').optional(),
+  content: RichContentSchema.max(100000, 'Content must not be longer than 100000 characters'),
+  hiddenContent: RichContentSchema.max(100000, 'Hidden content must not be longer than 100000 characters').optional(),
 });
 
 /**
@@ -550,7 +558,7 @@ export const FlashcardItemSchema = BaseItemSchema.extend({
 export const TrueFalseItemSchema = BaseItemSchema.extend({
   type: z.literal('true-false'),
   question: RichContentSchema.max(10000, 'Question must not be longer than 10000 characters'),
-  answer: z.boolean(),
+  correctAnswer: z.boolean(),
 });
 
 /**
@@ -561,7 +569,7 @@ export const MCQSingleItemSchema = BaseItemSchema.extend({
   question: RichContentSchema.max(10000, 'Question must not be longer than 10000 characters'),
   options: z.array(RichContentSchema.max(2000, 'Option must not be longer than 2000 characters')).min(2, 'Question must have at least 2 options').max(100, 'Maximum 100 options'),
   correctIndex: z.number().int().nonnegative(),
-  shuffleOptions: z.boolean().optional(),
+  shuffle: z.boolean().optional(),
   optionExplanations: z.array(z.union([RichContentSchema, z.null()])).optional(),
 }).refine(
   (data) => data.correctIndex < data.options.length,
@@ -598,7 +606,7 @@ export const MCQMultiItemSchema = BaseItemSchema.extend({
   correctIndices: z.array(z.number().int().nonnegative()).min(1, 'Must have at least 1 correct answer'),
   minSelections: z.number().int().positive().optional(),
   maxSelections: z.number().int().positive().optional(),
-  shuffleOptions: z.boolean().optional(),
+  shuffle: z.boolean().optional(),
   optionExplanations: z.array(z.union([RichContentSchema, z.null()])).optional(),
 }).refine(
   (data) => {
@@ -677,7 +685,7 @@ export const MCQMultiItemSchema = BaseItemSchema.extend({
 export const ShortAnswerItemSchema = BaseItemSchema.extend({
   type: z.literal('short-answer'),
   question: RichContentSchema.max(10000, 'Question must not be longer than 10000 characters'),
-  answers: z.array(PlainTextSchema).min(1, 'Must have at least 1 correct answer'),
+  correctAnswers: z.array(PlainTextSchema).min(1, 'Must have at least 1 correct answer'),
   caseSensitive: z.boolean().optional(),
   trimWhitespace: z.boolean().optional(),
   acceptPartial: z.boolean().optional(),
@@ -863,7 +871,7 @@ export const SliderItemSchema = BaseItemSchema.extend({
   max: z.number(),
   step: z.number().positive('Step must be a positive number'),
   correctAnswer: z.number(),
-  tolerance: z.number().nonnegative('Tolerance must be non-negative'),
+  tolerance: z.number().nonnegative('Tolerance must be non-negative').optional(),
   unit: z.string().optional(),
 }).refine(
   (data) => data.min < data.max,
@@ -888,7 +896,7 @@ export const SliderItemSchema = BaseItemSchema.extend({
     path: ['correctAnswer'],
   }
 ).refine(
-  (data) => data.tolerance <= (data.max - data.min) / 2,
+  (data) => (data.tolerance ?? 0) <= (data.max - data.min) / 2,
   {
     message: 'Tolerance must not be greater than half of value range',
     path: ['tolerance'],
@@ -925,7 +933,7 @@ export const CategorizeItemSchema = BaseItemSchema.extend({
   type: z.literal('categorize'),
   question: RichContentSchema.max(10000, 'Question must not be longer than 10000 characters'),
   categories: z.array(PlainTextSchema).min(2, 'Must have at least 2 categories'),
-  items: z.array(CategorizeItemObjectSchema).min(1, 'Must have at least 1 item to categorize'),
+  items: z.array(CategorizeEntrySchema).min(1, 'Must have at least 1 item to categorize'),
 }).refine(
   (data) => {
     const uniqueCategories = new Set(data.categories.map(cat => cat.toLowerCase()));
@@ -950,7 +958,7 @@ export const TimelineItemSchema = BaseItemSchema.extend({
   type: z.literal('timeline'),
   question: RichContentSchema.max(10000, 'Question must not be longer than 10000 characters'),
   events: z.array(TimelineEventSchema).min(2, 'Must have at least 2 events'),
-  randomize: z.boolean().optional(),
+  shuffle: z.boolean().optional(),
 });
 
 /**
@@ -1008,8 +1016,8 @@ export const MatrixItemSchema = BaseItemSchema.extend({
 export const MathInputItemSchema = BaseItemSchema.extend({
   type: z.literal('math-input'),
   question: RichContentSchema.max(10000, 'Question must not be longer than 10000 characters'),
-  correctAnswer: PlainTextSchema,
-  alternativeAnswers: z.array(PlainTextSchema).optional(),
+  correctAnswer: RawLatexSchema,
+  alternativeAnswers: z.array(RawLatexSchema).optional(),
   tolerance: z.number().nonnegative().optional(),
 });
 
@@ -1064,7 +1072,7 @@ export const OpenEndedItemSchema = BaseItemSchema.extend({
 export const NumericInputItemSchema = BaseItemSchema.extend({
   type: z.literal('numeric-input'),
   question: RichContentSchema.max(10000, 'Question must not be longer than 10000 characters'),
-  value: z.number(),
+  correctAnswer: z.number(),
   tolerance: z.number().nonnegative().optional(),
   range: NumericRangeSchema.optional(),
   unit: z.string().optional(),
@@ -1105,7 +1113,7 @@ export const ChessPuzzleItemSchema = BaseItemSchema.extend({
   type: z.literal('chess-puzzle'),
   question: RichContentSchema.max(10000, 'Question must not be longer than 10000 characters'),
   fen: PlainTextSchema,
-  answers: z
+  correctAnswers: z
     .array(
       z.array(PlainTextSchema).min(1, 'Move sequence must not be empty')
     )

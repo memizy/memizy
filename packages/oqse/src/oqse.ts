@@ -668,9 +668,9 @@ export interface CameraSetup {
 }
 
 /**
- * Categorize item
+ * Entry to be sorted into a category (for `categorize` items)
  */
-export interface CategorizeItem {
+export interface CategorizeEntry {
   /** 
    * Unique ID within question (not global UUID).
    * Can be alphanumeric string.
@@ -796,7 +796,7 @@ export interface TrueFalseItem extends BaseItem {
   question: string;
   
   /** Correct answer */
-  answer: boolean;
+  correctAnswer: boolean;
 }
 
 /**
@@ -815,7 +815,7 @@ export interface MCQSingleItem extends BaseItem {
   correctIndex: number;
   
   /** Whether application should shuffle options. Default: true */
-  shuffleOptions?: boolean;
+  shuffle?: boolean;
   
   /** 
    * Array of explanations specific to each option (Rich Content).
@@ -847,7 +847,7 @@ export interface MCQMultiItem extends BaseItem {
   maxSelections?: number;
   
   /** Whether application should shuffle options. Default: true */
-  shuffleOptions?: boolean;
+  shuffle?: boolean;
   
   /** 
    * Array of explanations specific to each option (Rich Content).
@@ -867,7 +867,7 @@ export interface ShortAnswerItem extends BaseItem {
   question: string;
   
   /** Array of acceptable text answers (Plain Text). Min 1 item. */
-  answers: string[];
+  correctAnswers: string[];
   
   /** Distinguish letter case. Default: false */
   caseSensitive?: boolean;
@@ -1017,8 +1017,8 @@ export interface SliderItem extends BaseItem {
   /** Correct value. Must be reachable by slider. */
   correctAnswer: number;
   
-  /** Allowed deviation (can be 0) */
-  tolerance: number;
+  /** Allowed deviation. Default: 0 */
+  tolerance?: number;
   
   /** Unit (e.g., "year", "m", "°C") (Plain Text) */
   unit?: string;
@@ -1052,7 +1052,7 @@ export interface PinOnImageItem extends BaseItem {
 /**
  * Categorization
  */
-export interface CategorizeItemType extends BaseItem {
+export interface CategorizeItem extends BaseItem {
   type: 'categorize';
   
   /** Instructions (Rich Content) */
@@ -1062,7 +1062,7 @@ export interface CategorizeItemType extends BaseItem {
   categories: string[];
   
   /** Items to sort. Min 1 item. */
-  items: CategorizeItem[];
+  items: CategorizeEntry[];
 }
 
 /**
@@ -1078,7 +1078,7 @@ export interface TimelineItem extends BaseItem {
   events: TimelineEvent[];
   
   /** Whether application should shuffle events. Default: true */
-  randomize?: boolean;
+  shuffle?: boolean;
 }
 
 /**
@@ -1115,10 +1115,10 @@ export interface MathInputItem extends BaseItem {
   /** Question text (Rich Content) */
   question: string;
   
-  /** Correct answer in LaTeX format (e.g., "$2x + 2$") */
+  /** Correct answer as raw LaTeX without `$` delimiters (e.g., "2x + 2") */
   correctAnswer: string;
   
-  /** Array of other text strings that should also be considered correct */
+  /** Other raw LaTeX answers (without `$` delimiters) that should also be considered correct */
   alternativeAnswers?: string[];
   
   /** For purely numeric answers, allowed numeric deviation */
@@ -1188,14 +1188,14 @@ export interface NumericInputItem extends BaseItem {
   question: string;
   
   /** Correct numeric value (float) */
-  value: number;
+  correctAnswer: number;
   
   /** Absolute allowed deviation. Default: 0 */
   tolerance?: number;
   
   /** 
-   * Alternative to value+tolerance.
-   * If specified, takes precedence over value.
+   * Alternative to correctAnswer+tolerance.
+   * If specified, takes precedence over correctAnswer.
    */
   range?: NumericRange;
   
@@ -1278,7 +1278,7 @@ export interface ChessPuzzleItem extends BaseItem {
    * Multiple sequences allow declaring alternative correct solutions.
    * Example: `[["Ng5"]]` or `[["e4", "e5"]]`
    */
-  answers: string[][];
+  correctAnswers: string[][];
   
   /**
    * ELO difficulty rating of the puzzle.
@@ -1313,7 +1313,7 @@ export type OQSEItem =
   | SliderItem
   | PinOnImageItem
   | PinOnModelItem
-  | CategorizeItemType
+  | CategorizeItem
   | TimelineItem
   | MatrixItem
   | MathInputItem
@@ -1441,9 +1441,9 @@ export function isPinOnImage(item: OQSEItem): item is PinOnImageItem {
 }
 
 /**
- * Type guard for CategorizeItemType
+ * Type guard for CategorizeItem
  */
-export function isCategorize(item: OQSEItem): item is CategorizeItemType {
+export function isCategorize(item: OQSEItem): item is CategorizeItem {
   return item.type === 'categorize';
 }
 

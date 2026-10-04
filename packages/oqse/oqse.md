@@ -46,7 +46,7 @@ In this specification, the keywords **MUST**, **MUST NOT**, **SHOULD**, **SHOULD
     * For HTTP `Content-Type` header, use the appropriate MIME type
   * **Text Encoding:** UTF-8 (REQUIRED, without BOM)
   * **Validation:** Every OQSE file SHOULD be valid according to the JSON Schema at the URI specified in `$schema`
-  * **Unique IDs:** All `id` values MUST be generated as **UUIDv7** to ensure global uniqueness and native temporal ordering of records in databases. Applications MUST accept UUID versions 4 and 7 when loading existing sets. Applications MAY accept other versions (1-6), but this is not required. Applications creating new items MUST use UUIDv7. When re-exporting an existing set, the original UUID MUST be preserved regardless of version. Validation checks only the format (8-4-4-4-12 hex characters), not the specific UUID version. Exception: `SourceMaterial.id` MAY be an alphanumeric string unique only within that file, and `id` within internal item objects such as `TimelineEvent` or `CategorizeItem` MAY also be an alphanumeric string.
+  * **Unique IDs:** All `id` values MUST be generated as **UUIDv7** to ensure global uniqueness and native temporal ordering of records in databases. Applications MUST accept UUID versions 4 and 7 when loading existing sets. Applications MAY accept other versions (1-6), but this is not required. Applications creating new items MUST use UUIDv7. When re-exporting an existing set, the original UUID MUST be preserved regardless of version. Validation checks only the format (8-4-4-4-12 hex characters), not the specific UUID version. Exception: `SourceMaterial.id` MAY be an alphanumeric string unique only within that file, and `id` within internal item objects such as `TimelineEvent` or `CategorizeEntry` MAY also be an alphanumeric string.
   * **Text Formatting:** The specification distinguishes two types of text fields:
     * **Plain Text:** Fields intended for metadata and identifiers (e.g., titles, tags, alt texts). Interpreted as plain text without any formatting.
     * **Rich Content:** Fields intended for educational content. Support **GitHub Flavored Markdown (GFM)**, **LaTeX** mathematics compatible with KaTeX/MathJax (inline `$x^2$` and blocks `$$...$$` rendered as display style on a separate line; only when the `latex` feature is declared, otherwise `$` is a literal character), and media references using Media Tag syntax `<asset:key />`.
@@ -430,13 +430,13 @@ If same key exists in both scopes, local definition (`item.assets`) takes preced
       "id": "019aa5eb-5c91-7bce-93db-fb427ea4f333",
       "type": "short-answer",
       "question": "Where is Prague on the map? <asset:europe_map />",
-      "answers": ["Prague"]
+      "correctAnswers": ["Prague"]
     },
     {
       "id": "019aa5eb-902b-781e-81b7-0fd9e37b43f1",
       "type": "short-answer",
       "question": "Where is Berlin on the map? <asset:europe_map />",
-      "answers": ["Berlin"]
+      "correctAnswers": ["Berlin"]
     }
   ]
 }
@@ -521,7 +521,7 @@ Thermodynamics is a branch of physics dealing with heat, work, and temperature. 
 ### `type: "true-false"` (True/False)
 
   * `question` (string, required): **Rich Content.** Statement to be evaluated.
-  * `answer` (boolean, required): Correct answer (`true` or `false`).
+  * `correctAnswer` (boolean, required): Correct answer (`true` or `false`).
 
 **Example:**
 ```json
@@ -529,7 +529,7 @@ Thermodynamics is a branch of physics dealing with heat, work, and temperature. 
   "id": "019aa5ef-acd6-78ce-b953-d0ef601d13aa",
   "type": "true-false",
   "question": "Earth is the closest planet to the Sun.",
-  "answer": false,
+  "correctAnswer": false,
   "explanation": "Mercury is the closest planet to the Sun. Earth is the third planet from the Sun."
 }
 ```
@@ -539,7 +539,7 @@ Thermodynamics is a branch of physics dealing with heat, work, and temperature. 
   * `question` (string, required): **Rich Content.** Question text.
   * `options` (string[], required): **Rich Content.** Array of text options. Must contain at least 2 items.
   * `correctIndex` (number, required): Index (0, 1, 2...) of correct answer in `options` array.
-  * `shuffleOptions` (boolean, optional): Whether application should shuffle options. Default: `true`.
+  * `shuffle` (boolean, optional): Whether application should shuffle options. Default: `true`.
   * `optionExplanations` (Array<string | null>, optional): **Rich Content.** Array of explanations specific to each option. Index in this array corresponds to index in `options` array. If specific option doesn't require explanation (e.g., it's obvious), value `null` may be at that position.
 
 **Example:**
@@ -554,7 +554,7 @@ Thermodynamics is a branch of physics dealing with heat, work, and temperature. 
     "F-1"
   ],
   "correctIndex": 2,
-  "shuffleOptions": true,
+  "shuffle": true,
   "explanation": "Five **F-1** engines powered the first stage of Saturn V."
 }
 ```
@@ -566,7 +566,7 @@ Thermodynamics is a branch of physics dealing with heat, work, and temperature. 
   * `correctIndices` (number[], required): Array of indices of correct answers. Must contain at least 1 index.
   * `minSelections` (number, optional): Minimum number of answers user must select.
   * `maxSelections` (number, optional): Maximum number of answers user can select.
-  * `shuffleOptions` (boolean, optional): Whether application should shuffle options. Default: `true`.
+  * `shuffle` (boolean, optional): Whether application should shuffle options. Default: `true`.
   * `optionExplanations` (Array<string | null>, optional): **Rich Content.** Array of explanations specific to each option. Index in this array corresponds to index in `options` array. If specific option doesn't require explanation (e.g., it's obvious), value `null` may be at that position.
 
 **Example:**
@@ -584,7 +584,7 @@ Thermodynamics is a branch of physics dealing with heat, work, and temperature. 
   ],
   "correctIndices": [0, 2, 4],
   "minSelections": 1,
-  "shuffleOptions": true,
+  "shuffle": true,
   "explanation": "The gas giants of the solar system are: **Jupiter**, **Saturn**, **Uranus**, and **Neptune**."
 }
 ```
@@ -592,11 +592,11 @@ Thermodynamics is a branch of physics dealing with heat, work, and temperature. 
 ### `type: "short-answer"` (Short Text Answer)
 
   * `question` (string, required): **Rich Content.** Question text.
-  * `answers` (string[], required): **Plain Text.** Array of acceptable text answers (for checking variants). Must contain at least 1 item.
+  * `correctAnswers` (string[], required): **Plain Text.** Array of acceptable text answers (for checking variants). Must contain at least 1 item.
   * `caseSensitive` (boolean, optional): Distinguish letter case. Default: `false`.
   * `trimWhitespace` (boolean, optional): Ignore spaces at beginning/end. Default: `true`.
   * `acceptPartial` (boolean, optional): Accept approximate match (fuzzy matching). Allows answers with minor typos using Levenshtein distance (max. 1-2 edit operations: insertion, deletion, character substitution). Default: `false`.
-  * `ignoreDiacritics` (boolean, optional): If `true`, application removes diacritics from user input and from `answers` array before comparison (e.g., "citron" will match "citrón"). Default: `false`.
+  * `ignoreDiacritics` (boolean, optional): If `true`, application removes diacritics from user input and from `correctAnswers` array before comparison (e.g., "citron" will match "citrón"). Default: `false`.
 
 **Example:**
 ```json
@@ -604,7 +604,7 @@ Thermodynamics is a branch of physics dealing with heat, work, and temperature. 
   "id": "019aa5f1-7cb7-7f8a-a085-98ae208b25ec",
   "type": "short-answer",
   "question": "What is the capital of the Czech Republic?",
-  "answers": ["Prague", "praha"],
+  "correctAnswers": ["Prague", "praha"],
   "caseSensitive": false,
   "trimWhitespace": true,
   "hints": ["City on the Vltava River", "Starts with letter P"]
@@ -768,7 +768,7 @@ In the example above, `Starship` has two correct connections (`Raptor` and `BE-4
   * `max` (number, required): Maximum value on slider.
   * `step` (number, required): Slider step (e.g., 1, 0.1). Must be > 0. RECOMMENDED: `step` SHOULD be such that `(max - min) / step` gives whole number (e.g., `max: 100, min: 0, step: 5` → 20 steps).
   * `correctAnswer` (number, required): Correct value. MUST be reachable by slider: `(correctAnswer - min) % step === 0` and `correctAnswer` MUST lie in interval `<min, max>`.
-  * `tolerance` (number, required): Allowed deviation (can be `0`). **Validation rules:** `tolerance >= 0` and `tolerance <= (max - min) / 2`. RECOMMENDED: `tolerance` should be multiple of `step` (e.g., `step: 5, tolerance: 10`), otherwise inconsistent answer evaluation may occur. If `tolerance % step != 0`, Application MUST issue warning about possible inconsistency.
+  * `tolerance` (number, optional): Allowed deviation. Default: `0`. **Validation rules:** `tolerance >= 0` and `tolerance <= (max - min) / 2`. RECOMMENDED: `tolerance` should be multiple of `step` (e.g., `step: 5, tolerance: 10`), otherwise inconsistent answer evaluation may occur. If `tolerance % step != 0`, Application MUST issue warning about possible inconsistency.
   * `unit` (string, optional): **Plain Text.** Unit (e.g., "year", "m", "°C").
 
 **Example:**
@@ -825,7 +825,7 @@ In the example above, `Starship` has two correct connections (`Raptor` and `BE-4
 
   * `question` (string, required): **Rich Content.** Instructions.
   * `categories` (string[], required): **Plain Text.** Array of category names. Must contain at least 2 items.
-  * `items` (CategorizeItem[], required): Items to sort. Each item references category using 0-based index. [See CategorizeItem](#categorizeitem-for-categorize).
+  * `items` (CategorizeEntry[], required): Entries to sort. Each entry references category using 0-based index. [See CategorizeEntry](#categorizeentry-for-categorize).
   * **Note:** User assigns each item to a category.
 
 **Example:**
@@ -864,7 +864,7 @@ In the example above, `Starship` has two correct connections (`Raptor` and `BE-4
 
   * `question` (string, required): **Rich Content.** Instructions.
   * `events` (TimelineEvent[], required): Array of events in correct chronological order. Must contain at least 2 events. [See TimelineEvent](#timelineevent-for-timeline) for detail on date handling.
-  * `randomize` (boolean, optional): Determines whether application should shuffle events before displaying to user. Default: `true`. Set to `false` if you want to display events as study material in chronological order.
+  * `shuffle` (boolean, optional): Determines whether application should shuffle events before displaying to user. Default: `true`. Set to `false` if you want to display events as study material in chronological order.
 
 **Example:**
 ```json
@@ -925,10 +925,10 @@ In the example above, `Starship` has two correct connections (`Raptor` and `BE-4
 ### `type: "math-input"` (Math Input)
 
   * `question` (string, required): **Rich Content.** Question text.
-  * `correctAnswer` (string, required): Correct answer in LaTeX format (e.g., `$2x + 2$`).
-  * `alternativeAnswers` (string[], optional): Array of other **LaTeX strings** (same format as `correctAnswer`) that should also be considered correct (e.g., `$2*x + 2$`, `$2+2x$`).
+  * `correctAnswer` (string, required): Correct answer as raw LaTeX **without** `$` / `$$` delimiters (e.g., `2x + 2`). Values wrapped in `$` MUST cause a validation error.
+  * `alternativeAnswers` (string[], optional): Array of other raw **LaTeX strings** (same format as `correctAnswer`, without delimiters) that should also be considered correct (e.g., `2*x + 2`, `2+2x`).
   * `tolerance` (number, optional): For purely numeric answers, allowed numeric deviation.
-  * **Implementation note:** Application **SHOULD** support symbolic checking of mathematical equivalence (e.g., recognize `$2+2x$` same as `$2x+2$`). All LaTeX notations MUST be compatible with web rendering libraries (KaTeX, MathJax). If application does not support symbolic checking (e.g., due to technical limitations), it **MUST** use plain string comparison. **String comparison rules:** (1) Normalize whitespace (remove all spaces inside LaTeX). (2) Compare string with `correctAnswer` and each item in `alternativeAnswers`. (3) Case-sensitive. (4) DO NOT convert symbols (e.g., `*` stays `*`, not rewritten to `\cdot`). **Recommendations for set authors:** Prefer normalized form without spaces if Application doesn't support symbolic mathematical checking (CAS). Include all common notation variants in `alternativeAnswers`. Example: `correctAnswer: '$2x+2$', alternativeAnswers: ['$2*x+2$', '$2 x + 2$', '$2+2x$']`.
+  * **Implementation note:** Application **SHOULD** support symbolic checking of mathematical equivalence (e.g., recognize `2+2x` same as `2x+2`). All LaTeX notations MUST be compatible with web rendering libraries (KaTeX, MathJax). If application does not support symbolic checking (e.g., due to technical limitations), it **MUST** use plain string comparison. **String comparison rules:** (1) Normalize whitespace (remove all spaces inside LaTeX). (2) Compare string with `correctAnswer` and each item in `alternativeAnswers`. (3) Case-sensitive. (4) DO NOT convert symbols (e.g., `*` stays `*`, not rewritten to `\cdot`). **Recommendations for set authors:** Prefer normalized form without spaces if Application doesn't support symbolic mathematical checking (CAS). Include all common notation variants in `alternativeAnswers`. Example: `correctAnswer: '2x+2', alternativeAnswers: ['2*x+2', '2 x + 2', '2+2x']`.
 
 **Example:**
 
@@ -938,7 +938,7 @@ In the example above, `Starship` has two correct connections (`Raptor` and `BE-4
   "type": "math-input",
   "difficulty": 4,
   "question": "Simplify the following expression: $2(x+1)$",
-  "correctAnswer": "$2x + 2$",
+  "correctAnswer": "2x + 2",
   "alternativeAnswers": [
     "$2*x + 2$"
   ]
@@ -1045,9 +1045,9 @@ Intended for questions requiring free text answer that cannot be easily machine-
 Intended for physics, chemistry, statistics, or math problems where answer is specific number (integer or float), not algebraic expression (for that use `math-input`). This type ensures numeric keyboard display on mobile devices.
 
   * `question` (string, required): **Rich Content.** Question text.
-  * `value` (number, required): Correct numeric value (float). Used for evaluation when `range` is not specified. If `range` is present, `value` is not used for evaluation; it SHOULD nonetheless be set to a representative value within the range (e.g., the midpoint) to keep the field consistently populated.
-  * `tolerance` (number, optional): Absolute allowed deviation. Default: `0`. Answer is correct if: `|user_value - value| <= tolerance`. Ignored when `range` is specified.
-  * `range` (object, optional): Alternative to `value`+`tolerance`. Object `{ "min": number, "max": number }`. If specified, overrides `value`+`tolerance`. Answer is correct if it lies in closed interval `<min, max>`.
+  * `correctAnswer` (number, required): Correct numeric value (float). Used for evaluation when `range` is not specified. If `range` is present, `correctAnswer` is not used for evaluation; it SHOULD nonetheless be set to a representative value within the range (e.g., the midpoint) to keep the field consistently populated.
+  * `tolerance` (number, optional): Absolute allowed deviation. Default: `0`. Answer is correct if: `|user_value - correctAnswer| <= tolerance`. Ignored when `range` is specified.
+  * `range` (object, optional): Alternative to `correctAnswer`+`tolerance`. Object `{ "min": number, "max": number }`. If specified, overrides `correctAnswer`+`tolerance`. Answer is correct if it lies in closed interval `<min, max>`.
   * `unit` (string, optional): **Plain Text.** Unit displayed after input field (e.g., "kg", "m/s", "%"). Serves only for visual context, not compared.
 
 **Implementation rules for applications:**
@@ -1055,7 +1055,7 @@ Applications **MUST** normalize user input before evaluation to handle localizat
 
 1.  Replace decimal comma `,` with period `.`.
 2.  Remove spaces (e.g., from `1 000` to `1000`).
-3.  Applications SHOULD accept input formatting per device locale, but internally always compare with `value` as type `number` (float).
+3.  Applications SHOULD accept input formatting per device locale, but internally always compare with `correctAnswer` as type `number` (float).
 
 **Example:**
 
@@ -1064,7 +1064,7 @@ Applications **MUST** normalize user input before evaluation to handle localizat
   "id": "019aa5fe-9a6c-79dc-8b0e-dae22f9247fe",
   "type": "numeric-input",
   "question": "What is the approximate value of gravitational acceleration on Earth?",
-  "value": 9.81,
+  "correctAnswer": 9.81,
   "tolerance": 0.1,
   "unit": "m/s²"
 }
@@ -1111,7 +1111,7 @@ Applications **MUST** normalize user input before evaluation to handle localizat
 
   * `question` (string, required): **Rich Content.** Instructions or puzzle description (e.g., "White to move and checkmate in 2").
   * `fen` (string, required): The board position in Forsyth–Edwards Notation (FEN).
-  * `answers` (string[][], required): Array of correct move sequences. Each sequence is an array of strings in Standard Algebraic Notation (SAN) (e.g., `["e4", "e5", "Nf3"]`). Supports multiple valid solutions.
+  * `correctAnswers` (string[][], required): Array of correct move sequences. Each sequence is an array of strings in Standard Algebraic Notation (SAN) (e.g., `["e4", "e5", "Nf3"]`). Supports multiple valid solutions.
   * `elo` (number, optional): ELO rating of the puzzle difficulty.
   * **Note:** Applications SHOULD provide an interactive chessboard. The user solves the puzzle by making moves on the board.
 
@@ -1122,7 +1122,7 @@ Applications **MUST** normalize user input before evaluation to handle localizat
   "type": "chess-puzzle",
   "question": "Find the best move for White.",
   "fen": "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
-  "answers": [
+  "correctAnswers": [
     ["Ng5"]
   ],
   "elo": 1200
@@ -1167,7 +1167,7 @@ Defines clickable zone on image or named mesh in a 3D model. For `pin-on-image`,
 **For `type: "mesh"` (3D model part):**
   * `targetName` (string): Name (or partial name) of the object/mesh in the 3D scene (glTF node name).
 
-### `CategorizeItem` (for `categorize`)
+### `CategorizeEntry` (for `categorize`)
 
 | Key | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
@@ -1426,7 +1426,7 @@ This optional object (`item.pedagogy`) serves to store advanced metadata about d
         "F-1"
       ],
       "correctIndex": 2,
-      "shuffleOptions": true,
+      "shuffle": true,
       "optionExplanations": [
         "Raptor powers Starship spacecraft, not Saturn V.",
         "Merlin is an engine for Falcon 9 and Falcon Heavy rockets.",
@@ -1511,6 +1511,7 @@ To ensure consistency and practical implementability, the specification defines 
 | `meta.description` | 5,000 characters | Short set description (including Markdown) |
 | `item.question` | 10,000 characters | Including Markdown formatting |
 | `item.explanation` | 10,000 characters | Including Markdown formatting |
+| `note.content` / `note.hiddenContent` | 100,000 characters each | Notes are documents, not questions |
 | `item.hints[]` (one hint) | 2,000 characters | Each hint separately |
 | `options[]` (one option) | 2,000 characters | For MCQ and similar types |
 | `items[]` (items array) | 10,000 items | Maximum count in one set |
@@ -1580,7 +1581,7 @@ To ensure consistency and practical implementability, the specification defines 
 
 **For `range` in `numeric-input`:**
 - If `range` is present, `range.min <= range.max` MUST hold. Application MUST reject import if `range.min > range.max`.
-- If `range` is present, `value` SHOULD lie within `<range.min, range.max>` (consistency recommendation).
+- If `range` is present, `correctAnswer` SHOULD lie within `<range.min, range.max>` (consistency recommendation).
 
 **For `correctCells` in `matrix`:**
 - If `multiplePerRow: false`, each row may have maximum one correct cell
@@ -1613,7 +1614,7 @@ The standard for OQSE v0.2 is **UUIDv7**. For applications simplification, it is
 4. **Validation:** Application checks only syntactic UUID format (8-4-4-4-12 hex characters), not specific version.
 5. **Uniqueness:** All UUIDs in file MUST be globally unique.
 
-**Exception:** `SourceMaterial.id` MAY be alphanumeric string unique only within that file, and `id` within internal item objects such as `TimelineEvent` or `CategorizeItem` MAY also be alphanumeric string.
+**Exception:** `SourceMaterial.id` MAY be alphanumeric string unique only within that file, and `id` within internal item objects such as `TimelineEvent` or `CategorizeEntry` MAY also be alphanumeric string.
 
 ### URI and Path Security Validation Rules
 
@@ -1686,7 +1687,7 @@ Applications processing `.oqse` packages (ZIP) MUST implement following protecti
 **Duplicate values:**
 - Field `options` in MCQ types MUST NOT contain duplicate strings (case-insensitive comparison)
 - Field `categories` in `categorize` MUST NOT contain duplicate names
-- All `id` values of top-level `items` MUST be unique within the set. `id` values in `TimelineEvent` and `CategorizeItem` MUST be unique within their parent item (not globally).
+- All `id` values of top-level `items` MUST be unique within the set. `id` values in `TimelineEvent` and `CategorizeEntry` MUST be unique within their parent item (not globally).
 
 **Invalid references:**
 - Plain Text fields MUST NOT contain Media Tags `<asset:...>` (only in Rich Content)
@@ -1696,9 +1697,9 @@ Applications processing `.oqse` packages (ZIP) MUST implement following protecti
 
 - Shuffling is performed on each new attempt, not per-session
 - Original order from JSON is "correct order" and MUST be preserved in application logic
-- For `mcq-single/multi`: If `shuffleOptions: false`, options display in order from `options` array
+- For `mcq-single/multi`: If `shuffle: false`, options display in order from `options` array
 - For `sort-items`: Items are always shuffled (otherwise task would be meaningless)
-- For `timeline`: Respect `randomize` flag (default: `true`)
+- For `timeline`: Respect `shuffle` flag (default: `true`)
 - For `match-pairs`: Application MUST shuffle both sides before display
 
 ### Rules for `lang` Override
@@ -2093,6 +2094,12 @@ OQSE is an open standard. Suggestions for improvements:
 * Renamed the `math` feature to `latex` (consistent with `latexPackages`). Without the `latex` feature, `$` is a literal character.
 * Added the Markdown serialization for `note` items (see [Markdown Notes](#markdown-notes)).
 * Schema URLs now point to the versioned npm package (`https://cdn.jsdelivr.net/npm/@memizy/oqse@0.2/schemas/…`).
+* Consistent naming of correct answers: `true-false.answer` → `correctAnswer`, `numeric-input.value` → `correctAnswer`, `short-answer.answers` → `correctAnswers`, `chess-puzzle.answers` → `correctAnswers`.
+* Consistent shuffle flag: `shuffleOptions` (MCQ) and `randomize` (timeline) → `shuffle`.
+* `math-input` answers are raw LaTeX without `$` delimiters.
+* `slider.tolerance` is optional (default `0`).
+* `note.content` and `note.hiddenContent` allow up to 100,000 characters.
+* The `categorize` sub-object is renamed from `CategorizeItem` to `CategorizeEntry`.
 * No backward-compatibility aliases: v0.1 files must be migrated by the consuming application.
 
 ### Version 0.1 (April 18, 2026 )
