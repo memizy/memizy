@@ -15,6 +15,7 @@
     "build": "bun run build:packages && bun run --filter \"@memizy/play\" build",
     "dev:play": "bun run --filter \"@memizy/plugin-sdk\" build && bun run --filter \"@memizy/play\" dev",
     "test": "bun run build:packages && bun run --filter \"*\" test",
-    "typecheck": "bun run build:packages && bun run --filter \"*\" typecheck"
+    "typecheck": "bun run build:packages && bun run --filter \"*\" typecheck",
+    "dev:server": "bun run --filter \"@memizy/multiplayer-server\" dev"
   }
 }

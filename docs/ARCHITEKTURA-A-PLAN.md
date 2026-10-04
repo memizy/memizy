@@ -41,6 +41,7 @@ Mimo rozsah prezentace (ale s architekturou se pro ně počítá): standalone hr
 | D17 | **Lab se vyvíjí v `engine/apps/plugin-lab`** nad open-source balíčky (`host-sdk`, `plugin-testkit`). Po integraci do hlavní aplikace se rozhodne, zda zůstane (veřejný nástroj pro autory pluginů), zredukuje se na minimální dev harness pro vývoj SDK, nebo se odstraní běžným commitem (bez přepisování historie). Viz kap. 9.1. |
 | D18 | **Lobby UX (PIN, QR, kopírování odkazu, generované jméno s možností přegenerovat) se přebírá ze současného `multiplayer/`.** Datová vrstva (Supabase, stores aplikace) se nahradí relay transportem z `host-sdk`. |
 | D19 | **Kontrakt plugin ↔ host je Memizy Plugin Protocol v1** (`packages/protocol/SPEC.md`); rozhodnutí a důvody v kap. 3. |
+| D20 | **Session běží v prohlížeči hostitele, server je jen relay místností.** Autorita je podle protokolu vždy na zařízení hostitele (tabule nebo hostův ovladač), takže server nemusí držet stav hry. Validace a limity zůstávají na jednom místě (`LocalSession`). Kap. 8. |
 
 ---
 
@@ -158,17 +159,20 @@ Normativní popis je v **`packages/protocol/SPEC.md`** (pojmy, manifest, průbě
 
 ## 8. Multiplayer server
 
-- **Relay je výchozí a pro prezentaci jediný potřebný režim.** Server nepočítá herní logiku, přeposílá zprávy, drží poslední stav pro late join a ring buffer pro reconnect.
-- **Authoritative:** whitelist oficiálních her, reducery zakompilované v serveru, 60 Hz tick (později).
-- **P2P:** existující implementace s TURN fallbackem zůstává. Relay má ale oproti TURN výhodu, že rozumí místnosti (late join, reconnect se stavem), proto je výchozí.
-- **Content negotiation:** `?encoding=json` (pluginy přes hostitele) / `msgpack` (standalone).
-- **Ochrana (bez API klíčů):**
-  - allowlist `Origin` (aplikace, lab),
-  - limit velikosti zprávy,
-  - rate limit na spojení (token bucket),
-  - max. spojení a místností na IP,
-  - TTL místnosti a heartbeat.
-- **Provoz:** jeden Bun proces na Netcupu, Caddy (TLS) jako reverse proxy, systemd, logy. Nasazovací konfigurace a secrets jsou v closed `platform`.
+**Stav: relay hotový** (`services/multiplayer-server`, `host-sdk/src/relay`, wire protokol `protocol/src/relay.ts`).
+
+**Architektura (D20):**
+- Celá session (`LocalSession`: validace, limity, autorita, snapshoty, pokrok) běží v **prohlížeči hostitele**. Instance pluginu na telefonech hráčů jsou v ní připojené jako vzdálené endpointy (`RelayHost.endpointFor`), volání `HostApi`/`PluginApi` jdou přes relay.
+- **Server je hloupý relay místností:** PIN, tokeny hráčů (návrat po výpadku nebo reloadu jako stejný hráč), presence, přeposílání host ↔ hráč, vyhození, zavření místnosti. Herní stav nedrží.
+- **Plugin a sada se nahrají jednou přes HTTP** (`PUT /api/rooms/:pin/bundle`) a hráči si je stáhnou (`GET`), WebSocket nese jen zprávy hry. Hráčův klient doplní sadu do `InitPayload` sám.
+- **Hodiny:** hráčův klient opraví `clock.offsetMs` o rozdíl hodin vůči hostiteli (měřeno při `hello`).
+- Důsledek: když hostitel zavře nebo obnoví stránku, hra se přeruší (hráči čekají, místnost i hráči zůstanou, hra se spustí znovu z lobby). U hry, kde autorita je na hostiteli, by to jinak nešlo.
+
+**Ochrana (bez API klíčů):** allowlist `Origin` (HTTP i WebSocket), max. velikost rámce (2 MB) a bundlu (8 MB), rate limit na spojení (hráč 60/s, hostitel 3000/s), místnosti na IP za hodinu (štědře – škola sdílí jednu IP), max. 100 hráčů, místnost zaniká 10 min po odchodu hostitele, nejdéle po 6 h; WebSocket ping.
+
+**Později:** authoritative režim (whitelist oficiálních her), P2P, standalone hry s msgpack. Zatím zbytečné.
+
+**Provoz:** jeden Bun proces na Netcupu, Caddy (TLS) jako reverse proxy, systemd. Postup v `services/multiplayer-server/README.md`.
 
 ---
 

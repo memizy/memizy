@@ -45,6 +45,8 @@ const urlError = ref<string | null>(null);
 const showPrompt = ref(false);
 
 const testResults = ref<LabTestResult[] | null>(null);
+/** What the live preview has shown (the hidden tests cannot click inside the sandboxed plugin). */
+const played = ref({ answer: false, end: false });
 const testing = ref<string | null>(null);
 const testBox = ref<HTMLElement | null>(null);
 
@@ -59,6 +61,7 @@ function toggleStep(step: number): void {
 let parseTimer: ReturnType<typeof setTimeout> | undefined;
 function parsePlugin(): void {
   testResults.value = null;
+  played.value = { answer: false, end: false };
   if (!code.value.trim()) {
     plugin.value = null;
     pluginErrors.value = [];
@@ -244,6 +247,14 @@ const statusColor = { pass: 'text-emerald-600', warn: 'text-amber-600', fail: 't
           </button>
         </div>
         <p v-if="!plugin" class="mt-2 text-xs text-text-gray">{{ t('lab.tests.needCode') }}</p>
+        <div v-if="plugin" class="mt-3 rounded-xl bg-slate-50 p-3 text-xs">
+          <div class="mb-1 font-semibold">{{ t('lab.tests.played') }}</div>
+          <div v-for="key in (['answer', 'end'] as const)" :key="key" class="flex items-center gap-2">
+            <component :is="played[key] ? CheckCircleIcon : MinusCircleIcon" class="size-4" :class="played[key] ? 'text-emerald-600' : 'text-slate-400'" />
+            {{ t(`lab.tests.played_${key}`) }}
+          </div>
+          <div v-if="!played.answer || !played.end" class="mt-1 text-text-gray">{{ t('lab.tests.playedHint') }}</div>
+        </div>
         <p v-if="testResults && !testProblems.length" class="mt-3 text-sm font-semibold text-emerald-700">{{ t('lab.tests.allPassed') }}</p>
         <ul v-if="testResults" class="mt-3 flex flex-col gap-1.5">
           <li v-for="r in testResults" :key="r.id" class="flex gap-2 text-xs">
@@ -259,7 +270,12 @@ const statusColor = { pass: 'text-emerald-600', warn: 'text-amber-600', fail: 't
 
     <!-- Right: the simulation -->
     <main class="min-h-[80dvh] p-4 lg:min-h-0">
-      <LabStage :plugin="plugin" :set="setFile" />
+      <LabStage
+        :plugin="plugin"
+        :set="setFile"
+        :live-to="`/host?plugin=lab&set=${encodeURIComponent(setKey)}`"
+        @played="played[$event] = true"
+      />
     </main>
 
     <!-- Hidden devices of the automatic tests -->

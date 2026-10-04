@@ -8,6 +8,7 @@ import {
   HOST_API_METHODS,
   PLUGIN_API_METHODS,
   RELAY_PROTOCOL,
+  extractManifestFromHtml,
   type HostApi,
   type InitPayload,
   type PluginApi,
@@ -15,7 +16,6 @@ import {
   type RelayErrorCode,
   type RelayServerMessage,
 } from '@memizy/protocol';
-import { extractManifestFromHtml } from '@memizy/protocol';
 import { createPluginFrame } from '../frame';
 import { RelaySocket, relayWebSocketUrl, type RelayStatus } from './socket';
 import { isSerializedBlob, jsonToBlob, serializeError, type HostToPlayer, type PlayerToHost, type RemoteLobbyState } from './messages';
@@ -41,6 +41,8 @@ export interface RelayPlayerOptions {
   fetch?: typeof fetch;
   WebSocket?: typeof WebSocket;
   callTimeoutMs?: number;
+  /** Adjusts the downloaded plugin HTML before it runs (e.g. points the SDK import to a local build). */
+  transformHtml?: (html: string) => string;
   /** Creates the plugin instance (default: a sandboxed iframe; tests connect the SDK directly). */
   createFrame?: FrameFactory;
 }
@@ -243,7 +245,8 @@ export class RelayPlayer {
       if (!container) throw new Error('No place for the game on this page.');
       const manifest = extractManifestFromHtml(bundle.pluginHtml);
       const title = manifest.success ? String((manifest.data as { appName?: unknown }).appName ?? 'Game') : 'Game';
-      const frame = (this.options.createFrame ?? createPluginFrame)(bundle.pluginHtml, title, this.hostApiFor(gen), container.ownerDocument);
+      const html = this.options.transformHtml ? this.options.transformHtml(bundle.pluginHtml) : bundle.pluginHtml;
+      const frame = (this.options.createFrame ?? createPluginFrame)(html, title, this.hostApiFor(gen), container.ownerDocument);
       this.frame = frame;
       container.replaceChildren(frame.iframe);
       this.emit({ type: 'frame', active: true });

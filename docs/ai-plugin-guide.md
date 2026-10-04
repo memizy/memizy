@@ -224,7 +224,7 @@ if (state.score > best) ui.save('set', { ...ui.saved.set, level: state.level + 1
 * **Forms:** `<form data-act="submitText"><input name="text"><button>OK</button></form>` calls `submitText` with `{ text: "…" }` on submit.
 * Screen-only UI state (selected but not yet submitted option) goes to `ui.local`; call `ui.act` when the player confirms.
 * Escape names and your own strings with `ui.escape(text)`; text from the study set always goes through `ui.text`.
-* A controller can be a **phone, tablet or computer**: make it responsive, with big buttons (min. 48 px), one column on narrow screens and no hover-only interactions. Design the board for a **projector**: large font, high contrast, visible from the back of the classroom.
+* A controller can be a **phone, tablet or computer**: make it responsive, with big buttons (min. 48 px), one column on narrow screens and no hover-only interactions. Design the board for a **projector**: large font, high contrast, visible from the back of the classroom. Browsers grey out disabled buttons; if you show disabled options on the board, add `button:disabled { color: inherit; }`.
 * Support light and dark mode with `light-dark(lightColor, darkColor)` in CSS. The SDK sets `color-scheme` to the theme of the app; do not use `prefers-color-scheme` (it follows the operating system, not the app).
 
 ---
@@ -287,6 +287,8 @@ A quiz race: questions with a countdown, faster correct answers give more points
   .board { font-size: 1.6rem; }
   .options { display: grid; gap: 10px; }
   button { font: inherit; font-size: 1.15rem; padding: 14px; border-radius: 12px; border: 2px solid #8884; background: light-dark(#fff, #222); }
+  button:disabled { color: inherit; cursor: default; } /* browsers grey out disabled buttons: unreadable on a projector */
+  .board button { font-size: 1.6rem; padding: 18px; }
   .correct { background: #2e7d32; color: #fff; }
   .wrong { background: #c62828; color: #fff; }
   .timer { font-size: 2rem; font-weight: bold; }

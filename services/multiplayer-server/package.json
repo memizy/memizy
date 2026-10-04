@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "bun src/main.ts",
-    "dev": "bun --watch src/main.ts",
+    "dev": "ALLOWED_ORIGINS='*' bun --watch src/main.ts",
     "test": "bun test",
     "typecheck": "tsc --noEmit"
   },

@@ -21,7 +21,8 @@ import LabInspector, { type LogEntry } from './LabInspector.vue';
 type StageMode = 'solo' | 'presenter' | 'player';
 type Phase = 'lobby' | 'countdown' | 'running' | 'ended';
 
-const props = defineProps<{ plugin: LoadedPlugin | null; set: OQSEFile | null }>();
+const props = defineProps<{ plugin: LoadedPlugin | null; set: OQSEFile | null; liveTo?: string | null }>();
+const emit = defineEmits<{ played: ['answer' | 'end'] }>();
 const { t, locale } = useI18n();
 
 const mode = ref<StageMode>('solo');
@@ -65,6 +66,7 @@ function handle(event: SessionEvent): void {
       addLog({ kind: 'info', text: t('lab.preview.started') });
       break;
     case 'ended':
+      emit('played', 'end');
       phase.value = 'ended';
       addLog({ kind: 'info', text: `${t('lab.preview.ended')}: ${JSON.stringify(event.result)}` });
       break;
@@ -88,6 +90,7 @@ function handle(event: SessionEvent): void {
       addLog({ kind: event.valid ? 'info' : 'error', text: `settings: ${JSON.stringify(event.values)}${event.message ? ` – ${event.message}` : ''}` });
       break;
     case 'answer':
+      emit('played', 'answer');
       addLog({ kind: 'info', text: `${event.playerId}: answer ${event.answer.itemId} ${event.answer.isCorrect ? '✓' : '✗'}`, data: event.answer });
       break;
     case 'authority':
@@ -257,9 +260,9 @@ const phaseLabel = computed(() => {
         <button v-if="session && mode !== 'solo'" type="button" class="btn-primary" :disabled="phase !== 'lobby'" @click="start">
           <PlayIcon class="size-4" /> {{ t('lab.preview.start') }}
         </button>
-        <button type="button" class="btn-secondary" disabled :title="t('lab.preview.playLiveSoon')">
+        <RouterLink v-if="liveTo && plugin?.runtime.multiplayer" :to="liveTo" class="btn-secondary" :title="t('lab.preview.playLiveHint')">
           <WifiIcon class="size-4" /> {{ t('lab.preview.playLive') }}
-        </button>
+        </RouterLink>
       </div>
     </div>
 
