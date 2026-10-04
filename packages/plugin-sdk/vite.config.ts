@@ -1,34 +1,27 @@
-import { defineConfig } from 'vite';
-import { resolve } from 'path';
-import pkg from './package.json';
+import { defineConfig } from 'vitest/config';
+import dts from 'vite-plugin-dts';
+import { resolve } from 'node:path';
+import { readFileSync } from 'node:fs';
 
-/**
- * Root Vite config — **library build only**.
- *
- * The example app has its own config at `example/vite.config.ts`; use
- * `npm run example:dev` / `npm run example:build` to work with it.
- */
+const pkg = JSON.parse(readFileSync(resolve(import.meta.dirname, 'package.json'), 'utf8')) as { version: string };
+
 export default defineConfig({
   define: {
     __SDK_VERSION__: JSON.stringify(pkg.version),
   },
+  plugins: [dts({ exclude: ['src/**/*.test.ts', 'src/test/**'] })],
   build: {
     lib: {
-      entry: resolve(__dirname, 'src/index.ts'),
-      name: 'MemizySDK',
+      entry: resolve(import.meta.dirname, 'src/index.ts'),
       fileName: 'memizy-sdk',
-      formats: ['es', 'umd'],
+      formats: ['es', 'cjs'],
     },
     rollupOptions: {
-      external: ['@memizy/oqse', 'penpal', 'mutative'],
-      output: {
-        globals: {
-          '@memizy/oqse': 'MemizyOqse',
-          penpal: 'Penpal',
-          mutative: 'Mutative',
-        },
-      },
+      external: ['@memizy/oqse', '@memizy/protocol', 'penpal', 'mutative', 'marked', 'dompurify'],
     },
     sourcemap: true,
+  },
+  test: {
+    environment: 'happy-dom',
   },
 });
