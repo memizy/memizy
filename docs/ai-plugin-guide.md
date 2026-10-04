@@ -66,7 +66,8 @@ Declare what the game supports. Adjust `id`, `appName`, `types` and `modes`.
 
 * `types`: only item types your game can show (see section 7). The app gives you only these.
 * Remove `solo` or `multiplayer` if the game does not support it. In `hostAs` keep `"presenter"` only if you draw a `board` view, keep `"player"` only if the game works without a board.
-* `settings`: options the teacher sets in the lobby (types `number`, `boolean`, `select`, `text`). Read them as `ctx.settings.questionTime`.
+* `settings`: options the teacher sets in the lobby (types `number`, `boolean`, `select`, `text`). Read them as `ctx.settings.questionTime`. The app generates a form for them automatically.
+* Optional `"settingsScreen": true`: the game draws its own settings screen with `renderSettings` (section 4.1), e.g. to preview the chosen map. The `settings` list is still required – it defines types, defaults and limits.
 
 ---
 
@@ -89,11 +90,32 @@ defineGame({
   playerJoined(state, player, ctx) {},   // optional
   playerLeft(state, player, ctx) {},     // optional
 
+  renderWaiting(ui) {},                  // optional: screen before the game starts (HTML string)
+  renderSettings(settings, ui) {},       // optional: own settings screen (needs "settingsScreen": true)
+  validateSettings(settings) {},         // optional: return an error message, or nothing if valid
+
   render(state, ui) {                    // draw the screen; return an HTML string
     return `<h1>Hello ${ui.self?.name ?? ''}</h1>`;
   },
 });
 ```
+
+### 4.1 Before the game starts
+
+* The app shows the lobby, a countdown and then calls `setup`. Until the first state exists, the SDK shows `renderWaiting(ui)` (or a default "Waiting for the game to start" screen).
+* **Own settings screen** (only with `"settingsScreen": true` in the manifest): `renderSettings(settings, ui)` returns HTML. Inputs with `data-setting="id"` update that setting automatically. `validateSettings(settings)` returns an error text (Start stays disabled) or nothing. `ui.players` shows who has joined so far.
+
+```js
+renderSettings(settings, ui) {
+  return `<label>Čas na otázku: <input type="range" min="5" max="120" data-setting="questionTime" value="${settings.questionTime}"> ${settings.questionTime} s</label>
+          <p>Připojeno hráčů: ${ui.players.length}</p>`;
+},
+validateSettings(settings) {
+  if (settings.questionTime < 10 && settings.questionCount > 30) return 'Too many short questions.';
+},
+```
+
+* A "pick your character" step or similar belongs to the game itself: make it the first `phase` of your state.
 
 ### `ctx` (in `setup`, `actions`, `playerJoined`, `playerLeft`)
 
@@ -124,6 +146,7 @@ defineGame({
 | `ui.local` | An object for this screen only (e.g. the currently selected option). Not shared, not saved. |
 | `ui.act(name, payload)` | Call an action from your own JavaScript (normally use `data-act`). |
 | `ui.escape(text)` | Escape plain text (player names, your own strings) for HTML. |
+| `ui.progress` | Learning progress of this player: `{ [itemId]: { bucket: 0-4, ... } }` (empty on the board). Useful to prefer items the player does not know yet. |
 | `ui.locale` | Language of the app, e.g. `'cs'`. |
 
 ---
@@ -135,6 +158,15 @@ defineGame({
 * For time limits store a **deadline** (`state.deadline = ctx.now + 20000`), schedule `ctx.after(20000, 'timeUp', { round })` and in `timeUp` check that the round still matches.
 * A player can leave or join at any time: use `ctx.players`, and never assume a fixed number of players.
 * Use player IDs as keys (`state.scores[playerId]`). Show names with `ui.players`.
+
+### 5.1 Limits
+
+The app protects the class network and the server. Exceeding a limit makes the action fail (and the Plugin Lab tests report it):
+
+* **State size:** keep the whole state under **64 KB** as JSON (store IDs, not whole items; no images or long texts).
+* **Actions:** at most **30 actions per second** per device. Never call `ui.act` in a loop, in `requestAnimationFrame` or on every mouse move; send the result, not every intermediate step.
+* **Timers:** use `ctx.after` with a deadline in the state; do not create an action every second to count down – `render` with `tickMs` shows the countdown.
+* The SDK sends only the changes of the state, so a small change of a big state is cheap – but the limit on the total size still applies.
 
 ---
 
@@ -328,6 +360,7 @@ defineGame({
 - [ ] `ctx.recordAnswer` for every answered question, `ctx.end({ scores })` at the end.
 - [ ] Study-set text rendered with `ui.text` / `ui.renderNote`; other text escaped with `ui.escape`.
 - [ ] Controllers usable on a phone, board readable on a projector.
+- [ ] State stays small (IDs instead of items) and no actions are sent in loops or animation frames (section 5.1).
 
 ## 10. Common Mistakes
 

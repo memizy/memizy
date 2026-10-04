@@ -70,10 +70,11 @@ The OQSEM part describes **content** (item types, assets, features) and is used 
 | `protocol` | string | Yes | Minimum protocol version the plugin needs, `MAJOR.MINOR` (e.g. `"1.0"`). |
 | `modes` | object | Yes | At least one of `solo`, `multiplayer`. |
 | `modes.solo` | object | No | Present = the plugin supports single-player. Empty object for now. |
-| `modes.multiplayer.players` | `{min, max}` | Yes (in multiplayer) | Player count limits (players, not counting a presenter). `1 ≤ min ≤ max ≤ 200`. |
+| `modes.multiplayer.players` | `{min, max, recommended?}` | Yes (in multiplayer) | Player count limits (players, not counting a presenter). `1 ≤ min ≤ max ≤ 200`; `recommended` is a hint for the lobby. |
 | `modes.multiplayer.hostAs` | string[] | Yes (in multiplayer) | How the host may take part: `"presenter"` (host shows a shared board and does not play) and/or `"player"` (host plays like everyone else, no board). |
 | `modes.multiplayer.lateJoin` | boolean | No | Players may join a running game. Default `true`. |
-| `settings` | SettingDefinition[] | No | Settings the host shows in the lobby (see below). Default `[]`. |
+| `settings` | SettingDefinition[] | No | Settings of the game (see below). Default `[]`. They define types, defaults and limits; the host validates every value against them. |
+| `settingsScreen` | boolean | No | `true` = the plugin renders its own settings screen (view `settings`) on the host's device in the lobby. `false` = the host generates a form from `settings`. Default `false`. |
 | `display.orientation` | `"any"` \| `"portrait"` \| `"landscape"` | No | Preferred orientation of player screens. Default `"any"`. |
 
 **SettingDefinition:** `{ id, type, label, default, description?, ...typeSpecific }`
@@ -87,7 +88,7 @@ The OQSEM part describes **content** (item types, assets, features) and is used 
 
 `label`, `description` and option labels are either a string or a map of BCP 47 language → string (e.g. `{ "cs": "Čas", "en": "Time" }`).
 
-Reserved for later minor versions: `teams`, a custom settings screen, editing permissions.
+Reserved for later minor versions: `teams`, editing permissions.
 
 ---
 
@@ -97,7 +98,7 @@ Reserved for later minor versions: `teams`, a custom settings screen, editing pe
 | :--- | :--- |
 | **Mode** | `solo` or `multiplayer`. |
 | **Host role** | In multiplayer: `presenter` or `player` (from `hostAs`, chosen in the lobby). |
-| **View** | What one plugin instance shows: `solo`, `board` (shared screen of the presenter) or `controller` (a player's device). |
+| **View** | What one plugin instance shows: `solo`, `board` (shared screen of the presenter), `controller` (a player's device) or `settings` (the plugin's settings screen on the host's device in the lobby). |
 | **Address** | Identifies a plugin instance in a session: a player ID, or `"board"` for the presenter's screen. |
 | **Authority** | The one instance that owns the game state. `presenter` → the board; host as `player` → the host player's controller; `solo` → the only instance. |
 
@@ -107,7 +108,15 @@ Reserved for later minor versions: `teams`, a custom settings screen, editing pe
 | Multiplayer, host as presenter | 1 × `board` + N × `controller` | `board` |
 | Multiplayer, host as player | N × `controller` (host is one of them) | host's controller |
 
-The host manages the lobby outside the plugin. A plugin instance is created when the game starts (or when a player joins late or reconnects) and is told its view, whether it is the authority, and the current players.
+### 3.1 Lifecycle (multiplayer)
+
+1. **Lobby** (host UI). The host chooses the plugin and the set; players join and may rename themselves. If the manifest declares `settingsScreen: true`, the host's device runs the plugin in view `settings`: the plugin edits the settings with `updateSettings` and receives `playersChanged`. Start is enabled only while the settings are valid.
+2. **Loading.** After Start, the host creates the game instances (board and/or controllers). Each instance connects, receives its `InitPayload` (without game state) and calls `ready()`.
+3. **Countdown.** When all connected instances are ready (or after a host-defined timeout, e.g. 15 s), the host shows a countdown and then calls `start()` on the authority. The authority creates the initial state and the game runs.
+4. **Running.** Late joiners (if `lateJoin`) and reconnecting players get a new instance, which synchronizes with the authority. A recreated authority receives the last `snapshot` and continues without `start()`.
+5. **End.** The authority calls `end(result)`; the host shows results and finally closes the instances with `sessionEnded`.
+
+In solo, steps 1 and 3 collapse: the host calls `start()` right after `ready()` (or the generated/custom settings are shown first, as in the lobby).
 
 ---
 
@@ -144,7 +153,7 @@ interface InitPayload {
     id: string;
     mode: 'solo' | 'multiplayer';
     hostAs: 'presenter' | 'player' | null;   // null in solo
-    view: 'solo' | 'board' | 'controller';
+    view: 'solo' | 'board' | 'controller' | 'settings';
     self: Address;                      // this instance
     authority: Address;                 // who owns the game state
     lateJoin: boolean;                  // this instance joined a running game
@@ -155,7 +164,7 @@ interface InitPayload {
     meta: OQSEMeta;
     items: OQSEAnyItem[];               // only types the plugin declared; loaded with loadOQSEFile
   };
-  settings: Record<string, unknown>;    // values for every declared setting (defaults applied)
+  settings: Record<string, unknown>;    // current values for every declared setting (defaults applied)
   config: { locale: string; theme: 'light' | 'dark' };
   clock: { offsetMs: number };          // add to Date.now() to get the session clock
   progress: Record<string, ProgressRecord>;  // learning progress of `self` (empty for the board)
@@ -195,6 +204,7 @@ All methods return Promises. Methods marked *authority* reject with `ProtocolErr
 | `saveSnapshot(snapshot: unknown): void` | *authority.* Stores the latest resumable game state (overwrites the previous one). Returned as `InitPayload.snapshot` when the authority instance is recreated (reload, crash, reconnect). |
 | `recordAnswer(answer: AnswerRecord): void` | Records a learning result. The host applies its learning algorithm and stores the result in the progress of the given player (routing it to that player's device in multiplayer). |
 | `saveProgress(records: Record<string, ProgressRecord>): void` | Overwrites progress records of `self` directly (advanced plugins with their own scheduling, e.g. "traffic light" self-rating). Not available to the board. |
+| `updateSettings(update: { values: Record<string, unknown>; valid: boolean; message?: string }): void` | *view `settings` only.* Replaces the settings values. The host validates them against the manifest schema; `valid: false` disables Start and shows `message`. |
 | `getAsset(key: string, itemId?: string): Blob` | Raw data of an asset (resolution: item assets, then set assets). |
 | `end(result: SessionResult): void` | *authority.* The game is over. The host shows/stores the result; instances stay open until the host closes them. |
 | `resize(request: { height: number \| 'auto' }): void` | Requests a different iframe height (embedded layouts). |
@@ -249,6 +259,7 @@ Guarantees:
 
 | Method | Description |
 | :--- | :--- |
+| `start(): void` | *authority only.* Begin the game (after the countdown). Not called when resuming from a snapshot. |
 | `deliver(message: IncomingMessage): void` | A game message from another instance. |
 | `playersChanged(players: Player[]): void` | The roster changed (join, leave, rename, connection status). Always the full list. |
 | `setChanged(set: { meta, items }): void` | The set was edited in the host while the plugin runs (solo only). |
@@ -272,7 +283,7 @@ Guarantees:
 
 ### 8.2 Features
 
-`Handshake.features` and `InitPayload.features` list optional capabilities. A side may only use a feature both sides list. v1.0 defines none; future examples: `teams`, `edit-set`, `custom-settings-screen`.
+`Handshake.features` and `InitPayload.features` list optional capabilities. A side may only use a feature both sides list. v1.0 defines none; future examples: `teams`, `edit-set`.
 
 ### 8.3 Security
 
@@ -298,7 +309,7 @@ Allowed in `1.x`: new optional fields, new methods guarded by a feature, new set
 
 ## 10. Open Questions
 
-1. **Settings screen inside the plugin** (custom UI instead of the generated form) – postponed (`custom-settings-screen` feature).
-2. **Teams** – postponed (`teams` feature).
-3. **Answer redaction for controllers** (anti-cheating) – postponed.
-4. **Host migration** when the authority's device disappears for good – v1 only resumes the same authority from the snapshot.
+1. **Teams** – postponed (`teams` feature).
+2. **Answer redaction for controllers** (anti-cheating) – postponed.
+3. **Host migration** when the authority's device disappears for good – v1 only resumes the same authority from the snapshot.
+4. **Editing the set from a plugin** – postponed (`edit-set` feature).
