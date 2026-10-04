@@ -49,8 +49,13 @@ file and runs `docker compose up -d --build`. Check `https://mp.memizy.com/api/h
 
 Logs: `ssh memizy-vps 'cd /opt/memizy && sudo docker compose logs -f relay'`.
 
-Memizy Play is built with `PLAY_BASE=/ VITE_RELAY_URL=https://mp.memizy.com`
-for `play.memizy.com` (later `PLAY_BASE=/play/` on memizy.com); the relay's
-`ALLOWED_ORIGINS` must list the app's origin.
+Memizy Play runs on Cloudflare Workers (static assets, `apps/play/wrangler.jsonc`),
+built by Workers Builds from `main`:
+root directory `apps/play`, build command
+`cd ../.. && bun install && bun run build:packages && cd apps/play && bun run build`,
+deploy command `npx wrangler deploy`, build variables `PLAY_BASE=/`,
+`VITE_RELAY_URL=https://mp.memizy.com`; custom domain `play.memizy.com`
+(later `PLAY_BASE=/play/` on memizy.com). The relay's `ALLOWED_ORIGINS` must
+list the app's origin.
 
 Rooms live in memory: a restart closes all running games (deploy outside lessons).

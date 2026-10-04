@@ -1,0 +1,11 @@
+// Memizy Play on Cloudflare Workers (static assets only, no server code).
+// Built by Workers Builds from the repository: see the README section "Deployment".
+{
+  "name": "memizy-play",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist",
+    // Client-side routes (/join/123456, /host, /lab) are served by index.html.
+    "not_found_handling": "single-page-application"
+  }
+}
