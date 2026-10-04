@@ -99,7 +99,12 @@ Normativní popis je v **`packages/protocol/SPEC.md`** (pojmy, manifest, průbě
 | **Snapshot jen pro obnovu authority**; late join a reconnect hráčů jdou synchronizací s běžící authority. | Po F5 učitele by jinak zmizela celá hra; hráči stav dostanou od authority. |
 | **Assety předává host jako `Blob` přes `getAsset`**, nikdy jako `blob:` URL. | Iframe bez `allow-same-origin` nemůže načíst `blob:` URL hostitele. |
 | **Manifest = OQSEM (obsah) + `appSpecific.memizy` (runtime).** | Jeden data island; OQSE zůstává obecné, herní režimy jsou věc Memizy. |
-| **Limity:** zpráva 64 KB, 30 zpráv/s, snapshot 1 MB; uvedené i v AI guidu. | Ochrana sítě ve třídě a serveru před pluginy, které posílají stav v každém snímku. |
+| **Solo bez obrazovky nastavení a bez odpočtu:** jedna instance, host předá hodnoty nastavení (výchozí nebo předvolené) a hned zavolá `start()`. Volby hráče (obtížnost, level) si hra řeší sama jako první fázi. Schéma `settings` platí v obou režimech, `settingsScreen` jen v lobby multiplayeru. | Solo hry mívají vlastní úvodní menu; formulář hostitele by byl dvojí. Schéma umožní předvolby z aplikace/kurzu („10 otázek, těžká“) a testy různých nastavení v Labu. |
+| **Data pluginu** (`saveData`, v SDK `ui.saved` / `ui.save`): JSON dokument na uživatele a plugin ve dvou rozsazích – `plugin` (napříč sadami) a `set` (pro tuto sadu); 256 KB na rozsah; jen vlastní hráč, tabule nemá. | Hry potřebují ukládat levely, mince, nejlepší skóre. `localStorage` v sandboxu nefunguje a ukládat to do sady by byl hack (sada je sdílený obsah). Pokrok učení (OQSEP) zůstává oddělený. |
+| **Limity jako minimální záruka** (host smí povolit víc, mohou jen růst): zpráva 64 KB, 30 zpráv/s, snapshot 1 MB, data 256 KB; SDK slučuje změny stavu do dávek (≤ ~20/s). Uvedené i v AI guidu. | Ochrana sítě ve třídě a serveru; dávkování zvládne i 40 hráčů odpovídajících ve stejné vteřině. |
+| **Výpadek authority:** host ostatním ukáže „Čekáme na hostitele…“ (`authorityChanged`), akce mezitím odmítne (`AUTHORITY_UNAVAILABLE`), po návratu authority (ze snapshotu) se všichni znovu synchronizují; když se nevrátí, host session ukončí. | Host, který hraje s ostatními, může ztratit Wi-Fi; hra se nesmí rozbít ani tiše ztrácet akce. |
+| **Úplný seznam chybových kódů** (`ProtocolError`), neznámé kódy = `INTERNAL_ERROR`. | Plugin, SDK i Lab potřebují poznat, co se stalo; nové kódy lze přidávat. |
+| **Zmrazení ve dvou krocích:** teď Release Candidate 1, finální 1.0 po akceptačním testu s AI (dny 15–16). | Některé mezery odhalí až implementace; studenti tvoří pluginy až na prezentaci. |
 
 **Převod starého manifestu** (`appSpecific.memizy.multiplayerSdk`):
 
@@ -124,17 +129,18 @@ Normativní popis je v **`packages/protocol/SPEC.md`** (pojmy, manifest, průbě
 
 *(Kapitoly 5 a 6 byly sloučeny do kap. 3 a 4; číslování dalších kapitol zůstává kvůli odkazům.)*
 
-1. **Revize a zmražení** `SPEC.md` + AI guide (den 6).
-2. **`@memizy/protocol`:** TypeScript typy a Zod schémata pro manifest, handshake, `InitPayload`, zprávy a limity; validace manifestu z HTML data islandu (bez spuštění pluginu).
+1. ~~**Revize** `SPEC.md` + AI guide~~ → **Release Candidate 1** (2026-10-04). Finální 1.0 po akceptačním testu (bod 6); změny do té doby jen když implementace ukáže problém, zapisují se do changelogu ve `SPEC.md`.
+2. **`@memizy/protocol`:** TypeScript typy a Zod schémata pro manifest, handshake, `InitPayload`, zprávy, `ProtocolError` a limity; validace manifestu z HTML data islandu (bez spuštění pluginu).
 3. **`@memizy/plugin-sdk` 1.0** (přepis):
    - `defineGame`: `initialState`, `actions` s mutací draftu (mutative → patche), `playerJoined/Left`, časovače `ctx.after/cancel` uložené ve stavu, `ctx.recordAnswer`, `ctx.end`, deterministické `ctx.random/shuffle/now`;
    - vykreslování: `render` vrací HTML, SDK ho morfuje do DOM (zachová focus a text v inputech), `data-act`, `data-payload`, formuláře, `data-setting`, `ui.local`, `ui.timeLeft` se synchronizovaným časem, `tickMs`;
    - `renderWaiting`, `renderSettings`, `validateSettings`;
    - text: `ui.text`, `ui.renderNote` (relativní nadpisy, `titleLevel`), `ui.escape`; **oprava chyby** v současném `TextManager.parseTokens` (klíč `"map "` s mezerou) – použít `OQSE_TAG_PATTERN` / `findAssetKeys` z `@memizy/oqse`;
-   - `checkAnswer` pro typy z guidu (kap. 7), `ui.progress`, `ui.setProgress`;
+   - `checkAnswer` pro typy z guidu (kap. 7), `ui.progress`, `ui.setProgress`, `ui.saved` / `ui.save` (sloučení zápisů);
+   - dávkování změn stavu (≤ ~20/s), resync po `authorityChanged`;
    - assety: `getAsset` → `Blob` → vlastní object URL;
    - standalone režim (bez hostitele): solo s ukázkovými daty.
-4. **`@memizy/host-sdk`:** Penpal most, handshake a vyjednání verzí, validace všech volání a limity, lokální transport (solo, lab), relay transport, úložiště snapshotu, lobby + bariéra načtení + odpočet, načítání sady přes `loadOQSEFile` a filtrování typů přes `checkCompatibility`.
+4. **`@memizy/host-sdk`:** Penpal most, handshake a vyjednání verzí, validace všech volání a limity, chybové kódy, lokální transport (solo, lab), relay transport, úložiště snapshotu a dat pluginu, lobby + bariéra načtení + odpočet (solo bez nich), overlay „Čekáme na hostitele…“ při výpadku authority, načítání sady přes `loadOQSEFile` a filtrování typů přes `checkCompatibility`.
 5. **Referenční pluginy:** quiz-conquest (solo + oba `hostAs`) a jeden solo plugin.
 6. **Akceptační test:** pluginy vygenerované 3–5 AI modely jen podle guidu.
 

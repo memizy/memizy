@@ -1,6 +1,6 @@
-# Memizy Plugin Guide for AI Assistants (DRAFT)
+# Memizy Plugin Guide for AI Assistants
 
-> Status: **draft for review** – describes `@memizy/plugin-sdk@1`, which is not implemented yet.
+> Status: **Release Candidate 1** (2026-10-04) – describes `@memizy/plugin-sdk@1` (being implemented).
 > Paste this whole document into your AI assistant together with your idea for a game.
 
 You are writing a **Memizy plugin**: a learning game in **one HTML file**. Memizy (the host app) gives the game a study set (questions, notes) and runs it alone (**solo**) or with a whole class (**multiplayer**). You write only the game rules and the screens. The SDK handles connection, synchronization between devices, reconnecting, timers, rendering of formatted text and saving learning progress.
@@ -12,7 +12,7 @@ You are writing a **Memizy plugin**: a learning game in **one HTML file**. Memiz
 1. Produce **one complete `index.html`** file. No build step, no other files.
 2. Include the **manifest** `<script type="application/oqse-manifest+json">` (section 3).
 3. Import the SDK exactly like this: `import { defineGame, checkAnswer } from 'https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1/+esm';`
-4. Call `defineGame({...})` **once**. Do not use `fetch`, `WebSocket`, `localStorage` or other network/storage APIs for the game.
+4. Call `defineGame({...})` **once**. Do not use `fetch`, `WebSocket`, `localStorage`, `IndexedDB` or other network/storage APIs – they are blocked in Memizy. To remember things between games (levels, best score) use `ui.save` (section 5.2).
 5. **All game state lives in the state object** and changes **only inside `actions`**. `render` only reads the state and draws the screen.
 6. Inside actions, **mutate `state` directly** (e.g. `state.scores[id] = 10`). Do not return a new object.
 7. Never use `Math.random()` or `Date.now()` inside `initialState`/`actions`. Use `ctx.random()`, `ctx.shuffle()`, `ctx.now`.
@@ -66,8 +66,10 @@ Declare what the game supports. Adjust `id`, `appName`, `types` and `modes`.
 
 * `types`: only item types your game can show (see section 7). The app gives you only these.
 * Remove `solo` or `multiplayer` if the game does not support it. In `hostAs` keep `"presenter"` only if you draw a `board` view, keep `"player"` only if the game works without a board.
-* `settings`: options the teacher sets in the lobby (types `number`, `boolean`, `select`, `text`). Read them as `ctx.settings.questionTime`. The app generates a form for them automatically.
-* Optional `"settingsScreen": { "size": "compact" }` (a panel in the lobby) or `{ "size": "large" }` (a full-screen dialog): the game draws its own settings screen with `renderSettings` (section 4.1), e.g. to preview the chosen map. The `settings` list is still required – it defines types, defaults and limits.
+* `settings`: options of the game (types `number`, `boolean`, `select`, `text`). Read them as `ctx.settings.questionTime`.
+  * **Multiplayer:** the teacher sets them in the lobby; the app generates a form automatically.
+  * **Solo:** the app shows **no** settings screen. The game gets the defaults (or values preset by the app). If the player should choose something (difficulty, level), make it the **first phase of your game**.
+* Optional, multiplayer only: `"settingsScreen": { "size": "compact" }` (a panel in the lobby) or `{ "size": "large" }` (a full-screen dialog): the game draws its own settings screen with `renderSettings` (section 4.1), e.g. to preview the chosen map. The `settings` list is still required – it defines types, defaults and limits.
 
 ---
 
@@ -90,8 +92,8 @@ defineGame({
   playerJoined(state, player, ctx) {},   // optional
   playerLeft(state, player, ctx) {},     // optional
 
-  renderWaiting(ui) {},                  // optional: screen before the game starts (HTML string)
-  renderSettings(settings, ui) {},       // optional: own settings screen (needs "settingsScreen" in the manifest)
+  renderWaiting(ui) {},                  // optional: multiplayer screen before the game starts (HTML string)
+  renderSettings(settings, ui) {},       // optional: own lobby settings screen (needs "settingsScreen" in the manifest)
   validateSettings(settings) {},         // optional: return an error message, or nothing if valid
 
   render(state, ui) {                    // draw the screen; return an HTML string
@@ -102,8 +104,9 @@ defineGame({
 
 ### 4.1 Before the game starts
 
-* The app shows the lobby, waits until the game has loaded on every device, shows a countdown and then calls `initialState`. Until the first state exists, the SDK shows `renderWaiting(ui)` (or a default "Waiting for the game to start" screen).
-* **Own settings screen** (only with `"settingsScreen"` in the manifest): `renderSettings(settings, ui)` returns HTML. Inputs with `data-setting="id"` update that setting automatically. `validateSettings(settings)` returns an error text (Start stays disabled) or nothing. `ui.players` shows who has joined so far.
+* **Solo:** the game starts immediately – no lobby, no settings screen, no countdown.
+* **Multiplayer:** the app shows the lobby, waits until the game has loaded on every device, shows a countdown and then calls `initialState`. Until the first state exists, the SDK shows `renderWaiting(ui)` (or a default "Waiting for the game to start" screen).
+* **Own lobby settings screen** (multiplayer, only with `"settingsScreen"` in the manifest): `renderSettings(settings, ui)` returns HTML. Inputs with `data-setting="id"` update that setting automatically. `validateSettings(settings)` returns an error text (Start stays disabled) or nothing. `ui.players` shows who has joined so far.
 
 ```js
 renderSettings(settings, ui) {
@@ -147,6 +150,7 @@ validateSettings(settings) {
 | `ui.act(name, payload)` | Call an action from your own JavaScript (normally use `data-act`). |
 | `ui.escape(text)` | Escape plain text (player names, your own strings) for HTML. |
 | `ui.progress` | Learning progress of this player: `{ [itemId]: { bucket: 0-4, ... } }` (empty on the board). Useful to prefer items the player does not know yet. |
+| `ui.saved` / `ui.save(scope, value)` | Data saved between games for this player (section 5.2). |
 | `ui.setProgress(itemId, { bucket })` | Set this player's progress directly (bucket 0 = new … 4 = mastered), e.g. when the player rates themselves ("I know it / not sure / no idea"). Not available on the board. Prefer `ctx.recordAnswer` when an answer can be checked. |
 | `ui.locale` | Language of the app, e.g. `'cs'`. |
 
@@ -168,6 +172,25 @@ The app protects the class network and the server. Exceeding a limit makes the a
 * **Actions:** at most **30 actions per second** per device. Never call `ui.act` in a loop, in `requestAnimationFrame` or on every mouse move; send the result, not every intermediate step.
 * **Timers:** use `ctx.after` with a deadline in the state; do not create an action every second to count down – `render` with `tickMs` shows the countdown.
 * The SDK sends only the changes of the state, so a small change of a big state is cheap – but the limit on the total size still applies.
+* **Saved data** (section 5.2): at most **256 KB** per scope; save when something meaningful changes (level finished), not on every click.
+
+### 5.2 Saving Progress Between Games
+
+The game state is forgotten when the game ends. To remember something **for the next time** (unlocked levels, coins, best score, chosen avatar), use the player's saved data:
+
+* `ui.saved.plugin` – data for your game across all study sets (e.g. `{ coins: 120, unlocked: ['dragon'] }`),
+* `ui.saved.set` – data for your game and the current study set (e.g. `{ level: 4, best: 9800 }`),
+* `ui.save('plugin' | 'set', value)` replaces the whole value. Both are `null` until something is saved.
+
+```js
+// when the player finishes a level (e.g. in render after state.phase becomes 'levelDone')
+const best = ui.saved.set?.best ?? 0;
+if (state.score > best) ui.save('set', { ...ui.saved.set, level: state.level + 1, best: state.score });
+```
+
+* Saved data belongs to **this player on this device** – the board has none. In multiplayer each player saves their own.
+* Use it only for game progress. Learning results go through `ctx.recordAnswer` (or `ui.setProgress`), never through `ui.save`.
+* Never store game progress in the study set.
 
 ---
 
@@ -362,6 +385,7 @@ defineGame({
 - [ ] Study-set text rendered with `ui.text` / `ui.renderNote`; other text escaped with `ui.escape`.
 - [ ] Controllers usable on a phone and on a computer, board readable on a projector.
 - [ ] State stays small (IDs instead of items) and no actions are sent in loops or animation frames (section 5.1).
+- [ ] Progress between games uses `ui.save` (never `localStorage`); in solo there is no settings screen from the app – player choices are a game phase.
 
 ## 10. Common Mistakes
 
@@ -371,3 +395,4 @@ defineGame({
 4. Assuming the board is a player (it is not in `ctx.players`) or that the host never plays.
 5. Revealing the correct answer on controllers before the reveal phase.
 6. Forgetting that a player may join late: `state.answers[id]` and `state.scores[id]` may be missing – use `?? 0`.
+7. Using `localStorage` – it throws an error inside Memizy; use `ui.save`.
