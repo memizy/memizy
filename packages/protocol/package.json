@@ -1,0 +1,56 @@
+{
+  "name": "@memizy/protocol",
+  "version": "1.0.0-rc.1",
+  "description": "Memizy Plugin Protocol: types, Zod schemas and helpers shared by @memizy/plugin-sdk and @memizy/host-sdk.",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "SPEC.md",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc --noEmit && vite build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@memizy/oqse": "^0.2.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.0.4",
+    "vite-plugin-dts": "^4.5.4",
+    "vitest": "^4.1.4"
+  },
+  "license": "MIT",
+  "author": "Memizy Team",
+  "keywords": [
+    "memizy",
+    "plugin",
+    "protocol",
+    "oqse",
+    "education"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/memizy/memizy.git",
+    "directory": "packages/protocol"
+  },
+  "bugs": {
+    "url": "https://github.com/memizy/memizy/issues"
+  },
+  "homepage": "https://github.com/memizy/memizy/tree/main/packages/protocol#readme"
+}

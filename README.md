@@ -38,6 +38,7 @@ This repository is a [Bun workspaces](https://bun.sh/docs/install/workspaces) mo
 | Path | Contents |
 | :--- | :--- |
 | `packages/oqse` | `@memizy/oqse` – OQSE specification, TypeScript types and Zod validators |
+| `packages/protocol` | `@memizy/protocol` – Memizy Plugin Protocol (spec, types, schemas) |
 | `packages/plugin-sdk` | `@memizy/plugin-sdk` – the SDK for building Memizy plugins |
 | `services/` | Backend services (multiplayer server) |
 | `apps/` | Developer apps (Plugin Lab) |

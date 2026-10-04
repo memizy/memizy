@@ -7,7 +7,7 @@
     },
     "packages/oqse": {
       "name": "@memizy/oqse",
-      "version": "0.1.6",
+      "version": "0.2.0",
       "dependencies": {
         "uuid": "^14.0.0",
         "yaml": "^2.9.1",
@@ -36,6 +36,21 @@
         "@types/dompurify": "^3.0.5",
         "typescript": "^6.0.3",
         "vite": "^8.0.9",
+      },
+    },
+    "packages/protocol": {
+      "name": "@memizy/protocol",
+      "version": "1.0.0-rc.1",
+      "dependencies": {
+        "@memizy/oqse": "^0.2.0",
+        "zod": "^4.3.6",
+      },
+      "devDependencies": {
+        "@types/node": "^25.6.0",
+        "typescript": "~6.0.2",
+        "vite": "^8.0.4",
+        "vite-plugin-dts": "^4.5.4",
+        "vitest": "^4.1.4",
       },
     },
   },
@@ -105,6 +120,8 @@
     "@memizy/oqse": ["@memizy/oqse@workspace:packages/oqse"],
 
     "@memizy/plugin-sdk": ["@memizy/plugin-sdk@workspace:packages/plugin-sdk"],
+
+    "@memizy/protocol": ["@memizy/protocol@workspace:packages/protocol"],
 
     "@microsoft/api-extractor": ["@microsoft/api-extractor@7.59.3", "", { "dependencies": { "@microsoft/api-extractor-model": "7.33.14", "@microsoft/tsdoc": "~0.17.0", "@microsoft/tsdoc-config": "~0.18.2", "@rushstack/node-core-library": "5.25.0", "@rushstack/rig-package": "0.7.3", "@rushstack/terminal": "0.24.6", "@rushstack/ts-command-line": "5.3.16", "diff": "~8.0.2", "minimatch": "10.2.3", "resolve": "~1.22.1", "semver": "~7.7.4", "source-map": "~0.6.1", "typescript": "5.9.3" }, "bin": { "api-extractor": "bin/api-extractor" } }, "sha512-L1w0pe8/Af3PhjT7JDSsYZAtwFQ3l5pw7QjiNiNFpHA32nvvwYpvHWPedu8ulaJYiNWdKKq7We0FLSfZt0mbFA=="],
 
