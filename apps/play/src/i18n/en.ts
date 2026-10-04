@@ -153,7 +153,6 @@ const en: typeof cs = {
     title: 'Enter the PIN',
     yourName: 'Your name',
     another: 'Give me another',
-    edit: 'Edit',
     go: 'Join!',
     checking: 'Connecting…',
     notFound: 'There is no game with this PIN.',

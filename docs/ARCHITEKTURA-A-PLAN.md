@@ -166,7 +166,7 @@ Normativní popis je v **`packages/protocol/SPEC.md`** (pojmy, manifest, průbě
 - **Server je hloupý relay místností:** PIN, tokeny hráčů (návrat po výpadku nebo reloadu jako stejný hráč), presence, přeposílání host ↔ hráč, vyhození, zavření místnosti. Herní stav nedrží.
 - **Plugin a sada se nahrají jednou přes HTTP** (`PUT /api/rooms/:pin/bundle`) a hráči si je stáhnou (`GET`), WebSocket nese jen zprávy hry. Hráčův klient doplní sadu do `InitPayload` sám.
 - **Hodiny:** hráčův klient opraví `clock.offsetMs` o rozdíl hodin vůči hostiteli (měřeno při `hello`).
-- Důsledek: když hostitel zavře nebo obnoví stránku, hra se přeruší (hráči čekají, místnost i hráči zůstanou, hra se spustí znovu z lobby). U hry, kde autorita je na hostiteli, by to jinak nešlo.
+- **Reload hostitele:** snapshot autority a záznam hry (plugin, sada, hráči, nastavení) se ukládají do IndexedDB hostitele; po obnovení stránky se session obnoví se stejným ID (`LocalSession({ resume: true })`) a hra pokračuje (ztráta max. ~0,5 s). Výměnu zařízení hostitele by vyřešil až snapshot na serveru (později).
 
 **Ochrana (bez API klíčů):** allowlist `Origin` (HTTP i WebSocket), max. velikost rámce (2 MB) a bundlu (8 MB), rate limit na spojení (hráč 60/s, hostitel 3000/s), místnosti na IP za hodinu (štědře – škola sdílí jednu IP), max. 100 hráčů, místnost zaniká 10 min po odchodu hostitele, nejdéle po 6 h; WebSocket ping.
 

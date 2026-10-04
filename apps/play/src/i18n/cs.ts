@@ -151,7 +151,6 @@ export default {
     title: 'Zadej PIN',
     yourName: 'Tvé jméno',
     another: 'Dej mi jiné',
-    edit: 'Upravit',
     go: 'Nastoupit!',
     checking: 'Připojuji…',
     notFound: 'Hra s tímto PINem neexistuje.',

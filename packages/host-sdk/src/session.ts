@@ -68,6 +68,12 @@ export interface SessionConfig {
   readyTimeoutMs?: number;
   /** Countdown before the game starts in multiplayer (default 3 s; 0 = none). */
   countdownMs?: number;
+  /**
+   * The session was already running (e.g. the host page was reloaded; pass the
+   * same `sessionId` and a persistent `storage`). The authority resumes from its
+   * last snapshot; without a snapshot the game starts again right away.
+   */
+  resume?: boolean;
 }
 
 export type SessionEvent =
@@ -129,6 +135,7 @@ export class LocalSession {
   private readonly listeners = new Set<(event: SessionEvent) => void>();
   private authorityConnected = true;
   private startPromise: Promise<void> | null = null;
+  private resumeStartPending = false;
   private pendingSnapshot: unknown = undefined;
   private snapshotTimer: ReturnType<typeof setTimeout> | undefined;
   private readonly pendingData = new Map<string, { playerId: string; scope: DataScope; value: unknown; timer: ReturnType<typeof setTimeout> }>();
@@ -171,6 +178,10 @@ export class LocalSession {
     if (resolved.errors.length > 0) throw new Error(`Invalid settings: ${resolved.errors.join('; ')}`);
     this.settings = resolved.values;
     this.prepared = prepareSetForPlugin(config.set, config.plugin.manifest);
+    if (config.resume) {
+      this.started = true;
+      this.resumeStartPending = true;
+    }
   }
 
   // ==========================================================================
@@ -284,6 +295,7 @@ export class LocalSession {
    */
   start(): Promise<void> {
     if (this.mode === 'solo') return Promise.resolve();
+    if (this.started && !this.startPromise) return Promise.resolve(); // resumed session
     if (!this.settingsValid) return Promise.reject(new Error('The settings are not valid.'));
     const count = this.players.length;
     const limits = this.runtime.multiplayer!.players;
@@ -417,6 +429,11 @@ export class LocalSession {
               this.emit({ type: 'started' });
               void this.callPlugin(instance.address, (p) => p.start());
             } else if (this.started) {
+              if (this.resumeStartPending) {
+                this.resumeStartPending = false;
+                // Resumed without a snapshot: nothing to continue from, start over.
+                if (!instance.resumed) void this.callPlugin(instance.address, (p) => p.start());
+              }
               this.setAuthorityConnected(true);
             }
           }

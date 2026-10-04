@@ -2,13 +2,12 @@
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
-import { ArrowLeftIcon, ArrowPathIcon, PencilIcon, RocketLaunchIcon, SignalSlashIcon } from '@heroicons/vue/20/solid';
+import { ArrowLeftIcon, ArrowPathIcon, RocketLaunchIcon, SignalSlashIcon } from '@heroicons/vue/20/solid';
 import { RelayPlayer, type RelayPlayerEvent, type RelayStatus, type RemoteLobbyState } from '@memizy/host-sdk';
 import { normalizePlayerName, type RoomInfo } from '@memizy/protocol';
 import LocaleSwitch from '@/components/LocaleSwitch.vue';
 import { RELAY_URL } from '@/lib/config';
 import { generateName } from '@/lib/names';
-import { persisted } from '@/lib/persisted';
 import { withSdkSource } from '@/lib/plugins';
 
 type Stage = 'form' | 'joining' | 'joined' | 'gone';
@@ -18,8 +17,8 @@ const route = useRoute();
 const router = useRouter();
 
 const pin = ref(typeof route.params.pin === 'string' ? route.params.pin.replace(/\D/g, '').slice(0, 6) : '');
-const name = persisted('player-name', generateName());
-const editingName = ref(false);
+// A fresh random nickname on every visit; players cannot type their own (privacy: no real names).
+const name = ref(generateName());
 const stage = ref<Stage>('form');
 const error = ref<string | null>(null);
 const goneReason = ref<string | null>(null);
@@ -142,15 +141,13 @@ function leave(): void {
   void releaseScreen();
 }
 
+let renameTimer: ReturnType<typeof setTimeout> | undefined;
 function another(): void {
   name.value = generateName();
-  if (stage.value === 'joined') player.value?.rename(name.value);
-}
-
-function commitName(): void {
-  editingName.value = false;
-  name.value = normalizePlayerName(name.value) || generateName();
-  if (stage.value === 'joined') player.value?.rename(name.value);
+  if (stage.value !== 'joined') return;
+  // Debounced like the original multiplayer: re-rolling quickly sends one rename.
+  clearTimeout(renameTimer);
+  renameTimer = setTimeout(() => player.value?.rename(name.value), 500);
 }
 
 function startOver(): void {
@@ -189,6 +186,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  clearTimeout(renameTimer);
   document.removeEventListener('visibilitychange', onVisible);
   player.value?.leave();
   void releaseScreen();
@@ -243,22 +241,10 @@ const waitingForHost = computed(() => !hostConnected.value || state.value?.autho
           />
           <div class="text-center">
             <div class="text-xs text-text-gray">{{ t('join.yourName') }}</div>
-            <input
-              v-if="editingName"
-              v-model="name"
-              class="input mt-1 text-center text-lg font-bold"
-              maxlength="32"
-              autofocus
-              @blur="commitName"
-              @keydown.enter.prevent="commitName"
-            />
-            <div v-else class="mt-1 text-xl font-bold">{{ name }}</div>
+            <div class="mt-1 text-xl font-bold">{{ name }}</div>
             <div class="mt-2 flex justify-center gap-2">
               <button type="button" class="badge bg-orange-50 py-1 text-accent-orange-dark hover:bg-orange-100" @click="another">
                 <ArrowPathIcon class="size-3.5" /> {{ t('join.another') }}
-              </button>
-              <button type="button" class="badge bg-slate-100 py-1 text-text-gray hover:bg-slate-200" @click="editingName = true">
-                <PencilIcon class="size-3.5" /> {{ t('join.edit') }}
               </button>
             </div>
           </div>
@@ -285,22 +271,10 @@ const waitingForHost = computed(() => !hostConnected.value || state.value?.autho
         </div>
         <div class="card w-full p-6">
           <div class="section-label">{{ t('join.connectedAs') }}</div>
-          <input
-            v-if="editingName"
-            v-model="name"
-            class="input mt-2 text-center text-xl font-bold"
-            maxlength="32"
-            autofocus
-            @blur="commitName"
-            @keydown.enter.prevent="commitName"
-          />
-          <div v-else class="mt-2 text-3xl font-black">{{ name }}</div>
+          <div class="mt-2 text-3xl font-black">{{ name }}</div>
           <div class="mt-3 flex justify-center gap-2">
             <button type="button" class="badge bg-orange-50 py-1.5 text-sm text-accent-orange-dark hover:bg-orange-100" @click="another">
               <ArrowPathIcon class="size-4" /> {{ t('join.another') }}
-            </button>
-            <button type="button" class="badge bg-slate-100 py-1.5 text-sm text-text-gray hover:bg-slate-200" @click="editingName = true">
-              <PencilIcon class="size-4" /> {{ t('join.edit') }}
             </button>
           </div>
         </div>

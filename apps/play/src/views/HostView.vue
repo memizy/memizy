@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import {
   ArrowLeftIcon,
+  ArrowPathIcon,
   ArrowsPointingOutIcon,
   BookOpenIcon,
   PuzzlePieceIcon,
@@ -33,6 +34,8 @@ import { generateName } from '@/lib/names';
 import { persisted } from '@/lib/persisted';
 import { EXAMPLE_PLUGINS, fetchPluginHtml, withSdkSource } from '@/lib/plugins';
 import { BUILTIN_SETS, loadStoredSets, type StudySet } from '@/lib/sets';
+import { PersistentSnapshotStorage, clearHostGame, loadHostGame, saveHostGame } from '@/lib/hostGame';
+import type { OQSEFile } from '@memizy/oqse';
 
 type Phase = 'lobby' | 'starting' | 'running' | 'ended' | 'closed';
 type PluginChoice = { kind: 'example'; key: string } | { kind: 'lab' } | { kind: 'url'; url: string };
@@ -63,7 +66,8 @@ function onRoomEvent(event: RelayHostEvent): void {
   }
 }
 
-async function openRoom(fresh = false): Promise<void> {
+/** Opens (or re-attaches to) the room; returns whether an existing room was resumed. */
+async function openRoom(fresh = false): Promise<boolean> {
   stopRoom?.();
   roomError.value = null;
   roomStatus.value = 'connecting';
@@ -78,8 +82,10 @@ async function openRoom(fresh = false): Promise<void> {
     uploadedKey = '';
     phase.value = 'lobby';
     scheduleUpload();
+    return saved !== null;
   } catch (error) {
     roomError.value = error instanceof TypeError ? t('host.serverDown', { url: RELAY_URL }) : (error as Error).message;
+    return false;
   }
 }
 
@@ -87,6 +93,7 @@ function endSession(): void {
   if (!confirm(t('host.confirmEnd'))) return;
   void game.value?.end('closed').catch(() => {});
   game.value = null;
+  if (room.value) void clearHostGame(room.value.pin);
   room.value?.close();
   sessionStorage.removeItem(ROOM_KEY);
   phase.value = 'closed';
@@ -146,7 +153,8 @@ const hostAs = persisted<HostAs>('host-as', 'presenter');
 watch(multi, (m) => {
   if (m && !m.hostAs.includes(hostAs.value)) hostAs.value = m.hostAs[0];
 });
-const hostName = persisted('host-name', generateName());
+// Random like the players' nicknames (no real names).
+const hostName = ref(generateName());
 
 const prepared = computed(() => (plugin.value && studySet.value ? prepareSetForPlugin(studySet.value.file, plugin.value.manifest) : null));
 const unsupported = computed(() => {
@@ -260,27 +268,91 @@ async function start(): Promise<void> {
     if (uploadError.value) throw new Error(uploadError.value);
     lobbySession.value?.end('closed').catch(() => {});
     lobbySession.value = null;
-    const session = new LocalSession({
-      plugin: p,
-      set: studySet.value.file,
-      mode: 'multiplayer',
-      hostAs: hostAs.value,
-      players: [
-        ...(hostAs.value === 'player' ? [{ id: 'host', name: hostName.value, isHost: true }] : []),
-        ...connectedPlayers.value.map((pl) => ({ id: pl.id, name: pl.name })),
-      ],
-      settings: settings.value,
-      config: { locale: locale.value, theme: 'light' },
-    });
-    session.on((e) => {
-      if (e.type === 'started') phase.value = 'running';
-      else if (e.type === 'ended') phase.value = 'ended';
-    });
-    game.value = session;
-    r.setOpen(p.runtime.multiplayer!.lateJoin);
-    r.attach(session);
+    const roster = [
+      ...(hostAs.value === 'player' ? [{ id: 'host', name: hostName.value, isHost: true }] : []),
+      ...connectedPlayers.value.map((pl) => ({ id: pl.id, name: pl.name, isHost: false })),
+    ];
+    const session = launch(p, studySet.value.file, roster, `${r.pin}-${Date.now().toString(36)}`, false);
     await nextTick(); // mounts the local board / host controller
     await session.start();
+  } catch (error) {
+    startError.value = (error as Error).message;
+    backToLobby();
+  }
+}
+
+/**
+ * Creates the game session and connects the room to it. The authority's snapshots
+ * and a record of the game go to IndexedDB, so a reload of this page resumes it.
+ */
+function launch(p: LoadedPlugin, file: OQSEFile, roster: { id: string; name: string; isHost: boolean }[], sessionId: string, resume: boolean): LocalSession {
+  const r = room.value!;
+  const session = new LocalSession({
+    plugin: p,
+    set: file,
+    mode: 'multiplayer',
+    hostAs: hostAs.value,
+    players: roster,
+    settings: settings.value,
+    config: { locale: locale.value, theme: 'light' },
+    sessionId,
+    storage: new PersistentSnapshotStorage(),
+    resume,
+  });
+  const pluginHtml = pluginRaw.value!;
+  const record = () =>
+    saveHostGame(r.pin, {
+      sessionId,
+      pluginHtml,
+      setKey: setKey.value,
+      hostAs: hostAs.value,
+      hostName: hostName.value,
+      settings: settings.value,
+      players: session.players.map(({ id, name, isHost }) => ({ id, name, isHost })),
+    });
+  void record();
+  session.on((e) => {
+    if (e.type === 'started') phase.value = 'running';
+    else if (e.type === 'players') void record();
+    else if (e.type === 'ended') {
+      phase.value = 'ended';
+      void clearHostGame(r.pin);
+    }
+  });
+  game.value = session;
+  r.setOpen(p.runtime.multiplayer!.lateJoin);
+  r.attach(session);
+  return session;
+}
+
+/** After a reload of this page: continue the game that was running in this room. */
+async function restoreGame(): Promise<void> {
+  const r = room.value;
+  if (!r) return;
+  const record = await loadHostGame(r.pin);
+  if (!record) return;
+  const set = sets.value.find((s) => s.key === record.setKey);
+  const loaded = loadPluginFromHtml(withSdkSource(record.pluginHtml, 'local'));
+  if (!set || !loaded.success || !loaded.plugin.runtime.multiplayer) {
+    await clearHostGame(r.pin);
+    return;
+  }
+  setKey.value = record.setKey;
+  hostAs.value = record.hostAs;
+  hostName.value = record.hostName;
+  settings.value = record.settings;
+  pluginRaw.value = record.pluginHtml;
+  plugin.value = loaded.plugin;
+  pluginErrors.value = [];
+  phase.value = 'starting';
+  try {
+    await r.whenHosting();
+    await ensureUploaded();
+    lobbySession.value?.end('closed').catch(() => {});
+    lobbySession.value = null;
+    launch(loaded.plugin, set.file, record.players, record.sessionId, true);
+    r.setState({ phase: 'running' });
+    phase.value = 'running';
   } catch (error) {
     startError.value = (error as Error).message;
     backToLobby();
@@ -293,6 +365,7 @@ async function endGame(): Promise<void> {
 }
 
 function backToLobby(): void {
+  if (room.value) void clearHostGame(room.value.pin);
   room.value?.detach();
   room.value?.setState({ phase: 'lobby', result: undefined, countdown: undefined });
   room.value?.setOpen(true);
@@ -316,7 +389,7 @@ function useUrl(): void {
 
 onMounted(async () => {
   sets.value = [...BUILTIN_SETS, ...(await loadStoredSets())];
-  await openRoom();
+  if (await openRoom()) await restoreGame();
 });
 
 onBeforeUnmount(() => {
@@ -460,10 +533,13 @@ const statusClass = computed(() =>
                   <span class="text-xs text-text-gray">{{ t(`host.${role}Text`) }}</span>
                 </label>
               </div>
-              <label v-if="hostAs === 'player'" class="mt-3 flex flex-col gap-1 text-sm">
-                <span class="font-medium">{{ t('host.myName') }}</span>
-                <input v-model="hostName" class="input" maxlength="32" />
-              </label>
+              <div v-if="hostAs === 'player'" class="mt-3 flex items-center gap-2 text-sm">
+                <span class="text-text-gray">{{ t('host.myName') }}:</span>
+                <span class="font-bold">{{ hostName }}</span>
+                <button type="button" class="badge bg-orange-50 py-1 text-accent-orange-dark hover:bg-orange-100" @click="hostName = generateName()">
+                  <ArrowPathIcon class="size-3.5" /> {{ t('join.another') }}
+                </button>
+              </div>
             </div>
           </section>
 

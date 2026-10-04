@@ -323,3 +323,44 @@ describe('sandbox', () => {
     expect(PLUGIN_SANDBOX).not.toContain('allow-same-origin');
   });
 });
+
+describe('resume after a host reload', () => {
+  it('continues from the stored snapshot with the same session id and storage', async () => {
+    const storage = new MemoryStorage();
+    const first = newSession({ sessionId: 'room-1', storage });
+    const board = play(first.session, 'board');
+    const anna = play(first.session, 'anna');
+    play(first.session, 'ben');
+    await Promise.all(games.map((g) => g.ready));
+    await first.session.start();
+    await wait(150);
+    (anna.root.querySelector('button') as HTMLButtonElement).click();
+    await wait(800); // the snapshot is stored (max 2 per second)
+    expect(board.root.querySelector('.answered')!.textContent).toBe('1');
+    games.splice(0).forEach((g) => g.destroy());
+    await first.session.end('closed');
+
+    // The host page reloads: a new session object resumes the game.
+    const second = newSession({ sessionId: 'room-1', storage, resume: true });
+    const board2 = play(second.session, 'board');
+    const anna2 = play(second.session, 'anna');
+    await Promise.all(games.map((g) => g.ready));
+    await wait(200);
+    expect(board2.root.querySelector('.answered')!.textContent).toBe('1');
+    expect(anna2.root.querySelector('.score')!.textContent).toBe('1');
+    await second.session.start(); // no-op for a resumed session
+    expect(second.events.filter((e) => e.type === 'countdown')).toEqual([]);
+  });
+
+  it('starts over when there is no snapshot', async () => {
+    const { session, events } = newSession({ sessionId: 'room-2', resume: true });
+    const board = play(session, 'board');
+    const anna = play(session, 'anna');
+    await Promise.all(games.map((g) => g.ready));
+    await wait(200);
+    (anna.root.querySelector('button') as HTMLButtonElement).click();
+    await wait(150);
+    expect(board.root.querySelector('.answered')!.textContent).toBe('1');
+    expect(events.filter((e) => e.type === 'rejected')).toEqual([]);
+  });
+});

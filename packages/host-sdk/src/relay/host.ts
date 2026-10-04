@@ -68,6 +68,8 @@ export class RelayHost {
   private genCounter = 0;
   private callCounter = 0;
   private session: LocalSession | null = null;
+  private hosting = false;
+  private readonly hostingWaiters: (() => void)[] = [];
   private stopSession: (() => void) | null = null;
 
   private constructor(options: RelayHostOptions, room: CreateRoomResponse) {
@@ -93,6 +95,12 @@ export class RelayHost {
   /** Re-attaches to an existing room (e.g. after a page reload). */
   static resume(options: RelayHostOptions, room: CreateRoomResponse): RelayHost {
     return new RelayHost(options, room);
+  }
+
+  /** Resolves once the server confirmed the room and sent the current players. */
+  whenHosting(): Promise<void> {
+    if (this.hosting) return Promise.resolve();
+    return new Promise((resolve) => this.hostingWaiters.push(resolve));
   }
 
   get status(): RelayStatus {
@@ -288,6 +296,8 @@ export class RelayHost {
   private onServer(msg: RelayServerMessage): void {
     switch (msg.t) {
       case 'hosting':
+        this.hosting = true;
+        this.hostingWaiters.splice(0).forEach((resolve) => resolve());
         this.players = msg.players;
         this.emit({ type: 'players', players: this.players });
         this.broadcast({ k: 'state', state: this.state });
