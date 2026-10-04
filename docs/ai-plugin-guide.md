@@ -15,7 +15,7 @@ You are writing a **Memizy plugin**: a learning game in **one HTML file**. Memiz
 4. Call `defineGame({...})` **once**. Do not use `fetch`, `WebSocket`, `localStorage` or other network/storage APIs for the game.
 5. **All game state lives in the state object** and changes **only inside `actions`**. `render` only reads the state and draws the screen.
 6. Inside actions, **mutate `state` directly** (e.g. `state.scores[id] = 10`). Do not return a new object.
-7. Never use `Math.random()` or `Date.now()` inside `setup`/`actions`. Use `ctx.random()`, `ctx.shuffle()`, `ctx.now`.
+7. Never use `Math.random()` or `Date.now()` inside `initialState`/`actions`. Use `ctx.random()`, `ctx.shuffle()`, `ctx.now`.
 8. Every action **validates its payload** and **checks the current phase** before changing anything. Ignore invalid or late actions (just `return`).
 9. Buttons call actions with `data-act` attributes, not with `onclick` handlers (section 6).
 10. Render text from the study set with `ui.text(...)` – never insert it as raw HTML.
@@ -67,7 +67,7 @@ Declare what the game supports. Adjust `id`, `appName`, `types` and `modes`.
 * `types`: only item types your game can show (see section 7). The app gives you only these.
 * Remove `solo` or `multiplayer` if the game does not support it. In `hostAs` keep `"presenter"` only if you draw a `board` view, keep `"player"` only if the game works without a board.
 * `settings`: options the teacher sets in the lobby (types `number`, `boolean`, `select`, `text`). Read them as `ctx.settings.questionTime`. The app generates a form for them automatically.
-* Optional `"settingsScreen": true`: the game draws its own settings screen with `renderSettings` (section 4.1), e.g. to preview the chosen map. The `settings` list is still required – it defines types, defaults and limits.
+* Optional `"settingsScreen": { "size": "compact" }` (a panel in the lobby) or `{ "size": "large" }` (a full-screen dialog): the game draws its own settings screen with `renderSettings` (section 4.1), e.g. to preview the chosen map. The `settings` list is still required – it defines types, defaults and limits.
 
 ---
 
@@ -78,7 +78,7 @@ defineGame({
   root: document.getElementById('app'),  // where to render
   tickMs: 250,                           // optional: re-render periodically (countdowns)
 
-  setup(ctx) {                           // once, when the game starts → initial state
+  initialState(ctx) {                    // once, when the game starts → initial state
     return { phase: 'play', scores: {} };
   },
 
@@ -91,7 +91,7 @@ defineGame({
   playerLeft(state, player, ctx) {},     // optional
 
   renderWaiting(ui) {},                  // optional: screen before the game starts (HTML string)
-  renderSettings(settings, ui) {},       // optional: own settings screen (needs "settingsScreen": true)
+  renderSettings(settings, ui) {},       // optional: own settings screen (needs "settingsScreen" in the manifest)
   validateSettings(settings) {},         // optional: return an error message, or nothing if valid
 
   render(state, ui) {                    // draw the screen; return an HTML string
@@ -102,8 +102,8 @@ defineGame({
 
 ### 4.1 Before the game starts
 
-* The app shows the lobby, a countdown and then calls `setup`. Until the first state exists, the SDK shows `renderWaiting(ui)` (or a default "Waiting for the game to start" screen).
-* **Own settings screen** (only with `"settingsScreen": true` in the manifest): `renderSettings(settings, ui)` returns HTML. Inputs with `data-setting="id"` update that setting automatically. `validateSettings(settings)` returns an error text (Start stays disabled) or nothing. `ui.players` shows who has joined so far.
+* The app shows the lobby, waits until the game has loaded on every device, shows a countdown and then calls `initialState`. Until the first state exists, the SDK shows `renderWaiting(ui)` (or a default "Waiting for the game to start" screen).
+* **Own settings screen** (only with `"settingsScreen"` in the manifest): `renderSettings(settings, ui)` returns HTML. Inputs with `data-setting="id"` update that setting automatically. `validateSettings(settings)` returns an error text (Start stays disabled) or nothing. `ui.players` shows who has joined so far.
 
 ```js
 renderSettings(settings, ui) {
@@ -117,7 +117,7 @@ validateSettings(settings) {
 
 * A "pick your character" step or similar belongs to the game itself: make it the first `phase` of your state.
 
-### `ctx` (in `setup`, `actions`, `playerJoined`, `playerLeft`)
+### `ctx` (in `initialState`, `actions`, `playerJoined`, `playerLeft`)
 
 | Name | Description |
 | :--- | :--- |
@@ -147,6 +147,7 @@ validateSettings(settings) {
 | `ui.act(name, payload)` | Call an action from your own JavaScript (normally use `data-act`). |
 | `ui.escape(text)` | Escape plain text (player names, your own strings) for HTML. |
 | `ui.progress` | Learning progress of this player: `{ [itemId]: { bucket: 0-4, ... } }` (empty on the board). Useful to prefer items the player does not know yet. |
+| `ui.setProgress(itemId, { bucket })` | Set this player's progress directly (bucket 0 = new … 4 = mastered), e.g. when the player rates themselves ("I know it / not sure / no idea"). Not available on the board. Prefer `ctx.recordAnswer` when an answer can be checked. |
 | `ui.locale` | Language of the app, e.g. `'cs'`. |
 
 ---
@@ -178,7 +179,7 @@ The app protects the class network and the server. Exceeding a limit makes the a
 * **Forms:** `<form data-act="submitText"><input name="text"><button>OK</button></form>` calls `submitText` with `{ text: "…" }` on submit.
 * Screen-only UI state (selected but not yet submitted option) goes to `ui.local`; call `ui.act` when the player confirms.
 * Escape names and your own strings with `ui.escape(text)`; text from the study set always goes through `ui.text`.
-* Design controllers for **phones**: big buttons (min. 48 px), one column, no hover-only interactions. Design the board for a **projector**: large font, high contrast, visible from the back of the classroom.
+* A controller can be a **phone, tablet or computer**: make it responsive, with big buttons (min. 48 px), one column on narrow screens and no hover-only interactions. Design the board for a **projector**: large font, high contrast, visible from the back of the classroom.
 * Support light and dark mode: `:root { color-scheme: light dark; }` and use `light-dark()` or `prefers-color-scheme`.
 
 ---
@@ -269,7 +270,7 @@ defineGame({
   root: document.getElementById('app'),
   tickMs: 250,
 
-  setup(ctx) {
+  initialState(ctx) {
     const ids = ctx.shuffle(ctx.items).slice(0, ctx.settings.questionCount).map((item) => item.id);
     const state = { questions: ids, round: 0, scores: {}, answers: {}, phase: 'question', deadline: 0 };
     startQuestion(state, ctx);
@@ -359,7 +360,7 @@ defineGame({
 - [ ] Timers use `ctx.after` + a deadline in the state; `render` shows `ui.timeLeft(deadline)`.
 - [ ] `ctx.recordAnswer` for every answered question, `ctx.end({ scores })` at the end.
 - [ ] Study-set text rendered with `ui.text` / `ui.renderNote`; other text escaped with `ui.escape`.
-- [ ] Controllers usable on a phone, board readable on a projector.
+- [ ] Controllers usable on a phone and on a computer, board readable on a projector.
 - [ ] State stays small (IDs instead of items) and no actions are sent in loops or animation frames (section 5.1).
 
 ## 10. Common Mistakes

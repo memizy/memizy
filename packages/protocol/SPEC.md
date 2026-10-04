@@ -74,7 +74,7 @@ The OQSEM part describes **content** (item types, assets, features) and is used 
 | `modes.multiplayer.hostAs` | string[] | Yes (in multiplayer) | How the host may take part: `"presenter"` (host shows a shared board and does not play) and/or `"player"` (host plays like everyone else, no board). |
 | `modes.multiplayer.lateJoin` | boolean | No | Players may join a running game. Default `true`. |
 | `settings` | SettingDefinition[] | No | Settings of the game (see below). Default `[]`. They define types, defaults and limits; the host validates every value against them. |
-| `settingsScreen` | boolean | No | `true` = the plugin renders its own settings screen (view `settings`) on the host's device in the lobby. `false` = the host generates a form from `settings`. Default `false`. |
+| `settingsScreen` | `{ size }` | No | Present = the plugin renders its own settings screen (view `settings`) on the host's device in the lobby; absent = the host generates a form from `settings`. `size: "compact"` – a panel next to the player list (the user may expand it to full screen); `size: "large"` – opened as a full-screen dialog from a "Game settings" button. |
 | `display.orientation` | `"any"` \| `"portrait"` \| `"landscape"` | No | Preferred orientation of player screens. Default `"any"`. |
 
 **SettingDefinition:** `{ id, type, label, default, description?, ...typeSpecific }`
@@ -96,11 +96,17 @@ Reserved for later minor versions: `teams`, editing permissions.
 
 | Term | Meaning |
 | :--- | :--- |
-| **Mode** | `solo` or `multiplayer`. |
-| **Host role** | In multiplayer: `presenter` or `player` (from `hostAs`, chosen in the lobby). |
-| **View** | What one plugin instance shows: `solo`, `board` (shared screen of the presenter), `controller` (a player's device) or `settings` (the plugin's settings screen on the host's device in the lobby). |
-| **Address** | Identifies a plugin instance in a session: a player ID, or `"board"` for the presenter's screen. |
-| **Authority** | The one instance that owns the game state. `presenter` → the board; host as `player` → the host player's controller; `solo` → the only instance. |
+| **Session** | One run of a game, from start to end (e.g., one quiz in a lesson). |
+| **Mode** | `solo` (one person plays alone) or `multiplayer` (several devices together). |
+| **Host role** (`hostAs`) | In multiplayer, the role of the person who created the session: `presenter` (shows a shared board, e.g. a teacher at a projector, and does not play) or `player` (plays like everyone else, no board). A plugin may support both; the host chooses in the lobby. |
+| **Instance** | One running plugin iframe on one device. 30 phones + 1 projector = 31 instances. |
+| **View** | What one instance shows: `solo`, `board` (the presenter's shared screen), `controller` (one player's own screen – a phone, tablet or computer) or `settings` (the plugin's settings screen on the host's device in the lobby). Views are derived from the manifest (section 3.2), not declared separately. |
+| **Player** | A person who plays and can score. The presenter is not a player. |
+| **Address** | The "envelope address" of an instance, used to route messages (section 6): the player ID for a player's instance (stable across reconnects), `"board"` for the presenter's board. The address `"server"` is **reserved** for a future server-side authority. Plugin authors never see addresses; the SDK exposes only player IDs. |
+| **Authority** | The one place that owns the game state and applies actions: the board (`presenter`), the host's controller (host as `player`) or the only instance (`solo`). Other instances send actions to it and receive the new state. In a future version the authority may be the server (address `"server"`); this is why game logic must be deterministic. |
+| **State** | The whole state of the game: one JSON value owned by the authority; its content is defined by the plugin. |
+| **Action** | An intent of a player or a timer (e.g., "answered B"). Only actions change the state. |
+| **Snapshot** | A saved copy of the authority's state (including pending timers), used to resume the game when the authority instance is recreated (reload, crash). Late joiners and reconnecting players do not use it; they synchronize with the running authority. |
 
 | Situation | Instances (views) | Authority |
 | :--- | :--- | :--- |
@@ -108,11 +114,24 @@ Reserved for later minor versions: `teams`, editing permissions.
 | Multiplayer, host as presenter | 1 × `board` + N × `controller` | `board` |
 | Multiplayer, host as player | N × `controller` (host is one of them) | host's controller |
 
-### 3.1 Lifecycle (multiplayer)
+### 3.2 Views Are Derived from the Manifest
 
-1. **Lobby** (host UI). The host chooses the plugin and the set; players join and may rename themselves. If the manifest declares `settingsScreen: true`, the host's device runs the plugin in view `settings`: the plugin edits the settings with `updateSettings` and receives `playersChanged`. Start is enabled only while the settings are valid.
+A plugin does not declare views. They follow from what it declares, so the two can never contradict each other:
+
+| The manifest declares | The plugin must render view |
+| :--- | :--- |
+| `modes.solo` | `solo` |
+| `modes.multiplayer` with `hostAs` containing `presenter` | `board` and `controller` |
+| `modes.multiplayer` with `hostAs` containing `player` | `controller` |
+| `settingsScreen` | `settings` |
+
+`hostAs`, `players` and `lateJoin` only apply when `modes.multiplayer` is declared. `settings` and `settingsScreen` apply to both modes (in solo the settings are shown before the game starts).
+
+### 3.3 Lifecycle (multiplayer)
+
+1. **Lobby** (host UI). The host chooses the plugin and the set; players join and may rename themselves. If the manifest declares `settingsScreen`, the host's device runs the plugin in view `settings`: the plugin edits the settings with `updateSettings` and receives `playersChanged`. Start is enabled only while the settings are valid.
 2. **Loading.** After Start, the host creates the game instances (board and/or controllers). Each instance connects, receives its `InitPayload` (without game state) and calls `ready()`.
-3. **Countdown.** When all connected instances are ready (or after a host-defined timeout, e.g. 15 s), the host shows a countdown and then calls `start()` on the authority. The authority creates the initial state and the game runs.
+3. **Countdown.** When all connected instances are ready (or after a host-defined timeout, e.g. 15 s), the host shows a countdown and then calls `start()` on the authority. The authority creates the initial state and the game runs. The barrier exists so that timed games do not start before slower devices have loaded.
 4. **Running.** Late joiners (if `lateJoin`) and reconnecting players get a new instance, which synchronizes with the authority. A recreated authority receives the last `snapshot` and continues without `start()`.
 5. **End.** The authority calls `end(result)`; the host shows results and finally closes the instances with `sessionEnded`.
 
@@ -313,3 +332,5 @@ Allowed in `1.x`: new optional fields, new methods guarded by a feature, new set
 2. **Answer redaction for controllers** (anti-cheating) – postponed.
 3. **Host migration** when the authority's device disappears for good – v1 only resumes the same authority from the snapshot.
 4. **Editing the set from a plugin** – postponed (`edit-set` feature).
+5. **Hot-seat** (several players sharing one device, e.g. taking turns at one computer) – an idea to consider; v1 assumes one player per instance.
+6. **Server authority** (authoritative mode for whitelisted official games) – the address `"server"` is reserved for it.
