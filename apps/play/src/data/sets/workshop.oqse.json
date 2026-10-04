@@ -1,0 +1,185 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@memizy/oqse@0.2/schemas/oqse-v0.2.json",
+  "version": "0.2",
+  "meta": {
+    "id": "0192f0c4-a002-7000-8000-000000000000",
+    "language": "cs",
+    "title": "Od webovky k multiplayerové aplikaci",
+    "description": "Kvíz k workshopu: proč skutečný software tvoří architektura a systémové myšlení, jak pomáhá git a Cloudflare, jak na uživatelské účty a jak řídit AI.",
+    "subject": "Informatika",
+    "createdAt": "2026-10-04T12:00:00Z",
+    "updatedAt": "2026-10-04T12:00:00Z",
+    "license": "CC-BY-4.0",
+    "requirements": { "features": ["markdown"] },
+    "tags": ["workshop", "ai", "web", "git"]
+  },
+  "items": [
+    {
+      "id": "0192f0c4-a002-7000-8000-000000000001",
+      "type": "mcq-single",
+      "topic": "Architektura",
+      "question": "Co odlišuje skutečný software od hromady kódu, který vygenerovala AI?",
+      "options": ["Počet řádků kódu", "Promyšlená architektura a systémové myšlení", "Hezké barvy tlačítek", "Programovací jazyk"],
+      "correctIndex": 1,
+      "explanation": "AI napíše stovky řádků za minutu. Aby z nich byla fungující aplikace, musí někdo rozhodnout, z jakých částí se skládá a jak spolu mluví."
+    },
+    {
+      "id": "0192f0c4-a002-7000-8000-000000000002",
+      "type": "true-false",
+      "topic": "Webovka vs. aplikace",
+      "question": "GitHub Pages umí zdarma hostovat statickou webovou stránku.",
+      "correctAnswer": true
+    },
+    {
+      "id": "0192f0c4-a002-7000-8000-000000000003",
+      "type": "true-false",
+      "topic": "Webovka vs. aplikace",
+      "question": "Na GitHub Pages můžu provozovat vlastní server s databází a WebSockety.",
+      "correctAnswer": false,
+      "explanation": "GitHub Pages servíruje jen statické soubory (HTML, CSS, JS). Server, databáze nebo spojení v reálném čase musí běžet jinde."
+    },
+    {
+      "id": "0192f0c4-a002-7000-8000-000000000004",
+      "type": "mcq-single",
+      "topic": "Webovka vs. aplikace",
+      "question": "Co potřebuje multiplayerová hra navíc oproti jednoduché webovce?",
+      "options": ["Jen hezčí CSS", "Server, který propojuje hráče v reálném čase", "Větší obrázky", "Nic, stačí GitHub Pages"],
+      "correctIndex": 1
+    },
+    {
+      "id": "0192f0c4-a002-7000-8000-000000000005",
+      "type": "mcq-single",
+      "topic": "Git",
+      "question": "K čemu je git při vibe codingu nejdůležitější?",
+      "options": ["Zrychlí odpovědi AI", "Umožní vrátit se k funkční verzi, když AI něco rozbije", "Zašifruje kód", "Nahradí testování"],
+      "correctIndex": 1,
+      "explanation": "AI občas „opraví“ jednu věc a rozbije tři další. S gitem se během vteřiny vrátíš k poslední funkční verzi."
+    },
+    {
+      "id": "0192f0c4-a002-7000-8000-000000000006",
+      "type": "true-false",
+      "topic": "Git",
+      "question": "Před každou větší změnou od AI je dobré udělat commit.",
+      "correctAnswer": true
+    },
+    {
+      "id": "0192f0c4-a002-7000-8000-000000000007",
+      "type": "mcq-multi",
+      "topic": "Git",
+      "question": "Co ti git dává?",
+      "options": ["Historii všech změn", "Možnost vrátit chybnou změnu", "Větve pro bezpečné pokusy", "Automatickou opravu chyb v kódu"],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Git chyby sám neopravuje – jen si pamatuje každou verzi, takže se k ní můžeš vrátit."
+    },
+    {
+      "id": "0192f0c4-a002-7000-8000-000000000008",
+      "type": "short-answer",
+      "topic": "Git",
+      "question": "Jak se jmenuje příkaz, kterým v gitu uložíš změny do historie? (jedno slovo)",
+      "correctAnswers": ["commit", "git commit"]
+    },
+    {
+      "id": "0192f0c4-a002-7000-8000-000000000009",
+      "type": "mcq-single",
+      "topic": "Cloudflare",
+      "question": "Proč je Cloudflare skvělý pro malé projekty?",
+      "options": ["Je jen pro velké firmy", "Zdarma nabízí hosting stránek, CDN, ochranu před útoky a správu domény", "Napíše za tebe kód", "Nahrazuje git"],
+      "correctIndex": 1
+    },
+    {
+      "id": "0192f0c4-a002-7000-8000-000000000010",
+      "type": "true-false",
+      "topic": "Cloudflare",
+      "question": "CDN doručuje soubory ze serveru, který je uživateli nejblíž.",
+      "correctAnswer": true,
+      "explanation": "Proto se stránka načte rychle v Praze i v Tokiu."
+    },
+    {
+      "id": "0192f0c4-a002-7000-8000-000000000011",
+      "type": "mcq-single",
+      "topic": "Uživatelské účty",
+      "question": "Jak nejbezpečněji přidat do aplikace uživatelské účty?",
+      "options": ["Uložit hesla do textového souboru", "Použít ověřenou službu pro přihlašování (např. přihlášení přes Google)", "Posílat hesla e-mailem", "Hesla si pamatovat v proměnné"],
+      "correctIndex": 1,
+      "explanation": "Přihlašování je bezpečnostně citlivé. Ověřené služby řeší hesla, dvoufázové ověření i útoky za tebe."
+    },
+    {
+      "id": "0192f0c4-a002-7000-8000-000000000012",
+      "type": "true-false",
+      "topic": "Uživatelské účty",
+      "question": "Hesla se v databázi ukládají čitelně, aby je šlo uživateli připomenout.",
+      "correctAnswer": false,
+      "explanation": "Hesla se ukládají jen jako hash (otisk). Zapomenuté heslo se nepřipomíná, ale nastavuje nové."
+    },
+    {
+      "id": "0192f0c4-a002-7000-8000-000000000013",
+      "type": "mcq-multi",
+      "topic": "Řízení AI",
+      "question": "Co pomáhá, aby AI dělala to, co chceš?",
+      "options": ["Jasné zadání a omezení", "Kontext – ukázky a dokumentace", "Malé kroky a kontrola každého výsledku", "Psát co nejméně, ať si to domyslí"],
+      "correctIndices": [0, 1, 2]
+    },
+    {
+      "id": "0192f0c4-a002-7000-8000-000000000014",
+      "type": "mcq-single",
+      "topic": "Řízení AI",
+      "question": "Co je „prompt“?",
+      "options": ["Zadání neboli instrukce pro AI", "Programovací jazyk", "Typ serveru", "Chyba v kódu"],
+      "correctIndex": 0
+    },
+    {
+      "id": "0192f0c4-a002-7000-8000-000000000015",
+      "type": "true-false",
+      "topic": "Řízení AI",
+      "question": "Když kód od AI funguje, není potřeba mu rozumět.",
+      "correctAnswer": false,
+      "explanation": "Bez porozumění neopravíš chybu, která se objeví zítra, a nepoznáš, že AI udělala něco nebezpečného."
+    },
+    {
+      "id": "0192f0c4-a002-7000-8000-000000000016",
+      "type": "mcq-single",
+      "topic": "Architektura multiplayeru",
+      "question": "Co v multiplayerové hře dělá „authority“?",
+      "options": ["Kreslí grafiku", "Drží stav hry a rozhoduje podle pravidel", "Ukládá hesla", "Posílá e-maily"],
+      "correctIndex": 1
+    },
+    {
+      "id": "0192f0c4-a002-7000-8000-000000000017",
+      "type": "mcq-single",
+      "topic": "Architektura multiplayeru",
+      "question": "Proč běží pluginy v Memizy v izolovaném rámu (sandboxu)?",
+      "options": ["Aby byly rychlejší", "Aby se nedostaly k datům aplikace a uživatele", "Kvůli barvám", "Aby fungovaly bez internetu"],
+      "correctIndex": 1
+    },
+    {
+      "id": "0192f0c4-a002-7000-8000-000000000018",
+      "type": "short-answer",
+      "topic": "Architektura multiplayeru",
+      "question": "Jak se jmenuje technologie pro obousměrné spojení prohlížeče a serveru v reálném čase?",
+      "correctAnswers": ["WebSocket", "WebSockets", "web socket"],
+      "acceptPartial": true
+    },
+    {
+      "id": "0192f0c4-a002-7000-8000-000000000019",
+      "type": "mcq-single",
+      "topic": "Náklady",
+      "question": "Kolik může stát vytvoření a provoz malé webové aplikace?",
+      "options": ["Tisíce korun měsíčně", "Může to být zdarma díky free tierům", "Bez placeného serveru to nejde", "Jen se studentskou licencí"],
+      "correctIndex": 1
+    },
+    {
+      "id": "0192f0c4-a002-7000-8000-000000000020",
+      "type": "flashcard",
+      "topic": "Pojmy",
+      "front": "Vibe coding",
+      "back": "Programování, při kterém kód píše AI podle tvých pokynů – ty určuješ směr, kontroluješ, testuješ a rozhoduješ."
+    },
+    {
+      "id": "0192f0c4-a002-7000-8000-000000000021",
+      "type": "flashcard",
+      "topic": "Pojmy",
+      "front": "Free tier",
+      "back": "Bezplatná úroveň služby (hosting, databáze, CDN), která pro malé projekty bohatě stačí."
+    }
+  ]
+}

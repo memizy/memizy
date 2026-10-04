@@ -1,0 +1,82 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap");
+@import "tailwindcss";
+
+/* Design tokens of the main Memizy app. */
+@theme {
+  --color-primary-blue: #1E88E5;
+  --color-primary-blue-dark: #1565C0;
+  --color-accent-orange: #FF6F00;
+  --color-accent-orange-light: #FF8F00;
+  --color-accent-orange-dark: #E65100;
+  --color-off-white: #F8F9FA;
+  --color-text-dark: #212529;
+  --color-text-gray: #6C757D;
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --shadow-soft: 0 4px 24px rgba(0, 0, 0, 0.08);
+  --shadow-soft-hover: 0 8px 32px rgba(0, 0, 0, 0.12);
+
+  --animate-float: float 3s ease-in-out infinite;
+  --animate-scale-in: scale-in 0.2s ease-out;
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+
+  @keyframes scale-in {
+    from { transform: scale(0.95); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+}
+
+@utility btn-primary-gradient {
+  background: linear-gradient(135deg, var(--color-accent-orange) 0%, var(--color-accent-orange-light) 100%);
+}
+@utility text-shadow {
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+@utility card {
+  @apply rounded-2xl border border-slate-200 bg-white shadow-soft;
+}
+@utility card-title {
+  @apply flex items-center gap-2 text-sm font-semibold text-text-dark;
+}
+@utility section-label {
+  @apply text-xs font-semibold uppercase tracking-wider text-text-gray;
+}
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50;
+}
+@utility btn-primary {
+  @apply btn btn-primary-gradient text-white shadow-sm hover:brightness-105;
+}
+@utility btn-secondary {
+  @apply btn border border-slate-200 bg-white text-text-dark hover:bg-slate-50;
+}
+@utility btn-ghost {
+  @apply btn text-text-gray hover:bg-slate-100 hover:text-text-dark;
+}
+@utility btn-danger {
+  @apply btn border border-red-200 bg-red-50 text-red-600 hover:bg-red-100;
+}
+@utility input {
+  @apply w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-text-dark outline-none transition focus:border-accent-orange focus:ring-2 focus:ring-orange-100;
+}
+@utility badge {
+  @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold;
+}
+
+html,
+body {
+  background-color: var(--color-off-white);
+  color: var(--color-text-dark);
+  font-family: var(--font-sans);
+}
+
+button:hover {
+  cursor: pointer;
+}

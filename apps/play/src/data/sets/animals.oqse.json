@@ -1,0 +1,35 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@memizy/oqse@0.2/schemas/oqse-v0.2.json",
+  "version": "0.2",
+  "meta": {
+    "id": "0192f0c4-a001-7000-8000-000000000000",
+    "language": "en",
+    "title": "Animals (test set)",
+    "description": "A trivial set for testing plugins – every answer is obvious, so you can focus on the game.",
+    "subject": "Testing",
+    "createdAt": "2026-10-04T12:00:00Z",
+    "updatedAt": "2026-10-04T12:00:00Z",
+    "license": "CC0-1.0",
+    "requirements": { "features": ["markdown"] },
+    "tags": ["test", "animals"]
+  },
+  "items": [
+    { "id": "0192f0c4-a001-7000-8000-000000000001", "type": "mcq-single", "question": "Who barks?", "options": ["Cat", "Dog", "Cow", "Duck"], "correctIndex": 1 },
+    { "id": "0192f0c4-a001-7000-8000-000000000002", "type": "mcq-single", "question": "Who says **moo**?", "options": ["Dog", "Pig", "Cow", "Sheep"], "correctIndex": 2 },
+    { "id": "0192f0c4-a001-7000-8000-000000000003", "type": "mcq-single", "question": "Who says **meow**?", "options": ["Cat", "Horse", "Frog", "Bird"], "correctIndex": 0 },
+    { "id": "0192f0c4-a001-7000-8000-000000000004", "type": "mcq-single", "question": "Who says **quack**?", "options": ["Duck", "Lion", "Mouse", "Bee"], "correctIndex": 0 },
+    { "id": "0192f0c4-a001-7000-8000-000000000005", "type": "mcq-single", "question": "Which animal has a trunk?", "options": ["Giraffe", "Elephant", "Zebra"], "correctIndex": 1 },
+    { "id": "0192f0c4-a001-7000-8000-000000000006", "type": "mcq-single", "question": "Which animal gives us milk?", "options": ["Cow", "Snake", "Shark", "Spider"], "correctIndex": 0 },
+    { "id": "0192f0c4-a001-7000-8000-000000000007", "type": "true-false", "question": "A fish can swim.", "correctAnswer": true },
+    { "id": "0192f0c4-a001-7000-8000-000000000008", "type": "true-false", "question": "A cow can fly.", "correctAnswer": false },
+    { "id": "0192f0c4-a001-7000-8000-000000000009", "type": "true-false", "question": "Dogs have four legs.", "correctAnswer": true },
+    { "id": "0192f0c4-a001-7000-8000-000000000010", "type": "short-answer", "question": "Which animal says *woof*?", "correctAnswers": ["Dog", "a dog", "the dog"] },
+    { "id": "0192f0c4-a001-7000-8000-000000000011", "type": "short-answer", "question": "Which animal says *oink*?", "correctAnswers": ["Pig", "a pig", "the pig"] },
+    { "id": "0192f0c4-a001-7000-8000-000000000012", "type": "mcq-multi", "question": "Which animals can fly?", "options": ["Bird", "Bee", "Dog", "Bat", "Cow"], "correctIndices": [0, 1, 3] },
+    { "id": "0192f0c4-a001-7000-8000-000000000013", "type": "numeric-input", "question": "How many legs does a spider have?", "correctAnswer": 8 },
+    { "id": "0192f0c4-a001-7000-8000-000000000014", "type": "sort-items", "question": "Sort from the smallest to the biggest:", "items": ["Mouse", "Cat", "Horse", "Elephant"] },
+    { "id": "0192f0c4-a001-7000-8000-000000000015", "type": "match-pairs", "question": "Match the animal with its sound:", "prompts": ["Dog", "Cat", "Cow"], "matches": ["Woof", "Meow", "Moo"] },
+    { "id": "0192f0c4-a001-7000-8000-000000000016", "type": "flashcard", "front": "Dog", "back": "Woof! 🐶" },
+    { "id": "0192f0c4-a001-7000-8000-000000000017", "type": "note", "title": "About this set", "content": "Every question here is **easy on purpose**: use it to test how your game works, not what players know." }
+  ]
+}

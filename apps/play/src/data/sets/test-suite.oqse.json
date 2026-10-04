@@ -1,0 +1,633 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@memizy/oqse@0.2/schemas/oqse-v0.2.json",
+  "version": "0.2",
+  "meta": {
+    "id": "019da5a2-013c-7728-8a1f-fcf579822022",
+    "title": "Memizy OQSE Test Set",
+    "description": "Official reference set for the Memizy ecosystem in OQSE format. Use these core items to safely test, build, and validate your applications and plugins.",
+    "language": "en",
+    "subject": "Memizy Testing",
+    "createdAt": "2026-04-19T10:00:00Z",
+    "updatedAt": "2026-04-19T13:25:00Z",
+    "author": {
+      "name": "Memizy Dev Team",
+      "role": "Creator"
+    },
+    "contributors": [
+      {
+        "name": "Memizy QA Team",
+        "role": "Validation"
+      }
+    ],
+    "license": "CC-BY-SA-4.0",
+    "licenseUrl": "https://spdx.org/licenses/CC-BY-SA-4.0.html",
+    "tags": [
+      "Test",
+      "Developer",
+      "SDK"
+    ],
+    "tagDefinitions": {
+      "Test": {
+        "description": "Content designed to validate parser and renderer behavior."
+      },
+      "Developer": {
+        "description": "Examples targeted at SDK and integration developers."
+      },
+      "SDK": {
+        "description": "Useful for tooling and automated test pipelines."
+      }
+    },
+    "requirements": {
+      "features": [
+        "markdown"
+      ],
+      "itemProperties": [
+        "hints",
+        "explanation",
+        "incorrectFeedback",
+        "timeLimit",
+        "topic"
+      ],
+      "metaProperties": [
+        "description",
+        "language",
+        "subject",
+        "author",
+        "contributors",
+        "license",
+        "tags",
+        "tagDefinitions",
+        "estimatedTime"
+      ]
+    },
+    "estimatedTime": 15,
+    "appSpecific": {
+      "memizy": {
+        "setVersionLabel": "dev-suite-hints-v1"
+      }
+    }
+  },
+  "items": [
+    {
+      "id": "019da5a2-013f-7361-b54b-68f7bc2ca941",
+      "type": "flashcard",
+      "topic": "Basics",
+      "difficulty": 1,
+      "timeLimit": 20,
+      "tags": [
+        "Flashcard"
+      ],
+      "front": "What color is a clear sky during the day?",
+      "back": "**Blue**",
+      "hints": [
+        "Think about a sunny day with no clouds.",
+        "It is the most common color used for the sky in drawings."
+      ],
+      "explanation": "A clear daytime sky appears blue because shorter blue wavelengths are scattered more strongly by the atmosphere."
+    },
+    {
+      "id": "019da5a2-013f-7361-b54b-68f80d11c162",
+      "type": "flashcard",
+      "topic": "Basic Arithmetic",
+      "difficulty": 1,
+      "timeLimit": 15,
+      "tags": [
+        "Flashcard"
+      ],
+      "front": "What is 2 + 2?",
+      "back": "**4**",
+      "hints": [
+        "Add two pairs.",
+        "It is the first even number after 2."
+      ],
+      "explanation": "Adding 2 and 2 gives 4."
+    },
+    {
+      "id": "019da5a2-013f-7361-b54b-68f9f987fc3b",
+      "type": "flashcard",
+      "topic": "Geography",
+      "difficulty": 1,
+      "timeLimit": 20,
+      "tags": [
+        "Flashcard"
+      ],
+      "front": "What is the capital city of France?",
+      "back": "**Paris**",
+      "hints": [
+        "It is known as the City of Light.",
+        "The Eiffel Tower is located there."
+      ],
+      "explanation": "Paris is the capital and largest city of France."
+    },
+    {
+      "id": "019da5a2-013f-7361-b54b-68faef65c6b7",
+      "type": "mcq-single",
+      "topic": "Astronomy",
+      "difficulty": 1,
+      "timeLimit": 25,
+      "tags": [
+        "MCQ Single"
+      ],
+      "question": "Which planet is known as the Red Planet?",
+      "options": [
+        "Earth",
+        "Mars",
+        "Venus"
+      ],
+      "correctIndex": 1,
+      "shuffle": true,
+      "hints": [
+        "Its surface color is linked to iron oxide.",
+        "It is the fourth planet from the Sun."
+      ],
+      "incorrectFeedback": "Focus on the nickname itself and think about the planet associated with red dust.",
+      "optionExplanations": [
+        "Earth is often called the Blue Planet.",
+        "Mars is called the Red Planet due to iron oxide on its surface.",
+        "Venus is known for its thick, hot atmosphere, not for a red surface."
+      ],
+      "explanation": "Mars is known as the Red Planet because of iron oxide (rust-like dust) on its surface.",
+      "appSpecific": {
+        "memizy": {
+          "analyticsId": "mcq-red-planet"
+        }
+      }
+    },
+    {
+      "id": "019da5a2-013f-7361-b54b-68fb8c53002c",
+      "type": "mcq-single",
+      "topic": "Basic Arithmetic",
+      "difficulty": 1,
+      "timeLimit": 20,
+      "tags": [
+        "MCQ Single"
+      ],
+      "question": "What is 5 * 5?",
+      "options": [
+        "20",
+        "25",
+        "30",
+        "35"
+      ],
+      "correctIndex": 1,
+      "shuffle": true,
+      "hints": [
+        "This is five groups of five.",
+        "Think of the square of 5."
+      ],
+      "incorrectFeedback": "Try using repeated addition: 5 + 5 + 5 + 5 + 5.",
+      "optionExplanations": [
+        "20 equals 4 * 5.",
+        "25 is correct because 5 * 5 = 25.",
+        "30 equals 6 * 5.",
+        "35 equals 7 * 5."
+      ],
+      "explanation": "5 multiplied by 5 equals 25."
+    },
+    {
+      "id": "019da5a2-013f-7361-b54b-68fc5c1baa4a",
+      "type": "mcq-single",
+      "topic": "Animals",
+      "difficulty": 1,
+      "timeLimit": 20,
+      "tags": [
+        "MCQ Single"
+      ],
+      "question": "Which animal says 'Meow'?",
+      "options": [
+        "Dog",
+        "Cow",
+        "Cat"
+      ],
+      "correctIndex": 2,
+      "shuffle": true,
+      "hints": [
+        "It is a common household pet.",
+        "It often purrs."
+      ],
+      "incorrectFeedback": "Think about which of these animals is typically kept indoors as a pet.",
+      "optionExplanations": [
+        "Dogs typically bark.",
+        "Cows typically moo.",
+        "Cats typically meow."
+      ],
+      "explanation": "Cats are commonly associated with the sound 'Meow'."
+    },
+    {
+      "id": "019da5a2-013f-7361-b54b-68fd539de6aa",
+      "type": "mcq-multi",
+      "topic": "Numbers",
+      "difficulty": 1,
+      "timeLimit": 30,
+      "tags": [
+        "MCQ Multi"
+      ],
+      "question": "Select all **even** numbers:",
+      "options": [
+        "1",
+        "2",
+        "3",
+        "4"
+      ],
+      "correctIndices": [
+        1,
+        3
+      ],
+      "minSelections": 1,
+      "maxSelections": 2,
+      "shuffle": true,
+      "hints": [
+        "Even numbers are divisible by 2 with no remainder.",
+        "There are exactly two correct answers."
+      ],
+      "incorrectFeedback": "Check each number by dividing it by 2.",
+      "optionExplanations": [
+        "1 is odd.",
+        "2 is even.",
+        "3 is odd.",
+        "4 is even."
+      ],
+      "explanation": "The even numbers in the list are 2 and 4."
+    },
+    {
+      "id": "019da5a2-013f-7361-b54b-68fe931f6e36",
+      "type": "mcq-multi",
+      "topic": "Food",
+      "difficulty": 1,
+      "timeLimit": 30,
+      "tags": [
+        "MCQ Multi"
+      ],
+      "question": "Which of these are **fruits**?",
+      "options": [
+        "Apple",
+        "Carrot",
+        "Banana",
+        "Potato"
+      ],
+      "correctIndices": [
+        0,
+        2
+      ],
+      "maxSelections": 2,
+      "shuffle": true,
+      "hints": [
+        "Two options are sweet fruits commonly eaten raw.",
+        "Carrot and potato are typically classified as vegetables."
+      ],
+      "incorrectFeedback": "Separate fruits from root vegetables.",
+      "optionExplanations": [
+        "Apple is a fruit.",
+        "Carrot is a root vegetable.",
+        "Banana is a fruit.",
+        "Potato is a tuber vegetable."
+      ],
+      "explanation": "Apple and banana are fruits."
+    },
+    {
+      "id": "019da5a2-013f-7361-b54b-68ffd0a77086",
+      "type": "mcq-multi",
+      "topic": "Color Models",
+      "difficulty": 2,
+      "timeLimit": 35,
+      "tags": [
+        "MCQ Multi"
+      ],
+      "question": "Select the primary colors in the RGB light model:",
+      "options": [
+        "Red",
+        "Green",
+        "Yellow",
+        "Blue"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        3
+      ],
+      "maxSelections": 3,
+      "shuffle": true,
+      "hints": [
+        "RGB stands for the three additive primary light colors.",
+        "Yellow is not one of the three base RGB channels."
+      ],
+      "incorrectFeedback": "Use additive color mixing, not paint color rules.",
+      "optionExplanations": [
+        "Red is a primary RGB light color.",
+        "Green is a primary RGB light color.",
+        "Yellow is produced by mixing red and green light.",
+        "Blue is a primary RGB light color."
+      ],
+      "explanation": "The RGB primary colors are red, green, and blue."
+    },
+    {
+      "id": "019da5a2-013f-7361-b54b-6900bbb86bee",
+      "type": "true-false",
+      "topic": "Science",
+      "difficulty": 1,
+      "timeLimit": 20,
+      "tags": [
+        "True/False"
+      ],
+      "question": "Water boils at 100 degrees Celsius at sea level.",
+      "correctAnswer": true,
+      "hints": [
+        "This refers to standard atmospheric pressure.",
+        "The value is commonly used in basic chemistry lessons."
+      ],
+      "incorrectFeedback": "Remember that boiling point depends on pressure; the statement includes sea level.",
+      "explanation": "At standard atmospheric pressure (sea level), water boils at about 100 C."
+    },
+    {
+      "id": "019da5a2-013f-7361-b54b-6901f3dcd60e",
+      "type": "true-false",
+      "topic": "Astronomy",
+      "difficulty": 1,
+      "timeLimit": 20,
+      "tags": [
+        "True/False"
+      ],
+      "question": "The Sun orbits around the Earth.",
+      "correctAnswer": false,
+      "hints": [
+        "Think about the heliocentric model.",
+        "Earth is one of the planets orbiting the Sun."
+      ],
+      "incorrectFeedback": "Review the basic structure of our solar system.",
+      "explanation": "In the heliocentric model, Earth orbits the Sun, not the other way around."
+    },
+    {
+      "id": "019da5a2-013f-7361-b54b-69029b7ffcf8",
+      "type": "true-false",
+      "topic": "Biology",
+      "difficulty": 1,
+      "timeLimit": 20,
+      "tags": [
+        "True/False"
+      ],
+      "question": "Spiders are insects and have exactly 6 legs.",
+      "correctAnswer": false,
+      "hints": [
+        "Spiders are not classified as insects.",
+        "Count spider legs carefully."
+      ],
+      "incorrectFeedback": "Compare arachnids and insects by body class and leg count.",
+      "explanation": "Spiders are arachnids and have 8 legs."
+    },
+    {
+      "id": "019da5a2-013f-7361-b54b-6903c4abbaa8",
+      "type": "match-pairs",
+      "topic": "Animals",
+      "difficulty": 1,
+      "timeLimit": 35,
+      "tags": [
+        "Match"
+      ],
+      "question": "Match the animal to the sound it makes:",
+      "prompts": [
+        "Dog",
+        "Cat",
+        "Cow"
+      ],
+      "matches": [
+        "Bark",
+        "Meow",
+        "Moo"
+      ],
+      "hints": [
+        "Dog pairs with bark.",
+        "Cat pairs with meow."
+      ],
+      "explanation": "Correct pairs are Dog-Bark, Cat-Meow, and Cow-Moo."
+    },
+    {
+      "id": "019da5a2-013f-7361-b54b-6904343d3d49",
+      "type": "match-pairs",
+      "topic": "Basic Arithmetic",
+      "difficulty": 1,
+      "timeLimit": 35,
+      "tags": [
+        "Match"
+      ],
+      "question": "Match the math problem to its answer:",
+      "prompts": [
+        "1 + 1",
+        "2 + 2",
+        "3 + 3"
+      ],
+      "matches": [
+        "2",
+        "4",
+        "6"
+      ],
+      "hints": [
+        "Evaluate each addition left to right.",
+        "Each right-side value is an even number."
+      ],
+      "explanation": "Correct pairs are 1 + 1 = 2, 2 + 2 = 4, and 3 + 3 = 6."
+    },
+    {
+      "id": "019da5a2-013f-7361-b54b-6905739d5f55",
+      "type": "match-pairs",
+      "topic": "Everyday Knowledge",
+      "difficulty": 1,
+      "timeLimit": 35,
+      "tags": [
+        "Match"
+      ],
+      "question": "Match the object to its typical color:",
+      "prompts": [
+        "Apple",
+        "Sky",
+        "Grass"
+      ],
+      "matches": [
+        "Red",
+        "Blue",
+        "Green"
+      ],
+      "hints": [
+        "Sky commonly matches blue.",
+        "Grass commonly matches green."
+      ],
+      "explanation": "Typical matches are Apple-Red, Sky-Blue, and Grass-Green."
+    },
+    {
+      "id": "019da5a2-013f-7361-b54b-6906d2fab18a",
+      "type": "sort-items",
+      "topic": "Numbers",
+      "difficulty": 1,
+      "timeLimit": 30,
+      "tags": [
+        "Sort"
+      ],
+      "question": "Sort the numbers from smallest to largest:",
+      "items": [
+        "One (1)",
+        "Two (2)",
+        "Three (3)",
+        "Four (4)"
+      ],
+      "hints": [
+        "Use ascending numeric order.",
+        "Start with 1 and end with 4."
+      ],
+      "explanation": "The correct ascending order is 1, 2, 3, 4."
+    },
+    {
+      "id": "019da5a2-013f-7361-b54b-690785940772",
+      "type": "sort-items",
+      "topic": "Calendar",
+      "difficulty": 1,
+      "timeLimit": 35,
+      "tags": [
+        "Sort"
+      ],
+      "question": "Sort the days of the week in order:",
+      "items": [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday"
+      ],
+      "hints": [
+        "Use weekday order from Monday to Friday.",
+        "Tuesday comes immediately after Monday."
+      ],
+      "explanation": "The weekday order is Monday, Tuesday, Wednesday, Thursday, Friday."
+    },
+    {
+      "id": "019da5a2-013f-7361-b54b-6908f79760d4",
+      "type": "sort-items",
+      "topic": "Astronomy",
+      "difficulty": 2,
+      "timeLimit": 40,
+      "tags": [
+        "Sort"
+      ],
+      "question": "Sort the inner planets by distance from the Sun (closest first):",
+      "items": [
+        "Mercury",
+        "Venus",
+        "Earth",
+        "Mars"
+      ],
+      "hints": [
+        "Only inner rocky planets are included.",
+        "Earth comes after Venus in this sequence."
+      ],
+      "explanation": "The correct order from the Sun is Mercury, Venus, Earth, Mars."
+    },
+    {
+      "id": "019da5a2-013f-7361-b54b-6909e1c51ff1",
+      "type": "short-answer",
+      "topic": "Vocabulary",
+      "difficulty": 1,
+      "timeLimit": 20,
+      "tags": [
+        "Short Answer"
+      ],
+      "question": "What is the opposite of 'Hot'?",
+      "correctAnswers": [
+        "Cold"
+      ],
+      "caseSensitive": false,
+      "trimWhitespace": true,
+      "hints": [
+        "Think about temperature opposites.",
+        "It starts with C."
+      ],
+      "incorrectFeedback": "Provide the opposite adjective for temperature.",
+      "explanation": "The standard opposite of hot is cold."
+    },
+    {
+      "id": "019da5a2-013f-7361-b54b-690a321dba19",
+      "type": "short-answer",
+      "topic": "Calendar",
+      "difficulty": 1,
+      "timeLimit": 25,
+      "tags": [
+        "Short Answer"
+      ],
+      "question": "How many days are there in a standard week?",
+      "correctAnswers": [
+        "7",
+        "seven"
+      ],
+      "caseSensitive": false,
+      "trimWhitespace": true,
+      "hints": [
+        "Count Monday through Sunday.",
+        "Numeric and word forms are both accepted."
+      ],
+      "incorrectFeedback": "A standard week has one full cycle of weekdays and weekend days.",
+      "explanation": "A standard week has 7 days."
+    },
+    {
+      "id": "019da5a2-013f-7361-b54b-690b5a73d4ed",
+      "type": "short-answer",
+      "topic": "Chemistry",
+      "difficulty": 1,
+      "timeLimit": 20,
+      "tags": [
+        "Short Answer"
+      ],
+      "question": "What is the chemical symbol for water?",
+      "correctAnswers": [
+        "H2O"
+      ],
+      "caseSensitive": false,
+      "trimWhitespace": true,
+      "hints": [
+        "It contains two hydrogen atoms and one oxygen atom.",
+        "Starts with H and ends with O."
+      ],
+      "incorrectFeedback": "Use the molecular formula format, not the full word.",
+      "explanation": "The chemical formula for water is H2O."
+    },
+    {
+      "id": "019da5a2-013f-7361-b54b-690cbc311a79",
+      "type": "note",
+      "topic": "Onboarding",
+      "tags": [
+        "Note"
+      ],
+      "title": "Welcome to the Dev Set",
+      "content": "This is a simple **note** item. It requires no user answer, just a 'continue' or 'next' action from the UI.",
+      "hints": [
+        "Use this item to verify non-graded flow and navigation logic."
+      ],
+      "explanation": "Note items are informational and should be rendered without answer validation."
+    },
+    {
+      "id": "019da5a2-013f-7361-b54b-690dd9390ce1",
+      "type": "note",
+      "topic": "Math",
+      "tags": [
+        "Note"
+      ],
+      "title": "Math Reminder",
+      "content": "Always remember that multiplication is evaluated before addition in standard mathematics.",
+      "hiddenContent": "Example: `2 + 3 * 4 = 14`, not `20`.",
+      "hints": [
+        "Check operator precedence before evaluating from left to right."
+      ],
+      "explanation": "This note highlights arithmetic precedence rules and hidden reveal behavior."
+    },
+    {
+      "id": "019da5a2-013f-7361-b54b-690ee7e7c35d",
+      "type": "note",
+      "topic": "Completion",
+      "tags": [
+        "Note"
+      ],
+      "title": "Test Complete",
+      "content": "You have successfully rendered and reached the end of the test items! 🎉",
+      "hints": [
+        "Use this item to verify end-of-set UI state and completion actions."
+      ],
+      "explanation": "This is the final informational item for completion-state testing."
+    }
+  ]
+}

@@ -11,8 +11,10 @@
     "games/*"
   ],
   "scripts": {
-    "build": "bun run --filter \"@memizy/oqse\" build && bun run --filter \"@memizy/protocol\" build && bun run --filter \"@memizy/plugin-sdk\" build && bun run --filter \"@memizy/host-sdk\" build",
-    "test": "bun run --filter \"@memizy/oqse\" build && bun run --filter \"@memizy/protocol\" build && bun run --filter \"*\" test",
-    "typecheck": "bun run --filter \"@memizy/oqse\" build && bun run --filter \"@memizy/protocol\" build && bun run --filter \"*\" typecheck"
+    "build:packages": "bun run --filter \"@memizy/oqse\" build && bun run --filter \"@memizy/protocol\" build && bun run --filter \"@memizy/plugin-sdk\" build && bun run --filter \"@memizy/host-sdk\" build",
+    "build": "bun run build:packages && bun run --filter \"@memizy/play\" build",
+    "dev:play": "bun run --filter \"@memizy/plugin-sdk\" build && bun run --filter \"@memizy/play\" dev",
+    "test": "bun run build:packages && bun run --filter \"*\" test",
+    "typecheck": "bun run build:packages && bun run --filter \"*\" typecheck"
   }
 }
