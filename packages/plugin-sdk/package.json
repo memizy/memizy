@@ -26,12 +26,12 @@
     "example:dev": "vite --config example/vite.config.ts",
     "example:build": "vite build --config example/vite.config.ts",
     "example:build:pages": "vite build --config example/vite.config.ts --base=/plugin-sdk/",
-    "example:preview": "vite preview --config example/vite.config.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "example:preview": "vite preview --config example/vite.config.ts"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/memizy/plugin-sdk.git"
+    "url": "git+https://github.com/memizy/memizy.git",
+    "directory": "packages/plugin-sdk"
   },
   "keywords": [
     "memizy",
@@ -43,9 +43,9 @@
   "author": "Memizy Team",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/memizy/plugin-sdk/issues"
+    "url": "https://github.com/memizy/memizy/issues"
   },
-  "homepage": "https://github.com/memizy/plugin-sdk#readme",
+  "homepage": "https://github.com/memizy/memizy/tree/main/packages/plugin-sdk#readme",
   "devDependencies": {
     "@types/dompurify": "^3.0.5",
     "typescript": "^6.0.3",

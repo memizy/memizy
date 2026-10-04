@@ -31,6 +31,28 @@ While the core Memizy engine is proprietary to ensure the best, secure, and unif
 
 ---
 
+## 🏗️ Repository Layout
+
+This repository is a [Bun workspaces](https://bun.sh/docs/install/workspaces) monorepo. Each package is published to npm independently.
+
+| Path | Contents |
+| :--- | :--- |
+| `packages/oqse` | `@memizy/oqse` – OQSE specification, TypeScript types and Zod validators |
+| `packages/plugin-sdk` | `@memizy/plugin-sdk` – the SDK for building Memizy plugins |
+| `services/` | Backend services (multiplayer server) |
+| `apps/` | Developer apps (Plugin Lab) |
+| `plugins/` | Official plugins |
+| `games/` | Official standalone games |
+| `docs/` | Architecture notes and public documentation |
+
+```bash
+bun install      # install all workspaces
+bun run build    # build all packages
+bun run test     # run all tests
+```
+
+---
+
 ## 🌟 Core Features of the App
 
 | Feature | Description |
