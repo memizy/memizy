@@ -12,7 +12,7 @@ You are writing a **Memizy plugin**: a learning game in **one HTML file**. Memiz
 1. Produce **one complete `index.html`** file. No build step, no other files.
 2. Include the **manifest** `<script type="application/oqse-manifest+json">` (section 3).
 3. Import the SDK exactly like this: `import { defineGame, checkAnswer } from 'https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1/+esm';`
-4. Call `defineGame({...})` **once**. Do not use `fetch`, `WebSocket`, `localStorage`, `IndexedDB` or other network/storage APIs – they are blocked in Memizy. To remember things between games (levels, best score) use `ui.save` (section 5.2).
+4. Call `defineGame({...})` **once**. Do not use `fetch`, `WebSocket`, `localStorage`, `IndexedDB` or other network/storage APIs – they are blocked in Memizy. To remember things between games (levels, best score) use `ui.save` (section 5.3).
 5. **All game state lives in the state object** and changes **only inside `actions`**. `render` only reads the state and draws the screen.
 6. Inside actions, **mutate `state` directly** (e.g. `state.scores[id] = 10`). Do not return a new object.
 7. Never use `Math.random()` or `Date.now()` inside `initialState`/`actions`. Use `ctx.random()`, `ctx.shuffle()`, `ctx.now`.
@@ -125,6 +125,7 @@ validateSettings(settings) {
 | Name | Description |
 | :--- | :--- |
 | `ctx.playerId` | Who sent the action (`null` for timers and for buttons on the board – the board is not a player). |
+| `ctx.fromHost` | `true` if the action comes from the host (the board, or the host playing along) or from the game itself (timers); `false` for other players. Protect teacher-only controls with it (section 5.2). |
 | `ctx.players` | Current players `[{ id, name, isHost, connected }]` (the presenter is not a player). |
 | `ctx.items` / `ctx.item(id)` | Items of the study set. |
 | `ctx.settings` | Values of the manifest settings. |
@@ -150,7 +151,7 @@ validateSettings(settings) {
 | `ui.act(name, payload)` | Call an action from your own JavaScript (normally use `data-act`). |
 | `ui.escape(text)` | Escape plain text (player names, your own strings) for HTML. |
 | `ui.progress` | Learning progress of this player: `{ [itemId]: { bucket: 0-4, ... } }` (empty on the board). Useful to prefer items the player does not know yet. |
-| `ui.saved` / `ui.save(scope, value)` | Data saved between games for this player (section 5.2). |
+| `ui.saved` / `ui.save(scope, value)` | Data saved between games for this player (section 5.3). |
 | `ui.setProgress(itemId, { bucket })` | Set this player's progress directly (bucket 0 = new … 4 = mastered), e.g. when the player rates themselves ("I know it / not sure / no idea"). Not available on the board. Prefer `ctx.recordAnswer` when an answer can be checked. |
 | `ui.locale` | Language of the app, e.g. `'cs'`. |
 
@@ -172,9 +173,30 @@ The app protects the class network and the server. Exceeding a limit makes the a
 * **Actions:** at most **30 actions per second** per device. Never call `ui.act` in a loop, in `requestAnimationFrame` or on every mouse move; send the result, not every intermediate step.
 * **Timers:** use `ctx.after` with a deadline in the state; do not create an action every second to count down – `render` with `tickMs` shows the countdown.
 * The SDK sends only the changes of the state, so a small change of a big state is cheap – but the limit on the total size still applies.
-* **Saved data** (section 5.2): at most **256 KB** per scope; save when something meaningful changes (level finished), not on every click.
+* **Saved data** (section 5.3): at most **256 KB** per scope; save when something meaningful changes (level finished), not on every click.
 
-### 5.2 Saving Progress Between Games
+### 5.2 Teacher-Only Controls
+
+Any player can send any action – a curious student can do it from the browser's developer tools. Actions that only the teacher (or the host) may use, such as "next question", "pause" or "end game", must check `ctx.fromHost` first:
+
+```js
+actions: {
+  next(state, payload, ctx) {
+    if (!ctx.fromHost) return;          // ignore players
+    if (state.phase !== 'reveal') return;
+    // ... go to the next question
+  },
+},
+render(state, ui) {
+  // show the button only where it makes sense: on the board, or to the host playing along
+  const canControl = ui.view === 'board' || ui.self?.isHost;
+  return canControl ? `<button data-act="next">Další otázka</button>` : '';
+},
+```
+
+Timers (`ctx.after(…, 'next')`) count as the host, so the same action can be triggered by the teacher's button and by a timer.
+
+### 5.3 Saving Progress Between Games
 
 The game state is forgotten when the game ends. To remember something **for the next time** (unlocked levels, coins, best score, chosen avatar), use the player's saved data:
 
@@ -385,6 +407,7 @@ defineGame({
 - [ ] Study-set text rendered with `ui.text` / `ui.renderNote`; other text escaped with `ui.escape`.
 - [ ] Controllers usable on a phone and on a computer, board readable on a projector.
 - [ ] State stays small (IDs instead of items) and no actions are sent in loops or animation frames (section 5.1).
+- [ ] Teacher-only actions (next, pause, end…) start with `if (!ctx.fromHost) return;` (section 5.2).
 - [ ] Progress between games uses `ui.save` (never `localStorage`); in solo there is no settings screen from the app – player choices are a game phase.
 
 ## 10. Common Mistakes
@@ -396,3 +419,4 @@ defineGame({
 5. Revealing the correct answer on controllers before the reveal phase.
 6. Forgetting that a player may join late: `state.answers[id]` and `state.scores[id]` may be missing – use `?? 0`.
 7. Using `localStorage` – it throws an error inside Memizy; use `ui.save`.
+8. Teacher-only actions without `ctx.fromHost` – students could skip questions or end the game.

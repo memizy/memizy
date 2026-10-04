@@ -64,6 +64,13 @@ const quiz: GameDefinition<QuizState> = {
     shuffle(state, _payload, ctx) {
       state.questions = ctx.shuffle(state.questions);
     },
+    skip(state, _payload, ctx) {
+      if (!ctx.fromHost) return; // teacher-only control
+      state.round += 1;
+    },
+    scheduleSkip(_state, _payload, ctx) {
+      ctx.after(100, 'skip');
+    },
   },
   playerJoined(state, player) {
     state.joined.push(player.id);
@@ -244,5 +251,34 @@ describe('determinism', () => {
     b.get('me').dispatch('shuffle', null);
     expect(a.get('me').state?.questions).toEqual(b.get('me').state?.questions);
     expect(a.get('me').state?.questions).not.toEqual(Array.from({ length: 10 }, (_, i) => `i${i}`));
+  });
+});
+
+describe('host-only actions (ctx.fromHost)', () => {
+  it('presenter: the board may skip, players may not; timers may', async () => {
+    const session = new FakeSession(quiz);
+    session.start();
+    await tick();
+    session.get('anna').dispatch('skip', null);
+    await tick();
+    expect(session.get('board').state?.round).toBe(0);
+    session.get('board').dispatch('skip', null);
+    await tick();
+    expect(session.get('anna').state?.round).toBe(1);
+    session.get('board').dispatch('scheduleSkip', null);
+    await tick(200);
+    expect(session.get('anna').state?.round).toBe(2);
+  });
+
+  it('host plays along: the host player may skip, others may not', async () => {
+    const session = new FakeSession(quiz, { hostAs: 'player' });
+    session.start();
+    await tick();
+    session.get('ben').dispatch('skip', null);
+    await tick();
+    expect(session.get('anna').state?.round).toBe(0);
+    session.get('anna').dispatch('skip', null);
+    await tick();
+    expect(session.get('ben').state?.round).toBe(1);
   });
 });

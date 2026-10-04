@@ -8,6 +8,7 @@
 
 import { create, apply, type Patches } from 'mutative';
 import {
+  BOARD_ADDRESS,
   LIMITS,
   findNonJson,
   jsonByteSize,
@@ -127,7 +128,7 @@ export class GameRuntime<S = unknown> {
     const effects: Effect[] = [];
     let initial: S;
     try {
-      initial = this.def.initialState(this.context(null, effects));
+      initial = this.def.initialState(this.context(null, true, effects));
     } catch (e) {
       this.reportError('INITIAL_STATE_FAILED', `initialState threw: ${errorText(e)}`);
       return;
@@ -182,7 +183,7 @@ export class GameRuntime<S = unknown> {
   dispatch(name: string, payload: unknown): void {
     if (this.ended || typeof name !== 'string') return;
     if (this.isAuthority) {
-      this.runAction(name, payload, this.selfPlayerId());
+      this.runAction(name, payload, this.selfPlayerId(), true); // the authority is the board, the host or the solo player
     } else if (this.authorityConnected) {
       this.sendToAuthority({ t: 'act', n: name, p: payload ?? null });
     }
@@ -197,7 +198,7 @@ export class GameRuntime<S = unknown> {
       if (data.t === 'act' && typeof data.n === 'string') {
         if (this.ended) return;
         const player = this.players.find((p) => p.id === message.from);
-        this.runAction(data.n, data.p, player ? player.id : null);
+        this.runAction(data.n, data.p, player ? player.id : null, message.from === BOARD_ADDRESS || player?.isHost === true);
       } else if (data.t === 'sync' && this.state !== undefined) {
         this.send([message.from], { t: 'state', v: this.version, s: this.state });
       }
@@ -232,14 +233,14 @@ export class GameRuntime<S = unknown> {
       for (const player of players) {
         if (!this.knownPlayers.has(player.id)) {
           this.knownPlayers.add(player.id);
-          if (this.def.playerJoined) this.run((draft, ctx) => this.def.playerJoined!(draft, player, ctx), null, 'playerJoined');
+          if (this.def.playerJoined) this.run((draft, ctx) => this.def.playerJoined!(draft, player, ctx), null, true, 'playerJoined');
         }
       }
       for (const id of [...this.knownPlayers]) {
         if (!ids.has(id)) {
           this.knownPlayers.delete(id);
           const player = previous.find((p) => p.id === id) ?? { id, name: id, isHost: false, connected: false };
-          if (this.def.playerLeft) this.run((draft, ctx) => this.def.playerLeft!(draft, player, ctx), null, 'playerLeft');
+          if (this.def.playerLeft) this.run((draft, ctx) => this.def.playerLeft!(draft, player, ctx), null, true, 'playerLeft');
         }
       }
       this.scheduleSnapshot();
@@ -259,20 +260,20 @@ export class GameRuntime<S = unknown> {
     return this.players.some((p) => p.id === self) ? self : null;
   }
 
-  private runAction(name: string, payload: unknown, playerId: string | null): void {
+  private runAction(name: string, payload: unknown, playerId: string | null, fromHost: boolean): void {
     const handler = Object.prototype.hasOwnProperty.call(this.def.actions, name) ? this.def.actions[name] : undefined;
     if (!handler) {
       this.reportError('UNKNOWN_ACTION', `Action "${name}" is not defined in actions.`);
       return;
     }
-    this.run((draft, ctx) => handler(draft, payload, ctx), playerId, name);
+    this.run((draft, ctx) => handler(draft, payload, ctx), playerId, fromHost, name);
   }
 
   /** Runs a state change on the authority with a mutable draft. */
-  private run(recipe: (draft: S, ctx: GameContext) => void | S, playerId: string | null, label: string): void {
+  private run(recipe: (draft: S, ctx: GameContext) => void | S, playerId: string | null, fromHost: boolean, label: string): void {
     if (this.state === undefined) return;
     const effects: Effect[] = [];
-    const ctx = this.context(playerId, effects);
+    const ctx = this.context(playerId, fromHost, effects);
     let returned: unknown;
     let draftRef: unknown;
     let next: S;
@@ -326,7 +327,7 @@ export class GameRuntime<S = unknown> {
     this.afterChange();
   }
 
-  private context(playerId: string | null, effects: Effect[]): GameContext {
+  private context(playerId: string | null, fromHost: boolean, effects: Effect[]): GameContext {
     const now = this.now();
     const init = this.init;
     const rng = this.rng;
@@ -334,6 +335,7 @@ export class GameRuntime<S = unknown> {
     let timerSeq = this.timerSeq;
     const ctx: GameContext = {
       playerId,
+      fromHost,
       players: this.players,
       items,
       item: (id) => this.itemsById.get(id),
@@ -415,7 +417,7 @@ export class GameRuntime<S = unknown> {
     const timer = this.timers.get(key);
     if (!timer || this.ended) return;
     this.timers.delete(key);
-    this.runAction(timer.action, timer.payload, null);
+    this.runAction(timer.action, timer.payload, null, true);
   }
 
   // ==========================================================================

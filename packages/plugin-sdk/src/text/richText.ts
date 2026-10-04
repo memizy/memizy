@@ -18,7 +18,8 @@ export interface RichTextContext {
 
 // Mermaid sources collected during one (synchronous) render; injected after sanitizing,
 // because DOMPurify drops attributes containing "-->" (which Mermaid arrows do).
-let mermaidBlocks: string[] = [];
+// The placeholder has a random part so that authors cannot forge it.
+let mermaidBlocks: { token: string; code: string }[] = [];
 
 const marked = new Marked({
   gfm: true,
@@ -27,8 +28,9 @@ const marked = new Marked({
   renderer: {
     code({ text, lang }) {
       if ((lang ?? '').trim().toLowerCase() === 'mermaid') {
-        mermaidBlocks.push(text);
-        return `<div class="mz-mermaid">mzmermaid${mermaidBlocks.length - 1}x</div>\n`;
+        const token = `mzmermaid${mermaidBlocks.length}x${Math.random().toString(36).slice(2, 10)}`;
+        mermaidBlocks.push({ token, code: text });
+        return `<div class="mz-mermaid">${token}</div>\n`;
       }
       return false;
     },
@@ -71,12 +73,12 @@ export function renderRichText(source: string | null | undefined, ctx: RichTextC
   const diagrams = mermaidBlocks;
   let html = DOMPurify.sanitize(parsed, { ADD_ATTR: ['target'] });
 
-  diagrams.forEach((code, i) => {
+  for (const { token, code } of diagrams) {
     html = html.replace(
-      `<div class="mz-mermaid">mzmermaid${i}x</div>`,
+      `<div class="mz-mermaid">${token}</div>`,
       `<div class="mz-mermaid" data-mz-src="${escapeHtml(code)}">${escapeHtml(code)}</div>`,
     );
-  });
+  }
 
   for (const [token, { tex, display }] of math) {
     const tag = display ? 'div' : 'span';

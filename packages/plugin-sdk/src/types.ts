@@ -9,8 +9,14 @@ export type { Player, PluginView, SessionMode, HostAs, DataScope };
 
 /** Context shared by `initialState`, actions and player hooks (runs on the authority). */
 export interface GameContext {
-  /** Who sent the action (`null` for timers, `initialState` and system hooks). */
+  /** Who sent the action (`null` for timers, `initialState`, system hooks and the board). */
   readonly playerId: string | null;
+  /**
+   * `true` when the action comes from the host (the board, or the host playing along)
+   * or from the game itself (timers, `initialState`, player hooks); `false` for
+   * actions sent by other players. Use it to protect teacher-only controls.
+   */
+  readonly fromHost: boolean;
   /** Current players (the presenter is not a player). */
   readonly players: readonly Player[];
   readonly items: readonly OQSEAnyItem[];
