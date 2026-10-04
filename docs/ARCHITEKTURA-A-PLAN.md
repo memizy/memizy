@@ -203,6 +203,11 @@ defineGame({
 - `dispatch(action)` pošle akci k autoritě. Výsledný stav pak dostanou všichni.
 - Stejné komponenty UI lze použít ve více pohledech (např. karta otázky v `solo` i `controller`).
 
+### 6.1.1 Vykreslování textu
+- SDK vykresluje Rich Content za plugin (Markdown, LaTeX, Mermaid, assety, sanitizace); plugin nic z toho neimplementuje.
+- **Poznámky:** `sdk.text.renderNote(note, { titleLevel })` vykreslí titulek, obsah i skrytý obsah. Nadpisy v obsahu jsou relativní k poznámce (v datech začínají `##`), SDK je posune samo (`headingOffset = titleLevel - 1`). Výchozí `titleLevel` je 1, plugin ho mění jen tehdy, když titulek zobrazuje jako menší nadpis.
+- Plugin se o relativních nadpisech a limitu 6 úrovní nemusí nic dozvědět; v AI guidu stačí jedna věta o `renderNote`.
+
 ### 6.2 Nízkoúrovňové API (únikový východ)
 
 Přímé `broadcastState` / `onPlayerAction` / `onState` / lifecycle eventy pro pluginy, kterým `defineGame` nevyhovuje.
