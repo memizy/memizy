@@ -1,4 +1,5 @@
 import type { FeatureProfile } from './oqse';
+import { shiftHeadings } from './markdownUtils';
 
 export interface TokenMap {
   [tokenId: string]: {
@@ -24,6 +25,13 @@ export interface RichTextProcessingOptions {
   
   /** Callback to render a <blank:key /> tag into HTML (e.g., <input type="text">) */
   blankReplacer?: (key: string) => string;
+
+  /**
+   * Shifts Markdown heading levels before rendering (clamped to 1-6), so content fits the
+   * plugin's layout. Note content headings start at level 2 (the note title is level 1);
+   * e.g. a plugin that shows the note title as h3 can pass 2.
+   */
+  headingOffset?: number;
 }
 
 /**
@@ -148,7 +156,7 @@ export function prepareRichTextForDisplay(
   const isTier2HtmlEnabled = requirements?.features?.includes('html') ?? false;
 
   // 1. TOKENIZE (Protect internal tags)
-  const { text: tokenizedMarkdown, tokens } = tokenizeOqseTags(rawContent);
+  const { text: tokenizedMarkdown, tokens } = tokenizeOqseTags(shiftHeadings(rawContent, options.headingOffset ?? 0));
 
   // 2. TIER 1 VALIDATION (Fail fast if raw HTML is present but not allowed)
   if (!isTier2HtmlEnabled) {

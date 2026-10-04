@@ -459,6 +459,7 @@ The specification in the current version defines **22 official item types**. Eac
   * `title` (string, optional): **Plain Text.** Note heading.
   * `content` (string, required): **Rich Content.** Main educational content of the item (text, Markdown, LaTeX, media references).
   * `hiddenContent` (string, optional): **Rich Content.** Additional content that is initially hidden (e.g., answer to a self-check question, detailed derivation, or spoiler). User must perform an action to reveal it.
+  * **Heading levels:** Headings inside `content` and `hiddenContent` are relative to the note. The note `title` corresponds to level 1, so content headings SHOULD start at level 2 (`##`). Validators SHOULD warn about level-1 headings in note content. Renderers MAY shift heading levels to fit their layout (e.g., when the note title is displayed as `h3`, `##` is rendered as `h4`).
 
 **Example:**
 ```json
@@ -1478,27 +1479,30 @@ This optional object (`item.pedagogy`) serves to store advanced metadata about d
 
 ## OQSE Markdown (Note Sets)
 
-A set that contains only `note` items MAY be written as a single Markdown document (RECOMMENDED extension `.oqse.md`, UTF-8). Each note is a section under a heading. The representation is **losslessly equivalent** to the JSON file (see the normalization rules below) and exists so that notes with complex content (Mermaid diagrams, LaTeX, code) can be written and edited without escaping them inside JSON strings. It is compatible with common Markdown editors such as Obsidian.
+A set that contains only `note` items MAY be written as a single Markdown document (RECOMMENDED extension `.oqse.md`, UTF-8). Each note is a section under a heading. The representation is **losslessly equivalent** to the JSON file (see the normalization rules below) and exists so that notes with complex content (Mermaid diagrams, LaTeX, code) can be written and edited without escaping them inside JSON strings. It follows the common Markdown convention of a single top-level heading (as recommended by markdownlint and GitHub) and works well in editors such as Obsidian.
 
-**Example:**
+**Example** (default `noteHeadingLevel: 3`):
 ````markdown
 ---
 oqse: "0.2"
 id: 019aa5ec-3daa-796f-9289-01c6214ec2b0
-title: Thermodynamics
 language: en
 createdAt: 2026-10-01T12:00:00Z
 updatedAt: 2026-10-01T12:00:00Z
 requirements:
   features: [markdown, latex, mermaid]
 ---
-Text before the first heading is the set description (`meta.description`).
+# Thermodynamics
 
-# Fundamental Laws
+Text between the title and the first chapter is the set description.
 
-## First Law of Thermodynamics
+## Fundamental Laws
+
+### First Law of Thermodynamics
 <!-- oqse: {id: 019aa5ec-3daa-796f-9289-01c6214ec2b3, tags: [physics]} -->
 Energy is conserved: $\Delta U = Q - W$
+
+#### Derivation
 
 ```mermaid
 graph LR
@@ -1508,25 +1512,40 @@ graph LR
 > [!hidden]-
 > Energy cannot be created or destroyed, only transferred or changed from one form to another.
 
-## Second Law of Thermodynamics
+### Second Law of Thermodynamics
 <!-- oqse: {id: 019aa5ec-3daa-796f-9289-01c6214ec2b4} -->
 …
 ````
+
+**Heading levels.** Let `L` be the note heading level (`noteHeadingLevel`, default `3`):
+
+| Level | Meaning | With `L = 3` (default) | With `L = 2` | With `L = 1` |
+| :--- | :--- | :--- | :--- | :--- |
+| `L - 2` | Set title (`meta.title`) | `#` | – | – |
+| `L - 1` | Chapter (`topic` of the following notes) | `##` | `#` | – |
+| `L` | Note (`title`) | `###` | `##` | `#` |
+| `> L` | Part of the note content | `####` and deeper | `###` and deeper | `##` and deeper |
+
+Headings with a level above the set title level are not allowed.
 
 **Structure:**
 
 1. **YAML frontmatter** (REQUIRED). The file MUST start with a line `---`; the frontmatter ends with the next line `---`. It is a YAML 1.2 mapping:
     * `oqse` (REQUIRED): the OQSE version (`file.version`), written as a quoted string (e.g., `"0.2"`).
-    * `noteHeadingLevel` (OPTIONAL): heading level of notes, an integer 1–6. Default: `2`.
+    * `noteHeadingLevel` (OPTIONAL): the note heading level `L`, an integer 1–6. Default: `3`.
     * All other keys are the `meta` object, except `description`, which MUST NOT appear in the frontmatter.
-2. **Description:** the text before the first structural heading is `meta.description` (omitted when empty).
-3. **Chapter headings** (level `noteHeadingLevel - 1`, e.g., `#`) set the `topic` of all following notes until the next chapter heading. An empty chapter heading (`#` alone) clears the topic. Only blank lines may appear between a chapter heading and the next note heading.
-4. **Note headings** (level `noteHeadingLevel`, e.g., `##`) start a note. The heading text is the note `title`; an empty heading (`##` alone) means the note has no title.
-5. **Metadata comment** (OPTIONAL): the first non-blank line after a note heading MAY be an HTML comment `<!-- oqse: … -->` containing a YAML mapping (single-line flow style `{id: …, tags: [a, b]}` or multi-line block style). It holds every item property except `type`, `title`, `content`, `hiddenContent` and, when chapter headings are used (`noteHeadingLevel` ≥ 2), `topic`. `type` MAY be present, but if so it MUST be `"note"`. HTML comments are invisible in common Markdown renderers, so the content stays clean.
-6. **Note body** = `content`: everything after the heading (and metadata comment) up to the next structural heading, the hidden callout or the end of the file. Headings deeper than `noteHeadingLevel` are part of the content.
-7. **Hidden callout** = `hiddenContent` (OPTIONAL): a blockquote callout whose first line is `> [!hidden]-`. It MUST be the last block of its note, MUST be preceded by a blank line, and every line of it MUST start with `>` (an empty line inside it is written as `>`). The marker is case-insensitive; the fold suffix (`-`, `+` or none) and any callout title after the marker are ignored when parsing. When serializing, applications MUST write `> [!hidden]-` (collapsed by default) without a title. At most one hidden callout per note is allowed.
+2. **Set title heading** (only when `L ≥ 3`, OPTIONAL): at most one heading of level `L - 2`. It MUST come before all chapters and notes, and only blank lines may precede it. Its text is `meta.title`; if `title` is also in the frontmatter, both MUST be equal. When serializing with `L ≥ 3`, applications MUST write the title as this heading (not in the frontmatter).
+3. **Description:** the text after the set title heading (or after the frontmatter, if there is none) up to the first chapter or note heading is `meta.description` (omitted when empty). It MUST NOT contain headings of level `L` or lower.
+4. **Chapter headings** (level `L - 1`, only when `L ≥ 2`) set the `topic` of all following notes until the next chapter heading. An empty chapter heading (e.g., `##` alone) clears the topic. Only blank lines may appear between a chapter heading and the next note heading.
+5. **Note headings** (level `L`) start a note. The heading text is the note `title`; an empty heading (e.g., `###` alone) means the note has no title.
+6. **Metadata comment** (OPTIONAL): the first non-blank line after a note heading MAY be an HTML comment `<!-- oqse: … -->` containing a YAML mapping (single-line flow style `{id: …, tags: [a, b]}` or multi-line block style). It holds every item property except `type`, `title`, `content`, `hiddenContent` and, when chapters are used (`L ≥ 2`), `topic`. `type` MAY be present, but if so it MUST be `"note"`. HTML comments are invisible in common Markdown renderers, so the content stays clean.
+7. **Note body** = `content`: everything after the heading (and metadata comment) up to the next heading of level `L` or lower, the hidden callout or the end of the file.
+8. **Hidden callout** = `hiddenContent` (OPTIONAL): a blockquote callout whose first line is `> [!hidden]-`. It MUST be the last block of its note, MUST be preceded by a blank line, and every line of it MUST start with `>` (an empty line inside it is written as `>`). The marker is case-insensitive; the fold suffix (`-`, `+` or none) and any callout title after the marker are ignored when parsing. When serializing, applications MUST write `> [!hidden]-` (collapsed by default) without a title. At most one hidden callout per note is allowed.
+9. **Relative headings:** headings inside `content` and `hiddenContent` are relative to the note (see [`type: "note"`](#type-note-study-note)). In the Markdown file they are shifted by `L - 1`: a `##` heading in JSON content is written as `####` under a `###` note, and parsing shifts it back.
 
-Lines inside fenced code blocks are never interpreted as headings, metadata comments or hidden callouts. Only ATX headings (`#`, `##`, …) are recognized. Headings with a level above the chapter level are not allowed.
+Lines inside fenced code blocks are never interpreted as headings, metadata comments or hidden callouts. Only ATX headings (`#`, `##`, …) are recognized.
+
+**Choosing `L` when serializing:** applications SHOULD use the highest of `3`, `2`, `1` for which all shifted content headings stay within level 6 and the description contains no headings of level `L` or lower.
 
 **Authoring convenience:** when parsing, a missing `id` (of the set or of a note), `createdAt` or `updatedAt` MUST be generated (UUIDv7 / current time) and the application SHOULD write the generated values back to the file. Authors, including AI models, therefore never need to invent UUIDs.
 
@@ -1535,11 +1554,11 @@ Lines inside fenced code blocks are never interpreted as headings, metadata comm
 * Leading and trailing blank lines and trailing whitespace of `meta.description`, `content` and `hiddenContent` are not significant. An empty `hiddenContent` is omitted.
 * The `$schema` key is not represented.
 
-**Limits of the representation:** serialization MUST fail with an explanatory error if the set contains items other than `note`, if note content contains headings at or above the note level (writers SHOULD then choose a lower `noteHeadingLevel`; content with level-1 headings cannot be represented), if content contains a top-level `> [!hidden]` callout or ends inside an unclosed code fence, or if a title or topic spans multiple lines.
+**Limits of the representation:** serialization MUST fail with an explanatory error if the set contains items other than `note`, if note content contains level-1 headings (the note title is level 1) or headings too deep to be shifted, if content contains a top-level `> [!hidden]` callout or ends inside an unclosed code fence, or if a title or topic spans multiple lines.
 
 **Learning progress** (e.g., Leitner buckets) MUST NOT be stored in the Markdown file. Progress belongs to the OQSE Progress format (OQSEP), keyed by the note `id`, so the content stays clean.
 
-**Reference implementation:** `parseMarkdownSet`, `safeParseMarkdownSet` and `serializeMarkdownSet` in the `@memizy/oqse` package.
+**Reference implementation:** `parseMarkdownSet`, `safeParseMarkdownSet`, `serializeMarkdownSet` and `shiftHeadings` in the `@memizy/oqse` package.
 
 -----
 
@@ -2151,7 +2170,8 @@ OQSE is an open standard. Suggestions for improvements:
 
 ### Version 0.2 (October 2026)
 * Renamed the `math` feature to `latex` (consistent with `latexPackages`). Without the `latex` feature, `$` is a literal character.
-* Added [OQSE Markdown](#oqse-markdown-note-sets): a set of notes as one Markdown document (headings = notes, chapters = `topic`, metadata in HTML comments, `> [!hidden]-` callout = `hiddenContent`).
+* Added [OQSE Markdown](#oqse-markdown-note-sets): a set of notes as one Markdown document (`#` set title, `##` chapters = `topic`, `###` notes, metadata in HTML comments, `> [!hidden]-` callout = `hiddenContent`).
+* Headings inside note content are relative to the note: content headings start at level 2.
 * Schema URLs now point to the versioned npm package (`https://cdn.jsdelivr.net/npm/@memizy/oqse@0.2/schemas/…`).
 * Consistent naming of correct answers: `true-false.answer` → `correctAnswer`, `numeric-input.value` → `correctAnswer`, `short-answer.answers` → `correctAnswers`, `chess-puzzle.answers` → `correctAnswers`.
 * Consistent shuffle flag: `shuffleOptions` (MCQ) and `randomize` (timeline) → `shuffle`.

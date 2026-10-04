@@ -4,38 +4,43 @@
  * ```markdown
  * ---
  * oqse: "0.2"
- * id: 0192f0c4-7a1e-7c3b-9a52-2f1d8e4b6a00
- * title: Termodynamika
  * language: cs
  * ---
- * Text before the first heading is the set description.
+ * # Termodynamika                         ← level L-2: set title (`meta.title`)
+ * Text before the first chapter is the set description.
  *
- * # Základní zákony                       ← chapter heading (level L-1) = `topic`
+ * ## Základní zákony                      ← level L-1: chapter = `topic`
  *
- * ## První zákon                          ← note heading (level L) = `title`
+ * ### První zákon                         ← level L (default 3): note `title`
  * <!-- oqse: {id: 0192f0c4-…, tags: [fyzika]} -->
  * Note content: $\Delta U = Q - W$, Mermaid, code – no escaping.
+ *
+ * #### Odvození                           ← headings inside a note are relative to the note
  *
  * > [!hidden]-
  * > Revealed on demand (`hiddenContent`).
  * ```
  *
- * - Frontmatter: `oqse` (version), optional `noteHeadingLevel` (L, default 2), all other keys are `meta`.
- * - Missing `id`, `createdAt` and `updatedAt` are generated when parsing and reported in `generated`,
- *   so authors (and AI) never have to invent UUIDs.
- * - Only sets that contain nothing but `note` items have a Markdown representation.
+ * Heading levels inside note content are relative to the note: in JSON the note
+ * title corresponds to level 1, so content headings start at `##`. In Markdown
+ * they are shifted by `noteHeadingLevel - 1` (e.g., `##` in JSON is `####` under a `###` note).
+ *
+ * Missing `id`, `createdAt` and `updatedAt` are generated when parsing and reported
+ * in `generated`, so authors (and AI) never have to invent UUIDs.
+ * Only sets that contain nothing but `note` items have a Markdown representation.
  */
 
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import type { NoteItem, OQSEFile, OQSEMeta } from './oqse';
 import { safeValidateOQSEFile, formatOQSEIssues, type OQSEIssue } from './fileValidation';
 import { generateUUID } from './utils';
+import { findHeadings, forEachTopLevelLine, shiftHeadings, splitLines, trimBlankLines } from './markdownUtils';
 
 /** Callout marker that introduces `hiddenContent` (case-insensitive when parsing). */
 export const HIDDEN_CALLOUT_MARKER = '[!hidden]';
 
-/** Default heading level of notes (chapters/topics use the level above). */
-export const DEFAULT_NOTE_HEADING_LEVEL = 2;
+/** Default heading level of notes: `#` set title, `##` chapters, `###` notes. */
+export const DEFAULT_NOTE_HEADING_LEVEL = 3;
 
 export interface MarkdownSetParseResult {
   file: OQSEFile;
@@ -44,7 +49,10 @@ export interface MarkdownSetParseResult {
 }
 
 export interface MarkdownSetSerializeOptions {
-  /** Heading level of notes (1–6). Default `'auto'`: 2, or lower if note content uses H2 headings. */
+  /**
+   * Heading level of notes (1–6). Default `'auto'`: the highest of 3, 2, 1 that can
+   * represent all note content (content headings are shifted and must stay ≤ level 6).
+   */
   noteHeadingLevel?: number | 'auto';
 }
 
@@ -70,12 +78,10 @@ export class MarkdownSetError extends Error {
 const FRONTMATTER_DELIMITER = '---';
 const FORMAT_KEYS = ['oqse', 'noteHeadingLevel'] as const;
 const RESERVED_NOTE_KEYS = ['type', 'title', 'content', 'hiddenContent'] as const;
-const HEADING_RE = /^ {0,3}(#{1,6})(?:[ \t]+(.*?))?(?:[ \t]+#+)?[ \t]*$/;
 const HIDDEN_CALLOUT_RE = /^>\s?\[!hidden\][+-]?(?:\s.*)?$/i;
 const META_COMMENT_START_RE = /^<!--\s*oqse:(.*)$/;
-const FENCE_OPEN_RE = /^ {0,3}(`{3,}|~{3,})/;
-const FENCE_CLOSE_RE = /^ {0,3}(`{3,}|~{3,})\s*$/;
 const BLANK_RE = /^\s*$/;
+const BOM = String.fromCharCode(0xfeff);
 
 interface Line {
   text: string;
@@ -88,7 +94,8 @@ interface Line {
  * @throws {MarkdownSetError} on malformed Markdown or an invalid resulting set.
  */
 export function parseMarkdownSet(markdown: string): MarkdownSetParseResult {
-  const all = splitLines(markdown.replace(/^﻿/, '')).map((text, i) => ({ text, no: i + 1 }));
+  const source = markdown.startsWith(BOM) ? markdown.slice(1) : markdown;
+  const all = splitLines(source).map((text, i) => ({ text, no: i + 1 }));
   const generated: string[] = [];
 
   // --- Frontmatter -----------------------------------------------------------
@@ -108,15 +115,58 @@ export function parseMarkdownSet(markdown: string): MarkdownSetParseResult {
     throw new MarkdownSetError('noteHeadingLevel must be an integer from 1 to 6.', { line: 2 });
   }
   const noteLevel = level as number;
-  const topicLevel = noteLevel - 1;
+  const chapterLevel = noteLevel - 1; // 0 = no chapters
+  const titleLevel = noteLevel - 2; // ≤ 0 = no title heading
   if ('description' in front) {
-    throw new MarkdownSetError('Write the set description as text before the first heading, not in the frontmatter.', { line: 2 });
+    throw new MarkdownSetError('Write the set description as text after the title, not in the frontmatter.', { line: 2 });
   }
 
   const meta: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(front)) {
     if (!(FORMAT_KEYS as readonly string[]).includes(key)) meta[key] = value;
   }
+
+  // --- Body structure ----------------------------------------------------------
+  const body = all.slice(closing + 1);
+  const structural = findHeadings(body.map((l) => l.text)).filter((h) => h.level <= noteLevel);
+  const lineOf = (h: { index: number }) => body[h.index].no;
+
+  for (const h of structural) {
+    if (h.level < Math.max(1, titleLevel)) {
+      throw new MarkdownSetError(
+        `Heading level ${h.level} is not allowed with noteHeadingLevel ${noteLevel} (${describeLevels(noteLevel)}).`,
+        { line: lineOf(h) },
+      );
+    }
+  }
+
+  // Optional set title heading: at most one, before any chapter or note.
+  let rest = structural;
+  let descriptionStart = 0;
+  if (titleLevel >= 1 && structural.some((h) => h.level === titleLevel)) {
+    const titleHeading = structural[0];
+    if (titleHeading.level !== titleLevel) {
+      throw new MarkdownSetError('The set title heading must come before all chapters and notes.', { line: lineOf(structural.find((h) => h.level === titleLevel)!) });
+    }
+    const second = structural.slice(1).find((h) => h.level === titleLevel);
+    if (second) throw new MarkdownSetError('Only one set title heading is allowed.', { line: lineOf(second) });
+    const before = body.slice(0, titleHeading.index).find((l) => !BLANK_RE.test(l.text));
+    if (before) throw new MarkdownSetError('Text before the set title heading is not allowed.', { line: before.no });
+    if (meta.title !== undefined && meta.title !== titleHeading.text) {
+      throw new MarkdownSetError(`The title heading "${titleHeading.text}" differs from "title" in the frontmatter.`, { line: lineOf(titleHeading) });
+    }
+    meta.title = titleHeading.text;
+    rest = structural.slice(1);
+    descriptionStart = titleHeading.index + 1;
+  }
+
+  if (!rest.some((h) => h.level === noteLevel) && rest.length > 0) {
+    throw new MarkdownSetError(
+      `No note headings found (${describeLevels(noteLevel)}). Set noteHeadingLevel in the frontmatter if your notes use a different level.`,
+      { line: lineOf(rest[0]) },
+    );
+  }
+
   const now = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
   for (const key of ['id', 'createdAt', 'updatedAt'] as const) {
     if (meta[key] === undefined) {
@@ -125,34 +175,20 @@ export function parseMarkdownSet(markdown: string): MarkdownSetParseResult {
     }
   }
 
-  // --- Body ------------------------------------------------------------------
-  const body = all.slice(closing + 1);
-  const headings = findHeadings(body.map((l) => l.text));
-  const structural = headings.filter((h) => h.level <= noteLevel);
-
-  for (const h of structural) {
-    if (h.level < topicLevel || (h.level === topicLevel && topicLevel < 1)) {
-      throw new MarkdownSetError(
-        `Heading level ${h.level} is not allowed with noteHeadingLevel ${noteLevel} ` +
-          `(notes use level ${noteLevel}${topicLevel >= 1 ? `, chapters level ${topicLevel}` : ''}).`,
-        { line: body[h.index].no },
-      );
-    }
-  }
-
-  const firstStructural = structural[0]?.index ?? body.length;
-  const description = trimBlankLines(body.slice(0, firstStructural).map((l) => l.text).join('\n'));
+  const descriptionEnd = rest[0]?.index ?? body.length;
+  const description = trimBlankLines(body.slice(descriptionStart, descriptionEnd).map((l) => l.text).join('\n'));
   if (description !== '') meta.description = description;
 
+  // --- Chapters and notes --------------------------------------------------------
   const items: Record<string, unknown>[] = [];
   const noteLines: number[] = [];
   let topic: string | undefined;
 
-  structural.forEach((heading, n) => {
-    const end = structural[n + 1]?.index ?? body.length;
+  rest.forEach((heading, n) => {
+    const end = rest[n + 1]?.index ?? body.length;
     const section = body.slice(heading.index + 1, end);
 
-    if (heading.level === topicLevel) {
+    if (heading.level === chapterLevel) {
       const stray = section.find((l) => !BLANK_RE.test(l.text));
       if (stray) {
         throw new MarkdownSetError('Text under a chapter heading must belong to a note (add a note heading).', { line: stray.no });
@@ -161,14 +197,14 @@ export function parseMarkdownSet(markdown: string): MarkdownSetParseResult {
       return;
     }
 
-    const note = parseNoteSection(section, heading.text, noteLevel, body[heading.index].no);
-    if (topic !== undefined && noteLevel > 1) note.topic = topic;
+    const note = parseNoteSection(section, heading.text, noteLevel, lineOf(heading));
+    if (topic !== undefined && chapterLevel >= 1) note.topic = topic;
     if (note.id === undefined) {
       note.id = generateUUID();
       generated.push(`items[${items.length}].id`);
     }
     items.push(note);
-    noteLines.push(body[heading.index].no);
+    noteLines.push(lineOf(heading));
   });
 
   // --- Validation ------------------------------------------------------------
@@ -231,39 +267,41 @@ function parseNoteSection(section: Line[], title: string, noteLevel: number, hea
   }
 
   // Content and the optional trailing hidden callout.
-  const rest = section.slice(start);
-  const scan = scanTopLevel(rest.map((l) => l.text));
-  let contentLines = rest;
+  const body = section.slice(start);
+  const scan = scanTopLevel(body.map((l) => l.text));
+  let contentLines = body;
   let hiddenLines: string[] | undefined;
 
   if (scan.hiddenCallouts.length > 1) {
-    throw new MarkdownSetError(`Only one "> ${HIDDEN_CALLOUT_MARKER}" callout is allowed per note.`, { line: rest[scan.hiddenCallouts[1]].no });
+    throw new MarkdownSetError(`Only one "> ${HIDDEN_CALLOUT_MARKER}" callout is allowed per note.`, { line: body[scan.hiddenCallouts[1]].no });
   }
   if (scan.hiddenCallouts.length === 1) {
     const at = scan.hiddenCallouts[0];
-    if (at > 0 && !BLANK_RE.test(rest[at - 1].text)) {
-      throw new MarkdownSetError(`The "> ${HIDDEN_CALLOUT_MARKER}" callout must be preceded by a blank line.`, { line: rest[at].no });
+    if (at > 0 && !BLANK_RE.test(body[at - 1].text)) {
+      throw new MarkdownSetError(`The "> ${HIDDEN_CALLOUT_MARKER}" callout must be preceded by a blank line.`, { line: body[at].no });
     }
-    let end = rest.length;
-    while (end > at + 1 && BLANK_RE.test(rest[end - 1].text)) end--;
+    let end = body.length;
+    while (end > at + 1 && BLANK_RE.test(body[end - 1].text)) end--;
     for (let i = at + 1; i < end; i++) {
-      if (!rest[i].text.startsWith('>')) {
+      if (!body[i].text.startsWith('>')) {
         throw new MarkdownSetError(
           `The "> ${HIDDEN_CALLOUT_MARKER}" callout must be the last block of the note and every line in it must start with ">".`,
-          { line: rest[i].no },
+          { line: body[i].no },
         );
       }
     }
-    contentLines = rest.slice(0, at);
-    hiddenLines = rest.slice(at + 1, end).map((l) => l.text.replace(/^> ?/, ''));
+    contentLines = body.slice(0, at);
+    hiddenLines = body.slice(at + 1, end).map((l) => l.text.replace(/^> ?/, ''));
   }
 
+  // Headings inside the note are relative to it (JSON: note title = level 1).
+  const shift = -(noteLevel - 1);
   const { id, type: _type, ...other } = fields;
   const note: Record<string, unknown> = { id, type: 'note' };
   if (title !== '') note.title = title;
   Object.assign(note, other);
-  note.content = trimBlankLines(contentLines.map((l) => l.text).join('\n'));
-  const hidden = hiddenLines === undefined ? '' : trimBlankLines(hiddenLines.join('\n'));
+  note.content = shiftHeadings(trimBlankLines(contentLines.map((l) => l.text).join('\n')), shift);
+  const hidden = hiddenLines === undefined ? '' : shiftHeadings(trimBlankLines(hiddenLines.join('\n')), shift);
   if (hidden !== '') note.hiddenContent = hidden;
   return note;
 }
@@ -288,36 +326,52 @@ export function serializeMarkdownSet(file: OQSEFile, options: MarkdownSetSeriali
   });
   const { description, ...meta } = file.meta as OQSEMeta;
 
-  // Content headings must stay below the note level, so pick the level accordingly.
-  const texts = [description ?? '', ...notes.map((n) => n.content)];
-  const minContentLevel = Math.min(7, ...texts.flatMap((t) => findHeadings(splitLines(t)).map((h) => h.level)));
+  // Content headings are relative to the note (title = level 1), so they must start at level 2.
+  const noteHeadingLevels = notes.flatMap((n, i) => {
+    const levels = [n.content, n.hiddenContent ?? ''].flatMap((t) => findHeadings(splitLines(t)).map((h) => h.level));
+    if (levels.includes(1)) {
+      throw new MarkdownSetError(`items[${i}] contains a level-1 heading; headings inside a note must start at level 2 (the note title is level 1).`);
+    }
+    return levels;
+  });
+  const maxContentLevel = Math.max(1, ...noteHeadingLevels);
+  const descriptionLevels = findHeadings(splitLines(description ?? '')).map((h) => h.level);
+  const fits = (level: number) => maxContentLevel + level - 1 <= 6 && descriptionLevels.every((d) => d > level);
+
   let noteLevel: number;
   if (options.noteHeadingLevel === undefined || options.noteHeadingLevel === 'auto') {
-    noteLevel = Math.min(DEFAULT_NOTE_HEADING_LEVEL, minContentLevel - 1);
-    if (noteLevel < 1) throw new MarkdownSetError('Note content contains level-1 headings, so notes cannot be split by headings.');
+    const candidate = [3, 2, 1].find(fits);
+    if (candidate === undefined) throw new MarkdownSetError('Note content or description headings are too deep to be represented.');
+    noteLevel = candidate;
   } else {
     noteLevel = options.noteHeadingLevel;
     if (!Number.isInteger(noteLevel) || noteLevel < 1 || noteLevel > 6) throw new MarkdownSetError('noteHeadingLevel must be an integer from 1 to 6.');
-    if (minContentLevel <= noteLevel) throw new MarkdownSetError(`Note content contains level-${minContentLevel} headings; use a noteHeadingLevel below ${minContentLevel}.`);
+    if (!fits(noteLevel)) throw new MarkdownSetError(`noteHeadingLevel ${noteLevel} cannot represent the headings in the content; use a lower level.`);
   }
-  const topicLevel = noteLevel - 1;
+  const chapterLevel = noteLevel - 1;
+  const titleLevel = noteLevel - 2;
+  const shift = noteLevel - 1;
 
-  // Frontmatter.
+  // Frontmatter (the title goes to a heading when the level allows it).
   const front: Record<string, unknown> = { oqse: file.version };
   if (noteLevel !== DEFAULT_NOTE_HEADING_LEVEL) front.noteHeadingLevel = noteLevel;
   const { id, title, language, ...restMeta } = meta;
-  Object.assign(front, { id, title, language }, restMeta);
+  Object.assign(front, titleLevel >= 1 ? { id, language } : { id, title, language }, restMeta);
   let out = `${FRONTMATTER_DELIMITER}\n${stringifyYaml(front, { lineWidth: 0 })}${FRONTMATTER_DELIMITER}\n`;
-  if (description) out += `${trimBlankLines(description)}\n`;
+  if (titleLevel >= 1) {
+    assertSingleLine(title, 'meta.title');
+    out += `${'#'.repeat(titleLevel)} ${title}\n`;
+  }
+  if (description) out += `${titleLevel >= 1 ? '\n' : ''}${trimBlankLines(description)}\n`;
 
   let topic: string | undefined;
   notes.forEach((note, i) => {
     const where = `items[${i}]`;
     const { id: noteId, type: _t, title: noteTitle, content, hiddenContent, topic: noteTopic, ...restNote } = note;
 
-    if (topicLevel >= 1 && noteTopic !== topic) {
+    if (chapterLevel >= 1 && noteTopic !== topic) {
       assertSingleLine(noteTopic, `${where}.topic`);
-      out += `\n${'#'.repeat(topicLevel)}${noteTopic ? ` ${noteTopic}` : ''}\n`;
+      out += `\n${'#'.repeat(chapterLevel)}${noteTopic ? ` ${noteTopic}` : ''}\n`;
       topic = noteTopic;
     }
 
@@ -326,10 +380,10 @@ export function serializeMarkdownSet(file: OQSEFile, options: MarkdownSetSeriali
     out += `\n${'#'.repeat(noteLevel)}${noteTitle ? ` ${noteTitle}` : ''}\n`;
 
     const fields: Record<string, unknown> = { id: noteId, ...restNote };
-    if (topicLevel < 1 && noteTopic !== undefined) fields.topic = noteTopic;
+    if (chapterLevel < 1 && noteTopic !== undefined) fields.topic = noteTopic;
     out += `${metadataComment(fields, where)}\n`;
 
-    const contentLines = splitLines(trimBlankLines(content));
+    const contentLines = splitLines(shiftHeadings(trimBlankLines(content), shift));
     const scan = scanTopLevel(contentLines);
     if (scan.hiddenCallouts.length > 0) {
       throw new MarkdownSetError(`${where}.content must not contain a top-level "> ${HIDDEN_CALLOUT_MARKER}" callout; use hiddenContent.`);
@@ -337,7 +391,7 @@ export function serializeMarkdownSet(file: OQSEFile, options: MarkdownSetSeriali
     if (scan.unclosedFence) throw new MarkdownSetError(`${where}.content ends inside an unclosed code fence.`);
     out += `${contentLines.join('\n')}\n`;
 
-    const hidden = hiddenContent === undefined ? '' : trimBlankLines(hiddenContent);
+    const hidden = hiddenContent === undefined ? '' : shiftHeadings(trimBlankLines(hiddenContent), shift);
     if (hidden !== '') {
       const quoted = splitLines(hidden).map((line) => (line === '' ? '>' : `> ${line}`));
       out += `\n> ${HIDDEN_CALLOUT_MARKER}-\n${quoted.join('\n')}\n`;
@@ -358,6 +412,15 @@ function metadataComment(fields: Record<string, unknown>, where: string): string
 // Helpers
 // ============================================================================
 
+function describeLevels(noteLevel: number): string {
+  const h = (level: number) => '#'.repeat(level);
+  const parts = [];
+  if (noteLevel >= 3) parts.push(`${h(noteLevel - 2)} set title`);
+  if (noteLevel >= 2) parts.push(`${h(noteLevel - 1)} chapters`);
+  parts.push(`${h(noteLevel)} notes`);
+  return parts.join(', ');
+}
+
 function parseYamlMapping(text: string, line: number, what: string): Record<string, unknown> {
   let value: unknown;
   try {
@@ -376,25 +439,6 @@ function assertSingleLine(value: string | undefined, where: string) {
   if (value !== undefined && /[\r\n]/.test(value)) throw new MarkdownSetError(`${where} must be a single line.`);
 }
 
-function splitLines(text: string): string[] {
-  return text.replace(/\r\n?/g, '\n').split('\n');
-}
-
-/** Removes leading and trailing blank lines (and trailing whitespace). */
-function trimBlankLines(text: string): string {
-  return text.replace(/\r\n?/g, '\n').replace(/^(?:[ \t]*\n)+/, '').trimEnd();
-}
-
-/** ATX headings outside fenced code blocks. */
-function findHeadings(lines: string[]): Array<{ index: number; level: number; text: string }> {
-  const out: Array<{ index: number; level: number; text: string }> = [];
-  forEachTopLevelLine(lines, (line, index) => {
-    const m = HEADING_RE.exec(line);
-    if (m) out.push({ index, level: m[1].length, text: (m[2] ?? '').trim() });
-  });
-  return out;
-}
-
 /** Top-level `> [!hidden]` callout lines and whether the text ends inside an open fence. */
 function scanTopLevel(lines: string[]): { hiddenCallouts: number[]; unclosedFence: boolean } {
   const hiddenCallouts: number[] = [];
@@ -402,23 +446,4 @@ function scanTopLevel(lines: string[]): { hiddenCallouts: number[]; unclosedFenc
     if (HIDDEN_CALLOUT_RE.test(line)) hiddenCallouts.push(index);
   });
   return { hiddenCallouts, unclosedFence };
-}
-
-/** Calls `visit` for lines outside fenced code blocks. Returns `true` if a fence is left open. */
-function forEachTopLevelLine(lines: string[], visit: (line: string, index: number) => void): boolean {
-  let fence: { char: string; length: number } | null = null;
-  lines.forEach((line, index) => {
-    if (fence) {
-      const close = FENCE_CLOSE_RE.exec(line);
-      if (close && close[1][0] === fence.char && close[1].length >= fence.length) fence = null;
-      return;
-    }
-    const open = FENCE_OPEN_RE.exec(line);
-    if (open) {
-      fence = { char: open[1][0], length: open[1].length };
-      return;
-    }
-    visit(line, index);
-  });
-  return fence !== null;
 }

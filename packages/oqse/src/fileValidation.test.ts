@@ -160,6 +160,14 @@ describe('strict validation', () => {
   });
 });
 
+describe('note heading convention', () => {
+  it('warns when note content uses level-1 headings', () => {
+    const result = safeValidateOQSEFile(file([note(1, { content: '# Title again' }), note(2, { content: '## Section' })]));
+    expect(result.success).toBe(true);
+    expect(result.warnings.map((w) => [w.code, w.path])).toEqual([['NOTE_HEADING_LEVEL', 'items[0].content']]);
+  });
+});
+
 describe('raw HTML (Tier 1)', () => {
   it('rejects raw HTML unless the html feature is declared', () => {
     const html = note(1, { content: 'Hello <span style="color:red">red</span>' });

@@ -18,6 +18,7 @@ import { OQSEMetaSchema, getItemSchema } from './oqseValidation';
 import { OFFICIAL_ITEM_TYPES } from './oqse';
 import { findAssetKeys, findRawHtml } from './richTextProcessor';
 import { formatPath, validateJsonDepth } from './utils';
+import { findHeadings, splitLines } from './markdownUtils';
 
 // ============================================================================
 // Issues
@@ -43,6 +44,7 @@ export type OQSEIssueCode =
   | 'ASSET_KEY_COLLISION'
   | 'ASSET_SHADOWED'
   | 'RAW_HTML_NOT_ALLOWED'
+  | 'NOTE_HEADING_LEVEL'
   | 'SECURITY_LIMIT';
 
 /** One entry of the structured error log (see "Structured Error Log" in the specification). */
@@ -331,6 +333,16 @@ function checkItem(
     if (new Set(ids).size !== ids.length) {
       log.add('error', 'DUPLICATE_ID', 'Internal IDs must be unique within the item.', [...path, item.type === 'timeline' ? 'events' : 'items'], item.id);
       ok = false;
+    }
+  }
+
+  // Headings inside a note are relative to it: the title is level 1, content starts at level 2.
+  if (item.type === 'note') {
+    for (const field of ['content', 'hiddenContent'] as const) {
+      const text = item[field];
+      if (text && findHeadings(splitLines(text)).some((h) => h.level === 1)) {
+        log.add('warning', 'NOTE_HEADING_LEVEL', 'Headings inside a note should start at level 2 (##); the note title is level 1.', [...path, field], item.id);
+      }
     }
   }
 

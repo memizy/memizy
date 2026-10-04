@@ -221,6 +221,8 @@ Když plugin běží mimo iframe (nebo handshake nedoběhne včas), SDK spustí 
 - **Nastavení (settings):** schéma v manifestu a jeho vykreslení v lobby.
 - **Manifest pluginu = OQSEM + runtime část Memizy.** Doporučení: jeden data island; OQSEM popisuje obsah (`types`, `features`, `assets`), runtime část Memizy (režimy, pohledy, hráči) je pod `appSpecific.memizy` a její schéma je v `@memizy/protocol`.
 - **Data předávaná pluginu:** host načítá sadu přes `loadOQSEFile` (tolerantně, neplatné položky přeskočí, neznámá pole zachová) a pluginu předává jen položky typů, které plugin deklaruje (výběr pluginů v lobby přes `checkCompatibility`).
+- **Pokrok v multiplayeru:** kdo a komu zapisuje OQSEP záznamy (každý hráč sám za sebe u sebe, nebo host za všechny). Formát OQSEP stačí, jde o pravidla protokolu.
+- **Chyba v současném SDK (opravit při přepisu, dny 7–10):** `TextManager.parseTokens` čte z `<asset:map />` klíč `"map "` (s mezerou) a nesjednocuje malá/velká písmena, takže asset nenajde. Použít `OQSE_TAG_PATTERN` / `findAssetKeys` z `@memizy/oqse`. (`renderHtml` už používá opravenou funkci z OQSE.)
 - **Assety:** host pluginu vždy předá načitatelné URL (relativní cesty z `.oqse` balíčku převede na `blob:`/`https:`); plugin hledá assety přes `resolveAsset` (položka, pak sada).
 
 ---
@@ -310,15 +312,30 @@ Komponenty jsou dnes navázané na Supabase a stores aplikace (`useStudySetsStor
 ### 10.2 OQSE Markdown: jeden soubor = jedna sada poznámek (hotovo)
 Poznámky se píšou jako jeden Markdown dokument (`.oqse.md`), bez escapování Mermaidu a LaTeXu. Bezztrátově ekvivalentní s JSON sadou, která obsahuje jen `note` položky. Specifikace: kapitola „OQSE Markdown (Note Sets)“ v `oqse.md`; implementace `parseMarkdownSet` / `serializeMarkdownSet`.
 
-- **Frontmatter** = `oqse: "0.2"` + `meta` (ustálená konvence, Obsidian ho ukazuje jako Properties). Volitelně `noteHeadingLevel` (výchozí 2).
-- **Text před prvním nadpisem** = `meta.description`.
-- **Nadpis o úroveň výš** (`#`) = kapitola → `topic` následujících poznámek.
-- **Nadpis poznámky** (`##`) = `title`; pod ním volitelný komentář `<!-- oqse: {id: …, tags: […]} -->` (neviditelný v Obsidianu i na GitHubu) s ostatními poli.
-- **Callout `> [!hidden]-`** na konci poznámky = `hiddenContent`.
+```markdown
+---
+oqse: "0.2"
+language: cs
+---
+# Termodynamika                 ← název sady (meta.title)
+Úvod = popis sady.
+
+## Základní zákony              ← kapitola (topic)
+
+### První zákon                 ← poznámka (title)
+<!-- oqse: {id: …, tags: [fyzika]} -->
+Obsah…
+#### Odvození                   ← nadpis uvnitř poznámky (v JSONu ##)
+
+> [!hidden]-
+> Skrytý obsah.
+```
+
+- **Výchozí úroveň poznámek je 3** (konvence: jeden `#` = název dokumentu). Úrovně 2 a 1 jsou pro dokumenty bez názvu nebo s hlubokými nadpisy; serializace volí automaticky 3 → 2 → 1.
+- **Nadpisy v poznámce jsou relativní k poznámce:** v JSONu titulek = úroveň 1, obsah začíná `##`; v Markdownu se posunou o úroveň poznámky. Renderer má volbu `headingOffset` (`shiftHeadings`), aby si plugin nadpisy přizpůsobil layoutu.
 - **Chybějící `id`, `createdAt`, `updatedAt` parser vygeneruje** a nahlásí v `generated` → AI ani lidé nemusí vymýšlet UUID; aplikace je zapíše zpět.
-- Serializace volí úroveň nadpisů automaticky (když obsah poznámek používá `##`, poznámky budou `#` a `topic` se přesune do komentáře).
 - **Pokrok (buckety) se do souboru neukládá** (OQSEP / data Obsidian pluginu).
-- Ověřeno na vlastních sadách: 16 z 20 sad s poznámkami projde převodem tam a zpět beze změny (kromě koncových mezer, které formát ořezává). 4 sady (`ndbi046`, `nswi166`, každá 2×) mají v obsahu poznámek nadpis H1 a do Markdownu převést nejdou, dokud se nadpisy nesníží.
+- Ověřeno na vlastních sadách: 16 z 20 sad s poznámkami projde převodem tam a zpět beze změny na úrovni 3 (kromě koncových mezer, které formát ořezává). 4 sady (`ndbi046`, `nswi166`, každá 2×) mají v obsahu poznámky nadpis H1 → validace dává varování `NOTE_HEADING_LEVEL`, převod do Markdownu jde až po snížení nadpisů.
 
 ### 10.3 Lint obsahu
 Volitelná kontrola při importu: `mermaid.parse`, KaTeX s `throwOnError`. Ukáže, která poznámka je rozbitá, dřív než ji uživatel otevře.
@@ -415,6 +432,7 @@ Bez čeho se prezentace neobejde: kontrakt v1, lab s testy, relay server na Netc
   - `math-input`: odstranit `$` kolem `correctAnswer` a `alternativeAnswers`
   - Upravit `course-mff-informatika/bakalarske-statnice/Instrukce.md`: `math` → `latex`; dlouhodobě instrukce přepsat na Markdown poznámky (odpadne zdvojování zpětných lomítek).
   - Pozor: repo `course-standalone-sets/sets-mff-informatika` mělo při kontrole necommitnutou změnu.
+  - `ndbi046` a `nswi166` (v obou kurzech): nadpisy H1 uvnitř poznámek snížit na `##` a níž (nadpisy v poznámce jsou relativní, titulek = úroveň 1).
   - `set-ceska-historie-zabavne`: 3 poznámky obsahují `<h2>` bez deklarace `html` → přepsat na Markdown `##` (nebo deklarovat `html`). Nová validace je jinak přeskočí.
 - **Import obecného Markdownu do poznámek** (`@memizy/oqse`): samostatná, ztrátová funkce (např. `importMarkdownAsNotes(md, { headingLevel })`), která rozdělí běžný Markdown podle nadpisů zvolené úrovně na note položky (nadpis → `title`, vygenerované `id`, případný callout `[!hidden]` → `hiddenContent`). Oddělená od striktní bezztrátové serializace.
 - Standalone hry: `game-client` (MessagePack), authoritative režim, API klíče a kvóty.
