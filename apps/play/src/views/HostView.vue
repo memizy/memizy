@@ -29,6 +29,7 @@ import JoinInfo from '@/components/JoinInfo.vue';
 import PlayerList from '@/components/PlayerList.vue';
 import PluginFrame from '@/components/PluginFrame.vue';
 import SettingsForm from '@/components/SettingsForm.vue';
+import StartScreen from '@/components/StartScreen.vue';
 import { RELAY_URL } from '@/lib/config';
 import { generateName } from '@/lib/names';
 import { persisted } from '@/lib/persisted';
@@ -242,6 +243,8 @@ watch([pluginRaw, prepared, () => roomStatus.value], scheduleUpload);
 const phase = ref<Phase>('lobby');
 const game = shallowRef<LocalSession | null>(null);
 const startError = ref<string | null>(null);
+const countdown = ref<number | null>(null);
+const readyAddresses = ref<string[]>([]);
 const showPlayers = ref(false);
 const stage = ref<HTMLElement | null>(null);
 
@@ -311,8 +314,15 @@ function launch(p: LoadedPlugin, file: OQSEFile, roster: { id: string; name: str
       players: session.players.map(({ id, name, isHost }) => ({ id, name, isHost })),
     });
   void record();
+  countdown.value = null;
+  readyAddresses.value = [];
   session.on((e) => {
-    if (e.type === 'started') phase.value = 'running';
+    if (e.type === 'ready') readyAddresses.value = [...new Set([...readyAddresses.value, e.address])];
+    else if (e.type === 'countdown') countdown.value = e.secondsLeft;
+    else if (e.type === 'started') {
+      countdown.value = null;
+      phase.value = 'running';
+    }
     else if (e.type === 'players') void record();
     else if (e.type === 'ended') {
       phase.value = 'ended';
@@ -409,6 +419,12 @@ const statusClass = computed(() =>
 <template>
   <div class="min-h-dvh">
     <!-- Running game -->
+    <StartScreen
+      v-if="game && (phase === 'starting' || countdown)"
+      :countdown="countdown"
+      :ready="readyAddresses.filter((a) => game!.addresses().includes(a)).length"
+      :total="game.addresses().length"
+    />
     <div v-if="game && phase !== 'lobby'" class="flex h-dvh flex-col bg-slate-900">
       <div class="flex items-center gap-3 bg-white px-4 py-2 text-sm shadow-sm">
         <AppLogo class="hidden sm:flex" />
@@ -427,7 +443,7 @@ const statusClass = computed(() =>
       </div>
       <div class="relative min-h-0 flex-1">
         <div ref="stage" class="mx-auto size-full bg-white" :class="hostAs === 'player' ? 'max-w-md' : ''">
-          <PluginFrame :session="game" :address="hostAs === 'presenter' ? 'board' : 'host'" />
+          <PluginFrame :session="game" :address="hostAs === 'presenter' ? 'board' : 'host'" :overlays="false" />
         </div>
         <div v-if="showPlayers" class="absolute top-2 right-2 w-80 max-w-[90vw]">
           <PlayerList :players="players" @kick="kick" />

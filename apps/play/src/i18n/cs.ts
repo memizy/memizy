@@ -170,6 +170,12 @@ export default {
     mountFailed: 'Hru se nepodařilo načíst: {error}',
     game: 'Hra: {name}',
   },
+  start: {
+    waitingPlayers: 'Čekám, až se hráči načtou…',
+    ready: '{n} / {total} připraveno',
+    startingIn: 'Začínáme za…',
+    loading: 'Načítám hru…',
+  },
   settingsForm: {
     title: 'Nastavení hry',
     invalid: 'Nastavení není platné',

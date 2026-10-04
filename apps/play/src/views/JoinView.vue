@@ -6,6 +6,7 @@ import { ArrowLeftIcon, ArrowPathIcon, RocketLaunchIcon, SignalSlashIcon } from 
 import { RelayPlayer, type RelayPlayerEvent, type RelayStatus, type RemoteLobbyState } from '@memizy/host-sdk';
 import { normalizePlayerName, type RoomInfo } from '@memizy/protocol';
 import LocaleSwitch from '@/components/LocaleSwitch.vue';
+import StartScreen from '@/components/StartScreen.vue';
 import { RELAY_URL } from '@/lib/config';
 import { generateName } from '@/lib/names';
 import { withSdkSource } from '@/lib/plugins';
@@ -49,6 +50,16 @@ function saveToken(p: string, token: string | null): void {
 }
 
 const canJoin = computed(() => /^\d{6}$/.test(pin.value) && normalizePlayerName(name.value).length > 0 && stage.value === 'form');
+
+/** Pasting a PIN or a join link joins right away; typing waits for the button. */
+function onPaste(event: ClipboardEvent): void {
+  const text = event.clipboardData?.getData('text') ?? '';
+  const match = /(?:join\/)?(\d{6})(?!\d)/.exec(text);
+  if (!match) return;
+  event.preventDefault();
+  pin.value = match[1];
+  void join();
+}
 
 async function join(): Promise<void> {
   if (!/^\d{6}$/.test(pin.value)) return;
@@ -182,6 +193,9 @@ onMounted(() => {
   if (/^\d{6}$/.test(pin.value) && savedToken(pin.value)) {
     stage.value = 'joining';
     connect(savedToken(pin.value));
+  } else if (/^\d{6}$/.test(pin.value)) {
+    // Opened from a link or QR code: join right away with the random nickname.
+    void join();
   }
 });
 
@@ -198,13 +212,15 @@ const waitingForHost = computed(() => !hostConnected.value || state.value?.autho
 
 <template>
   <div class="min-h-dvh">
+    <StartScreen
+      v-if="stage === 'joined' && (state?.phase === 'loading' || state?.phase === 'countdown')"
+      :countdown="state.phase === 'countdown' ? state.countdown : null"
+      :text="t('start.loading')"
+    />
     <!-- The game (the container must exist before the host mounts the plugin) -->
     <div v-show="frameActive" class="fixed inset-0 z-10 bg-white">
       <div ref="frameBox" class="size-full" />
-      <div v-if="state?.phase === 'countdown'" class="absolute inset-0 grid place-items-center bg-black/55 text-8xl font-black text-white">
-        {{ state.countdown }}
-      </div>
-      <div v-else-if="waitingForHost && state?.phase !== 'ended'" class="absolute inset-0 grid place-items-center bg-black/55 p-6 text-center text-xl font-semibold text-white">
+      <div v-if="waitingForHost && state?.phase !== 'ended'" class="absolute inset-0 grid place-items-center bg-black/55 p-6 text-center text-xl font-semibold text-white">
         {{ t('join.hostAway') }}
       </div>
       <div v-if="offline" class="absolute inset-x-0 top-0 flex items-center justify-center gap-2 bg-amber-500 py-1 text-sm font-semibold text-white">
@@ -238,6 +254,7 @@ const waitingForHost = computed(() => !hostConnected.value || state.value?.autho
             aria-label="PIN"
             class="w-full border-b-2 border-orange-300 bg-transparent pb-2 text-center font-mono text-5xl font-bold tracking-[0.2em] text-accent-orange outline-none placeholder:text-orange-200 focus:border-accent-orange"
             @input="pin = pin.replace(/\D/g, '').slice(0, 6)"
+            @paste="onPaste"
           />
           <div class="text-center">
             <div class="text-xs text-text-gray">{{ t('join.yourName') }}</div>

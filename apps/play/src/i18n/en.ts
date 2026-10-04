@@ -172,6 +172,12 @@ const en: typeof cs = {
     mountFailed: 'The game could not be loaded: {error}',
     game: 'Game: {name}',
   },
+  start: {
+    waitingPlayers: 'Waiting for players to load…',
+    ready: '{n} / {total} ready',
+    startingIn: 'Starting in…',
+    loading: 'Loading the game…',
+  },
   settingsForm: {
     title: 'Game settings',
     invalid: 'The settings are not valid',

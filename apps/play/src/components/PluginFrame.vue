@@ -3,7 +3,7 @@ import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { mountPlugin, type LocalSession, type MountedPlugin } from '@memizy/host-sdk';
 
 /** One sandboxed plugin instance of a session (board, controller, solo or settings screen). */
-const props = defineProps<{ session: LocalSession; address: string }>();
+const props = withDefaults(defineProps<{ session: LocalSession; address: string; overlays?: boolean }>(), { overlays: true });
 const emit = defineEmits<{ error: [string] }>();
 
 const host = ref<HTMLElement | null>(null);
@@ -12,7 +12,7 @@ let disposed = false;
 
 onMounted(async () => {
   try {
-    const result = await mountPlugin(props.session, props.address, host.value!);
+    const result = await mountPlugin(props.session, props.address, host.value!, { overlays: props.overlays });
     if (disposed) result.unmount();
     else mounted = result;
   } catch (error) {
