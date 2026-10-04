@@ -140,7 +140,7 @@ Normativní popis je v **`packages/protocol/SPEC.md`** (pojmy, manifest, průbě
    - dávkování změn stavu (≤ ~20/s), resync po `authorityChanged`;
    - assety: `getAsset` → `Blob` → vlastní object URL;
    - standalone režim (bez hostitele): solo s ukázkovými daty.
-4. **`@memizy/host-sdk`:** Penpal most, handshake a vyjednání verzí, validace všech volání a limity, chybové kódy, lokální transport (solo, lab), relay transport, úložiště snapshotu a dat pluginu, lobby + bariéra načtení + odpočet (solo bez nich), overlay „Čekáme na hostitele…“ při výpadku authority, načítání sady přes `loadOQSEFile` a filtrování typů přes `checkCompatibility`.
+4. ✅ **`@memizy/host-sdk`** (hotovo 1.0.0-rc.1 kromě relay transportu – ten přijde se serverem; `LocalSession` pro Lab a solo, `mountPlugin` s iframe + Penpal, integrační testy se skutečným plugin-sdk): Penpal most, handshake a vyjednání verzí, validace všech volání a limity, chybové kódy, lokální transport (solo, lab), relay transport, úložiště snapshotu a dat pluginu, lobby + bariéra načtení + odpočet (solo bez nich), overlay „Čekáme na hostitele…“ při výpadku authority, načítání sady přes `loadOQSEFile` a filtrování typů přes `checkCompatibility`.
 5. **Referenční pluginy:** quiz-conquest (solo + oba `hostAs`) a jeden solo plugin.
 6. **Akceptační test:** pluginy vygenerované 3–5 AI modely jen podle guidu.
 

@@ -5,6 +5,24 @@
     "": {
       "name": "memizy-engine",
     },
+    "packages/host-sdk": {
+      "name": "@memizy/host-sdk",
+      "version": "1.0.0-rc.1",
+      "dependencies": {
+        "@memizy/oqse": "^0.2.0",
+        "@memizy/protocol": "^1.0.0-rc.1",
+        "penpal": "^7.0.6",
+      },
+      "devDependencies": {
+        "@memizy/plugin-sdk": "^1.0.0-rc.1",
+        "@types/node": "^25.6.0",
+        "jsdom": "^30.1.2",
+        "typescript": "~6.0.2",
+        "vite": "^8.0.9",
+        "vite-plugin-dts": "^4.5.4",
+        "vitest": "^4.1.4",
+      },
+    },
     "packages/oqse": {
       "name": "@memizy/oqse",
       "version": "0.2.0",
@@ -142,6 +160,8 @@
     "@exodus/bytes": ["@exodus/bytes@1.16.0", "", { "peerDependencies": { "@noble/hashes": "^1.8.0 || ^2.0.0" }, "optionalPeers": ["@noble/hashes"] }, "sha512-IcpW84uEn3N7ETtNZMlxKhfl6Pec8rUNGOTBtWbK1FKhJxIFAptZyVrvVRVBimAJxJCgc3PxepxkdWWG4DVzfA=="],
 
     "@jridgewell/sourcemap-codec": ["@jridgewell/sourcemap-codec@1.6.0", "", {}, "sha512-T7jf+5zgsZHwNJ4lvQ7/aezbyk0nNX+zJVWpmHA7VYsEx7a7qr5Rg5IbtJFqkgze5Y2sruq1RUY8Q837Od7iFw=="],
+
+    "@memizy/host-sdk": ["@memizy/host-sdk@workspace:packages/host-sdk"],
 
     "@memizy/oqse": ["@memizy/oqse@workspace:packages/oqse"],
 
