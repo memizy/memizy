@@ -186,7 +186,7 @@
             "email": {
               "type": "string",
               "format": "email",
-              "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+              "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
             },
             "url": {
               "type": "string",
@@ -213,7 +213,7 @@
               "email": {
                 "type": "string",
                 "format": "email",
-                "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+                "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
               },
               "url": {
                 "type": "string",
@@ -3535,7 +3535,10 @@
                       "minimum": 0,
                       "maximum": 9007199254740991
                     }
-                  ]
+                  ],
+                  "additionalItems": false,
+                  "minItems": 2,
+                  "maxItems": 2
                 }
               },
               "minCorrect": {
@@ -5530,7 +5533,10 @@
                       "minimum": 0,
                       "maximum": 9007199254740991
                     }
-                  ]
+                  ],
+                  "additionalItems": false,
+                  "minItems": 2,
+                  "maxItems": 2
                 }
               },
               "multiplePerRow": {

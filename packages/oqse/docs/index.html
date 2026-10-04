@@ -330,7 +330,7 @@
                     if (typeValue === 'header') mdFile = 'oqse-header.md';
                     
                     // Fetch the raw markdown of the specification
-                    const response = await fetch(`https://raw.githubusercontent.com/memizy/oqse-specification/main/${mdFile}`);
+                    const response = await fetch(`https://raw.githubusercontent.com/memizy/memizy/main/packages/oqse/${mdFile}`);
                     if (response.ok) {
                         const specContent = await response.text();
                         promptText += `To help you fix this, here is the complete official ${type} specification. Please use it as the definitive source of truth:\n\n`;

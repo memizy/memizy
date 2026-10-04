@@ -299,7 +299,8 @@ Komponenty jsou dnes navázané na Supabase a stores aplikace (`useStudySetsStor
 ## 10. OQSE 0.2
 
 ### 10.1 Změny před prezentací (ovlivňují data pro pluginy)
-- `math` → **`latex`** ve `features`. Validátor přechodně přijímá `math`, normalizuje ho na `latex` a vypíše varování (kvůli existujícím sadám v IndexedDB).
+- `math` → **`latex`** ve `features`. **Knihovna je striktní, bez aliasů a migračního kódu.** Vlastní sady v `code/courses` převede jednorázový skript. Sady uložené v IndexedDB aplikace převede jednorázová migrace přímo v aplikaci (`platform`) při přechodu na `@memizy/oqse` 0.2.
+- URL schémat míří na verzovaný npm balíček (`https://cdn.jsdelivr.net/npm/@memizy/oqse@0.2/schemas/…`), takže nezávisí na umístění repozitáře.
 - Item typ `math-input` zůstává (popisuje interakci, ne rendering).
 - Kontrola a zmražení tvaru položek, které dostávají pluginy. Stabilní `id` sad (budou na ně odkazovat kurzy).
 
@@ -403,7 +404,7 @@ Bez čeho se prezentace neobejde: kontrakt v1, lab s testy, relay server na Netc
 
 ## 13. Po prezentaci
 
-- Integrace `host-sdk` + labu do hlavní aplikace (`platform`).
+- Integrace `host-sdk` + labu do hlavní aplikace (`platform`), včetně jednorázové migrace sad v IndexedDB na OQSE 0.2 (`math` → `latex`, `version` → `0.2`).
 - Standalone hry: `game-client` (MessagePack), authoritative režim, API klíče a kvóty.
 - P2P přes nový transport v `host-sdk`.
 - Obsidian plugin (bucketový systém nad Markdown poznámkami).

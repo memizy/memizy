@@ -1,7 +1,7 @@
 
-# OQSEM v0.1 Specification (Open Quiz & Study Exchange Manifest)
+# OQSEM v0.2 Specification (Open Quiz & Study Exchange Manifest)
 
-OQSE v0.1 uses a **capability-based negotiation system**. Every application, micro-frontend, or plugin MUST declare exactly what it can do using an **OQSEM**. Interoperability is achieved by matching the **Requirements** of a study set with the **Capabilities** of the application.
+OQSE v0.2 uses a **capability-based negotiation system**. Every application, micro-frontend, or plugin MUST declare exactly what it can do using an **OQSEM**. Interoperability is achieved by matching the **Requirements** of a study set with the **Capabilities** of the application.
 
 ## Table of Contents
 
@@ -20,10 +20,10 @@ Applications MUST declare their capabilities in a standardized JSON format, know
 
 ```json
 {
-  "$schema": "https://cdn.jsdelivr.net/gh/memizy/oqse-specification@main/schemas/oqse-manifest-v0.1.json",
-  "version": "0.1",
+  "$schema": "https://cdn.jsdelivr.net/npm/@memizy/oqse@0.2/schemas/oqse-manifest-v0.2.json",
+  "version": "0.2",
   "pluginVersion": "2.1.0",
-  "minOqseVersion": "0.1",
+  "minOqseVersion": "0.2",
   "maxOqseVersion": "1.99",
   "id": "https://memizy.com/universal-player",
   "appName": "Memizy Universal Player",
@@ -55,7 +55,7 @@ Applications MUST declare their capabilities in a standardized JSON format, know
       "model": null
     },
     "features": [
-      "math",
+      "latex",
       "markdown",
       "html",
       "text-to-speech"
@@ -244,7 +244,7 @@ For the full semantics of the capabilities object, see [Capabilities Object](#ca
 - `html` is only meaningful when `markdown` is also declared. Declaring `html` without `markdown` SHOULD trigger a warning.
 
 **`capabilities.latexPackages`:**
-- Only meaningful when `"math"` is present in `capabilities.features`. Declaring `latexPackages` without `"math"` SHOULD trigger a warning.
+- Only meaningful when `"latex"` is present in `capabilities.features`. Declaring `latexPackages` without `"latex"` SHOULD trigger a warning.
 
 **`capabilities.itemProperties` / `capabilities.metaProperties`:**
 - Each value SHOULD appear in the relevant registry or carry the `x-` prefix.

@@ -30,7 +30,7 @@ describe('Progress Validation Schemas', () => {
 
   it('OQSEProgressSchema: rejects non-UUID record keys', () => {
     const invalidFile = {
-      version: "0.1",
+      version: "0.2",
       meta: {
         setId: "123e4567-e89b-12d3-a456-426614174000",
         exportedAt: "2025-01-01T00:00:00Z"
@@ -60,7 +60,7 @@ describe('Progress Validation Schemas', () => {
 
   it('safeValidateOQSEProgress + formatOQSEErrors: returns readable issue list', () => {
     const result = safeValidateOQSEProgress({
-      version: '0.1',
+      version: '0.2',
       meta: {
         setId: '123e4567-e89b-12d3-a456-426614174000',
       },

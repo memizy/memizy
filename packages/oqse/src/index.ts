@@ -12,3 +12,4 @@ export * from './headerValidation';
 
 export * from './utils';
 export * from './richTextProcessor';
+export * from './noteMarkdown';

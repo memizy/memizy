@@ -23,10 +23,10 @@ This repository contains:
 
 The auto-generated JSON Schemas are published with this repository and are available at the following URLs:
 
-- Core OQSE Schema: https://cdn.jsdelivr.net/gh/memizy/oqse-specification@main/schemas/oqse-v0.1.json
-- Manifest Schema: https://cdn.jsdelivr.net/gh/memizy/oqse-specification@main/schemas/oqse-manifest-v0.1.json
-- Progress Schema: https://cdn.jsdelivr.net/gh/memizy/oqse-specification@main/schemas/oqse-progress-v0.1.json
-- Header Schema: https://cdn.jsdelivr.net/gh/memizy/oqse-specification@main/schemas/oqse-header-v0.1.json
+- Core OQSE Schema: https://cdn.jsdelivr.net/npm/@memizy/oqse@0.2/schemas/oqse-v0.2.json
+- Manifest Schema: https://cdn.jsdelivr.net/npm/@memizy/oqse@0.2/schemas/oqse-manifest-v0.2.json
+- Progress Schema: https://cdn.jsdelivr.net/npm/@memizy/oqse@0.2/schemas/oqse-progress-v0.2.json
+- Header Schema: https://cdn.jsdelivr.net/npm/@memizy/oqse@0.2/schemas/oqse-header-v0.2.json
 
 ## Architecture & Single Source of Truth
 

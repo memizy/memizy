@@ -1,4 +1,4 @@
-# OQSE v0.1 Specification (Open Quiz & Study Exchange)
+# OQSE v0.2 Specification (Open Quiz & Study Exchange)
 
 **OQSE** (Open Quiz & Study Exchange) is an open, JSON-based format designed for easy creation, sharing, and importing of study sets. It is designed with emphasis on flexibility, extensibility, semantic interoperability, legal clarity, and backward compatibility.
 
@@ -16,7 +16,7 @@ In this specification, the keywords **MUST**, **MUST NOT**, **SHOULD**, **SHOULD
 
 **Implementation Terminology:**
 - **Application:** Any software entity that interacts with OQSE data. Every application declares its specific **Capabilities** via an [OQSEM (Open Quiz & Study Exchange Manifest)](./oqse-manifest.md).
-- **Capability:** A specifically declared competence of an application. This encompasses the actions it can perform (e.g., `render`, `edit`, `export`), the item types and asset formats it supports (e.g., `mcq-single`, `image/png`), and the advanced features (e.g., `explanations`, `sourceMaterials`) or metadata it can process (e.g., `markdown`, `math`).
+- **Capability:** A specifically declared competence of an application. This encompasses the actions it can perform (e.g., `render`, `edit`, `export`), the item types and asset formats it supports (e.g., `mcq-single`, `image/png`), and the advanced features (e.g., `explanations`, `sourceMaterials`) or metadata it can process (e.g., `markdown`, `latex`).
 - **Rule Application:** When the specification states "Application MUST...", the rule applies contextually based on the application's declared capabilities. For example, rules regarding UI display and tolerant parsing apply to applications declaring the `render` action, whereas strict data normalization rules during saving apply to those declaring `edit` or `export`.
 
 
@@ -49,7 +49,7 @@ In this specification, the keywords **MUST**, **MUST NOT**, **SHOULD**, **SHOULD
   * **Unique IDs:** All `id` values MUST be generated as **UUIDv7** to ensure global uniqueness and native temporal ordering of records in databases. Applications MUST accept UUID versions 4 and 7 when loading existing sets. Applications MAY accept other versions (1-6), but this is not required. Applications creating new items MUST use UUIDv7. When re-exporting an existing set, the original UUID MUST be preserved regardless of version. Validation checks only the format (8-4-4-4-12 hex characters), not the specific UUID version. Exception: `SourceMaterial.id` MAY be an alphanumeric string unique only within that file, and `id` within internal item objects such as `TimelineEvent` or `CategorizeItem` MAY also be an alphanumeric string.
   * **Text Formatting:** The specification distinguishes two types of text fields:
     * **Plain Text:** Fields intended for metadata and identifiers (e.g., titles, tags, alt texts). Interpreted as plain text without any formatting.
-    * **Rich Content:** Fields intended for educational content. Support **GitHub Flavored Markdown (GFM)**, **LaTeX** mathematics compatible with KaTeX/MathJax (inline `$x^2$` and blocks `$$...$$` rendered as display style on a separate line), and media references using Media Tag syntax `<asset:key />`.
+    * **Rich Content:** Fields intended for educational content. Support **GitHub Flavored Markdown (GFM)**, **LaTeX** mathematics compatible with KaTeX/MathJax (inline `$x^2$` and blocks `$$...$$` rendered as display style on a separate line; only when the `latex` feature is declared, otherwise `$` is a literal character), and media references using Media Tag syntax `<asset:key />`.
   * **Media Embedding System (Assets):** The format uses a centralized "assets" system for embedding media in Rich Content fields. Media are defined in `item.assets` and referenced using the special tag `<asset:key />`. **[(See Media Reference Syntax)](#media-reference-syntax-media-tags)**.
   * **Backward Compatibility:** Applications MUST ignore unknown keys (forward compatibility). New specification versions MUST NOT change the meaning of existing keys within the same MAJOR version.
   * **Case Sensitivity of Files:** All keys in `assets` and filenames within the OQSE container (ZIP) MUST be written in lowercase. Application MUST immediately convert all filenames and asset keys to lowercase during import (with a warning on change) and MUST reject colliding names that match after conversion. On export, only lowercase names may be generated. References `<asset:... />` are case-insensitive; applications MUST convert the token to lowercase before lookup to maintain consistency across platforms.
@@ -96,8 +96,8 @@ The root object of an OQSE file consists of 4 keys:
 
 ```json
 {
-  "$schema": "https://cdn.jsdelivr.net/gh/memizy/oqse-specification@main/schemas/oqse-v0.1.json",
-  "version": "0.1",
+  "$schema": "https://cdn.jsdelivr.net/npm/@memizy/oqse@0.2/schemas/oqse-v0.2.json",
+  "version": "0.2",
   "meta": { ... },
   "items": [ ... ]
 }
@@ -119,7 +119,7 @@ To avoid redundancy, OQSE defines a base object called **FeatureProfile**. This 
 | Key | Type | Description |
 | :--- | :--- | :--- |
 | `features` | string[] | Array of feature flags. MUST contain only values from the **Official Feature Registry** or custom `x-` prefixed values (e.g., `"x-my-feature"`). See [Extension Rules](#extension-rules). |
-| `latexPackages` | string[] | Array of LaTeX packages (e.g., `["mhchem"]`). Relevant only if `features` includes `"math"`. |
+| `latexPackages` | string[] | Array of LaTeX packages (e.g., `["mhchem"]`). Relevant only if `features` includes `"latex"`. |
 | `itemProperties` | string[] | Array of item properties supported/required. [See **Registry of Properties**](#registry-of-properties-itemproperties--metaproperties). |
 | `metaProperties` | string[] | Array of metadata properties supported/required. [See **Registry of Properties**](#registry-of-properties-itemproperties--metaproperties). |
 
@@ -132,7 +132,7 @@ These features provide the foundational text processing capabilities. They do no
 | Feature Key | Category | Description |
 | :--- | :--- | :--- |
 | `markdown` | Formatting | Application MUST support parsing **GitHub Flavored Markdown (GFM)**. While the standard GFM specification permits raw HTML, this Base Tier (Tier 1) restricts authors to pure Markdown syntax (e.g., `**bold**`, tables, code blocks). Any raw HTML tags manually embedded in the text without declaring the `html` feature MUST cause a validation error. |
-| `math` | Formatting | Application MUST detect `$` and `$$` delimiters in text and render them as LaTeX mathematical formulas. |
+| `latex` | Formatting | Application MUST detect `$` and `$$` delimiters in text and render them as LaTeX mathematical formulas. Without this feature, `$` MUST be treated as a literal character (e.g., currency), so authors never need to escape it. |
 | `rtl` | Typography | Application MUST support Right-to-Left text direction and alignment for languages like Arabic or Hebrew. |
 
 **2. Extended Formatting & Blocks (Tier 2)**
@@ -466,6 +466,35 @@ The specification in the current version defines **22 official item types**. Eac
   "hiddenContent": "The **First Law of Thermodynamics** states that energy cannot be created or destroyed, only transferred or changed from one form to another."
 }
 ```
+
+#### Markdown Notes
+
+A `note` item MAY also be stored as a standalone Markdown file (`.md`, UTF-8). This representation is **losslessly equivalent** to the JSON item and exists so that notes with complex content (Mermaid diagrams, LaTeX, code) can be written and edited without escaping them inside JSON strings. It is compatible with common Markdown editors such as Obsidian. Only `note` items have a Markdown representation.
+
+**Structure:**
+
+1. **YAML frontmatter** (REQUIRED). The file MUST start with a line `---` and the frontmatter ends with the next line `---`. It is a YAML 1.2 mapping containing every item property except `type`, `content` and `hiddenContent`. `id` is REQUIRED. `type` MAY be present, but if so it MUST be `"note"`. `content` and `hiddenContent` MUST NOT appear in the frontmatter. It is RECOMMENDED to keep the frontmatter minimal (`id`, optionally `title` and `tags`) so the file stays readable.
+2. **Body** = `content`. Everything after the frontmatter up to the hidden callout (or the end of the file).
+3. **Hidden callout** = `hiddenContent` (OPTIONAL). A blockquote callout whose first line is `> [!hidden]-`. It MUST be the last block of the file, MUST be preceded by a blank line, and every line of it MUST start with `>` (an empty line inside it is written as `>`). The marker is case-insensitive; the fold suffix (`-`, `+` or none) and any callout title after the marker are ignored when parsing. When serializing, applications MUST write `> [!hidden]-` (collapsed by default) without a title. At most one hidden callout is allowed. Lines inside fenced code blocks are never treated as the hidden callout.
+
+**Normalization rules:**
+* Line endings are normalized to `\n`, and a leading BOM is ignored.
+* Leading and trailing blank lines of `content` and `hiddenContent` are not significant. An empty `hiddenContent` is omitted.
+* Learning progress (e.g., Leitner buckets) MUST NOT be stored in the Markdown file. Progress belongs to the OQSE Progress format (OQSEP), so the content stays clean.
+
+**Example** (equivalent to the JSON example above):
+````markdown
+---
+id: 019aa5ec-3daa-796f-9289-01c6214ec2b3
+title: Introduction to Thermodynamics
+---
+Thermodynamics is a branch of physics dealing with heat, work, and temperature. What is the First Law?
+
+> [!hidden]-
+> The **First Law of Thermodynamics** states that energy cannot be created or destroyed, only transferred or changed from one form to another.
+````
+
+**Reference implementation:** `parseNoteMarkdown`, `safeParseNoteMarkdown` and `serializeNoteMarkdown` in the `@memizy/oqse` package.
 
 ### `type: "flashcard"` (Flashcard)
 
@@ -1265,8 +1294,8 @@ This optional object (`item.pedagogy`) serves to store advanced metadata about d
 
 ```json
 {
-  "$schema": "https://cdn.jsdelivr.net/gh/memizy/oqse-specification@main/schemas/oqse-v0.1.json",
-  "version": "0.1",
+  "$schema": "https://cdn.jsdelivr.net/npm/@memizy/oqse@0.2/schemas/oqse-v0.2.json",
+  "version": "0.2",
   "meta": {
     "id": "019aa606-cbb5-7b2e-9e61-ac335db1eb4b",
     "title": "Rocket Science Basics 🚀",
@@ -1575,7 +1604,7 @@ To ensure consistency and practical implementability, the specification defines 
 
 ### UUID Validation Rules
 
-The standard for OQSE v0.1 is **UUIDv7**. For applications simplification, it is recommended to support only **UUIDv7** (preferred) and **UUIDv4** (fallback).
+The standard for OQSE v0.2 is **UUIDv7**. For applications simplification, it is recommended to support only **UUIDv7** (preferred) and **UUIDv4** (fallback).
 
 **Rules for Applications:**
 1. **Import:** Application MUST accept UUID versions 4 and 7 when loading existing sets. Application MAY accept other versions (1-6), but this is not required.
@@ -1714,8 +1743,8 @@ This order ensures that:
 **Example of correct order:**
 ```json
 {
-  "$schema": "https://cdn.jsdelivr.net/gh/memizy/oqse-specification@main/schemas/oqse-v0.1.json",
-  "version": "0.1",
+  "$schema": "https://cdn.jsdelivr.net/npm/@memizy/oqse@0.2/schemas/oqse-v0.2.json",
+  "version": "0.2",
   "meta": { ... },
   "items": [ ... ]
 }
@@ -1908,7 +1937,7 @@ Applications may define custom item types using `x-` prefix (e.g., `x-code-chall
 ### JSON Schema
 Official JSON Schema is available at:
 
-[https://cdn.jsdelivr.net/gh/memizy/oqse-specification@main/schemas/oqse-v0.1.json](https://cdn.jsdelivr.net/gh/memizy/oqse-specification@main/schemas/oqse-v0.1.json)
+[https://cdn.jsdelivr.net/npm/@memizy/oqse@0.2/schemas/oqse-v0.2.json](https://cdn.jsdelivr.net/npm/@memizy/oqse@0.2/schemas/oqse-v0.2.json)
 
 ### Recommended Tools
   * **Validators:** Ajv, JSON Schema Validator
@@ -2054,11 +2083,17 @@ OQSE is an open standard. Suggestions for improvements:
 
 -----
 
-**Document Version:** 0.1  
-**Last Updated:** April 18, 2026  
+**Document Version:** 0.2  
+**Last Updated:** October 2026  
 **Documentation License:** CC-BY-SA-4.0
 
 -----
+
+### Version 0.2 (October 2026)
+* Renamed the `math` feature to `latex` (consistent with `latexPackages`). Without the `latex` feature, `$` is a literal character.
+* Added the Markdown serialization for `note` items (see [Markdown Notes](#markdown-notes)).
+* Schema URLs now point to the versioned npm package (`https://cdn.jsdelivr.net/npm/@memizy/oqse@0.2/schemas/…`).
+* No backward-compatibility aliases: v0.1 files must be migrated by the consuming application.
 
 ### Version 0.1 (April 18, 2026 )
 #### First version of this specification created

@@ -1,4 +1,4 @@
-# OQSEP v0.1 Specification (Open Quiz & Study Exchange Progress)
+# OQSEP v0.2 Specification (Open Quiz & Study Exchange Progress)
 
 Applications that implement spaced repetition or other adaptive learning algorithms accumulate significant per-user, per-item learning data over time. Without a standard for this data, users are entirely dependent on a single platform — a form of **vendor lock-in** that makes migrating to a better tool, or continuing study on a different device, practically impossible.
 
@@ -32,7 +32,7 @@ An OQSEP document is a single JSON object with the following structure.
 | Key | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
 | `$schema` | string | No | **Recommended.** URL reference to the JSON Schema for the OQSEP format for automatic validation. |
-| `version` | string | Yes | Version of the OQSEP format. MUST follow `"MAJOR.MINOR"` format (e.g., `"1.0"`). The current format version is `"0.1"`. |
+| `version` | string | Yes | Version of the OQSEP format. MUST follow `"MAJOR.MINOR"` format (e.g., `"1.0"`). The current format version is `"0.2"`. |
 | `meta` | object | Yes | Metadata block describing the origin of this progress data. See [Progress Meta Object](#progress-meta-object). |
 | `records` | object | Yes | A map of item UUIDs (strings) to their individual [Progress Record](#progress-record) objects. The absence of an item from this map implicitly signals an unseen state (equivalent to bucket 0). An explicit record with `bucket: 0` MAY, however, appear when an application stores pre-study initialization data or algorithm-specific state for an item the user has not yet encountered. |
 
@@ -108,8 +108,8 @@ A minimal but complete OQSEP document with two item records:
 
 ```json
 {
-  "$schema": "https://cdn.jsdelivr.net/gh/memizy/oqse-specification@main/schemas/oqse-progress-v0.1.json",
-  "version": "0.1",
+  "$schema": "https://cdn.jsdelivr.net/npm/@memizy/oqse@0.2/schemas/oqse-progress-v0.2.json",
+  "version": "0.2",
   "meta": {
     "setId": "019cb880-acf3-7bb1-a717-96bb05e220c1",
     "exportedAt": "2026-03-04T14:30:00Z",

@@ -1,6 +1,6 @@
 /**
  * @file manifestValidation.ts
- * @description OQSE v0.1 Zod validation schemas for the OQSE Application Manifest (section 2.1.1).
+ * @description OQSE v0.2 Zod validation schemas for the OQSE Application Manifest (section 2.1.1).
  *
  * Mirrors every type defined in `manifest.ts` and exposes helper functions for
  * validating manifest objects received from plugins, presets, or remote sources.
@@ -52,7 +52,7 @@ const ManifestVersionSchema = z
   .string()
   .regex(/^\d+\.\d+$/, 'Version must be in MAJOR.MINOR format (e.g. "0.1")');
 
-/** Official OQSE item types from v0.1. */
+/** Official OQSE item types from v0.2. */
 const OFFICIAL_OQSE_ITEM_TYPES = [
   'note',
   'flashcard',
@@ -262,7 +262,7 @@ export const ManifestCapabilitiesSchema = FeatureProfileSchema.extend({
  */
 export const OQSEManifestSchema = z
   .object({
-    // Recommended schema URL for draft v0.1: https://cdn.jsdelivr.net/gh/memizy/oqse-specification@main/schemas/oqse-manifest-v0.1.json
+    // Recommended schema URL for draft v0.2: https://cdn.jsdelivr.net/npm/@memizy/oqse@0.2/schemas/oqse-manifest-v0.2.json
     $schema: AbsoluteURLSchema.optional(),
     // --- Identity ---
 

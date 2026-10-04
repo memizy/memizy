@@ -70,7 +70,7 @@ describe('OQSE Validation Schemas', () => {
 describe('Complex Constraints & Referential Integrity', () => {
   it('OQSEFileSchema: relatedItems integrity (non-existent item)', () => {
     const invalidFile = {
-      version: '0.1',
+      version: '0.2',
       meta: {
         id: '123e4567-e89b-12d3-a456-426614174000',
         title: 'T',
@@ -98,7 +98,7 @@ describe('Complex Constraints & Referential Integrity', () => {
 
   it('OQSEFileSchema: thumbnail integrity (missing asset)', () => {
     const invalidFile = {
-      version: '0.1',
+      version: '0.2',
       meta: {
         id: '123e4567-e89b-12d3-a456-426614174000',
         title: 'T',
@@ -121,7 +121,7 @@ describe('Complex Constraints & Referential Integrity', () => {
 
   it('OQSEFileSchema: sourceMaterials integrity (missing source)', () => {
     const invalidFile = {
-      version: '0.1',
+      version: '0.2',
       meta: {
         id: '123e4567-e89b-12d3-a456-426614174000',
         title: 'T',
@@ -244,7 +244,7 @@ describe('Complex Constraints & Referential Integrity', () => {
 
   it('formatOQSEErrors: formats OQSEFileSchema validation errors into flat list', () => {
     const result = OQSEFileSchema.safeParse({
-      version: '0.1',
+      version: '0.2',
       items: [],
     });
 

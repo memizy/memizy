@@ -82,7 +82,10 @@
                   "type": "string",
                   "const": "*"
                 }
-              ]
+              ],
+              "additionalItems": false,
+              "minItems": 1,
+              "maxItems": 1
             },
             {
               "type": "array",
@@ -108,7 +111,10 @@
                       "type": "string",
                       "const": "*"
                     }
-                  ]
+                  ],
+                  "additionalItems": false,
+                  "minItems": 1,
+                  "maxItems": 1
                 },
                 {
                   "type": "array",
@@ -130,7 +136,10 @@
                       "type": "string",
                       "const": "*"
                     }
-                  ]
+                  ],
+                  "additionalItems": false,
+                  "minItems": 1,
+                  "maxItems": 1
                 },
                 {
                   "type": "array",
@@ -152,7 +161,10 @@
                       "type": "string",
                       "const": "*"
                     }
-                  ]
+                  ],
+                  "additionalItems": false,
+                  "minItems": 1,
+                  "maxItems": 1
                 },
                 {
                   "type": "array",
@@ -174,7 +186,10 @@
                       "type": "string",
                       "const": "*"
                     }
-                  ]
+                  ],
+                  "additionalItems": false,
+                  "minItems": 1,
+                  "maxItems": 1
                 },
                 {
                   "type": "array",
@@ -209,7 +224,7 @@
         "email": {
           "type": "string",
           "format": "email",
-          "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+          "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
         },
         "url": {
           "type": "string",
@@ -236,7 +251,7 @@
           "email": {
             "type": "string",
             "format": "email",
-            "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+            "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
           },
           "url": {
             "type": "string",

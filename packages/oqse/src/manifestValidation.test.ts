@@ -49,7 +49,7 @@ describe('Manifest Validation Schemas', () => {
       version: "1.0",
       id: "https://example.org/apps/test-app",
       appName: "Test App",
-      minOqseVersion: "0.1",
+      minOqseVersion: "0.2",
       maxOqseVersion: "1.99",
       capabilities: { actions: ["render"], features: [], types: ["*"] }
     };

@@ -18,7 +18,7 @@ export default defineConfig({
       formats: ['es', 'cjs']
     },
     rollupOptions: {
-      external: ['zod']
+      external: ['zod', 'yaml']
     }
   }
 });

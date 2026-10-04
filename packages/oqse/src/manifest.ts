@@ -1,5 +1,5 @@
 /**
- * OQSE v0.1 - Application Manifest Type Definitions
+ * OQSE v0.2 - Application Manifest Type Definitions
  * (Open Quiz & Study Exchange)
  *
  * Type-safe TypeScript definitions for the OQSE Application Manifest (Section 2).
@@ -81,12 +81,12 @@ export type OQSEQuestionDensity = 'low' | 'medium' | 'high';
  * Dependency notes:
  * - `syntax-highlighting`, `mermaid`, `smiles`, `abc-notation`, `html`
  *   are only meaningful when `markdown` is also declared.
- * - `latexPackages` (in FeatureProfile) is only meaningful when `math` is declared.
+ * - `latexPackages` (in FeatureProfile) is only meaningful when `latex` is declared.
  */
 export const OFFICIAL_FEATURE_KEYS = [
   // 1. Base Formatting (Tier 1)
   'markdown',
-  'math',
+  'latex',
   'rtl',
 
   // 2. Extended Formatting & Blocks (Higher parsing complexity or sanitization overhead)
@@ -348,7 +348,7 @@ export interface ManifestCapabilities extends FeatureProfile {
 
   /**
    * Array of supported LaTeX packages.
-   * Only meaningful when `features` includes `"math"`.
+   * Only meaningful when `features` includes `"latex"`.
    *
    * @example `["mhchem", "amsmath"]`
    */
@@ -391,15 +391,15 @@ export interface ManifestCapabilities extends FeatureProfile {
  * @example
  * ```json
  * {
- *   "$schema": "https://cdn.jsdelivr.net/gh/memizy/oqse-specification@main/schemas/oqse-manifest-v0.1.json",
- *   "version": "0.1",
+ *   "$schema": "https://cdn.jsdelivr.net/npm/@memizy/oqse@0.2/schemas/oqse-manifest-v0.2.json",
+ *   "version": "0.2",
  *   "pluginVersion": "2.1.0",
  *   "id": "https://memizy.com/universal-player",
  *   "appName": "Memizy Universal Player",
  *   "capabilities": {
  *     "actions": ["render"],
  *     "types": ["flashcard", "mcq-single"],
- *     "features": ["math", "markdown"]
+ *     "features": ["latex", "markdown"]
  *   }
  * }
  * ```
@@ -408,16 +408,16 @@ export interface OQSEManifest {
   /**
    * URL reference to the JSON Schema for automatic validation.
    * Recommended but not required.
-  * @example `"https://cdn.jsdelivr.net/gh/memizy/oqse-specification@main/schemas/oqse-manifest-v0.1.json"`
+  * @example `"https://cdn.jsdelivr.net/npm/@memizy/oqse@0.2/schemas/oqse-manifest-v0.2.json"`
    */
   $schema?: string;
 
   /**
    * Version of the Application Manifest format (REQUIRED).
-   * MUST follow `"MAJOR.MINOR"` format. The current version is `"0.1"`.
+   * MUST follow `"MAJOR.MINOR"` format. The current version is `"0.2"`.
    * Malformed values MUST cause the host to reject this manifest.
    *
-   * @example `"0.1"`
+   * @example `"0.2"`
    */
   version: string;
 
@@ -435,7 +435,7 @@ export interface OQSEManifest {
    * If malformed, treat as absent and SHOULD warn.
    * MUST be \u2264 `maxOqseVersion` when both are declared.
    *
-   * @example `"0.1"`
+   * @example `"0.2"`
    */
   minOqseVersion?: string;
 
@@ -560,7 +560,7 @@ export interface OQSEManifest {
  * isValidManifestVersion("0.1")   // true
  * isValidManifestVersion("2.10")  // true
  * isValidManifestVersion("1.0.0") // false (SemVer, not allowed here)
- * isValidManifestVersion("v0.1")  // false
+ * isValidManifestVersion("v0.2")  // false
  */
 export function isValidManifestVersion(version: string): boolean {
   return /^\d+\.\d+$/.test(version);
@@ -628,7 +628,7 @@ export function isOQSEManifest(value: unknown): value is OQSEManifest {
  * Checks whether an OQSE file's version is within the application's
  * declared min/max OQSE version range.
  *
- * @param fileVersion   - The `version` field of the OQSE study set file (e.g., `"0.1"`).
+ * @param fileVersion   - The `version` field of the OQSE study set file (e.g., `"0.2"`).
  * @param manifest      - The Application Manifest to check against.
  * @returns `true` if the file is compatible, `false` if the host MUST NOT load it.
  */

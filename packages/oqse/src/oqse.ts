@@ -1,5 +1,5 @@
 /**
- * OQSE v0.1 Type Definitions
+ * OQSE v0.2 Type Definitions
  * (Open Quiz & Study Exchange)
  * 
  * Type-safe TypeScript definitions for the OQSE specification.
@@ -274,13 +274,13 @@ export type TagDefinitionDictionary = Record<string, TagDefinition>;
 export interface FeatureProfile {
   /**
    * Array of feature flags from the Official Feature Registry or `x-` prefixed extensions.
-   * Example: `["math", "markdown", "x-memizy-3d-voxel"]`
+   * Example: `["latex", "markdown", "x-memizy-3d-voxel"]`
    */
   features?: string[];
 
   /**
    * Array of supported/required LaTeX packages.
-   * Only meaningful when `features` includes `"math"`.
+   * Only meaningful when `features` includes `"latex"`.
    * Example: `["mhchem", "amsmath"]`
    */
   latexPackages?: string[];
@@ -1335,7 +1335,7 @@ export interface OQSEFile {
   /** URL reference to the JSON Schema specification */
   $schema?: string;
   
-  /** Version of the OQSE specification (e.g., "0.1") */
+  /** Version of the OQSE specification (e.g., "0.2") */
   version: string;
   
   /** Metadata about the entire set */

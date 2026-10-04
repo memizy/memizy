@@ -1,5 +1,5 @@
 /**
- * OQSE v0.1 Zod Validation Schemas
+ * OQSE v0.2 Zod Validation Schemas
  * 
  * Runtime validation schemas for OQSE (Open Quiz & Study Exchange) format.
  * Uses Zod for type-safe runtime validation with detailed error messages.
@@ -1155,7 +1155,7 @@ export const OQSEItemSchema = z.discriminatedUnion('type', [
  * OQSE File Schema (Root Structure)
  */
 export const OQSEFileSchema = z.object({
-  // Recommended schema URL for draft v0.1: https://cdn.jsdelivr.net/gh/memizy/oqse-specification@main/schemas/oqse-v0.1.json
+  // Recommended schema URL for draft v0.2: https://cdn.jsdelivr.net/npm/@memizy/oqse@0.2/schemas/oqse-v0.2.json
   $schema: z.string().url().optional(),
   version: z.string().regex(/^\d+\.\d+$/, 'Version must be in MAJOR.MINOR format (e.g. "0.1")'),
   meta: OQSEMetaSchema,

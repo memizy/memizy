@@ -1,4 +1,4 @@
-# OQSEH v0.1 Specification (Open Quiz & Study Exchange Header)
+# OQSEH v0.2 Specification (Open Quiz & Study Exchange Header)
 
 OQSEH defines a lightweight projection of the OQSE `meta` object.
 
@@ -12,7 +12,7 @@ An OQSEHeader represents one catalog entry that points to a full OQSE set.
 
 ```json
 {
-  "$schema": "https://cdn.jsdelivr.net/gh/memizy/oqse-specification@main/schemas/oqse-header-v0.1.json",
+  "$schema": "https://cdn.jsdelivr.net/npm/@memizy/oqse@0.2/schemas/oqse-header-v0.2.json",
   "id": "123e4567-e89b-12d3-a456-426614174000",
   "title": "Biology - Cell Basics",
   "language": "en",
