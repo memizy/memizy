@@ -130,8 +130,8 @@ Normativní popis je v **`packages/protocol/SPEC.md`** (pojmy, manifest, průbě
 *(Kapitoly 5 a 6 byly sloučeny do kap. 3 a 4; číslování dalších kapitol zůstává kvůli odkazům.)*
 
 1. ~~**Revize** `SPEC.md` + AI guide~~ → **Release Candidate 1** (2026-10-04). Finální 1.0 po akceptačním testu (bod 6); změny do té doby jen když implementace ukáže problém, zapisují se do changelogu ve `SPEC.md`.
-2. **`@memizy/protocol`:** TypeScript typy a Zod schémata pro manifest, handshake, `InitPayload`, zprávy, `ProtocolError` a limity; validace manifestu z HTML data islandu (bez spuštění pluginu).
-3. **`@memizy/plugin-sdk` 1.0** (přepis):
+2. ✅ **`@memizy/protocol`** (hotovo, 1.0.0-rc.1): TypeScript typy a Zod schémata pro manifest, handshake, `InitPayload`, zprávy, `ProtocolError` a limity; validace manifestu z HTML data islandu (bez spuštění pluginu).
+3. ✅ **`@memizy/plugin-sdk`** (hotovo, 1.0.0-rc.1; 53 kB gzip i se závislostmi; testy včetně spuštění příkladu z AI guidu) – přepis:
    - `defineGame`: `initialState`, `actions` s mutací draftu (mutative → patche), `playerJoined/Left`, časovače `ctx.after/cancel` uložené ve stavu, `ctx.recordAnswer`, `ctx.end`, deterministické `ctx.random/shuffle/now`;
    - vykreslování: `render` vrací HTML, SDK ho morfuje do DOM (zachová focus a text v inputech), `data-act`, `data-payload`, formuláře, `data-setting`, `ui.local`, `ui.timeLeft` se synchronizovaným časem, `tickMs`;
    - `renderWaiting`, `renderSettings`, `validateSettings`;
