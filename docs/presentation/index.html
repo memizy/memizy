@@ -1,0 +1,710 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Od nápadu k aplikaci s AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<style>
+  /* Memizy design tokens (apps/play/src/styles/main.css) */
+  :root {
+    --blue: #1E88E5;
+    --blue-dark: #1565C0;
+    --orange: #FF6F00;
+    --orange-light: #FF8F00;
+    --orange-dark: #E65100;
+    --bg: #F8F9FA;
+    --ink: #212529;
+    --gray: #6C757D;
+    --line: #E2E8F0;
+    --green: #2E7D32;
+    --red: #C62828;
+    --violet: #7C3AED;
+    --card: #FFFFFF;
+    --grad: linear-gradient(135deg, var(--orange) 0%, var(--orange-light) 100%);
+    --shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; background: #0F172A; overflow: hidden; }
+  body { font-family: Inter, system-ui, sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
+
+  /* 1600×900 stage, scaled to the window */
+  #stage { position: absolute; left: 50%; top: 50%; width: 1600px; height: 900px; transform-origin: center; }
+  .slide {
+    position: absolute; inset: 0; background: var(--bg); padding: 80px 100px; display: flex; flex-direction: column;
+    opacity: 0; pointer-events: none; transform: translateY(12px); transition: opacity .35s ease, transform .35s ease; overflow: hidden;
+  }
+  .slide.active { opacity: 1; pointer-events: auto; transform: none; }
+  .slide.dark { background: #0F172A; color: #fff; }
+  .slide.orange { background: var(--grad); color: #fff; }
+  .slide.center { justify-content: center; align-items: center; text-align: center; }
+
+  .kicker { font-size: 22px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--orange); margin-bottom: 18px; }
+  .dark .kicker, .orange .kicker { color: rgba(255,255,255,.75); }
+  h1 { font-size: 104px; font-weight: 900; letter-spacing: -0.035em; line-height: 1.02; }
+  h2 { font-size: 64px; font-weight: 800; letter-spacing: -0.025em; line-height: 1.08; margin-bottom: 40px; }
+  h3 { font-size: 30px; font-weight: 700; margin-bottom: 10px; }
+  p, li { font-size: 30px; line-height: 1.45; }
+  .muted { color: var(--gray); }
+  .dark .muted { color: #94A3B8; }
+  .accent { color: var(--orange); }
+  .blue { color: var(--blue); }
+  .grad-text { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  .small { font-size: 22px; }
+  .tiny { font-size: 18px; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center; flex: 1; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; }
+  .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 28px; box-shadow: var(--shadow); padding: 32px 36px; }
+  .card p { font-size: 24px; }
+  .dark .card { background: #1E293B; border-color: #334155; box-shadow: none; }
+  .pill { display: inline-flex; align-items: center; gap: 10px; border-radius: 999px; padding: 8px 20px; font-size: 22px; font-weight: 700; }
+  .emoji { font-size: 56px; line-height: 1; margin-bottom: 16px; display: block; }
+  svg text { font-family: Inter, system-ui, sans-serif; }
+
+  /* chat bubbles */
+  .chat { display: flex; flex-direction: column; gap: 18px; }
+  .bubble { border-radius: 26px; padding: 20px 28px; font-size: 26px; max-width: 92%; line-height: 1.4; }
+  .bubble.me { align-self: flex-end; background: var(--blue); color: #fff; border-bottom-right-radius: 8px; }
+  .bubble.ai { align-self: flex-start; background: #fff; border: 1px solid var(--line); border-bottom-left-radius: 8px; }
+  .verdict { font-size: 26px; font-weight: 800; margin-top: 8px; }
+
+  /* rating bars */
+  .bars { display: flex; flex-direction: column; gap: 20px; width: 100%; }
+  .bar { display: grid; grid-template-columns: 300px 1fr 420px; align-items: center; gap: 24px; font-size: 26px; }
+  .bar .track { height: 30px; background: #E9EEF5; border-radius: 99px; overflow: hidden; }
+  .bar .fill { height: 100%; border-radius: 99px; width: 0; transition: width 1s cubic-bezier(.2,.8,.2,1); }
+  .slide.active .bar .fill { width: var(--w); }
+  .bar .why { font-size: 20px; color: var(--gray); }
+
+  /* bug cards */
+  .bug { display: grid; grid-template-columns: 64px 1fr; gap: 20px; align-items: start; }
+  .bug .n { width: 64px; height: 64px; border-radius: 20px; background: #FDECEA; color: var(--red); font-weight: 900; font-size: 30px; display: grid; place-items: center; }
+  .bug h3 { font-size: 27px; margin-bottom: 4px; }
+  .bug p { font-size: 21px; color: var(--gray); line-height: 1.4; }
+
+  /* checklist */
+  .check { list-style: none; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 22px 48px; }
+  .check li { display: flex; gap: 18px; align-items: flex-start; font-size: 28px; }
+  .check li .num { flex: 0 0 52px; height: 52px; border-radius: 16px; background: var(--grad); color: #fff; display: grid; place-items: center; font-size: 26px; }
+
+  /* QR */
+  .qr { background: #fff; border-radius: 28px; padding: 22px; box-shadow: var(--shadow); display: inline-flex; flex-direction: column; align-items: center; gap: 12px; }
+  .qr svg { display: block; }
+  .qr .url { font-size: 22px; font-weight: 700; color: var(--ink); }
+
+  /* timer */
+  .timer { font-size: 220px; font-weight: 900; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; line-height: 1; cursor: pointer; }
+  .timer.done { color: #FFE0B2; animation: pulse 1s ease-in-out infinite; }
+  @keyframes pulse { 50% { transform: scale(1.04); } }
+
+  /* chrome */
+  #progress { position: fixed; left: 0; bottom: 0; height: 6px; background: var(--grad); transition: width .3s ease; z-index: 5; }
+  #counter { position: fixed; right: 18px; bottom: 14px; color: #94A3B8; font: 600 14px Inter, sans-serif; z-index: 5; }
+  #help { position: fixed; left: 18px; bottom: 14px; color: #64748B; font: 500 13px Inter, sans-serif; z-index: 5; opacity: .8; }
+  .logo { position: absolute; top: 40px; right: 56px; display: flex; align-items: center; gap: 12px; font-weight: 800; font-size: 22px; }
+  .logo i { width: 40px; height: 40px; border-radius: 12px; background: var(--grad); color: #fff; display: grid; place-items: center; font-style: normal; font-weight: 900; }
+  .dark .logo, .orange .logo { color: #fff; }
+  .orange .logo i { background: #fff; color: var(--orange); }
+  .fade-in > * { opacity: 0; transform: translateY(10px); transition: opacity .5s ease, transform .5s ease; }
+  .slide.active .fade-in > * { opacity: 1; transform: none; }
+  .slide.active .fade-in > *:nth-child(2) { transition-delay: .12s; }
+  .slide.active .fade-in > *:nth-child(3) { transition-delay: .24s; }
+  .slide.active .fade-in > *:nth-child(4) { transition-delay: .36s; }
+  .slide.active .fade-in > *:nth-child(5) { transition-delay: .48s; }
+  .slide.active .fade-in > *:nth-child(6) { transition-delay: .6s; }
+</style>
+</head>
+<body>
+<div id="stage">
+
+<!-- ===================================================================== -->
+<!-- 1. Title -->
+<section class="slide orange center">
+  <div class="logo"><i>M</i>Memizy</div>
+  <div class="kicker">Workshop · 22. 10. 2026</div>
+  <h1>Od nápadu<br />k aplikaci s AI</h1>
+  <p style="font-size:36px;margin-top:28px;opacity:.9">Kuchařka, kterou vám nikdo neřekne</p>
+</section>
+
+<!-- 2. Hook -->
+<section class="slide">
+  <div class="kicker">Dnes na konci hodiny</div>
+  <h2>Hrajete hru, kterou jste si <span class="grad-text">sami vytvořili</span></h2>
+  <svg viewBox="0 0 1400 420" width="1400" height="420">
+    <defs>
+      <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="#CBD5E1" /></marker>
+    </defs>
+    <g font-weight="700" text-anchor="middle">
+      <g transform="translate(110 200)">
+        <circle r="96" fill="#FFF3E0" /><text y="22" font-size="72">💡</text>
+        <text y="150" font-size="30" fill="#212529">Nápad</text>
+      </g>
+      <g transform="translate(470 200)">
+        <circle r="96" fill="#EDE7F6" /><text y="22" font-size="72">🤖</text>
+        <text y="150" font-size="30" fill="#212529">AI napíše kód</text>
+      </g>
+      <g transform="translate(830 200)">
+        <circle r="96" fill="#E3F2FD" /><text y="22" font-size="72">🧪</text>
+        <text y="150" font-size="30" fill="#212529">Lab otestuje</text>
+      </g>
+      <g transform="translate(1250 200)">
+        <circle r="120" fill="url(#hookgrad)" /><text y="26" font-size="86">📱</text>
+        <text y="174" font-size="30" fill="#212529">Hraje celá třída</text>
+      </g>
+      <defs><linearGradient id="hookgrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FF6F00" /><stop offset="1" stop-color="#FF8F00" /></linearGradient></defs>
+      <line x1="220" y1="200" x2="360" y2="200" stroke="#CBD5E1" stroke-width="6" marker-end="url(#arr)" />
+      <line x1="580" y1="200" x2="720" y2="200" stroke="#CBD5E1" stroke-width="6" marker-end="url(#arr)" />
+      <line x1="940" y1="200" x2="1115" y2="200" stroke="#CBD5E1" stroke-width="6" marker-end="url(#arr)" />
+    </g>
+  </svg>
+  <p class="muted" style="margin-top:auto">Ale nejdřív: co vám o tom, jak tvořit s AI, nikdo neřekne.</p>
+</section>
+
+<!-- 3. Iceberg -->
+<section class="slide dark">
+  <div class="logo"><i>M</i>Memizy</div>
+  <div class="grid2">
+    <div>
+      <div class="kicker">Proč většina AI projektů skončí v koši</div>
+      <h2>AI napíše 500 řádků za minutu.</h2>
+      <p class="muted">Kód je jen špička ledovce. To podstatné je pod hladinou — a tam musíte přemýšlet <b style="color:#fff">vy</b>.</p>
+    </div>
+    <svg viewBox="0 0 640 700" width="640" height="700">
+      <rect x="0" y="230" width="640" height="470" fill="#1E3A5F" opacity=".55" />
+      <line x1="0" y1="230" x2="640" y2="230" stroke="#60A5FA" stroke-width="4" stroke-dasharray="14 10" />
+      <polygon points="320,40 410,230 230,230" fill="#F8FAFC" />
+      <text x="320" y="200" text-anchor="middle" font-size="32" font-weight="800" fill="#0F172A">Kód</text>
+      <polygon points="230,230 410,230 560,640 80,640" fill="#CBD5E1" opacity=".9" />
+      <g text-anchor="middle" font-size="30" font-weight="700" fill="#0F172A">
+        <text x="320" y="300">Architektura</text>
+        <text x="320" y="370">Data</text>
+        <text x="320" y="440">Bezpečnost</text>
+        <text x="320" y="510">Nasazení</text>
+        <text x="320" y="580">Údržba a změny</text>
+      </g>
+    </svg>
+  </div>
+</section>
+
+<!-- ===================================================================== -->
+<!-- 4. Section: what you need -->
+<section class="slide orange center">
+  <div class="logo"><i>M</i>Memizy</div>
+  <div class="kicker">Část 1</div>
+  <h1>Co k tomu<br />potřebuju</h1>
+</section>
+
+<!-- 5. Chat vs agent -->
+<section class="slide">
+  <div class="kicker">Nástroje</div>
+  <h2>Chat vs. agent v editoru</h2>
+  <div class="grid2" style="align-items:stretch">
+    <div class="card">
+      <span class="emoji">💬</span>
+      <h3>Chat (ChatGPT, Gemini…)</h3>
+      <svg viewBox="0 0 560 210" width="100%" height="210">
+        <rect x="10" y="30" width="200" height="140" rx="24" fill="#E3F2FD" /><text x="110" y="110" text-anchor="middle" font-size="26" font-weight="700" fill="#1565C0">Chat</text>
+        <rect x="350" y="30" width="200" height="140" rx="24" fill="#F1F5F9" /><text x="450" y="110" text-anchor="middle" font-size="26" font-weight="700" fill="#475569">Váš projekt</text>
+        <path d="M215 85 H340" stroke="#94A3B8" stroke-width="5" stroke-dasharray="10 8" /><text x="278" y="70" text-anchor="middle" font-size="20" fill="#64748B">Ctrl+C</text>
+        <path d="M340 125 H215" stroke="#94A3B8" stroke-width="5" stroke-dasharray="10 8" /><text x="278" y="158" text-anchor="middle" font-size="20" fill="#64748B">Ctrl+V</text>
+      </svg>
+      <p class="muted">Vidí jen to, co mu vložíte. Na nápady a jeden soubor super.</p>
+    </div>
+    <div class="card" style="border:3px solid var(--orange)">
+      <span class="emoji">🛠️</span>
+      <h3>Agent v IDE (VS Code + Copilot, Cursor, Claude Code…)</h3>
+      <svg viewBox="0 0 560 210" width="100%" height="210">
+        <rect x="190" y="20" width="180" height="70" rx="20" fill="url(#hookgrad2)" /><text x="280" y="64" text-anchor="middle" font-size="26" font-weight="800" fill="#fff">Agent</text>
+        <defs><linearGradient id="hookgrad2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FF6F00" /><stop offset="1" stop-color="#FF8F00" /></linearGradient></defs>
+        <g font-size="22" font-weight="700" text-anchor="middle" fill="#212529">
+          <rect x="10" y="140" width="160" height="56" rx="16" fill="#F1F5F9" /><text x="90" y="176">čte soubory</text>
+          <rect x="200" y="140" width="160" height="56" rx="16" fill="#F1F5F9" /><text x="280" y="176">upravuje</text>
+          <rect x="390" y="140" width="160" height="56" rx="16" fill="#F1F5F9" /><text x="470" y="176">spouští testy</text>
+        </g>
+        <path d="M230 90 L100 138 M280 90 V138 M330 90 L460 138" stroke="#FFB74D" stroke-width="4" />
+      </svg>
+      <p class="muted">Vidí celý projekt a pracuje v něm. Silnější — a proto potřebuje <b class="accent">pojistku</b>.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 6. Frontend / backend / database -->
+<section class="slide">
+  <div class="kicker">Anatomie aplikace</div>
+  <h2>Frontend, backend, databáze = restaurace</h2>
+  <svg viewBox="0 0 1400 470" width="1400" height="470">
+    <defs><marker id="arr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#94A3B8" /></marker></defs>
+    <g text-anchor="middle">
+      <rect x="20" y="40" width="380" height="300" rx="36" fill="#E3F2FD" />
+      <text x="210" y="140" font-size="80">🍽️</text>
+      <text x="210" y="215" font-size="38" font-weight="800" fill="#1565C0">Frontend</text>
+      <text x="210" y="258" font-size="24" fill="#475569">sál · co vidí host</text>
+      <text x="210" y="296" font-size="22" fill="#64748B">HTML, CSS, JS v prohlížeči</text>
+
+      <rect x="510" y="40" width="380" height="300" rx="36" fill="#FFF3E0" />
+      <text x="700" y="140" font-size="80">👨‍🍳</text>
+      <text x="700" y="215" font-size="38" font-weight="800" fill="#E65100">Backend</text>
+      <text x="700" y="258" font-size="24" fill="#475569">kuchyně · pravidla a tajemství</text>
+      <text x="700" y="296" font-size="22" fill="#64748B">server, API, přihlášení</text>
+
+      <rect x="1000" y="40" width="380" height="300" rx="36" fill="#EDE7F6" />
+      <text x="1190" y="140" font-size="80">🗄️</text>
+      <text x="1190" y="215" font-size="38" font-weight="800" fill="#5E35B1">Databáze</text>
+      <text x="1190" y="258" font-size="24" fill="#475569">spíž · co si pamatujeme</text>
+      <text x="1190" y="296" font-size="22" fill="#64748B">uživatelé, sady, výsledky</text>
+
+      <line x1="410" y1="190" x2="500" y2="190" stroke="#94A3B8" stroke-width="6" marker-end="url(#arr2)" marker-start="url(#arr2)" />
+      <line x1="900" y1="190" x2="990" y2="190" stroke="#94A3B8" stroke-width="6" marker-end="url(#arr2)" marker-start="url(#arr2)" />
+      <text x="700" y="425" font-size="28" font-weight="700" fill="#C62828">Host nikdy nechodí do kuchyně. Co je ve frontendu, může vidět a změnit kdokoliv.</text>
+    </g>
+  </svg>
+</section>
+
+<!-- 7. Do I need a backend? -->
+<section class="slide">
+  <div class="kicker">Rozhodnutí č. 1</div>
+  <h2>Potřebuju vůbec backend?</h2>
+  <svg viewBox="0 0 1400 520" width="1400" height="520">
+    <g text-anchor="middle" font-weight="700">
+      <rect x="450" y="10" width="500" height="110" rx="30" fill="#212529" />
+      <text x="700" y="58" font-size="28" fill="#fff">Sdílí uživatelé data</text>
+      <text x="700" y="96" font-size="28" fill="#fff">nebo hrají spolu naživo?</text>
+      <path d="M560 120 L300 230" stroke="#94A3B8" stroke-width="5" /><text x="380" y="168" font-size="26" fill="#2E7D32">ne</text>
+      <path d="M840 120 L1100 230" stroke="#94A3B8" stroke-width="5" /><text x="1020" y="168" font-size="26" fill="#C62828">ano</text>
+
+      <rect x="60" y="235" width="480" height="260" rx="34" fill="#E8F5E9" />
+      <text x="300" y="300" font-size="56">📄</text>
+      <text x="300" y="360" font-size="34" fill="#2E7D32">Statická stránka</text>
+      <text x="300" y="404" font-size="24" fill="#475569" font-weight="500">GitHub Pages / Cloudflare Pages</text>
+      <text x="300" y="446" font-size="24" fill="#475569" font-weight="500">kvíz pro sebe, kalkulačka, portfolio</text>
+
+      <rect x="860" y="235" width="480" height="260" rx="34" fill="#FFF3E0" />
+      <text x="1100" y="300" font-size="56">🌐</text>
+      <text x="1100" y="360" font-size="34" fill="#E65100">Aplikace se serverem</text>
+      <text x="1100" y="404" font-size="24" fill="#475569" font-weight="500">účty, sdílení, multiplayer</text>
+      <text x="1100" y="446" font-size="24" fill="#475569" font-weight="500">→ backend + databáze</text>
+    </g>
+  </svg>
+</section>
+
+<!-- 8. Free stack -->
+<section class="slide">
+  <div class="kicker">Za 0 Kč</div>
+  <h2>Celá aplikace zdarma? Jde to.</h2>
+  <div class="grid4 fade-in">
+    <div class="card"><span class="emoji">📄</span><h3>Pages</h3><p class="muted">hosting frontendu</p></div>
+    <div class="card"><span class="emoji">⚡</span><h3>Workers</h3><p class="muted">backend, 100 000 požadavků denně zdarma</p></div>
+    <div class="card"><span class="emoji">🗄️</span><h3>D1</h3><p class="muted">SQL databáze</p></div>
+    <div class="card"><span class="emoji">🖼️</span><h3>R2</h3><p class="muted">soubory a obrázky</p></div>
+  </div>
+  <div class="grid2" style="margin-top:40px;align-items:start;flex:none">
+    <p><b>Cloudflare</b> — vše na jednom místě, rychlé po celém světě, štědrý free tier.</p>
+    <p class="muted"><b style="color:var(--ink)">Alternativa: Supabase</b> — databáze + přihlášení hotové. Free projekt se ale po týdnu nečinnosti uspí.</p>
+  </div>
+</section>
+
+<!-- 9. Users with Cloudflare only -->
+<section class="slide">
+  <div class="kicker">Uživatelské účty</div>
+  <h2>Přihlášení jen s Cloudflare</h2>
+  <svg viewBox="0 0 1400 330" width="1400" height="330">
+    <defs><marker id="arr3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#1E88E5" /></marker></defs>
+    <g text-anchor="middle" font-weight="700">
+      <rect x="0" y="80" width="230" height="150" rx="28" fill="#F1F5F9" /><text x="115" y="150" font-size="50">🧑</text><text x="115" y="200" font-size="24" fill="#212529">Uživatel</text>
+      <rect x="320" y="80" width="300" height="150" rx="28" fill="#E3F2FD" /><text x="470" y="150" font-size="44">🔑</text><text x="470" y="200" font-size="24" fill="#1565C0">„Přihlásit přes Google“</text>
+      <rect x="710" y="80" width="300" height="150" rx="28" fill="#FFF3E0" /><text x="860" y="150" font-size="44">⚡</text><text x="860" y="200" font-size="24" fill="#E65100">Worker ověří (OAuth)</text>
+      <rect x="1100" y="80" width="300" height="150" rx="28" fill="#EDE7F6" /><text x="1250" y="150" font-size="44">🗄️</text><text x="1250" y="200" font-size="24" fill="#5E35B1">D1: users, sessions</text>
+      <path d="M235 155 H310" stroke="#1E88E5" stroke-width="5" marker-end="url(#arr3)" />
+      <path d="M625 155 H700" stroke="#1E88E5" stroke-width="5" marker-end="url(#arr3)" />
+      <path d="M1015 155 H1090" stroke="#1E88E5" stroke-width="5" marker-end="url(#arr3)" />
+      <path d="M860 235 C 860 310, 115 310, 115 238" fill="none" stroke="#FF6F00" stroke-width="4" stroke-dasharray="10 8" marker-end="url(#arr3)" />
+      <text x="490" y="320" font-size="22" fill="#E65100">session cookie (HttpOnly)</text>
+    </g>
+  </svg>
+  <div class="grid3 fade-in" style="margin-top:20px">
+    <div class="card"><p>🚫 <b>Hesla neukládejte sami.</b> Nechte to Googlu, GitHubu…</p></div>
+    <div class="card"><p>📚 <b>Hotová knihovna</b> (např. Better Auth) místo vlastního řešení.</p></div>
+    <div class="card"><p>🛡️ <b>Každý požadavek</b> na backend ověřuje, kdo to je.</p></div>
+  </div>
+</section>
+
+<!-- 10. Git -->
+<section class="slide">
+  <div class="kicker">Nejdůležitější slide dneška</div>
+  <h2>Git = tlačítko <span class="grad-text">Zpět</span> pro celý projekt</h2>
+  <svg viewBox="0 0 1400 300" width="1400" height="300">
+    <line x1="60" y1="150" x2="1080" y2="150" stroke="#CBD5E1" stroke-width="8" />
+    <g text-anchor="middle" font-weight="700">
+      <g transform="translate(120 150)"><circle r="44" fill="#2E7D32" /><text y="12" font-size="34" fill="#fff">✓</text><text y="88" font-size="24" fill="#212529">prompt 1</text><text y="118" font-size="20" fill="#64748B">commit</text></g>
+      <g transform="translate(400 150)"><circle r="44" fill="#2E7D32" /><text y="12" font-size="34" fill="#fff">✓</text><text y="88" font-size="24" fill="#212529">prompt 2</text><text y="118" font-size="20" fill="#64748B">commit</text></g>
+      <g transform="translate(680 150)"><circle r="44" fill="#2E7D32" /><text y="12" font-size="34" fill="#fff">✓</text><text y="88" font-size="24" fill="#212529">prompt 3</text><text y="118" font-size="20" fill="#64748B">commit</text></g>
+      <g transform="translate(960 150)"><circle r="44" fill="#C62828" /><text y="12" font-size="34" fill="#fff">✗</text><text y="88" font-size="24" fill="#212529">prompt 4</text><text y="118" font-size="20" fill="#C62828">AI rozbila půl appky</text></g>
+      <path d="M930 112 C 880 20, 760 20, 712 104" fill="none" stroke="#FF6F00" stroke-width="6" stroke-dasharray="12 9" />
+      <polygon points="704,112 703,88 724,100" fill="#FF6F00" />
+      <text x="1240" y="140" font-size="28" fill="#E65100">1 příkaz</text>
+      <text x="1240" y="178" font-size="28" fill="#E65100">a jste zpět</text>
+    </g>
+  </svg>
+  <div class="grid3 fade-in" style="margin-top:10px">
+    <div class="card"><p class="mono" style="font-size:22px">git add -A<br />git commit -m "…"</p><p class="muted tiny" style="margin-top:8px">po každém kroku, který funguje</p></div>
+    <div class="card"><p class="mono" style="font-size:22px">git diff</p><p class="muted tiny" style="margin-top:8px">co přesně AI změnila?</p></div>
+    <div class="card"><p class="mono" style="font-size:22px">git restore .</p><p class="muted tiny" style="margin-top:8px">zahodit, co AI pokazila</p></div>
+  </div>
+</section>
+
+<!-- ===================================================================== -->
+<!-- 11. Section: where AI is good -->
+<section class="slide orange center">
+  <div class="logo"><i>M</i>Memizy</div>
+  <div class="kicker">Část 2</div>
+  <h1>V čem je AI dobrá<br />a kde ji hlídat</h1>
+</section>
+
+<!-- 12. Group activity -->
+<section class="slide">
+  <div class="kicker">Skupinky po 4 · 3 minuty</div>
+  <h2>Ohodnoťte AI od 1 do 5</h2>
+  <div class="grid4 fade-in">
+    <div class="card"><span class="emoji">🎨</span><h3>Vzhled (UI)</h3></div>
+    <div class="card"><span class="emoji">🗂️</span><h3>Datové schéma</h3></div>
+    <div class="card"><span class="emoji">🔒</span><h3>Bezpečnost</h3></div>
+    <div class="card"><span class="emoji">🐛</span><h3>Hledání chyb</h3></div>
+    <div class="card"><span class="emoji">🏗️</span><h3>Architektura</h3></div>
+    <div class="card"><span class="emoji">🧪</span><h3>Testy</h3></div>
+    <div class="card"><span class="emoji">📝</span><h3>Texty a překlady</h3></div>
+    <div class="card"><span class="emoji">🔁</span><h3>Opakovaná práce</h3></div>
+  </div>
+  <p class="muted" style="margin-top:auto">Pak 2 skupiny řeknou, kde se nejvíc lišily a proč.</p>
+</section>
+
+<!-- 13. Timer -->
+<section class="slide orange center">
+  <div class="kicker">Diskutujte</div>
+  <div class="timer" id="timer" data-seconds="180" title="Klikni: start / pauza, R: znovu">3:00</div>
+  <p style="opacity:.85;margin-top:20px">Klikněte pro start · R = znovu</p>
+</section>
+
+<!-- 14. My rating -->
+<section class="slide">
+  <div class="kicker">Moje zkušenost</div>
+  <h2>Jak AI hodnotím já</h2>
+  <div class="bars">
+    <div class="bar"><b>🔁 Opakovaná práce</b><div class="track"><div class="fill" style="--w:100%;background:#2E7D32"></div></div><span class="why">neúnavná, rychlá</span></div>
+    <div class="bar"><b>🎨 Vzhled (UI)</b><div class="track"><div class="fill" style="--w:90%;background:#2E7D32"></div></div><span class="why">hezké hned, ověř na mobilu</span></div>
+    <div class="bar"><b>📝 Texty</b><div class="track"><div class="fill" style="--w:85%;background:#2E7D32"></div></div><span class="why">rychlé, ale fakta kontroluj</span></div>
+    <div class="bar"><b>🧪 Testy</b><div class="track"><div class="fill" style="--w:70%;background:#F9A825"></div></div><span class="why">napíše, když ji požádáte</span></div>
+    <div class="bar"><b>🐛 Hledání chyb</b><div class="track"><div class="fill" style="--w:60%;background:#F9A825"></div></div><span class="why">dobrá s logem, jinak hádá</span></div>
+    <div class="bar"><b>🗂️ Datové schéma</b><div class="track"><div class="fill" style="--w:40%;background:#EF6C00"></div></div><span class="why">nezná váš byznys</span></div>
+    <div class="bar"><b>🏗️ Architektura</b><div class="track"><div class="fill" style="--w:35%;background:#EF6C00"></div></div><span class="why">rozhoduje potichu za vás</span></div>
+    <div class="bar"><b>🔒 Bezpečnost</b><div class="track"><div class="fill" style="--w:20%;background:#C62828"></div></div><span class="why">„hlavně ať to funguje“</span></div>
+  </div>
+</section>
+
+<!-- ===================================================================== -->
+<!-- 15. How to ask -->
+<section class="slide">
+  <div class="kicker">Část 3 · Jak se AI ptát</div>
+  <h2>Na otázku „Jsou tam chyby?“ AI vždycky nějaké najde</h2>
+  <div class="grid2" style="align-items:start">
+    <div class="chat">
+      <div class="bubble me">Jsou v tom kódu chyby?</div>
+      <div class="bubble ai">Ano! Našel jsem 12 chyb: 1) proměnná <span class="mono">x</span> by mohla být… 2) …</div>
+      <div class="verdict" style="color:var(--red)">❌ Polovina je vymyšlená. AI se vás snaží potěšit.</div>
+    </div>
+    <div class="chat">
+      <div class="bubble me">Co se stane, když dva hráči odpoví ve stejnou chvíli? Napiš test, který to ověří.</div>
+      <div class="bubble ai">Test selhal: druhá odpověď přepíše první. Oprava…</div>
+      <div class="verdict" style="color:var(--green)">✅ Konkrétní situace + důkaz testem.</div>
+    </div>
+  </div>
+</section>
+
+<!-- 16. Prompt recipe -->
+<section class="slide">
+  <div class="kicker">Kuchařka promptu</div>
+  <h2>Pět ingrediencí dobrého zadání</h2>
+  <div class="grid3 fade-in" style="grid-template-columns:repeat(5,1fr);gap:22px">
+    <div class="card"><span class="emoji">🎯</span><h3>Cíl</h3><p class="muted">co stavím a pro koho</p></div>
+    <div class="card"><span class="emoji">🧱</span><h3>Omezení</h3><p class="muted">technologie, co nesmí</p></div>
+    <div class="card"><span class="emoji">✅</span><h3>Hotovo, když…</h3><p class="muted">jak poznám, že funguje</p></div>
+    <div class="card"><span class="emoji">❓</span><h3>Ať se ptá</h3><p class="muted">„Než začneš, zeptej se mě na vše, co nevíš.“</p></div>
+    <div class="card"><span class="emoji">🪜</span><h3>Malé kroky</h3><p class="muted">jeden krok → test → commit</p></div>
+  </div>
+</section>
+
+<!-- ===================================================================== -->
+<!-- 17. Section: where you must think -->
+<section class="slide orange center">
+  <div class="logo"><i>M</i>Memizy</div>
+  <div class="kicker">Část 4</div>
+  <h1>Kde musíte<br />přemýšlet vy</h1>
+</section>
+
+<!-- 18. Data schema -->
+<section class="slide">
+  <div class="kicker">Datové schéma</div>
+  <h2>AI není věštec vašeho nápadu</h2>
+  <div class="grid2">
+    <svg viewBox="0 0 720 520" width="720" height="520">
+      <defs><marker id="arr4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#94A3B8" /></marker></defs>
+      <g font-weight="700">
+        <rect x="20" y="30" width="250" height="150" rx="24" fill="#fff" stroke="#E2E8F0" stroke-width="3" />
+        <rect x="20" y="30" width="250" height="52" rx="24" fill="#1E88E5" /><rect x="20" y="60" width="250" height="22" fill="#1E88E5" />
+        <text x="145" y="65" text-anchor="middle" font-size="26" fill="#fff">Uživatel</text>
+        <text x="44" y="122" font-size="22" fill="#475569" font-weight="500">id, přezdívka</text>
+        <text x="44" y="156" font-size="22" fill="#475569" font-weight="500">e-mail?</text>
+
+        <rect x="440" y="30" width="260" height="150" rx="24" fill="#fff" stroke="#E2E8F0" stroke-width="3" />
+        <rect x="440" y="30" width="260" height="52" rx="24" fill="#FF6F00" /><rect x="440" y="60" width="260" height="22" fill="#FF6F00" />
+        <text x="570" y="65" text-anchor="middle" font-size="26" fill="#fff">Sada</text>
+        <text x="464" y="122" font-size="22" fill="#475569" font-weight="500">název, vlastník</text>
+        <text x="464" y="156" font-size="22" fill="#475569" font-weight="500">veřejná?</text>
+
+        <rect x="440" y="330" width="260" height="150" rx="24" fill="#fff" stroke="#E2E8F0" stroke-width="3" />
+        <rect x="440" y="330" width="260" height="52" rx="24" fill="#7C3AED" /><rect x="440" y="360" width="260" height="22" fill="#7C3AED" />
+        <text x="570" y="365" text-anchor="middle" font-size="26" fill="#fff">Otázka</text>
+        <text x="464" y="422" font-size="22" fill="#475569" font-weight="500">typ, zadání</text>
+        <text x="464" y="456" font-size="22" fill="#475569" font-weight="500">správná odpověď</text>
+
+        <rect x="20" y="330" width="250" height="150" rx="24" fill="#fff" stroke="#E2E8F0" stroke-width="3" />
+        <rect x="20" y="330" width="250" height="52" rx="24" fill="#2E7D32" /><rect x="20" y="360" width="250" height="22" fill="#2E7D32" />
+        <text x="145" y="365" text-anchor="middle" font-size="26" fill="#fff">Pokrok</text>
+        <text x="44" y="422" font-size="22" fill="#475569" font-weight="500">kdo, co, kdy</text>
+        <text x="44" y="456" font-size="22" fill="#475569" font-weight="500">kolikrát správně</text>
+
+        <path d="M275 105 H430" stroke="#94A3B8" stroke-width="4" marker-end="url(#arr4)" /><text x="352" y="92" text-anchor="middle" font-size="20" fill="#64748B">vlastní</text>
+        <path d="M570 185 V320" stroke="#94A3B8" stroke-width="4" marker-end="url(#arr4)" /><text x="590" y="262" font-size="20" fill="#64748B">obsahuje</text>
+        <path d="M145 185 V320" stroke="#94A3B8" stroke-width="4" marker-end="url(#arr4)" />
+        <path d="M435 405 H280" stroke="#94A3B8" stroke-width="4" marker-end="url(#arr4)" />
+      </g>
+    </svg>
+    <div class="fade-in" style="display:flex;flex-direction:column;gap:20px">
+      <div class="card"><p>❓ Může mít sada <b>víc autorů</b>?</p></div>
+      <div class="card"><p>❓ Co se stane s pokrokem, když autor <b>otázku změní</b>?</p></div>
+      <div class="card"><p>❓ Smí učitel vidět výsledky <b>jednotlivých žáků</b>?</p></div>
+      <p class="accent" style="font-weight:800">Tohle jsou rozhodnutí o vašem produktu, ne o kódu.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 19. Security: share by link -->
+<section class="slide">
+  <div class="kicker">Bezpečnost</div>
+  <h2>„Sdílej sadu odkazem“ — co mohlo jít špatně?</h2>
+  <svg viewBox="0 0 1400 380" width="1400" height="380">
+    <defs><marker id="arr5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#94A3B8" /></marker>
+      <marker id="arr6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#C62828" /></marker></defs>
+    <g font-weight="700">
+      <rect x="0" y="30" width="300" height="130" rx="28" fill="#E8F5E9" /><text x="150" y="90" text-anchor="middle" font-size="46">🧑‍🎓</text><text x="150" y="138" text-anchor="middle" font-size="22" fill="#2E7D32">Kamarád s odkazem</text>
+      <path d="M305 95 H520" stroke="#94A3B8" stroke-width="5" marker-end="url(#arr5)" />
+      <text x="412" y="80" text-anchor="middle" font-size="20" fill="#475569" class="mono">/api/sets/8f3a…</text>
+
+      <rect x="0" y="220" width="300" height="130" rx="28" fill="#FDECEA" /><text x="150" y="280" text-anchor="middle" font-size="46">🕵️</text><text x="150" y="328" text-anchor="middle" font-size="22" fill="#C62828">Kdokoliv</text>
+      <path d="M305 285 H520" stroke="#C62828" stroke-width="5" marker-end="url(#arr6)" />
+      <text x="412" y="270" text-anchor="middle" font-size="20" fill="#C62828" class="mono">/api/sets</text>
+
+      <rect x="530" y="80" width="300" height="220" rx="32" fill="#FFF3E0" /><text x="680" y="170" text-anchor="middle" font-size="56">⚡</text><text x="680" y="228" text-anchor="middle" font-size="26" fill="#E65100">Backend</text>
+
+      <path d="M835 140 H1040" stroke="#94A3B8" stroke-width="5" marker-end="url(#arr5)" />
+      <rect x="1050" y="80" width="340" height="110" rx="24" fill="#E8F5E9" /><text x="1220" y="146" text-anchor="middle" font-size="24" fill="#2E7D32">jedna sada ✓</text>
+      <path d="M835 250 H1040" stroke="#C62828" stroke-width="5" marker-end="url(#arr6)" />
+      <rect x="1050" y="200" width="340" height="140" rx="24" fill="#FDECEA" /><text x="1220" y="258" text-anchor="middle" font-size="24" fill="#C62828">VŠECHNY sady</text><text x="1220" y="298" text-anchor="middle" font-size="22" fill="#C62828">i soukromé 😱</text>
+    </g>
+  </svg>
+  <div class="grid2" style="flex:none;margin-top:10px">
+    <p><b>AI dělá, aby to fungovalo.</b> Ne aby to bylo bezpečné.</p>
+    <div class="bubble me" style="font-size:24px">„Teď jsi útočník. Jak bys z této aplikace dostal cizí data? Zkus to.“</div>
+  </div>
+</section>
+
+<!-- 20. Real bugs -->
+<section class="slide">
+  <div class="kicker">Skutečné chyby z tvorby Memizy</div>
+  <h2>AI to napsala. Fungovalo to. A přesto…</h2>
+  <div class="grid2" style="align-items:start;gap:34px 60px">
+    <div class="bug"><span class="n">1</span><div><h3>Místnosti chráněné PINem</h3><p>…ale endpoint <span class="mono">/api/rooms</span> vrátil všechny místnosti i s PINy. Kdokoliv se mohl připojit kamkoliv.</p></div></div>
+    <div class="bug"><span class="n">2</span><div><h3>„Náhodná“ jména hráčů</h3><p>Každý byl pořád „Fierce Wizard“. AI jméno uložila do prohlížeče. Testy prošly, odhalil to až člověk.</p></div></div>
+    <div class="bug"><span class="n">3</span><div><h3>Spolknutá chyba</h3><p><span class="mono">.catch(() =&gt; {})</span> — ukládání tiše selhávalo a hra se po obnovení stránky ztratila. Bez jediné hlášky.</p></div></div>
+    <div class="bug"><span class="n">4</span><div><h3>Hvězdička v konfiguraci</h3><p><span class="mono">ALLOWED_ORIGINS=*</span> se rozbalilo na názvy souborů. Server nepustil nikoho.</p></div></div>
+    <div class="bug"><span class="n">5</span><div><h3>Rozhodla za mě</h3><p>AI změnila architekturu serveru, „protože to dávalo smysl“. Dobrý nápad — ale měla se zeptat.</p></div></div>
+    <div class="bug"><span class="n" style="background:#E8F5E9;color:#2E7D32">✓</span><div><h3>Co pomohlo</h3><p>Zkoušet to jako uživatel, číst <span class="mono">git diff</span>, chtít testy a ptát se „proč?“.</p></div></div>
+  </div>
+</section>
+
+<!-- 21. Cookbook -->
+<section class="slide">
+  <div class="kicker">Kuchařka na doma</div>
+  <h2>Sedm pravidel pro projekty s AI</h2>
+  <ul class="check">
+    <li><span class="num">1</span><span>Nejdřív <b>vy</b>: co chci, pro koho, jaká data</span></li>
+    <li><span class="num">2</span><span>Rozhodněte, jestli potřebujete <b>backend</b></span></li>
+    <li><span class="num">3</span><span><b>Commit</b> po každém kroku, který funguje</span></li>
+    <li><span class="num">4</span><span>Malé kroky, <b>čtěte diff</b></span></li>
+    <li><span class="num">5</span><span>Ptejte se <b>konkrétně</b> a chtějte důkaz (test)</span></li>
+    <li><span class="num">6</span><span>Nechte AI <b>zaútočit</b> na vlastní aplikaci</span></li>
+    <li><span class="num">7</span><span><b>Zkoušejte to jako uživatel</b> — na mobilu, dva najednou, s reloadem</span></li>
+  </ul>
+</section>
+
+<!-- ===================================================================== -->
+<!-- 22. Section: practice -->
+<section class="slide orange center">
+  <div class="logo"><i>M</i>Memizy</div>
+  <div class="kicker">Část 5</div>
+  <h1>A teď vy!</h1>
+  <p style="font-size:36px;margin-top:24px;opacity:.9">Vytvořte hru pro celou třídu</p>
+</section>
+
+<!-- 23. Steps -->
+<section class="slide">
+  <div class="kicker">Postup</div>
+  <h2>Od nápadu ke hře za 30 minut</h2>
+  <div class="grid2">
+    <svg viewBox="0 0 760 560" width="760" height="560">
+      <g font-weight="700">
+        <line x1="60" y1="60" x2="60" y2="500" stroke="#FFE0B2" stroke-width="8" />
+        <g transform="translate(60 60)"><circle r="40" fill="#FF6F00" /><text y="12" text-anchor="middle" font-size="32" fill="#fff">1</text><text x="70" y="10" font-size="30" fill="#212529">Vymyslete hru</text></g>
+        <g transform="translate(60 170)"><circle r="40" fill="#FF6F00" /><text y="12" text-anchor="middle" font-size="32" fill="#fff">2</text><text x="70" y="10" font-size="30" fill="#212529">Zkopírujte prompt z Labu</text></g>
+        <g transform="translate(60 280)"><circle r="40" fill="#FF6F00" /><text y="12" text-anchor="middle" font-size="32" fill="#fff">3</text><text x="70" y="10" font-size="30" fill="#212529">AI vám napíše index.html</text></g>
+        <g transform="translate(60 390)"><circle r="40" fill="#FF6F00" /><text y="12" text-anchor="middle" font-size="32" fill="#fff">4</text><text x="70" y="10" font-size="30" fill="#212529">Vložte kód, spusťte testy</text></g>
+        <g transform="translate(60 500)"><circle r="40" fill="#1E88E5" /><text y="12" text-anchor="middle" font-size="32" fill="#fff">5</text><text x="70" y="10" font-size="30" fill="#212529">„Zahrát si naživo“ 🎉</text></g>
+      </g>
+    </svg>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:24px">
+      <div class="qr" data-qr="lab"><div class="code"></div><span class="url"></span></div>
+      <p class="muted small">Testy selžou? Tlačítko „Zkopírovat chyby pro AI“.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 24. Game ideas -->
+<section class="slide">
+  <div class="kicker">Inspirace</div>
+  <h2>Nevíte, co vytvořit?</h2>
+  <div class="grid3 fade-in">
+    <div class="card"><span class="emoji">🏎️</span><h3>Závod autíček</h3><p class="muted">správná odpověď = nitro</p></div>
+    <div class="card"><span class="emoji">🏰</span><h3>Dobývání území</h3><p class="muted">týmy, mapa, každá otázka je bitva</p></div>
+    <div class="card"><span class="emoji">💣</span><h3>Bomba</h3><p class="muted">kdo odpoví špatně, drží bombu</p></div>
+    <div class="card"><span class="emoji">🎣</span><h3>Rybaření</h3><p class="muted">čím rychleji, tím větší ryba</p></div>
+    <div class="card"><span class="emoji">🧩</span><h3>Týmová skládačka</h3><p class="muted">každý drží jiný dílek</p></div>
+    <div class="card"><span class="emoji">🎰</span><h3>Vaše šílenost</h3><p class="muted">čím originálnější, tím líp</p></div>
+  </div>
+</section>
+
+<!-- 25. Join -->
+<section class="slide dark center">
+  <div class="logo"><i>M</i>Memizy</div>
+  <div class="kicker">Hrajeme</div>
+  <h2 style="margin-bottom:36px">Připojte se z mobilu</h2>
+  <div class="qr" data-qr="join" data-size="380"><div class="code"></div><span class="url"></span></div>
+  <p class="muted" style="margin-top:28px">PIN uvidíte na tabuli</p>
+</section>
+
+<!-- 26. Thanks -->
+<section class="slide orange center">
+  <div class="logo"><i>M</i>Memizy</div>
+  <h1>Díky!</h1>
+  <p style="font-size:36px;margin-top:24px;opacity:.9">Tvořte, commitujte a nevěřte AI všechno 😉</p>
+  <div style="display:flex;gap:40px;margin-top:48px;color:var(--ink)">
+    <div class="qr" data-qr="lab" data-size="200"><div class="code"></div><span class="url" style="font-size:18px"></span></div>
+    <div class="qr" data-qr="github" data-size="200"><div class="code"></div><span class="url" style="font-size:18px"></span></div>
+  </div>
+</section>
+
+</div>
+
+<div id="progress"></div>
+<div id="counter"></div>
+<div id="help">← → posun · F celá obrazovka · klik na čas = časovač</div>
+
+<script>
+  // Links shown as QR codes (change before the workshop if needed).
+  const LINKS = {
+    lab: 'https://memizy.com/play/lab',
+    join: 'https://memizy.com/play/join',
+    github: 'https://github.com/memizy/memizy',
+  };
+
+  const slides = [...document.querySelectorAll('.slide')];
+  const stage = document.getElementById('stage');
+  let current = 0;
+
+  function fit() {
+    const scale = Math.min(window.innerWidth / 1600, window.innerHeight / 900);
+    stage.style.transform = `translate(-50%, -50%) scale(${scale})`;
+  }
+
+  function show(index) {
+    current = Math.max(0, Math.min(slides.length - 1, index));
+    slides.forEach((s, i) => s.classList.toggle('active', i === current));
+    document.getElementById('progress').style.width = `${((current + 1) / slides.length) * 100}%`;
+    document.getElementById('counter').textContent = `${current + 1} / ${slides.length}`;
+    if (location.hash !== `#${current + 1}`) history.replaceState(null, '', `#${current + 1}`);
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (['ArrowRight', 'PageDown', ' ', 'Enter'].includes(e.key)) { e.preventDefault(); show(current + 1); }
+    else if (['ArrowLeft', 'PageUp', 'Backspace'].includes(e.key)) { e.preventDefault(); show(current - 1); }
+    else if (e.key === 'Home') show(0);
+    else if (e.key === 'End') show(slides.length - 1);
+    else if (e.key === 'f' || e.key === 'F') {
+      if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen?.();
+    } else if (e.key === 'r' || e.key === 'R') resetTimer();
+  });
+
+  // Click on the left / right part of the screen (presenter remotes and touch).
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('.timer, a, button')) return;
+    show(current + (e.clientX < window.innerWidth / 3 ? -1 : 1));
+  });
+  let touchX = null;
+  document.addEventListener('touchstart', (e) => (touchX = e.touches[0].clientX), { passive: true });
+  document.addEventListener('touchend', (e) => {
+    if (touchX === null) return;
+    const dx = e.changedTouches[0].clientX - touchX;
+    if (Math.abs(dx) > 50) show(current + (dx < 0 ? 1 : -1));
+    touchX = null;
+  });
+
+  // Group work timer
+  const timerEl = document.getElementById('timer');
+  const total = Number(timerEl.dataset.seconds);
+  let left = total, ticking = null;
+  const render = () => {
+    timerEl.textContent = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
+    timerEl.classList.toggle('done', left === 0);
+  };
+  function resetTimer() { clearInterval(ticking); ticking = null; left = total; render(); }
+  timerEl.addEventListener('click', () => {
+    if (ticking) { clearInterval(ticking); ticking = null; return; }
+    if (left === 0) left = total;
+    ticking = setInterval(() => { left = Math.max(0, left - 1); render(); if (left === 0) { clearInterval(ticking); ticking = null; } }, 1000);
+  });
+
+  // QR codes
+  function renderQr(el) {
+    const url = LINKS[el.dataset.qr];
+    const size = Number(el.dataset.size ?? 300);
+    el.querySelector('.url').textContent = url.replace(/^https?:\/\//, '');
+    if (typeof qrcode !== 'function') { el.querySelector('.code').textContent = url; return; }
+    const qr = qrcode(0, 'M');
+    qr.addData(url);
+    qr.make();
+    const n = qr.getModuleCount();
+    let rects = '';
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (qr.isDark(r, c)) rects += `<rect x="${c}" y="${r}" width="1.02" height="1.02"/>`;
+    el.querySelector('.code').innerHTML = `<svg viewBox="0 0 ${n} ${n}" width="${size}" height="${size}" shape-rendering="crispEdges" fill="#212529">${rects}</svg>`;
+  }
+  document.querySelectorAll('[data-qr]').forEach(renderQr);
+
+  window.addEventListener('resize', fit);
+  fit();
+  show(Number(location.hash.slice(1)) - 1 || 0);
+</script>
+</body>
+</html>
