@@ -172,7 +172,9 @@ Normativní popis je v **`packages/protocol/SPEC.md`** (pojmy, manifest, průbě
 
 **Později:** authoritative režim (whitelist oficiálních her), P2P, standalone hry s msgpack. Zatím zbytečné.
 
-**Provoz:** jeden Bun proces na Netcupu, Caddy (TLS) jako reverse proxy, systemd. Postup v `services/multiplayer-server/README.md`.
+**Provoz:** Netcup (Debian 13), Docker Compose: `relay` + `cloudflared` (Cloudflare Tunnel, TLS na Cloudflare). Do internetu není otevřený žádný port, SSH jen přes Tailscale (účet `agent` pro nasazování, lze zrušit). Play nejdřív samostatně na `play.memizy.com` (Cloudflare Pages), po odladění na `memizy.com/play`. Postup v `services/multiplayer-server/README.md`.
+
+**Infrastruktura později (po prezentaci):** Postgres (účty, pokrok) se zálohami; Zitadel self-host je možný (data v EU), ale přidává provoz nejcitlivější služby (aktualizace, vlastní DB, zálohy jen pro zápis do R2 a zkoušky obnovy) a jeho přihlašovací stránka musí být veřejná (přes tunel). Redis a víc relay procesů až při potřebě; místnosti se pak rozdělí podle prefixu PINu (D10).
 
 ---
 

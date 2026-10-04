@@ -8,6 +8,12 @@ const SDK_BUNDLE = fileURLToPath(new URL('../../packages/plugin-sdk/dist/bundle/
 const SDK_PATH = 'sdk/memizy-sdk.js';
 
 /**
+ * Where Play is served: `/play/` on memizy.com (same origin as the main app →
+ * shared local storage), `/` on its own subdomain (PLAY_BASE=/ for play.memizy.com).
+ */
+const BASE = process.env.PLAY_BASE ?? '/play/';
+
+/**
  * Serves the locally built plugin SDK (until it is published to npm/CDN, the Lab
  * rewrites plugin imports to it). Plugin iframes have an opaque origin, so the
  * file needs `Access-Control-Allow-Origin: *`.
@@ -20,7 +26,7 @@ function localSdk(): Plugin {
   return {
     name: 'memizy-local-sdk',
     configureServer(server) {
-      server.middlewares.use(`/play/${SDK_PATH}`, (_req, res) => {
+      server.middlewares.use(`${BASE}${SDK_PATH}`, (_req, res) => {
         res.setHeader('Content-Type', 'text/javascript; charset=utf-8');
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Cache-Control', 'no-store');
@@ -29,13 +35,18 @@ function localSdk(): Plugin {
     },
     generateBundle() {
       this.emitFile({ type: 'asset', fileName: SDK_PATH, source: read() });
+      // Cloudflare Pages: plugin iframes have an opaque origin, so the SDK needs CORS.
+      this.emitFile({
+        type: 'asset',
+        fileName: '_headers',
+        source: [`${BASE}${SDK_PATH}`, '  Access-Control-Allow-Origin: *', '  Cache-Control: public, max-age=300', ''].join('\n'),
+      });
     },
   };
 }
 
 export default defineConfig({
-  // Deployed under memizy.com/play (same origin as the main app → shared local storage).
-  base: '/play/',
+  base: BASE,
   plugins: [vue(), tailwindcss(), localSdk()],
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },

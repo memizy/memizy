@@ -5,7 +5,9 @@
  * - PORT (default 8787), HOST (default 0.0.0.0)
  * - ALLOWED_ORIGINS: comma-separated origins, e.g. "https://memizy.com,http://localhost:5180";
  *   "*" allows any origin (development only). Default: the local dev servers.
- * - TRUST_PROXY=1: take the client IP from X-Forwarded-For (behind Caddy).
+ * - TRUST_PROXY=1: take the client IP from CF-Connecting-IP (Cloudflare Tunnel) or
+ *   X-Forwarded-For (other reverse proxies). Only when the server is reachable
+ *   through the proxy alone (otherwise clients could fake their IP).
  */
 
 import { RELAY_LIMITS } from '@memizy/protocol';
@@ -26,6 +28,8 @@ interface SocketData {
 
 function clientIp(request: Request, server: Bun.Server<SocketData>): string {
   if (trustProxy) {
+    const cloudflare = request.headers.get('CF-Connecting-IP');
+    if (cloudflare) return cloudflare.trim();
     const forwarded = request.headers.get('X-Forwarded-For');
     if (forwarded) return forwarded.split(',')[0].trim();
   }
