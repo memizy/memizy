@@ -12,3 +12,4 @@ export * from './manifestSchema';
 export * from './pluginRuntime';
 export * from './types';
 export * from './schemas';
+export * from './relay';

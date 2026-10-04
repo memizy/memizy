@@ -1,0 +1,21 @@
+{
+  "name": "@memizy/multiplayer-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Memizy multiplayer server: a room relay between the host app and the player apps (Bun).",
+  "type": "module",
+  "scripts": {
+    "start": "bun src/main.ts",
+    "dev": "bun --watch src/main.ts",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@memizy/protocol": "^1.0.0-rc.1"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.0",
+    "typescript": "~6.0.2"
+  },
+  "license": "MIT"
+}

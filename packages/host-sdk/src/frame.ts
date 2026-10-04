@@ -40,6 +40,47 @@ function wrapPlugin(remote: PluginApi): PluginApi {
   return wrapped as unknown as PluginApi;
 }
 
+export interface PluginFrame {
+  readonly iframe: HTMLIFrameElement;
+  /** Resolves when the plugin has connected (Penpal handshake). */
+  readonly plugin: Promise<PluginApi>;
+  /** Closes the connection (the caller removes the iframe). */
+  destroy(): void;
+}
+
+/**
+ * Creates a sandboxed iframe with the plugin HTML and connects it to `hostApi`.
+ * The iframe must be inserted into the document by the caller (right away).
+ */
+export function createPluginFrame(html: string, title: string, hostApi: HostApi, doc: Document = document): PluginFrame {
+  const iframe = doc.createElement('iframe');
+  iframe.setAttribute('sandbox', PLUGIN_SANDBOX);
+  iframe.setAttribute('title', title);
+  iframe.style.cssText = 'width:100%;height:100%;border:0;display:block;';
+  iframe.srcdoc = html;
+  let connection: ReturnType<typeof connect<PluginApi & Record<string, any>>> | null = null;
+  const plugin = new Promise<PluginApi>((resolve, reject) => {
+    // contentWindow exists only once the iframe is in the document.
+    queueMicrotask(() => {
+      if (!iframe.contentWindow) {
+        reject(new Error('The plugin iframe is not in the document.'));
+        return;
+      }
+      connection = connect<PluginApi & Record<string, any>>({
+        messenger: new WindowMessenger({ remoteWindow: iframe.contentWindow, allowedOrigins: ['*'] }),
+        methods: hostApi as unknown as Record<string, (...args: any[]) => any>,
+        timeout: LIMITS.helloTimeoutMs,
+      });
+      connection.promise.then((remote) => resolve(wrapPlugin(remote as unknown as PluginApi)), reject);
+    });
+  });
+  return {
+    iframe,
+    plugin,
+    destroy: () => connection?.destroy(),
+  };
+}
+
 /**
  * Mounts the session's plugin for `address` into `container` and connects it.
  * Calling it again for the same address replaces the instance (reload).
@@ -79,19 +120,11 @@ export async function mountPlugin(session: LocalSession, address: string, contai
   const endpoint = async (hostApi: HostApi): Promise<PluginApi> => {
     destroyConnection?.();
     iframe?.remove();
-    iframe = doc.createElement('iframe');
-    iframe.setAttribute('sandbox', PLUGIN_SANDBOX);
-    iframe.setAttribute('title', session.plugin.manifest.appName);
-    iframe.style.cssText = 'width:100%;height:100%;border:0;display:block;';
-    iframe.srcdoc = session.plugin.html;
+    const frame = createPluginFrame(session.plugin.html, session.plugin.manifest.appName, hostApi, doc);
+    iframe = frame.iframe;
     wrapper.replaceChildren(iframe, overlay);
-    const connection = connect<PluginApi & Record<string, any>>({
-      messenger: new WindowMessenger({ remoteWindow: iframe.contentWindow!, allowedOrigins: ['*'] }),
-      methods: hostApi as unknown as Record<string, (...args: any[]) => any>,
-      timeout: LIMITS.helloTimeoutMs,
-    });
-    destroyConnection = () => connection.destroy();
-    return wrapPlugin((await connection.promise) as unknown as PluginApi);
+    destroyConnection = frame.destroy;
+    return frame.plugin;
   };
 
   const instance = await session.connect(address, endpoint, {
