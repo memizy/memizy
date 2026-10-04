@@ -12,6 +12,7 @@ import {
   OQSEItemSchema,
 } from './oqseValidation';
 import { formatOQSEErrors } from './utils';
+import { safeValidateOQSEFile } from './fileValidation';
 
 describe('OQSE Validation Schemas', () => {
   it('LanguageCodeSchema: enforces standard BCP 47 locales', () => {
@@ -69,7 +70,7 @@ describe('OQSE Validation Schemas', () => {
 });
 
 describe('Complex Constraints & Referential Integrity', () => {
-  it('OQSEFileSchema: relatedItems integrity (non-existent item)', () => {
+  it('validateOQSEFile: relatedItems integrity (non-existent item)', () => {
     const invalidFile = {
       version: '0.2',
       meta: {
@@ -90,14 +91,12 @@ describe('Complex Constraints & Referential Integrity', () => {
       ]
     };
     
-    const result = OQSEFileSchema.safeParse(invalidFile);
+    const result = safeValidateOQSEFile(invalidFile);
     expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.error.issues.some(i => i.message.includes('non-existent relatedItems'))).toBe(true);
-    }
+    expect(result.errors.some(i => i.code === 'DANGLING_REFERENCE' && i.path === 'items[0].relatedItems')).toBe(true);
   });
 
-  it('OQSEFileSchema: thumbnail integrity (missing asset)', () => {
+  it('validateOQSEFile: thumbnail integrity (missing asset)', () => {
     const invalidFile = {
       version: '0.2',
       meta: {
@@ -113,14 +112,12 @@ describe('Complex Constraints & Referential Integrity', () => {
       items: []
     };
     
-    const result = OQSEFileSchema.safeParse(invalidFile);
+    const result = safeValidateOQSEFile(invalidFile);
     expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.error.issues.some(i => i.message.includes('non-existent asset'))).toBe(true);
-    }
+    expect(result.errors.some(i => i.code === 'MISSING_THUMBNAIL_ASSET')).toBe(true);
   });
 
-  it('OQSEFileSchema: sourceMaterials integrity (missing source)', () => {
+  it('validateOQSEFile: sourceMaterials integrity (missing source)', () => {
     const invalidFile = {
       version: '0.2',
       meta: {
@@ -142,11 +139,9 @@ describe('Complex Constraints & Referential Integrity', () => {
       ]
     };
     
-    const result = OQSEFileSchema.safeParse(invalidFile);
+    const result = safeValidateOQSEFile(invalidFile);
     expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.error.issues.some(i => i.message.includes('non-existent source material'))).toBe(true);
-    }
+    expect(result.errors.some(i => i.code === 'DANGLING_REFERENCE' && i.path === 'items[0].sources')).toBe(true);
   });
 
   it('MCQSingleItemSchema: bounds checking for correctIndex', () => {
@@ -283,6 +278,20 @@ describe('OQSE 0.2 item shape', () => {
   it('note content allows up to 100 000 characters', () => {
     expect(OQSEItemSchema.safeParse({ id, type: 'note', content: 'x'.repeat(100_000) }).success).toBe(true);
     expect(OQSEItemSchema.safeParse({ id, type: 'note', content: 'x'.repeat(100_001) }).success).toBe(false);
+  });
+
+  it('treats empty optionExplanations as omitted', () => {
+    expect(OQSEItemSchema.safeParse({ id, type: 'mcq-single', question: 'Q', options: ['a', 'b'], correctIndex: 0, optionExplanations: [] }).success).toBe(true);
+  });
+
+  it('rejects whitespace-only plain text and media tags in plain text', () => {
+    expect(OQSEItemSchema.safeParse({ id, type: 'note', content: 'x', tags: ['   '] }).success).toBe(false);
+    expect(OQSEItemSchema.safeParse({ id, type: 'note', content: 'x', tags: ['<asset:map />'] }).success).toBe(false);
+  });
+
+  it('ignores a rubric with no criteria but rejects one whose percentages sum to 0', () => {
+    expect(OQSEItemSchema.safeParse({ id, type: 'open-ended', question: 'Q', rubric: { criteria: [] } }).success).toBe(true);
+    expect(OQSEItemSchema.safeParse({ id, type: 'open-ended', question: 'Q', rubric: { criteria: [{ label: 'a', percentage: 0 }] } }).success).toBe(false);
   });
 
   it('formatOQSEErrors joins nested paths with dots', () => {

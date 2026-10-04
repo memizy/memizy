@@ -82,7 +82,7 @@ Applications MUST declare their capabilities in a standardized JSON format, know
 | Key | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
 | `$schema` | string | No | **Recommended.** URL reference to the JSON Schema specification for automatic validation. |
-| `version` | string | Yes | Version of the OQSEM format. MUST follow `"MAJOR.MINOR"` format (e.g., `"1.0"`). The current OQSEM format version is `"1.0"`. |
+| `version` | string | Yes | Version of the OQSEM format. MUST follow `"MAJOR.MINOR"` format. The current OQSEM format version is `"0.2"`. |
 | `pluginVersion` | string | No | Version of the application/plugin itself using SemVer (e.g., `"2.1.0"`). Independent of the manifest format version. |
 | `minOqseVersion` | string | No | Minimum OQSE spec version this application requires. MUST follow `"MAJOR.MINOR"` format (e.g., `"1.0"`). Version comparison is performed numerically field-by-field. Host environments MAY use this for compatibility filtering. |
 | `maxOqseVersion` | string | No | Maximum OQSE spec version this application is compatible with. MUST follow `"MAJOR.MINOR"` format (e.g., `"1.99"`). Version comparison is performed numerically field-by-field. Host environments MAY use this to prevent loading a plugin with a newer, potentially incompatible OQSE version. If absent, no upper bound is assumed. |
@@ -151,7 +151,7 @@ Properties defined in `itemProperties` and `metaProperties` are interpreted cont
 
 ## The Handshake (Matching Process)
 
-Before an application attempts to process a set, it MUST perform a compatibility check:
+Before an application attempts to process a set, it MUST perform a compatibility check (reference implementation: `checkCompatibility` in `@memizy/oqse`):
 
 1.  **Item Type Check:** If the set contains an item of type `X`, the application MUST have `X` in its `types` array, or declare `["*"]` as `types`. This check applies equally to `x-` prefixed custom types.
 2.  **Asset Check:** For each asset used in the set, the application MUST either list its MIME type explicitly in the corresponding `capabilities.assets` category (e.g., `"image/webp"` in `capabilities.assets.image`) or declare `["*"]` for that asset category. If `capabilities.assets` is absent, or the relevant category key is `null` or `[]`, that asset category is not supported.

@@ -209,7 +209,7 @@ async function fetchTestSuite(): Promise<StandaloneMockData> {
     const assets: Record<string, MediaObject> =
       (data.meta?.assets as Record<string, MediaObject> | undefined) ?? {};
     return {
-      items:   data.items   ?? [],
+      items:   (data.items ?? []).filter((item): item is OQSEItem => !item.type.startsWith('x-')),
       setMeta: data.meta    ?? undefined,
       assets,
     };

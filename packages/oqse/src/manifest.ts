@@ -602,7 +602,7 @@ export function compareManifestVersions(a: string, b: string): number {
  *
  * Performs only structural validation (presence of required fields and correct types).
  * For full spec-compliant validation including enum values and version format,
- * use the Zod schema in `src/app/schemas/`.
+ * use `OQSEManifestSchema` from `manifestValidation`.
  *
  * @param value - Unknown parsed JSON value.
  * @returns `true` if the value has the required shape of an `OQSEManifest`.

@@ -209,14 +209,13 @@
       "required": [
         "actions"
       ],
-      "additionalProperties": false
+      "additionalProperties": {}
     },
     "author": {
       "type": "object",
       "properties": {
         "name": {
-          "type": "string",
-          "minLength": 1
+          "type": "string"
         },
         "role": {
           "type": "string"
@@ -234,7 +233,7 @@
       "required": [
         "name"
       ],
-      "additionalProperties": false
+      "additionalProperties": {}
     },
     "contributors": {
       "type": "array",
@@ -242,8 +241,7 @@
         "type": "object",
         "properties": {
           "name": {
-            "type": "string",
-            "minLength": 1
+            "type": "string"
           },
           "role": {
             "type": "string"
@@ -261,7 +259,7 @@
         "required": [
           "name"
         ],
-        "additionalProperties": false
+        "additionalProperties": {}
       }
     },
     "license": {

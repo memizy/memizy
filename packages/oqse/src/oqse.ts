@@ -1322,6 +1322,52 @@ export type OQSEItem =
   | NumericInputItem
   | ChessPuzzleItem;
 
+/**
+ * All official item types (in specification order).
+ */
+export const OFFICIAL_ITEM_TYPES = [
+  'note',
+  'flashcard',
+  'true-false',
+  'mcq-single',
+  'mcq-multi',
+  'short-answer',
+  'fill-in-blanks',
+  'fill-in-select',
+  'match-pairs',
+  'match-complex',
+  'sort-items',
+  'slider',
+  'pin-on-image',
+  'categorize',
+  'timeline',
+  'matrix',
+  'math-input',
+  'diagram-label',
+  'open-ended',
+  'numeric-input',
+  'pin-on-model',
+  'chess-puzzle',
+] as const satisfies readonly OQSEItem['type'][];
+
+/** Compile-time check that OFFICIAL_ITEM_TYPES lists every member of OQSEItem. */
+const _allItemTypesListed: Exclude<OQSEItem['type'], (typeof OFFICIAL_ITEM_TYPES)[number]> extends never ? true : never = true;
+void _allItemTypesListed;
+
+/**
+ * Custom (application-defined) item with an `x-` prefixed type (e.g., `x-code-challenge`).
+ * Only the common item properties are validated; type-specific fields are preserved as-is.
+ */
+export interface OQSECustomItem extends BaseItem {
+  type: `x-${string}`;
+  [key: string]: unknown;
+}
+
+/**
+ * Any item that can appear in a set: an official item type or a custom `x-` item.
+ */
+export type OQSEAnyItem = OQSEItem | OQSECustomItem;
+
 // ============================================================================
 // OQSE File (Root Structure)
 // ============================================================================
@@ -1341,8 +1387,8 @@ export interface OQSEFile {
   /** Metadata about the entire set */
   meta: OQSEMeta;
   
-  /** Array containing individual study items */
-  items: OQSEItem[];
+  /** Array containing individual study items (official or custom `x-` types) */
+  items: OQSEAnyItem[];
 }
 
 // ============================================================================
@@ -1352,154 +1398,154 @@ export interface OQSEFile {
 /**
  * Type guard for NoteItem
  */
-export function isNote(item: OQSEItem): item is NoteItem {
+export function isNote(item: OQSEAnyItem): item is NoteItem {
   return item.type === 'note';
 }
 
 /**
  * Type guard for FlashcardItem
  */
-export function isFlashcard(item: OQSEItem): item is FlashcardItem {
+export function isFlashcard(item: OQSEAnyItem): item is FlashcardItem {
   return item.type === 'flashcard';
 }
 
 /**
  * Type guard for TrueFalseItem
  */
-export function isTrueFalse(item: OQSEItem): item is TrueFalseItem {
+export function isTrueFalse(item: OQSEAnyItem): item is TrueFalseItem {
   return item.type === 'true-false';
 }
 
 /**
  * Type guard for MCQSingleItem
  */
-export function isMCQSingle(item: OQSEItem): item is MCQSingleItem {
+export function isMCQSingle(item: OQSEAnyItem): item is MCQSingleItem {
   return item.type === 'mcq-single';
 }
 
 /**
  * Type guard for MCQMultiItem
  */
-export function isMCQMulti(item: OQSEItem): item is MCQMultiItem {
+export function isMCQMulti(item: OQSEAnyItem): item is MCQMultiItem {
   return item.type === 'mcq-multi';
 }
 
 /**
  * Type guard for ShortAnswerItem
  */
-export function isShortAnswer(item: OQSEItem): item is ShortAnswerItem {
+export function isShortAnswer(item: OQSEAnyItem): item is ShortAnswerItem {
   return item.type === 'short-answer';
 }
 
 /**
  * Type guard for FillInBlanksItem
  */
-export function isFillInBlanks(item: OQSEItem): item is FillInBlanksItem {
+export function isFillInBlanks(item: OQSEAnyItem): item is FillInBlanksItem {
   return item.type === 'fill-in-blanks';
 }
 
 /**
  * Type guard for FillInSelectItem
  */
-export function isFillInSelect(item: OQSEItem): item is FillInSelectItem {
+export function isFillInSelect(item: OQSEAnyItem): item is FillInSelectItem {
   return item.type === 'fill-in-select';
 }
 
 /**
  * Type guard for MatchPairsItem
  */
-export function isMatchPairs(item: OQSEItem): item is MatchPairsItem {
+export function isMatchPairs(item: OQSEAnyItem): item is MatchPairsItem {
   return item.type === 'match-pairs';
 }
 
 /**
  * Type guard for MatchComplexItem
  */
-export function isMatchComplex(item: OQSEItem): item is MatchComplexItem {
+export function isMatchComplex(item: OQSEAnyItem): item is MatchComplexItem {
   return item.type === 'match-complex';
 }
 
 /**
  * Type guard for SortItemsItem
  */
-export function isSortItems(item: OQSEItem): item is SortItemsItem {
+export function isSortItems(item: OQSEAnyItem): item is SortItemsItem {
   return item.type === 'sort-items';
 }
 
 /**
  * Type guard for SliderItem
  */
-export function isSlider(item: OQSEItem): item is SliderItem {
+export function isSlider(item: OQSEAnyItem): item is SliderItem {
   return item.type === 'slider';
 }
 
 /**
  * Type guard for PinOnImageItem
  */
-export function isPinOnImage(item: OQSEItem): item is PinOnImageItem {
+export function isPinOnImage(item: OQSEAnyItem): item is PinOnImageItem {
   return item.type === 'pin-on-image';
 }
 
 /**
  * Type guard for CategorizeItem
  */
-export function isCategorize(item: OQSEItem): item is CategorizeItem {
+export function isCategorize(item: OQSEAnyItem): item is CategorizeItem {
   return item.type === 'categorize';
 }
 
 /**
  * Type guard for TimelineItem
  */
-export function isTimeline(item: OQSEItem): item is TimelineItem {
+export function isTimeline(item: OQSEAnyItem): item is TimelineItem {
   return item.type === 'timeline';
 }
 
 /**
  * Type guard for MatrixItem
  */
-export function isMatrix(item: OQSEItem): item is MatrixItem {
+export function isMatrix(item: OQSEAnyItem): item is MatrixItem {
   return item.type === 'matrix';
 }
 
 /**
  * Type guard for MathInputItem
  */
-export function isMathInput(item: OQSEItem): item is MathInputItem {
+export function isMathInput(item: OQSEAnyItem): item is MathInputItem {
   return item.type === 'math-input';
 }
 
 /**
  * Type guard for DiagramLabelItem
  */
-export function isDiagramLabel(item: OQSEItem): item is DiagramLabelItem {
+export function isDiagramLabel(item: OQSEAnyItem): item is DiagramLabelItem {
   return item.type === 'diagram-label';
 }
 
 /**
  * Type guard for OpenEndedItem
  */
-export function isOpenEnded(item: OQSEItem): item is OpenEndedItem {
+export function isOpenEnded(item: OQSEAnyItem): item is OpenEndedItem {
   return item.type === 'open-ended';
 }
 
 /**
  * Type guard for NumericInputItem
  */
-export function isNumericInput(item: OQSEItem): item is NumericInputItem {
+export function isNumericInput(item: OQSEAnyItem): item is NumericInputItem {
   return item.type === 'numeric-input';
 }
 
 /**
  * Type guard for PinOnModelItem
  */
-export function isPinOnModel(item: OQSEItem): item is PinOnModelItem {
+export function isPinOnModel(item: OQSEAnyItem): item is PinOnModelItem {
   return item.type === 'pin-on-model';
 }
 
 /**
  * Type guard for ChessPuzzleItem
  */
-export function isChessPuzzle(item: OQSEItem): item is ChessPuzzleItem {
+export function isChessPuzzle(item: OQSEAnyItem): item is ChessPuzzleItem {
   return item.type === 'chess-puzzle';
 }
 
@@ -1514,6 +1560,9 @@ export function isChessPuzzle(item: OQSEItem): item is ChessPuzzleItem {
  */
 export type CoreItemType = 'note' | 'flashcard' | 'mcq-single' | 'short-answer';
 
+/** Runtime list of {@link CoreItemType} values. */
+export const CORE_ITEM_TYPES: readonly CoreItemType[] = ['note', 'flashcard', 'mcq-single', 'short-answer'];
+
 /**
  * Extended Item Types
  * 
@@ -1524,14 +1573,21 @@ export type ExtendedItemType = Exclude<OQSEItem['type'], CoreItemType>;
 /**
  * Type guard for Core Item
  */
-export function isCoreItem(item: OQSEItem): boolean {
-  return ['note', 'flashcard', 'mcq-single', 'short-answer'].includes(item.type);
+export function isCoreItem(item: OQSEAnyItem): item is Extract<OQSEItem, { type: CoreItemType }> {
+  return (CORE_ITEM_TYPES as readonly string[]).includes(item.type);
 }
 
 /**
  * Type guard for Extended Item
  */
-export function isExtendedItem(item: OQSEItem): boolean {
-  return !isCoreItem(item);
+export function isExtendedItem(item: OQSEAnyItem): item is Extract<OQSEItem, { type: ExtendedItemType }> {
+  return !isCoreItem(item) && !isCustomItem(item);
+}
+
+/**
+ * Type guard for custom `x-` items
+ */
+export function isCustomItem(item: OQSEAnyItem): item is OQSECustomItem {
+  return item.type.startsWith('x-');
 }
 

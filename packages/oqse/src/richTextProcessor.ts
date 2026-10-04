@@ -27,23 +27,39 @@ export interface RichTextProcessingOptions {
 }
 
 /**
+ * Pattern of OQSE inline tags: `<asset:key />` and `<blank:token />` (tag name is case-insensitive).
+ * Asset keys are normalized to lowercase before lookup.
+ */
+export const OQSE_TAG_PATTERN = /<(asset|blank):([a-zA-Z0-9_-]+)\s*\/>/gi;
+
+/** Returns the (lowercased) asset keys referenced via `<asset:key />` in a Rich Content string. */
+export function findAssetKeys(text: string): string[] {
+  const keys: string[] = [];
+  for (const match of text.matchAll(new RegExp(OQSE_TAG_PATTERN.source, 'gi'))) {
+    if (match[1].toLowerCase() === 'asset') keys.push(match[2].toLowerCase());
+  }
+  return keys;
+}
+
+/**
  * Step 1: Tokenization.
- * Temporarily replaces <asset:key /> and <blank:key /> with cryptographically safe 
- * text tokens so they survive Markdown parsing and HTML sanitization.
+ * Temporarily replaces <asset:key /> and <blank:key /> with unpredictable alphanumeric
+ * tokens so they survive Markdown parsing and HTML sanitization unchanged.
+ * (Tokens must not contain Markdown syntax such as `_` or `*`, otherwise the parser alters them.)
  */
 export function tokenizeOqseTags(rawText: string): { text: string; tokens: TokenMap } {
   const tokens: TokenMap = {};
-  
-  // Matches <asset:key /> and <blank:key /> (case-insensitive for the tag, strict for the key)
-  const oqseTagRegex = /<(asset|blank):([a-zA-Z0-9_-]+)\s*\/>/gi;
 
-  const tokenizedText = rawText.replace(oqseTagRegex, (match, type, key) => {
-    // Generate a unique, unpredictable token ID
-    const tokenId = `[[__OQSE_TOKEN_${Math.random().toString(36).substring(2, 15)}__]]`;
+  const tokenizedText = rawText.replace(new RegExp(OQSE_TAG_PATTERN.source, 'gi'), (match, type: string, key: string) => {
+    let tokenId: string;
+    do {
+      tokenId = `oqsetoken${Math.random().toString(36).slice(2, 14)}x`;
+    } while (tokenId in tokens || rawText.includes(tokenId));
+    const tagType = type.toLowerCase() as 'asset' | 'blank';
     tokens[tokenId] = {
-      type: type.toLowerCase() as 'asset' | 'blank',
-      key: key.toLowerCase(), // Normalizing key to lowercase per spec
-      originalTag: match
+      type: tagType,
+      key: tagType === 'asset' ? key.toLowerCase() : key, // asset keys are case-insensitive
+      originalTag: match,
     };
     return tokenId;
   });
@@ -51,25 +67,41 @@ export function tokenizeOqseTags(rawText: string): { text: string; tokens: Token
   return { text: tokenizedText, tokens };
 }
 
+export interface RawHtmlCheckOptions {
+  /** Whether the set declares the `latex` feature (`$...$` segments are then ignored). */
+  latex?: boolean;
+}
+
+const FENCED_CODE_RE = /^ {0,3}(`{3,}|~{3,})[^\n]*\n[\s\S]*?(?:^ {0,3}\1[`~]*[ \t]*$|(?![\s\S]))/gm;
+const INLINE_CODE_RE = /(`+)[\s\S]*?\1/g;
+const DISPLAY_MATH_RE = /\$\$[\s\S]*?\$\$/g;
+const INLINE_MATH_RE = /\$[^$\n]+\$/g;
+const AUTOLINK_RE = /<(?:[a-zA-Z][a-zA-Z0-9+.-]{1,31}:[^\s<>]*|[^\s<>@]+@[^\s<>@]+)>/g;
+const HTML_TAG_RE = /<\/?[a-zA-Z][a-zA-Z0-9-]*(?:\s[^<>]*)?\/?>/;
+
+/**
+ * Finds the first raw HTML tag written by the author, ignoring code, math (when `latex` is on),
+ * Markdown autolinks (`<https://...>`), HTML comments and OQSE tags. Returns `null` if there is none.
+ */
+export function findRawHtml(text: string, options: RawHtmlCheckOptions = {}): string | null {
+  let stripped = text
+    .replace(new RegExp(OQSE_TAG_PATTERN.source, 'gi'), '')
+    .replace(FENCED_CODE_RE, '')
+    .replace(INLINE_CODE_RE, '')
+    .replace(AUTOLINK_RE, '');
+  if (options.latex) stripped = stripped.replace(DISPLAY_MATH_RE, '').replace(INLINE_MATH_RE, '');
+  return HTML_TAG_RE.exec(stripped)?.[0] ?? null;
+}
+
 /**
  * Step 2 (Tier 1): Strict HTML Validation.
  * If 'html' is not allowed, any raw HTML tags written by the user must cause a validation error.
  */
-export function validateTier1Markdown(textWithoutOqseTags: string): void {
-  // Remove all code blocks from the text before checking for HTML.
-  // This ensures we don't penalize users writing about HTML inside Markdown code blocks.
-  const textWithoutCodeBlocks = textWithoutOqseTags
-    // 1. Strip backtick blocks and inline code (e.g., `code` or ```code```)
-    .replace(/`{1,}[^`]*`{1,}/g, '')
-    // 2. Strip GFM tilde blocks (e.g., ~~~html <div> ~~~)
-    .replace(/~{3,}[\s\S]*?~{3,}/g, '');
-
-  // Basic detection for manual HTML tags. 
-  const rawHtmlRegex = /<[a-zA-Z\/][^>]*>/;
-  
-  if (rawHtmlRegex.test(textWithoutCodeBlocks)) {
+export function validateTier1Markdown(textWithoutOqseTags: string, options: RawHtmlCheckOptions = {}): void {
+  const tag = findRawHtml(textWithoutOqseTags, options);
+  if (tag) {
     throw new Error(
-      "OQSE Security Error: Raw HTML tags are not allowed in Tier 1 (Pure Markdown). " +
+      `OQSE Security Error: Raw HTML tags are not allowed in Tier 1 (Pure Markdown), found ${tag}. ` +
       "If the set requires HTML formatting, it MUST declare the 'html' feature in meta.requirements."
     );
   }
@@ -120,7 +152,7 @@ export function prepareRichTextForDisplay(
 
   // 2. TIER 1 VALIDATION (Fail fast if raw HTML is present but not allowed)
   if (!isTier2HtmlEnabled) {
-    validateTier1Markdown(tokenizedMarkdown);
+    validateTier1Markdown(tokenizedMarkdown, { latex: requirements?.features?.includes('latex') ?? false });
   }
 
   // 3. MARKDOWN TO HTML

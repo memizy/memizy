@@ -10,6 +10,7 @@
  */
 
 import { z } from 'zod';
+import { OFFICIAL_ITEM_TYPES } from './oqse';
 import {
   OFFICIAL_ACTIONS,
   OFFICIAL_FEATURE_KEYS,
@@ -52,35 +53,10 @@ const ManifestVersionSchema = z
   .string()
   .regex(/^\d+\.\d+$/, 'Version must be in MAJOR.MINOR format (e.g. "0.1")');
 
-/** Official OQSE item types from v0.2. */
-const OFFICIAL_OQSE_ITEM_TYPES = [
-  'note',
-  'flashcard',
-  'true-false',
-  'mcq-single',
-  'mcq-multi',
-  'short-answer',
-  'fill-in-blanks',
-  'fill-in-select',
-  'match-pairs',
-  'match-complex',
-  'sort-items',
-  'slider',
-  'pin-on-image',
-  'categorize',
-  'timeline',
-  'matrix',
-  'math-input',
-  'diagram-label',
-  'open-ended',
-  'numeric-input',
-  'pin-on-model',
-  'chess-puzzle',
-] as const;
 
 const OQSEItemTypeSchema = NonEmptyStringSchema.refine(
   (v) =>
-    (OFFICIAL_OQSE_ITEM_TYPES as ReadonlyArray<string>).includes(v) ||
+    (OFFICIAL_ITEM_TYPES as ReadonlyArray<string>).includes(v) ||
     v.startsWith('x-'),
   { message: 'Custom types MUST use the "x-" prefix' }
 );

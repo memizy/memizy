@@ -15,7 +15,7 @@ import {
   OFFICIAL_META_PROPERTIES,
 } from './manifest';
 import { validateJsonDepth } from './utils';
-import type { OQSEFile, OQSEItem } from './oqse';
+import type { OQSEAnyItem } from './oqse';
 
 // ============================================================================
 // Reusable Primitives
@@ -63,7 +63,10 @@ export const AssetKeySchema = z.string().regex(
 /**
  * Plain text (non-empty string)
  */
-export const PlainTextSchema = z.string().min(1, 'Text must not be empty');
+export const PlainTextSchema = z
+  .string()
+  .refine((value) => value.trim().length > 0, 'Text must not be empty')
+  .refine((value) => !/<asset:[^>]*>/i.test(value), 'Plain Text fields must not contain media tags (<asset:key />)');
 
 /**
  * Raw LaTeX expression without `$` / `$$` delimiters (e.g., `2x + 2`)
@@ -95,7 +98,7 @@ export const BlankTokenSchema = z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/, 'Token
 /**
  * Subtitle track for audio/video
  */
-export const SubtitleTrackSchema = z.object({
+export const SubtitleTrackSchema = z.looseObject({
   lang: LanguageCodeSchema,
   value: z.string().min(1, 'Subtitle URI must not be empty').regex(/\.(vtt|srt)(\?.*)?$/i, 'Subtitle URI must end with .vtt or .srt'),
   label: z.string().optional(),
@@ -105,7 +108,7 @@ export const SubtitleTrackSchema = z.object({
 /**
  * Media object
  */
-export const MediaObjectSchema = z.object({
+export const MediaObjectSchema = z.looseObject({
   type: z.enum(['image', 'audio', 'video', 'model']),
   value: z.string().min(1, 'Media URI must not be empty'),
   mimeType: z.string().optional(),
@@ -156,7 +159,7 @@ export const AssetDictionarySchema = z.record(AssetKeySchema, MediaObjectSchema)
 // Person Object
 // ============================================================================
 
-export const PersonObjectSchema = z.object({
+export const PersonObjectSchema = z.looseObject({
   name: PlainTextSchema,
   role: z.string().optional(),
   email: z.string().email('Invalid email format').optional(),
@@ -180,7 +183,7 @@ export const SourceMaterialTypeSchema = z.enum([
   'other',
 ]);
 
-export const SourceMaterialSchema = z.object({
+export const SourceMaterialSchema = z.looseObject({
   id: PlainTextSchema,
   type: SourceMaterialTypeSchema,
   value: PlainTextSchema,
@@ -210,7 +213,7 @@ export const SourceMaterialSchema = z.object({
   }
 );
 
-export const SourceReferenceSchema = z.object({
+export const SourceReferenceSchema = z.looseObject({
   id: PlainTextSchema,
   location: z.string().optional(),
   quote: RichContentSchema.optional(),
@@ -220,7 +223,7 @@ export const SourceReferenceSchema = z.object({
 // Tag Definitions
 // ============================================================================
 
-export const TagDefinitionSchema = z.object({
+export const TagDefinitionSchema = z.looseObject({
   wikidataId: z.string().regex(/^Q\d+$/, 'Wikidata ID must have format Q followed by number').optional(),
   description: z.string().optional(),
 });
@@ -236,7 +239,7 @@ export const TagDefinitionDictionarySchema = z.record(z.string(), TagDefinitionS
  * properties an application supports (Manifest) or a set requires (meta).
  * All arrays accept official values from the registry or custom `x-` prefixed keys.
  */
-export const FeatureProfileSchema = z.object({
+export const FeatureProfileSchema = z.looseObject({
   features: z.array(z.string().refine(
     (v) => (OFFICIAL_FEATURE_KEYS as ReadonlyArray<string>).includes(v) || v.startsWith('x-'),
     { message: 'Feature must be an official key or have prefix "x-"' }
@@ -256,14 +259,14 @@ export const FeatureProfileSchema = z.object({
 // Translation and Linked Sets
 // ============================================================================
 
-export const TranslationObjectSchema = z.object({
+export const TranslationObjectSchema = z.looseObject({
   lang: LanguageCodeSchema,
   id: UUIDSchema,
   title: PlainTextSchema,
   downloadUrl: AbsoluteURLSchema.optional(),
 });
 
-export const LinkedSetObjectSchema = z.object({
+export const LinkedSetObjectSchema = z.looseObject({
   id: UUIDSchema,
   title: PlainTextSchema,
   downloadUrl: AbsoluteURLSchema.optional(),
@@ -284,7 +287,7 @@ export const BloomLevelSchema = z.enum([
 
 export const CognitiveLoadSchema = z.enum(['low', 'medium', 'high']);
 
-export const PedagogySchema = z.object({
+export const PedagogySchema = z.looseObject({
   bloomLevel: BloomLevelSchema.optional(),
   irtDifficulty: z.number().optional(),
   irtDiscrimination: z.number().optional(),
@@ -299,7 +302,7 @@ export const PedagogySchema = z.object({
 // Meta Object
 // ============================================================================
 
-export const OQSEMetaSchema = z.object({
+export const OQSEMetaSchema = z.looseObject({
   id: UUIDSchema,
   language: LanguageCodeSchema,
   title: PlainTextSchema.max(500, 'Title must not be longer than 500 characters'),
@@ -354,7 +357,7 @@ export const OQSEMetaSchema = z.object({
 // Base Item Properties
 // ============================================================================
 
-export const BaseItemSchema = z.object({
+export const BaseItemSchema = z.looseObject({
   id: UUIDSchema,
   type: z.string(),
   assets: AssetDictionarySchema.optional(),
@@ -381,7 +384,7 @@ export const BaseItemSchema = z.object({
 /**
  * Select blank object for fill-in-select
  */
-export const SelectBlankObjectSchema = z.object({
+export const SelectBlankObjectSchema = z.looseObject({
   options: z.array(RichContentSchema).min(1, 'Must have at least 1 option'),
   correctIndex: z.number().int().nonnegative(),
 }).refine(
@@ -395,7 +398,7 @@ export const SelectBlankObjectSchema = z.object({
 /**
  * Hotspot objects (Discriminated Union)
  */
-export const RectHotspotSchema = z.object({
+export const RectHotspotSchema = z.looseObject({
   type: z.literal('rect'),
   label: z.string().optional(),
   x: z.number().min(0).max(100, 'X must be in range 0-100%'),
@@ -404,7 +407,7 @@ export const RectHotspotSchema = z.object({
   height: z.number().min(0).max(100, 'Height must be in range 0-100%'),
 });
 
-export const CircleHotspotSchema = z.object({
+export const CircleHotspotSchema = z.looseObject({
   type: z.literal('circle'),
   label: z.string().optional(),
   x: z.number().min(0).max(100, 'X must be in range 0-100%'),
@@ -412,11 +415,11 @@ export const CircleHotspotSchema = z.object({
   radius: z.number().min(0).max(100, 'Radius must be in range 0-100%'),
 });
 
-export const PolygonHotspotSchema = z.object({
+export const PolygonHotspotSchema = z.looseObject({
   type: z.literal('polygon'),
   label: z.string().optional(),
   points: z.array(
-    z.object({
+    z.looseObject({
       x: z.number().min(0).max(100),
       y: z.number().min(0).max(100),
     })
@@ -427,7 +430,7 @@ export const PolygonHotspotSchema = z.object({
  * Mesh hotspot references a named node/mesh in a 3D glTF scene.
  * Used exclusively in `pin-on-model` items.
  */
-export const MeshHotspotSchema = z.object({
+export const MeshHotspotSchema = z.looseObject({
   type: z.literal('mesh'),
   label: z.string().optional(),
   targetName: PlainTextSchema,
@@ -449,7 +452,7 @@ export const Hotspot2DSchema = z.discriminatedUnion('type', [
 /**
  * 3D vector / point (used by CameraSetup)
  */
-export const Vector3Schema = z.object({
+export const Vector3Schema = z.looseObject({
   x: z.number(),
   y: z.number(),
   z: z.number(),
@@ -458,7 +461,7 @@ export const Vector3Schema = z.object({
 /**
  * Recommended initial camera configuration for pin-on-model items
  */
-export const CameraSetupSchema = z.object({
+export const CameraSetupSchema = z.looseObject({
   position: Vector3Schema.optional(),
   target: Vector3Schema.optional(),
 });
@@ -466,7 +469,7 @@ export const CameraSetupSchema = z.object({
 /**
  * Categorize item
  */
-export const CategorizeEntrySchema = z.object({
+export const CategorizeEntrySchema = z.looseObject({
   id: PlainTextSchema,
   text: RichContentSchema,
   correctCategoryIndex: z.number().int().nonnegative(),
@@ -477,7 +480,7 @@ export const CategorizeEntrySchema = z.object({
  */
 export const TimelinePrecisionSchema = z.enum(['year', 'month', 'day', 'datetime']);
 
-export const TimelineEventSchema = z.object({
+export const TimelineEventSchema = z.looseObject({
   id: PlainTextSchema,
   text: RichContentSchema,
   date: ISO8601DateTimeSchema,
@@ -496,18 +499,19 @@ export const DiagramZoneSchema = z.union([
 /**
  * Rubric for open-ended questions
  */
-export const RubricCriterionSchema = z.object({
+export const RubricCriterionSchema = z.looseObject({
   label: PlainTextSchema,
   percentage: z.number().min(0, 'Percentage must be non-negative').max(100, 'Percentage must not exceed 100'),
   description: z.string().optional(),
 });
 
-export const RubricSchema = z.object({
-  criteria: z.array(RubricCriterionSchema).min(1, 'Rubric must have at least 1 criterion'),
+export const RubricSchema = z.looseObject({
+  criteria: z.array(RubricCriterionSchema),
 }).refine(
   (data) => {
+    // An empty criteria array means the rubric is ignored.
     const sum = data.criteria.reduce((acc, c) => acc + c.percentage, 0);
-    return sum > 0;
+    return data.criteria.length === 0 || sum > 0;
   },
   {
     message: 'Sum of percentages of all criteria must be greater than 0',
@@ -518,7 +522,7 @@ export const RubricSchema = z.object({
 /**
  * Numeric range
  */
-export const NumericRangeSchema = z.object({
+export const NumericRangeSchema = z.looseObject({
   min: z.number(),
   max: z.number(),
 }).refine(
@@ -580,7 +584,7 @@ export const MCQSingleItemSchema = BaseItemSchema.extend({
 ).refine(
   (data) => {
     if (data.optionExplanations) {
-      return data.optionExplanations.length === data.options.length;
+      return data.optionExplanations.length === 0 || data.optionExplanations.length === data.options.length;
     }
     return true;
   },
@@ -663,7 +667,7 @@ export const MCQMultiItemSchema = BaseItemSchema.extend({
 ).refine(
   (data) => {
     if (data.optionExplanations) {
-      return data.optionExplanations.length === data.options.length;
+      return data.optionExplanations.length === 0 || data.optionExplanations.length === data.options.length;
     }
     return true;
   },
@@ -1156,86 +1160,51 @@ export const OQSEItemSchema = z.discriminatedUnion('type', [
 ]);
 
 // ============================================================================
+// Custom Items (x- prefix)
+// ============================================================================
+
+/** Custom item type: `x-` followed by lowercase words separated by hyphens (e.g., `x-code-challenge`). */
+export const CustomItemTypeSchema = z
+  .string()
+  .regex(/^x-[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Custom item type must start with "x-" followed by lowercase letters, digits and hyphens');
+
+/**
+ * Custom (application-defined) item. Only the common item properties are validated;
+ * all other fields are preserved unchanged.
+ */
+export const CustomItemSchema = BaseItemSchema.extend({
+  type: CustomItemTypeSchema,
+});
+
+/** Any item: an official item type or a custom `x-` item. */
+export const AnyOQSEItemSchema = z.union([OQSEItemSchema, CustomItemSchema]);
+
+/** Returns the schema that applies to the given raw item (official or custom). */
+export function getItemSchema(data: unknown): typeof OQSEItemSchema | typeof CustomItemSchema {
+  const type = (data as { type?: unknown } | null)?.type;
+  return typeof type === 'string' && type.startsWith('x-') ? CustomItemSchema : OQSEItemSchema;
+}
+
+// ============================================================================
 // OQSE File (Root Structure)
 // ============================================================================
 
 /**
- * OQSE File Schema (Root Structure)
+ * Structural schema of an OQSE file (root, meta and items).
+ *
+ * It does NOT check cross-item rules (unique IDs, references, assets, raw HTML).
+ * Use `loadOQSEFile` (tolerant import) or `validateOQSEFile` (strict save/export) for full validation.
+ * Kept as a Zod schema mainly for JSON Schema generation.
  */
-export const OQSEFileSchema = z.object({
-  // Recommended schema URL for draft v0.2: https://cdn.jsdelivr.net/npm/@memizy/oqse@0.2/schemas/oqse-v0.2.json
+export const OQSEFileSchema = z.looseObject({
   $schema: z.string().url().optional(),
-  version: z.string().regex(/^\d+\.\d+$/, 'Version must be in MAJOR.MINOR format (e.g. "0.1")'),
+  version: z.string().regex(/^\d+\.\d+$/, 'Version must be in MAJOR.MINOR format (e.g. "0.2")'),
   meta: OQSEMetaSchema,
-  items: z.array(OQSEItemSchema).max(10000, 'Maximum 10000 items per set'),
-}).refine(
-  (data) => {
-    // Validate that all relatedItems and dependencyItems exist
-    const itemIds = new Set(data.items.map(item => item.id));
-    
-    for (const item of data.items) {
-      if (item.relatedItems) {
-        for (const relatedId of item.relatedItems) {
-          if (!itemIds.has(relatedId) || item.id === relatedId) {
-            return false;
-          }
-        }
-      }
-      
-      if (item.dependencyItems) {
-        for (const depId of item.dependencyItems) {
-          if (!itemIds.has(depId) || item.id === depId) {
-            return false;
-          }
-        }
-      }
-    }
-    
-    return true;
-  },
-  {
-    message: 'Some item references non-existent relatedItems, dependencyItems, or references itself',
-    path: ['items'],
-  }
-).refine(
-  (data) => {
-    // Validate that thumbnail asset exists
-    if (data.meta.thumbnail && data.meta.assets) {
-      return data.meta.thumbnail in data.meta.assets;
-    }
-    return true;
-  },
-  {
-    message: 'Thumbnail references non-existent asset',
-    path: ['meta', 'thumbnail'],
-  }
-).refine(
-  (data) => {
-    // Validate that all source references exist
-    const sourceMaterialIds = new Set(
-      (data.meta.sourceMaterials || []).map(s => s.id)
-    );
-    
-    for (const item of data.items) {
-      if (item.sources) {
-        for (const sourceRef of item.sources) {
-          if (!sourceMaterialIds.has(sourceRef.id)) {
-            return false;
-          }
-        }
-      }
-    }
-    
-    return true;
-  },
-  {
-    message: 'Some item references non-existent source material',
-    path: ['items'],
-  }
-);
+  items: z.array(AnyOQSEItemSchema).max(10000, 'Maximum 10000 items per set'),
+});
 
 // ============================================================================
-// Validation Helper Functions
+// Item Validation Helpers
 // ============================================================================
 
 function createSecurityZodError(error: unknown): z.ZodError {
@@ -1246,56 +1215,29 @@ function createSecurityZodError(error: unknown): z.ZodError {
 
   return new z.ZodError([
     {
-      code: z.ZodIssueCode.custom,
+      code: 'custom',
       message,
       path: [],
+      input: undefined,
     },
   ]);
 }
 
 /**
- * Validates OQSE file and returns parsed result or throws ZodError
+ * Validates an individual item (official or custom `x-` type) and returns it, or throws ZodError.
+ * Does not check rules that need the whole set (references, assets, raw HTML).
  */
-export function validateOQSEFile(data: unknown): OQSEFile {
+export function validateOQSEItem(data: unknown): OQSEAnyItem {
   validateJsonDepth(data, 10);
-  return OQSEFileSchema.parse(data);
+  return getItemSchema(data).parse(data) as OQSEAnyItem;
 }
 
 /**
- * Safely validates OQSE file and returns result object
- */
-export function safeValidateOQSEFile(data: unknown): {
-  success: boolean;
-  data?: OQSEFile;
-  error?: z.ZodError;
-} {
-  try {
-    validateJsonDepth(data, 10);
-  } catch (error) {
-    return { success: false, error: createSecurityZodError(error) };
-  }
-
-  const result = OQSEFileSchema.safeParse(data);
-  if (result.success) {
-    return { success: true, data: result.data };
-  }
-  return { success: false, error: result.error };
-}
-
-/**
- * Validates individual OQSE item
- */
-export function validateOQSEItem(data: unknown): OQSEItem {
-  validateJsonDepth(data, 10);
-  return OQSEItemSchema.parse(data);
-}
-
-/**
- * Safely validates individual OQSE item
+ * Safely validates an individual item (official or custom `x-` type).
  */
 export function safeValidateOQSEItem(data: unknown): {
   success: boolean;
-  data?: OQSEItem;
+  data?: OQSEAnyItem;
   error?: z.ZodError;
 } {
   try {
@@ -1304,10 +1246,9 @@ export function safeValidateOQSEItem(data: unknown): {
     return { success: false, error: createSecurityZodError(error) };
   }
 
-  const result = OQSEItemSchema.safeParse(data);
+  const result = getItemSchema(data).safeParse(data);
   if (result.success) {
-    return { success: true, data: result.data };
+    return { success: true, data: result.data as OQSEAnyItem };
   }
   return { success: false, error: result.error };
 }
-

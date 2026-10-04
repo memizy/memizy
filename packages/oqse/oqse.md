@@ -30,6 +30,7 @@ In this specification, the keywords **MUST**, **MUST NOT**, **SHOULD**, **SHOULD
 *   [Item Types](#item-types-itemtype)
 *   [Helper Data Structures](#helper-data-structures)
 *   [Complete Example File](#complete-example-file)
+*   [OQSE Markdown (Note Sets)](#oqse-markdown-note-sets)
 *   [Validation Rules and Constraints](#validation-rules-and-constraints)
 *   [Error Handling](#error-handling-error-handling-policy)
 *   [Extensibility and Versioning](#extensibility-and-versioning)
@@ -86,6 +87,9 @@ An OQSE set MAY be distributed in two ways:
     * IGNORE all other files (e.g., OS metadata, `.DS_Store`, thumbnails)
     * MUST NOT fail due to the presence of other files
 
+3. **OQSE Markdown (`.oqse.md`)**
+  * A set consisting only of `note` items MAY be written as a single Markdown document. [See OQSE Markdown](#oqse-markdown-note-sets).
+
 Exporters should choose `.json` if the set does not need local binary files. Once a set contains custom media (e.g., user-uploaded), the editor MUST create a `.oqse` package.
 
 -----
@@ -104,7 +108,7 @@ The root object of an OQSE file consists of 4 keys:
 ```
 
   * `$schema` (string): **Recommended.** URL reference to the JSON Schema specification for automatic validation.
-  * `version` (string): **Required.** Version of the OQSE specification (e.g., "1.0").
+  * `version` (string): **Required.** Version of the OQSE specification in `MAJOR.MINOR` format. The current version is `"0.2"`.
   * `meta` (object): **Required.** Object containing metadata about the entire set. [See The `meta` Object](#the-meta-object).
   * `items` (array): **Required.** Array containing individual study items. May be empty (e.g., for a template or work-in-progress set). [See Common Item Properties](#common-item-properties-in-items).
 
@@ -364,14 +368,14 @@ This syntax is designed to be unambiguous and not collide with regular text or M
 
 Given support for GFM (which allows HTML) and custom `<asset />` tags, application MUST follow safe processing order:
 
-1. **Asset Tokenization:** Before rendering, find all occurrences of `<asset:key />` and replace them with unique text placeholder that Markdown processor won't change (e.g., `[[__ASSET_XYZ__]]`).
+1. **Asset Tokenization:** Before rendering, find all occurrences of `<asset:key />` and replace them with unique text placeholder that Markdown processor won't change. The placeholder MUST consist only of letters and digits (e.g., `oqsetoken7f3k2x`); characters such as `_`, `*` or `[` would be interpreted as Markdown formatting.
 2. **Markdown Rendering:** Convert text (containing placeholders) using GFM processor to HTML.
 3. **Sanitization:** Clean resulting HTML of dangerous elements (scripts, iframes, event handlers) using sanitizer (e.g., DOMPurify).
-4. **Detokenization:** Replace back placeholders `[[__ASSET_XYZ__]]` with final safe HTML elements (`<img>`, `<audio>`, etc.).
+4. **Detokenization:** Replace back placeholders with final safe HTML elements (`<img>`, `<audio>`, etc.).
 
 #### Application Rules
 
-* Application MUST search text for strings matching pattern `<asset:([^ >]+)\s*/>`.
+* Application MUST search text for strings matching pattern `<asset:([a-zA-Z0-9_-]+)\s*/>` (the tag name is case-insensitive; the key is converted to lowercase before lookup).
 * Tag functions as placeholder. Application MUST completely replace it with corresponding HTML element according to `MediaObject.type` (e.g., `<img>`, `<audio>`, `<video>`).
 * Rich Content fields therefore never contain direct HTML tags for media – only these references.
 * Application MUST NOT support alternative syntaxes (e.g., Markdown links `[...](asset://...)`).
@@ -467,34 +471,7 @@ The specification in the current version defines **22 official item types**. Eac
 }
 ```
 
-#### Markdown Notes
-
-A `note` item MAY also be stored as a standalone Markdown file (`.md`, UTF-8). This representation is **losslessly equivalent** to the JSON item and exists so that notes with complex content (Mermaid diagrams, LaTeX, code) can be written and edited without escaping them inside JSON strings. It is compatible with common Markdown editors such as Obsidian. Only `note` items have a Markdown representation.
-
-**Structure:**
-
-1. **YAML frontmatter** (REQUIRED). The file MUST start with a line `---` and the frontmatter ends with the next line `---`. It is a YAML 1.2 mapping containing every item property except `type`, `content` and `hiddenContent`. `id` is REQUIRED. `type` MAY be present, but if so it MUST be `"note"`. `content` and `hiddenContent` MUST NOT appear in the frontmatter. It is RECOMMENDED to keep the frontmatter minimal (`id`, optionally `title` and `tags`) so the file stays readable.
-2. **Body** = `content`. Everything after the frontmatter up to the hidden callout (or the end of the file).
-3. **Hidden callout** = `hiddenContent` (OPTIONAL). A blockquote callout whose first line is `> [!hidden]-`. It MUST be the last block of the file, MUST be preceded by a blank line, and every line of it MUST start with `>` (an empty line inside it is written as `>`). The marker is case-insensitive; the fold suffix (`-`, `+` or none) and any callout title after the marker are ignored when parsing. When serializing, applications MUST write `> [!hidden]-` (collapsed by default) without a title. At most one hidden callout is allowed. Lines inside fenced code blocks are never treated as the hidden callout.
-
-**Normalization rules:**
-* Line endings are normalized to `\n`, and a leading BOM is ignored.
-* Leading and trailing blank lines of `content` and `hiddenContent` are not significant. An empty `hiddenContent` is omitted.
-* Learning progress (e.g., Leitner buckets) MUST NOT be stored in the Markdown file. Progress belongs to the OQSE Progress format (OQSEP), so the content stays clean.
-
-**Example** (equivalent to the JSON example above):
-````markdown
----
-id: 019aa5ec-3daa-796f-9289-01c6214ec2b3
-title: Introduction to Thermodynamics
----
-Thermodynamics is a branch of physics dealing with heat, work, and temperature. What is the First Law?
-
-> [!hidden]-
-> The **First Law of Thermodynamics** states that energy cannot be created or destroyed, only transferred or changed from one form to another.
-````
-
-**Reference implementation:** `parseNoteMarkdown`, `safeParseNoteMarkdown` and `serializeNoteMarkdown` in the `@memizy/oqse` package.
+A set consisting only of notes can also be written as one Markdown document, see [OQSE Markdown](#oqse-markdown-note-sets).
 
 ### `type: "flashcard"` (Flashcard)
 
@@ -1499,6 +1476,73 @@ This optional object (`item.pedagogy`) serves to store advanced metadata about d
 
 -----
 
+## OQSE Markdown (Note Sets)
+
+A set that contains only `note` items MAY be written as a single Markdown document (RECOMMENDED extension `.oqse.md`, UTF-8). Each note is a section under a heading. The representation is **losslessly equivalent** to the JSON file (see the normalization rules below) and exists so that notes with complex content (Mermaid diagrams, LaTeX, code) can be written and edited without escaping them inside JSON strings. It is compatible with common Markdown editors such as Obsidian.
+
+**Example:**
+````markdown
+---
+oqse: "0.2"
+id: 019aa5ec-3daa-796f-9289-01c6214ec2b0
+title: Thermodynamics
+language: en
+createdAt: 2026-10-01T12:00:00Z
+updatedAt: 2026-10-01T12:00:00Z
+requirements:
+  features: [markdown, latex, mermaid]
+---
+Text before the first heading is the set description (`meta.description`).
+
+# Fundamental Laws
+
+## First Law of Thermodynamics
+<!-- oqse: {id: 019aa5ec-3daa-796f-9289-01c6214ec2b3, tags: [physics]} -->
+Energy is conserved: $\Delta U = Q - W$
+
+```mermaid
+graph LR
+  Q["Heat (Q)"] --> U{"ΔU"} --> W["Work (W)"]
+```
+
+> [!hidden]-
+> Energy cannot be created or destroyed, only transferred or changed from one form to another.
+
+## Second Law of Thermodynamics
+<!-- oqse: {id: 019aa5ec-3daa-796f-9289-01c6214ec2b4} -->
+…
+````
+
+**Structure:**
+
+1. **YAML frontmatter** (REQUIRED). The file MUST start with a line `---`; the frontmatter ends with the next line `---`. It is a YAML 1.2 mapping:
+    * `oqse` (REQUIRED): the OQSE version (`file.version`), written as a quoted string (e.g., `"0.2"`).
+    * `noteHeadingLevel` (OPTIONAL): heading level of notes, an integer 1–6. Default: `2`.
+    * All other keys are the `meta` object, except `description`, which MUST NOT appear in the frontmatter.
+2. **Description:** the text before the first structural heading is `meta.description` (omitted when empty).
+3. **Chapter headings** (level `noteHeadingLevel - 1`, e.g., `#`) set the `topic` of all following notes until the next chapter heading. An empty chapter heading (`#` alone) clears the topic. Only blank lines may appear between a chapter heading and the next note heading.
+4. **Note headings** (level `noteHeadingLevel`, e.g., `##`) start a note. The heading text is the note `title`; an empty heading (`##` alone) means the note has no title.
+5. **Metadata comment** (OPTIONAL): the first non-blank line after a note heading MAY be an HTML comment `<!-- oqse: … -->` containing a YAML mapping (single-line flow style `{id: …, tags: [a, b]}` or multi-line block style). It holds every item property except `type`, `title`, `content`, `hiddenContent` and, when chapter headings are used (`noteHeadingLevel` ≥ 2), `topic`. `type` MAY be present, but if so it MUST be `"note"`. HTML comments are invisible in common Markdown renderers, so the content stays clean.
+6. **Note body** = `content`: everything after the heading (and metadata comment) up to the next structural heading, the hidden callout or the end of the file. Headings deeper than `noteHeadingLevel` are part of the content.
+7. **Hidden callout** = `hiddenContent` (OPTIONAL): a blockquote callout whose first line is `> [!hidden]-`. It MUST be the last block of its note, MUST be preceded by a blank line, and every line of it MUST start with `>` (an empty line inside it is written as `>`). The marker is case-insensitive; the fold suffix (`-`, `+` or none) and any callout title after the marker are ignored when parsing. When serializing, applications MUST write `> [!hidden]-` (collapsed by default) without a title. At most one hidden callout per note is allowed.
+
+Lines inside fenced code blocks are never interpreted as headings, metadata comments or hidden callouts. Only ATX headings (`#`, `##`, …) are recognized. Headings with a level above the chapter level are not allowed.
+
+**Authoring convenience:** when parsing, a missing `id` (of the set or of a note), `createdAt` or `updatedAt` MUST be generated (UUIDv7 / current time) and the application SHOULD write the generated values back to the file. Authors, including AI models, therefore never need to invent UUIDs.
+
+**Normalization rules:**
+* Line endings are normalized to `\n`, and a leading BOM is ignored.
+* Leading and trailing blank lines and trailing whitespace of `meta.description`, `content` and `hiddenContent` are not significant. An empty `hiddenContent` is omitted.
+* The `$schema` key is not represented.
+
+**Limits of the representation:** serialization MUST fail with an explanatory error if the set contains items other than `note`, if note content contains headings at or above the note level (writers SHOULD then choose a lower `noteHeadingLevel`; content with level-1 headings cannot be represented), if content contains a top-level `> [!hidden]` callout or ends inside an unclosed code fence, or if a title or topic spans multiple lines.
+
+**Learning progress** (e.g., Leitner buckets) MUST NOT be stored in the Markdown file. Progress belongs to the OQSE Progress format (OQSEP), keyed by the note `id`, so the content stays clean.
+
+**Reference implementation:** `parseMarkdownSet`, `safeParseMarkdownSet` and `serializeMarkdownSet` in the `@memizy/oqse` package.
+
+-----
+
 ## Validation Rules and Constraints
 
 To ensure consistency and practical implementability, the specification defines the following rules:
@@ -1763,6 +1807,13 @@ To ensure interoperability, application manifests must be validated against stri
 
 Application implementation MUST follow **"Best Effort"** strategy.
 
+### Import vs. Save
+
+Applications validate sets in two situations with different strictness:
+
+* **Import / rendering (tolerant, "Best Effort"):** follows the rules in this section. Invalid items are skipped, recoverable problems produce warnings and are neutralized (e.g., dangling references are ignored). The reference implementation is `loadOQSEFile`.
+* **Save / export (strict):** an application that creates or exports a set MUST NOT produce a non-compliant file. Every rule violation, including recoverable ones, is an error. The reference implementation is `validateOQSEFile` / `safeValidateOQSEFile`.
+
 ### Atomic Validation
 
 The validation unit is one item in the `items` array. A validation error within one item (e.g., missing required field, unknown type, invalid index value) is considered a local error.
@@ -1805,15 +1856,19 @@ To ensure consistent behavior across implementations, specification defines foll
    - Application MUST reject item (cannot guarantee uniqueness)
    - Application MAY offer automatic UUID regeneration with UUIDv7
 
-4. **Non-existent ID in `relatedItems` or `dependencyItems`:**
+4. **Duplicate `id`:**
+   - The first item with a given `id` is kept; later items with the same `id` (or an item reusing `meta.id`) MUST be rejected
+   - Record an error with the duplicate `id`
+
+5. **Non-existent ID in `relatedItems` or `dependencyItems`:**
    - Application MUST ignore invalid reference
    - Record warning with item ID and non-existent reference
 
-5. **Exceeding limits (Length and Size Constraints):**
+6. **Exceeding limits (Length and Size Constraints):**
    - **Soft limit:** Warning on import, data preserved
    - **Hard limit:** Offer trimming or rejection
 
-6. **Empty `items` array:**
+7. **Empty `items` array:**
    - The set may be a template or work-in-progress
    - Application MUST load the set successfully and display an appropriate empty-state message
    - Record warning (e.g., "Set loaded with 0 items")
@@ -1864,7 +1919,7 @@ Application SHOULD provide structured log of errors and warnings:
 
 ### Adding Custom Item Types
 
-Applications may define custom item types using `x-` prefix (e.g., `x-code-challenge`, `x-pronunciation`). These types:
+Applications may define custom item types using `x-` prefix (e.g., `x-code-challenge`, `x-pronunciation`). The type MUST match `^x-[a-z0-9]+(-[a-z0-9]+)*$`. Validators check only the common item properties of custom items and MUST preserve all their other fields unchanged. Applications that do not support a custom type MUST skip it (without an error) when rendering. These types:
   * MUST preserve all common properties from section 4
   * SHOULD be documented in `appSpecific` object in `meta`
   * MUST NOT collide with future official types
@@ -1907,7 +1962,8 @@ Applications may define custom item types using `x-` prefix (e.g., `x-code-chall
 
 ### Security
   * **Strict HTML Validation and Sanitization:** To ensure security and interoperability, applications MUST enforce the following processing policy:
-    * **Tier 1 - Pure Markdown (Validation):** If the `html` feature is NOT declared in `meta.requirements`, the presence of any raw HTML tags in text fields (e.g., `<span>`, `<div>`) MUST cause a **Validation Error**. The set is considered non-compliant and MUST be rejected during import/save. Only structural HTML natively generated by the Markdown parser is permitted.
+    * **What counts as raw HTML:** HTML tags written by the author. Not counted: content of code spans and fenced code blocks, LaTeX math (when `latex` is declared), Markdown autolinks (`<https://…>`, `<user@example.com>`), HTML comments and OQSE tags (`<asset:… />`, `<blank:… />`).
+    * **Tier 1 - Pure Markdown (Validation):** If the `html` feature is NOT declared in `meta.requirements`, the presence of any raw HTML tags in text fields (e.g., `<span>`, `<div>`) MUST cause a **Validation Error** of the affected item (Atomic Validation: the item is skipped on import, and the set MUST NOT be saved or exported in this state). Only structural HTML natively generated by the Markdown parser is permitted.
     * **Tier 2 - Extended HTML (Sanitization):** If the `html` feature IS declared, raw HTML is permitted. However, the application MUST sanitize the resulting HTML (e.g., via DOMPurify) against a strict whitelist of safe typographic, semantic, and tabular elements (e.g., `span`, `div`, `ruby`, `rt`, `rp`, `sub`, `sup`, `table`).
     * **FORBIDDEN Content (Global Sanitization Bans):** Regardless of the tier (even pure Markdown can generate unsafe `href` links), the application's markdown parser and sanitization steps MUST strip the following:
         1. **Executable Content:** `<script>`, `<object>`, `<embed>`, `<applet>`.
@@ -1935,8 +1991,11 @@ Applications may define custom item types using `x-` prefix (e.g., `x-code-chall
 
 ## Validation and Tools
 
+### Reference Implementation
+The `@memizy/oqse` npm package provides TypeScript types, `loadOQSEFile` (tolerant import), `validateOQSEFile` / `safeValidateOQSEFile` (strict save/export), `resolveAsset` (asset lookup: item first, then meta), `checkCompatibility` (the [OQSEM handshake](./oqse-manifest.md#the-handshake-matching-process)), and the OQSE Markdown parser/serializer.
+
 ### JSON Schema
-Official JSON Schema is available at:
+The JSON Schema describes the structure only; cross-item rules (unique IDs, references, assets, raw HTML) are checked by the reference implementation. Official JSON Schema is available at:
 
 [https://cdn.jsdelivr.net/npm/@memizy/oqse@0.2/schemas/oqse-v0.2.json](https://cdn.jsdelivr.net/npm/@memizy/oqse@0.2/schemas/oqse-v0.2.json)
 
@@ -1948,7 +2007,7 @@ Official JSON Schema is available at:
 ### Test Suite
 Reference test files including all item types are available at:
 
-[https://github.com/memizy/oqse-test-suite](https://github.com/memizy/oqse-test-suite)
+[https://github.com/memizy/set-test-suite](https://github.com/memizy/set-test-suite)
 
 ### Common Pitfalls
 
@@ -2071,7 +2130,7 @@ No `europe_map` is defined in `item.assets` nor `meta.assets`.
 ## Contributing and Community
 
 OQSE is an open standard. Suggestions for improvements:
-  * GitHub: [https://github.com/memizy/oqse-spec](https://github.com/memizy/oqse-spec)
+  * GitHub: [https://github.com/memizy/memizy](https://github.com/memizy/memizy) (`packages/oqse`)
   * Discussions: GitHub Discussions
   * Email: `oqse@memizy.com`
 
@@ -2092,7 +2151,7 @@ OQSE is an open standard. Suggestions for improvements:
 
 ### Version 0.2 (October 2026)
 * Renamed the `math` feature to `latex` (consistent with `latexPackages`). Without the `latex` feature, `$` is a literal character.
-* Added the Markdown serialization for `note` items (see [Markdown Notes](#markdown-notes)).
+* Added [OQSE Markdown](#oqse-markdown-note-sets): a set of notes as one Markdown document (headings = notes, chapters = `topic`, metadata in HTML comments, `> [!hidden]-` callout = `hiddenContent`).
 * Schema URLs now point to the versioned npm package (`https://cdn.jsdelivr.net/npm/@memizy/oqse@0.2/schemas/…`).
 * Consistent naming of correct answers: `true-false.answer` → `correctAnswer`, `numeric-input.value` → `correctAnswer`, `short-answer.answers` → `correctAnswers`, `chess-puzzle.answers` → `correctAnswers`.
 * Consistent shuffle flag: `shuffleOptions` (MCQ) and `randomize` (timeline) → `shuffle`.
@@ -2100,6 +2159,8 @@ OQSE is an open standard. Suggestions for improvements:
 * `slider.tolerance` is optional (default `0`).
 * `note.content` and `note.hiddenContent` allow up to 100,000 characters.
 * The `categorize` sub-object is renamed from `CategorizeItem` to `CategorizeEntry`.
+* Added the [Import vs. Save](#import-vs-save) distinction; duplicate IDs are explicitly rejected; raw HTML without the `html` feature is an item-level error; custom `x-` item types are validated only by their common properties.
+* OQSE tag placeholders during rendering must be alphanumeric; the `<asset:key />` pattern is unified.
 * No backward-compatibility aliases: v0.1 files must be migrated by the consuming application.
 
 ### Version 0.1 (April 18, 2026 )

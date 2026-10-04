@@ -19,6 +19,20 @@ This repository contains:
 - Name: @memizy/oqse
 - Purpose: validate, parse, and type OQSE, OQSEM (Application Manifest), and OQSEP (User Progress) data.
 
+## Usage
+
+```ts
+import {
+  loadOQSEFile,          // tolerant import: skips invalid items, returns errors + warnings
+  validateOQSEFile,      // strict save/export validation (throws OQSEValidationError)
+  resolveAsset,          // <asset:key /> lookup: item.assets first, then meta.assets
+  parseMarkdownSet,      // OQSE Markdown (.oqse.md) -> OQSE file
+  serializeMarkdownSet,  // OQSE file of notes -> OQSE Markdown
+} from '@memizy/oqse';
+
+const { success, data, errors, warnings } = loadOQSEFile(JSON.parse(text));
+```
+
 ## Schemas
 
 The auto-generated JSON Schemas are published with this repository and are available at the following URLs:
@@ -41,35 +55,35 @@ The human-readable Markdown specifications are the **absolute single source of t
 3. **TypeScript Types**
    TypeScript types (`oqse.ts`, `manifest.ts`, `progress.ts`) manually mirror the Zod schemas for better Developer Experience. They must also strictly adhere to the Markdown specifications.
 
-4. JSON schemas are strictly auto-generated using npm run generate:schemas and contributors MUST NOT edit them manually.
+4. JSON schemas are strictly auto-generated using bun run generate:schemas and contributors MUST NOT edit them manually.
    If validation behavior changes, update the Zod schemas first, then regenerate.
 
 ## Development
 
-Install dependencies:
+Install dependencies (from the monorepo root):
 
 ```bash
-npm install
+bun install
 ```
 
 Build and regenerate schemas:
 
 ```bash
-npm run build
+bun run build
 ```
 
 Generate only JSON schemas:
 
 ```bash
-npm run generate:schemas
+bun run generate:schemas
 ```
 
 Run tests:
 
 ```bash
-npm test
+bun run test
 ```
 
 ## Contributing Rule
 
-Never edit files in schemas/ by hand. Always regenerate via npm run generate:schemas.
+Never edit files in schemas/ by hand. Always regenerate via bun run generate:schemas.

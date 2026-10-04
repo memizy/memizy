@@ -17,7 +17,8 @@
 
 import type { MediaObject, OQSEItem, OQSEMeta, ProgressRecord } from '@memizy/oqse';
 import {
-  safeValidateOQSEFile,
+  loadOQSEFile,
+  isCustomItem,
   safeValidateOQSEItem,
   safeValidateOQSEProgress,
 } from '@memizy/oqse';
@@ -243,11 +244,14 @@ export class MockHost implements HostApi {
       resolveRelativeOqseAssetUrls(raw, options.jsonUrl);
     }
 
-    // 1. Full OQSE file?
-    const asFile = safeValidateOQSEFile(raw);
+    // 1. Full OQSE file? (tolerant load: invalid items are skipped, not fatal)
+    const asFile = loadOQSEFile(raw);
     if (asFile.success && asFile.data) {
       const file = asFile.data;
-      this.loadSet(file.items, {
+      for (const issue of [...asFile.errors, ...asFile.warnings]) {
+        console.warn(`[memizy-sdk] ${issue.severity} ${issue.code} at ${issue.path}: ${issue.message}`);
+      }
+      this.loadSet(file.items.filter((item): item is OQSEItem => !isCustomItem(item)), {
         meta: file.meta,
         assets: file.meta?.assets,
       });
@@ -369,7 +373,7 @@ function coerceItems(raw: unknown): OQSEItem[] {
     if (!result.success || !result.data) {
       throw new Error(`Item #${idx} failed validation: ${flattenZod(result.error)}`);
     }
-    items.push(result.data);
+    if (!isCustomItem(result.data)) items.push(result.data);
   });
   return items;
 }

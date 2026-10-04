@@ -33,7 +33,7 @@ Mimo rozsah prezentace (ale s architekturou se pro ně počítá): standalone hr
 | D9 | **Iframe sandbox bez `allow-same-origin`** (opaque origin), stejně jako v současném `multiplayer/`. `allowedOrigins: ['*']` je v tomto případě nutné a v pořádku, protože Penpal ověřuje `remoteWindow`. |
 | D10 | **Server zatím jako jeden Bun proces.** Formát PINu/roomId si nechává místo pro identifikátor shardu. |
 | D11 | **Server bez API klíčů.** Ochranu zajišťuje allowlist `Origin` (aplikace a lab) a limity. Klíče přijdou se standalone hrami. |
-| D12 | **Markdown je bezztrátová serializace note položek OQSE**, ne náhrada JSONu. |
+| D12 | **Markdown je bezztrátová serializace celé sady poznámek** (jeden soubor = jedna sada, nadpisy = poznámky), ne náhrada JSONu. |
 | D13 | **OQSE: `math` → `latex`** s přechodným aliasem ve validátoru. |
 | D14 | **Kurzy nejsou součást jádra OQSE**, ale sesterská specifikace (později). |
 | D15 | **Open-source monorepo `engine`.** Registry a komunitní pluginy jsou v samostatných repech. Nasazení a secrets patří do closed `platform`. |
@@ -219,6 +219,9 @@ Když plugin běží mimo iframe (nebo handshake nedoběhne včas), SDK spustí 
 - **Assety v multiplayeru:** URL vs. přenos.
 - **Týmy, late join a reconnect:** přesná sémantika.
 - **Nastavení (settings):** schéma v manifestu a jeho vykreslení v lobby.
+- **Manifest pluginu = OQSEM + runtime část Memizy.** Doporučení: jeden data island; OQSEM popisuje obsah (`types`, `features`, `assets`), runtime část Memizy (režimy, pohledy, hráči) je pod `appSpecific.memizy` a její schéma je v `@memizy/protocol`.
+- **Data předávaná pluginu:** host načítá sadu přes `loadOQSEFile` (tolerantně, neplatné položky přeskočí, neznámá pole zachová) a pluginu předává jen položky typů, které plugin deklaruje (výběr pluginů v lobby přes `checkCompatibility`).
+- **Assety:** host pluginu vždy předá načitatelné URL (relativní cesty z `.oqse` balíčku převede na `blob:`/`https:`); plugin hledá assety přes `resolveAsset` (položka, pak sada).
 
 ---
 
@@ -304,38 +307,36 @@ Komponenty jsou dnes navázané na Supabase a stores aplikace (`useStudySetsStor
 - Item typ `math-input` zůstává (popisuje interakci, ne rendering).
 - Kontrola a zmražení tvaru položek, které dostávají pluginy. Stabilní `id` sad (budou na ně odkazovat kurzy).
 
-### 10.2 Markdown serializace poznámek (`type: "note"`)
-Cíl: poznámky psané přímo v Markdownu bez escapování v JSON stringu (Mermaid, LaTeX). Formát bude bezztrátově ekvivalentní s JSON položkou.
+### 10.2 OQSE Markdown: jeden soubor = jedna sada poznámek (hotovo)
+Poznámky se píšou jako jeden Markdown dokument (`.oqse.md`), bez escapování Mermaidu a LaTeXu. Bezztrátově ekvivalentní s JSON sadou, která obsahuje jen `note` položky. Specifikace: kapitola „OQSE Markdown (Note Sets)“ v `oqse.md`; implementace `parseMarkdownSet` / `serializeMarkdownSet`.
 
-```markdown
----
-id: 0b9c…-uuid
-tags: [termodynamika]
----
-# První termodynamický zákon
-
-Obsah poznámky… $\Delta U = Q - W$
-
-```mermaid
-graph TD; A-->B
-```
-
-> [!answer]-
-> Skrytý obsah (hiddenContent) – v Obsidianu nativně sbalený callout.
-```
-
-- Frontmatter obsahuje jen minimum: stabilní `id` (UUID, aby pokrok přežil přejmenování souboru) a `tags`.
-- Tělo = `content`, sbalitelný callout `> [!answer]-` = `hiddenContent`. Žádné `<details>`, protože HTML porušuje Tier 1.
-- **Pokrok (buckety) se do souboru neukládá.** Zůstává v OQSEP / datech Obsidian pluginu, takže Markdown zůstane čistý.
-- Parser md ⇄ JSON bude v `@memizy/oqse` a pokryjí ho round-trip testy.
-- Platí jen pro note položky. Ostatní typy zůstávají v JSONu.
-- Tato část se pluginů netýká, takže ji lze dokončit i po prezentaci.
+- **Frontmatter** = `oqse: "0.2"` + `meta` (ustálená konvence, Obsidian ho ukazuje jako Properties). Volitelně `noteHeadingLevel` (výchozí 2).
+- **Text před prvním nadpisem** = `meta.description`.
+- **Nadpis o úroveň výš** (`#`) = kapitola → `topic` následujících poznámek.
+- **Nadpis poznámky** (`##`) = `title`; pod ním volitelný komentář `<!-- oqse: {id: …, tags: […]} -->` (neviditelný v Obsidianu i na GitHubu) s ostatními poli.
+- **Callout `> [!hidden]-`** na konci poznámky = `hiddenContent`.
+- **Chybějící `id`, `createdAt`, `updatedAt` parser vygeneruje** a nahlásí v `generated` → AI ani lidé nemusí vymýšlet UUID; aplikace je zapíše zpět.
+- Serializace volí úroveň nadpisů automaticky (když obsah poznámek používá `##`, poznámky budou `#` a `topic` se přesune do komentáře).
+- **Pokrok (buckety) se do souboru neukládá** (OQSEP / data Obsidian pluginu).
+- Ověřeno na vlastních sadách: 16 z 20 sad s poznámkami projde převodem tam a zpět beze změny (kromě koncových mezer, které formát ořezává). 4 sady (`ndbi046`, `nswi166`, každá 2×) mají v obsahu poznámek nadpis H1 a do Markdownu převést nejdou, dokud se nadpisy nesníží.
 
 ### 10.3 Lint obsahu
 Volitelná kontrola při importu: `mermaid.parse`, KaTeX s `throwOnError`. Ukáže, která poznámka je rozbitá, dřív než ji uživatel otevře.
 
 ### 10.4 Kurzy (později, mimo jádro OQSE)
 Sesterská specifikace (pracovně `course-manifest`): obálka, která řadí kroky typu `set` (odkaz na sadu), `page` (Markdown, stejný parser jako poznámky), `media` (podcast/video) a `link`. Doporučený plugin pro spuštění sady patří do `appSpecific`, protože je specifický pro Memizy. Inspirace: IMS Common Cartridge, cmi5.
+
+### 10.5 Validace: import vs. uložení (hotovo)
+- `loadOQSEFile` – tolerantní import (Best Effort): neplatné položky přeskočí, zachová neznámá pole i vlastní `x-` typy, opraví obnovitelné problémy (neplatné reference, malá/velká písmena v klíčích assetů) a vrátí strukturovaný log chyb a varování podle specifikace.
+- `validateOQSEFile` / `safeValidateOQSEFile` – striktní kontrola pro uložení a export (navíc duplicitní `id`, HTML bez deklarace `html`, chybějící `targetAsset`…).
+- `checkCompatibility` – handshake sady a manifestu (typy, assety, features, verze) pro výběr pluginů v lobby.
+- `resolveAsset` – vyhledání assetu (položka, pak sada).
+
+### 10.6 Na později (OQSE)
+- **Assety v Markdown sadách:** `<asset:key />` Obsidian ani GitHub nezobrazí. Vyřešit s Obsidian pluginem (např. post-processor, nebo mapování na `![[soubor]]`).
+- **Varování na neznámé klíče** ve striktní validaci (pomůže odhalit překlepy z AI, např. staré `shuffleOptions`). Dnes se neznámé klíče podle specifikace jen zachovávají.
+- **Lint Mermaid/KaTeX** (kap. 10.3).
+- **Import obecného Markdownu** (viz kap. 13).
 
 ---
 
@@ -414,6 +415,7 @@ Bez čeho se prezentace neobejde: kontrakt v1, lab s testy, relay server na Netc
   - `math-input`: odstranit `$` kolem `correctAnswer` a `alternativeAnswers`
   - Upravit `course-mff-informatika/bakalarske-statnice/Instrukce.md`: `math` → `latex`; dlouhodobě instrukce přepsat na Markdown poznámky (odpadne zdvojování zpětných lomítek).
   - Pozor: repo `course-standalone-sets/sets-mff-informatika` mělo při kontrole necommitnutou změnu.
+  - `set-ceska-historie-zabavne`: 3 poznámky obsahují `<h2>` bez deklarace `html` → přepsat na Markdown `##` (nebo deklarovat `html`). Nová validace je jinak přeskočí.
 - **Import obecného Markdownu do poznámek** (`@memizy/oqse`): samostatná, ztrátová funkce (např. `importMarkdownAsNotes(md, { headingLevel })`), která rozdělí běžný Markdown podle nadpisů zvolené úrovně na note položky (nadpis → `title`, vygenerované `id`, případný callout `[!hidden]` → `hiddenContent`). Oddělená od striktní bezztrátové serializace.
 - Standalone hry: `game-client` (MessagePack), authoritative režim, API klíče a kvóty.
 - P2P přes nový transport v `host-sdk`.

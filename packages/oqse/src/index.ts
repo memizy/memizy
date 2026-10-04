@@ -12,4 +12,6 @@ export * from './headerValidation';
 
 export * from './utils';
 export * from './richTextProcessor';
-export * from './noteMarkdown';
+export * from './markdownSet';
+export * from './fileValidation';
+export * from './compatibility';

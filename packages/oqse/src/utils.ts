@@ -44,19 +44,27 @@ export function validateJsonDepth(
 }
 
 /**
+ * Formats an issue path as a readable string (e.g., `items[3].sources[0].id`).
+ */
+export function formatPath(path: ReadonlyArray<PropertyKey>): string {
+  let pathStr = '';
+  path.forEach((part, index) => {
+    if (typeof part === 'number') {
+      pathStr += `[${part}]`;
+    } else {
+      pathStr += (index === 0 ? '' : '.') + String(part);
+    }
+  });
+  return pathStr;
+}
+
+/**
  * Formats a ZodError into a flat array of human-readable string messages.
  * Useful for displaying validation issues in UI lists or console logs.
  */
 export function formatOQSEErrors(error: ZodError): string[] {
   return error.issues.map(err => {
-    let pathStr = '';
-    err.path.forEach((part, index) => {
-      if (typeof part === 'number') {
-        pathStr += `[${part}]`;
-      } else {
-        pathStr += (index === 0 ? '' : '.') + String(part);
-      }
-    });
+    const pathStr = formatPath(err.path);
     return pathStr ? `${pathStr}: ${err.message}` : err.message;
   });
 }

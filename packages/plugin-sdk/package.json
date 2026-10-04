@@ -22,7 +22,7 @@
     "dev": "vite --config example/vite.config.ts",
     "build": "vite build && tsc --emitDeclarationOnly",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p example/tsconfig.json",
     "example:dev": "vite --config example/vite.config.ts",
     "example:build": "vite build --config example/vite.config.ts",
     "example:build:pages": "vite build --config example/vite.config.ts --base=/plugin-sdk/",
