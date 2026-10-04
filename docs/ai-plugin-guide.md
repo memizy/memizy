@@ -124,7 +124,7 @@ validateSettings(settings) {
 
 | Name | Description |
 | :--- | :--- |
-| `ctx.playerId` | Who sent the action (`null` for timers). |
+| `ctx.playerId` | Who sent the action (`null` for timers and for buttons on the board – the board is not a player). |
 | `ctx.players` | Current players `[{ id, name, isHost, connected }]` (the presenter is not a player). |
 | `ctx.items` / `ctx.item(id)` | Items of the study set. |
 | `ctx.settings` | Values of the manifest settings. |
@@ -144,7 +144,7 @@ validateSettings(settings) {
 | `ui.self` | This player (`null` on the board). |
 | `ui.players`, `ui.items`, `ui.item(id)`, `ui.settings`, `ui.mode`, `ui.hostAs` | Same as in `ctx`. |
 | `ui.timeLeft(deadline)` | Milliseconds until `deadline` (≥ 0), synchronized across devices. |
-| `ui.text(markdown, { inline }?)` | Safe HTML for text from the set (Markdown, LaTeX, images). Use `inline: true` inside buttons. |
+| `ui.text(markdown, { inline, item }?)` | Safe HTML for text from the set (Markdown, LaTeX, images). Use `inline: true` inside buttons; pass `item` so images of that item are found. |
 | `ui.renderNote(note, { titleLevel }?)` | Safe HTML of a whole `note` item. |
 | `ui.local` | An object for this screen only (e.g. the currently selected option). Not shared, not saved. |
 | `ui.act(name, payload)` | Call an action from your own JavaScript (normally use `data-act`). |
@@ -203,7 +203,7 @@ if (state.score > best) ui.save('set', { ...ui.saved.set, level: state.level + 1
 * Screen-only UI state (selected but not yet submitted option) goes to `ui.local`; call `ui.act` when the player confirms.
 * Escape names and your own strings with `ui.escape(text)`; text from the study set always goes through `ui.text`.
 * A controller can be a **phone, tablet or computer**: make it responsive, with big buttons (min. 48 px), one column on narrow screens and no hover-only interactions. Design the board for a **projector**: large font, high contrast, visible from the back of the classroom.
-* Support light and dark mode: `:root { color-scheme: light dark; }` and use `light-dark()` or `prefers-color-scheme`.
+* Support light and dark mode with `light-dark(lightColor, darkColor)` in CSS. The SDK sets `color-scheme` to the theme of the app; do not use `prefers-color-scheme` (it follows the operating system, not the app).
 
 ---
 

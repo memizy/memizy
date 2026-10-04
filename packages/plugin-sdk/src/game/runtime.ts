@@ -159,6 +159,14 @@ export class GameRuntime<S = unknown> {
     return this.itemsById.get(id);
   }
 
+  /** `PluginApi.setChanged` – the set was edited in the host (solo). */
+  replaceSet(set: InitPayload['set']): void {
+    this.init.set = set;
+    this.itemsById.clear();
+    for (const item of set.items) this.itemsById.set(item.id, item);
+    this.onChange();
+  }
+
   /** Stops timers and pending work (instance closing). */
   dispose(): void {
     for (const timer of this.timers.values()) clearTimeout(timer.handle);

@@ -1,0 +1,169 @@
+import { describe, it, expect, beforeAll, afterEach } from 'vitest';
+import type { OQSEAnyItem } from '@memizy/oqse';
+import { startGame, type GameHandle } from './defineGame';
+import { checkAnswer } from '../checkAnswer';
+import { LocalRouter, wait } from '../test/localRouter';
+import type { GameDefinition } from '../types';
+
+const items = [
+  { id: 'q1', type: 'mcq-single', question: 'Hlavní město **Česka**?', options: ['Brno', 'Praha'], correctIndex: 1 },
+  { id: 'q2', type: 'true-false', question: 'Měsíc je planeta.', correctAnswer: false },
+] as OQSEAnyItem[];
+
+beforeAll(() => {
+  const manifest = document.createElement('script');
+  manifest.type = 'application/oqse-manifest+json';
+  manifest.textContent = JSON.stringify({
+    version: '0.2',
+    id: 'https://example.com/plugins/e2e',
+    appName: 'E2E',
+    pluginVersion: '1.0.0',
+    capabilities: { actions: ['render'], types: ['mcq-single', 'true-false'] },
+    appSpecific: {
+      memizy: {
+        protocol: '1.0',
+        modes: { solo: {}, multiplayer: { players: { min: 1, max: 40 }, hostAs: ['presenter', 'player'] } },
+        settings: [
+          { id: 'questionTime', type: 'number', label: 'Time', default: 20, min: 5, max: 120 },
+          { id: 'mode', type: 'select', label: 'Mode', default: 'classic', options: [{ value: 'classic', label: 'C' }, { value: 'fast', label: 'F' }] },
+        ],
+        settingsScreen: { size: 'compact' },
+      },
+    },
+  });
+  document.head.appendChild(manifest);
+});
+
+const handles: GameHandle[] = [];
+afterEach(() => {
+  handles.splice(0).forEach((h) => h.destroy());
+  document.body.innerHTML = '';
+});
+
+interface State {
+  round: number;
+  answers: Record<string, number | boolean>;
+  scores: Record<string, number>;
+}
+
+const quiz: Omit<GameDefinition<State>, 'root'> = {
+  initialState: () => ({ round: 0, answers: {}, scores: {} }),
+  actions: {
+    answer(state, payload, ctx) {
+      if (!ctx.playerId || ctx.playerId in state.answers) return;
+      const item = ctx.item(['q1', 'q2'][state.round])!;
+      const correct = checkAnswer(item, payload.answer);
+      state.answers[ctx.playerId] = payload.answer;
+      if (correct) state.scores[ctx.playerId] = (state.scores[ctx.playerId] ?? 0) + 1;
+      ctx.recordAnswer(item.id, correct);
+    },
+  },
+  render(state, ui) {
+    const item = ui.item(['q1', 'q2'][state.round]) as any;
+    const answered = Object.keys(state.answers).length;
+    if (ui.view === 'board') return `<h1>${ui.text(item.question, { inline: true })}</h1><p class="count">${answered}/${ui.players.length}</p>`;
+    const mine = ui.self && ui.self.id in state.answers;
+    return `<p class="who">${ui.escape(ui.self?.name)}</p>${item.options
+      .map((o: string, i: number) => `<button data-act="answer" data-payload='${JSON.stringify({ answer: i })}' ${mine ? 'disabled' : ''}>${ui.text(o, { inline: true })}</button>`)
+      .join('')}<p class="score">${state.scores[ui.self!.id] ?? 0}</p>`;
+  },
+};
+
+function mount(router: LocalRouter, address: string, def: Omit<GameDefinition<any>, 'root'> = quiz): HTMLElement {
+  const root = document.createElement('div');
+  root.id = `root-${address}`;
+  document.body.appendChild(root);
+  handles.push(startGame({ ...def, root }, { connector: router.connector(address) }));
+  return root;
+}
+
+describe('defineGame end to end', () => {
+  it('runs a presenter game across board and controllers', async () => {
+    const router = new LocalRouter({ items });
+    const board = mount(router, 'board');
+    const anna = mount(router, 'anna');
+    const ben = mount(router, 'ben');
+    await Promise.all(handles.map((h) => h.ready));
+    expect(anna.textContent).toContain('Čekáme na začátek hry');
+
+    await router.start();
+    await wait();
+    expect(board.querySelector('h1')!.innerHTML).toBe('Hlavní město <strong>Česka</strong>?');
+    expect(board.querySelector('.count')!.textContent).toBe('0/2');
+    expect(anna.querySelector('.who')!.textContent).toBe('ANNA');
+
+    (anna.querySelectorAll('button')[1] as HTMLButtonElement).click();
+    (ben.querySelectorAll('button')[0] as HTMLButtonElement).click();
+    await wait(150);
+
+    expect(board.querySelector('.count')!.textContent).toBe('2/2');
+    expect(anna.querySelector('.score')!.textContent).toBe('1');
+    expect(ben.querySelector('.score')!.textContent).toBe('0');
+    expect((anna.querySelector('button') as HTMLButtonElement).disabled).toBe(true);
+    expect(router.records).toEqual([
+      { playerId: 'anna', itemId: 'q1', isCorrect: true },
+      { playerId: 'ben', itemId: 'q1', isCorrect: false },
+    ]);
+    expect(router.errors).toEqual([]);
+  });
+
+  it('shows a render error instead of a blank screen and reports it', async () => {
+    const router = new LocalRouter({ items, mode: 'solo' });
+    const root = mount(router, 'me', { ...quiz, render: () => { throw new Error('oops'); } });
+    await handles[0].ready;
+    await router.start();
+    await wait();
+    expect(root.querySelector('.mz-error')!.textContent).toContain('oops');
+    expect(router.errors).toEqual(['me RENDER_FAILED: oops']);
+  });
+
+  it('saves plugin data (debounced) and refuses it on the board', async () => {
+    const router = new LocalRouter({ items });
+    let saveFromRender = true;
+    const def = {
+      ...quiz,
+      render(state: State, ui: any) {
+        if (saveFromRender && state) ui.save('set', { level: 3 });
+        return '<p>x</p>';
+      },
+    };
+    mount(router, 'board', def);
+    mount(router, 'anna', def);
+    await Promise.all(handles.map((h) => h.ready));
+    await router.start();
+    await wait(1200);
+    saveFromRender = false;
+    expect(router.saved).toEqual([{ address: 'anna', scope: 'set', value: { level: 3 } }]);
+    expect(router.errors.some((e) => e.startsWith('board NOT_ALLOWED_IN_VIEW'))).toBe(true);
+  });
+
+  it('lobby settings screen reports typed values and validity', async () => {
+    const router = new LocalRouter({ items, view: 'settings', settings: { questionTime: 20, mode: 'classic' } });
+    const root = mount(router, 'board', {
+      ...quiz,
+      renderSettings: (settings) =>
+        `<input type="number" data-setting="questionTime" value="${settings.questionTime}"><select data-setting="mode"><option value="classic">C</option><option value="fast">F</option></select>`,
+      validateSettings: (settings) => (settings.mode === 'fast' && (settings.questionTime as number) > 60 ? 'Fast mode needs ≤ 60 s' : undefined),
+    });
+    await handles[0].ready;
+    expect(router.settingsUpdates[0]).toEqual({ values: { questionTime: 20, mode: 'classic' }, valid: true });
+
+    const input = root.querySelector('input')!;
+    input.value = '90';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    const select = root.querySelector('select')!;
+    select.value = 'fast';
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(router.settingsUpdates.at(-1)).toEqual({ values: { questionTime: 90, mode: 'fast' }, valid: false, message: 'Fast mode needs ≤ 60 s' });
+
+    input.value = '500';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    expect(router.settingsUpdates.at(-1)).toMatchObject({ valid: false, message: 'questionTime: must be at most 120' });
+  });
+
+  it('rejects an invalid definition with a clear message', async () => {
+    const router = new LocalRouter({ items, mode: 'solo' });
+    const handle = startGame({ actions: {}, render: () => '' } as any, { connector: router.connector('me') });
+    await expect(handle.ready).rejects.toThrow(/initialState must be a function/);
+  });
+});

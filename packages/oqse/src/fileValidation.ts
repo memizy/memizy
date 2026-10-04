@@ -18,6 +18,7 @@ import { OQSEMetaSchema, getItemSchema } from './oqseValidation';
 import { OFFICIAL_ITEM_TYPES } from './oqse';
 import { findAssetKeys, findRawHtml } from './richTextProcessor';
 import { formatPath, validateJsonDepth } from './utils';
+import { resolveAsset } from './assets';
 import { findHeadings, splitLines } from './markdownUtils';
 
 // ============================================================================
@@ -131,19 +132,6 @@ export function validateOQSEFile(data: unknown): OQSEFile {
   const result = safeValidateOQSEFile(data);
   if (!result.success) throw new OQSEValidationError(result.errors, result.warnings);
   return result.data!;
-}
-
-/**
- * Looks up a media object for `<asset:key />` or `targetAsset`: first in the
- * item's own `assets`, then in `meta.assets`. The key is case-insensitive.
- */
-export function resolveAsset(
-  key: string,
-  item: Pick<OQSEAnyItem, 'assets'> | undefined,
-  meta: Pick<OQSEMeta, 'assets'> | undefined,
-): MediaObject | undefined {
-  const k = key.toLowerCase();
-  return item?.assets?.[k] ?? meta?.assets?.[k];
 }
 
 // ============================================================================

@@ -3,7 +3,7 @@
  */
 
 import type { OQSEAnyItem, OQSEMeta, ProgressRecord } from '@memizy/oqse';
-import type { HostAs, PluginView } from './manifest';
+import type { HostAs, PluginView } from './pluginRuntime';
 
 // ============================================================================
 // Addresses, players, session

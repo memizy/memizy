@@ -18,7 +18,7 @@ export interface LastAnswerObject {
 	confidence?: 1 | 2 | 3 | 4;
 	answeredAt: string;
 	timeSpent?: number;
-	hintsUsed: number;
+	hintsUsed?: number;
 	isSkipped?: boolean;
 }
 

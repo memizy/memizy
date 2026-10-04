@@ -14,11 +14,14 @@ export default defineConfig({
     lib: {
       entry: resolve(__dirname, 'src/index.ts'),
       name: 'OQSE',
-      fileName: 'index',
+      // One output file per source module, so bundlers can drop unused modules
+      // (e.g. the plugin SDK does not need the Zod schemas).
+      fileName: (format, entryName) => `${entryName}.${format === 'es' ? 'js' : 'cjs'}`,
       formats: ['es', 'cjs']
     },
     rollupOptions: {
-      external: ['zod', 'yaml']
+      external: ['zod', 'yaml', 'uuid'],
+      output: { preserveModules: true, preserveModulesRoot: 'src' }
     }
   }
 });

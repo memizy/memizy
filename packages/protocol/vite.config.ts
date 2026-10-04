@@ -11,11 +11,13 @@ export default defineConfig({
   build: {
     lib: {
       entry: resolve(import.meta.dirname, 'src/index.ts'),
-      fileName: 'index',
+      // One output file per source module, so bundlers can drop unused modules (Zod schemas).
+      fileName: (format, entryName) => `${entryName}.${format === 'es' ? 'js' : 'cjs'}`,
       formats: ['es', 'cjs'],
     },
     rollupOptions: {
       external: ['zod', '@memizy/oqse'],
+      output: { preserveModules: true, preserveModulesRoot: 'src' },
     },
   },
 });

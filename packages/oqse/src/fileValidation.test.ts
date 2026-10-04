@@ -4,8 +4,8 @@ import {
   safeValidateOQSEFile,
   validateOQSEFile,
   OQSEValidationError,
-  resolveAsset,
 } from './fileValidation';
+import { resolveAsset } from './assets';
 import { findRawHtml, prepareRichTextForDisplay } from './richTextProcessor';
 
 const META_ID = '0192f0c4-7a1e-7c3b-9a52-2f1d8e4b6a00';

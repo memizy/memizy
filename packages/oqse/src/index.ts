@@ -15,4 +15,5 @@ export * from './richTextProcessor';
 export * from './markdownSet';
 export { shiftHeadings } from './markdownUtils';
 export * from './fileValidation';
+export * from './assets';
 export * from './compatibility';

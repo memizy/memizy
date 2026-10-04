@@ -1,11 +1,13 @@
 /**
- * Plugin manifest (SPEC section 2): an OQSEM document whose
- * `appSpecific.memizy` block describes the runtime.
+ * Plugin manifest validation (SPEC section 2): an OQSEM document whose
+ * `appSpecific.memizy` block describes the runtime. Uses Zod; lightweight
+ * helpers without Zod are in pluginRuntime.ts.
  */
 
 import { z } from 'zod';
 import { OQSEManifestSchema, formatOQSEErrors, type OQSEManifest } from '@memizy/oqse';
-import { SettingDefinitionSchema, type SettingDefinition } from './settings';
+import { SettingDefinitionSchema } from './settingsSchema';
+import { extractManifestFromHtml, toRuntime, type PluginRuntime } from './pluginRuntime';
 
 // ============================================================================
 // Schemas
@@ -14,7 +16,6 @@ import { SettingDefinitionSchema, type SettingDefinition } from './settings';
 const ProtocolVersionSchema = z.string().regex(/^\d+\.\d+$/, 'Protocol version must be in MAJOR.MINOR format (e.g. "1.0")');
 
 export const HostAsSchema = z.enum(['presenter', 'player']);
-export type HostAs = z.infer<typeof HostAsSchema>;
 
 export const MultiplayerModeSchema = z.looseObject({
   players: z
@@ -70,23 +71,6 @@ export type PluginManifest = OQSEManifest & {
   appSpecific: Record<string, unknown> & { memizy: MemizyRuntimeManifest };
 };
 
-export type PluginView = 'solo' | 'board' | 'controller' | 'settings';
-
-/** The runtime part with all defaults applied – what hosts work with. */
-export interface PluginRuntime {
-  protocol: string;
-  solo: boolean;
-  multiplayer: null | {
-    players: { min: number; max: number; recommended?: number };
-    hostAs: HostAs[];
-    lateJoin: boolean;
-  };
-  settings: SettingDefinition[];
-  settingsScreen: null | { size: 'compact' | 'large' };
-  orientation: 'any' | 'portrait' | 'landscape';
-  /** Views the plugin must render (SPEC 3.2). */
-  views: PluginView[];
-}
 
 export type PluginManifestResult =
   | { success: true; manifest: PluginManifest; runtime: PluginRuntime }
@@ -139,53 +123,9 @@ export function parsePluginManifest(data: unknown): { manifest: PluginManifest; 
   return { manifest: result.manifest, runtime: result.runtime };
 }
 
-const DATA_ISLAND_RE = /<script\b[^>]*\btype\s*=\s*["']application\/oqse-manifest\+json["'][^>]*>([\s\S]*?)<\/script\s*>/i;
-
-/**
- * Reads the manifest data island from plugin HTML **without executing it**
- * (works in browsers and in Node). Returns the parsed JSON, or an error.
- */
-export function extractManifestFromHtml(html: string): { success: true; data: unknown } | { success: false; error: string } {
-  const match = DATA_ISLAND_RE.exec(html);
-  if (!match) return { success: false, error: 'No <script type="application/oqse-manifest+json"> data island found.' };
-  try {
-    return { success: true, data: JSON.parse(match[1]) };
-  } catch (e) {
-    return { success: false, error: `The manifest data island is not valid JSON: ${(e as Error).message}` };
-  }
-}
-
 /** Extracts and validates the manifest of a plugin HTML file. */
 export function readPluginManifestFromHtml(html: string): PluginManifestResult {
   const extracted = extractManifestFromHtml(html);
   if (!extracted.success) return { success: false, errors: [extracted.error] };
   return safeParsePluginManifest(extracted.data);
-}
-
-/** Applies defaults and derives the views (SPEC 3.2). */
-export function toRuntime(memizy: MemizyRuntimeManifest): PluginRuntime {
-  const mp = memizy.modes.multiplayer;
-  const multiplayer = mp
-    ? {
-        players: { min: mp.players.min, max: mp.players.max, ...(mp.players.recommended !== undefined && { recommended: mp.players.recommended }) },
-        hostAs: [...mp.hostAs],
-        lateJoin: mp.lateJoin ?? true,
-      }
-    : null;
-
-  const views: PluginView[] = [];
-  if (memizy.modes.solo) views.push('solo');
-  if (multiplayer?.hostAs.includes('presenter')) views.push('board');
-  if (multiplayer) views.push('controller');
-  if (multiplayer && memizy.settingsScreen) views.push('settings');
-
-  return {
-    protocol: memizy.protocol,
-    solo: memizy.modes.solo !== undefined,
-    multiplayer,
-    settings: memizy.settings ?? [],
-    settingsScreen: memizy.settingsScreen ? { size: memizy.settingsScreen.size } : null,
-    orientation: memizy.display?.orientation ?? 'any',
-    views,
-  };
 }
