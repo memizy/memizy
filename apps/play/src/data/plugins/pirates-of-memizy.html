@@ -1240,6 +1240,7 @@ const Scene = {
     this.own.add(this.avatar);
 
     const layout = () => {
+      if (!this.own || !this.ren) return; // the scene was closed (switched to 2D)
       const w = canvas.clientWidth || 1, h = canvas.clientHeight || 1;
       ren.setSize(w, h, false);
       const cam = this.cam;
@@ -1261,7 +1262,8 @@ const Scene = {
       cam.updateProjectionMatrix();
     };
     this.layout = layout;
-    new ResizeObserver(layout).observe(canvas);
+    this.resize = new ResizeObserver(layout);
+    this.resize.observe(canvas);
     layout();
     canvas.addEventListener('pointerdown', (e) => this.onTap(e));
   },
@@ -1570,6 +1572,8 @@ const Scene = {
 
   dispose() {
     cancelAnimationFrame(this.raf);
+    this.resize?.disconnect();
+    this.resize = null;
     try { this.ren?.dispose(); } catch { /* ignore */ }
     Object.assign(this, { state: null, ready: false, ren: null, scene: null, canvas: null, labels: null, own: null, enemy: null, avatar: null, mates: {}, stations: [], decals: { own: {}, enemy: {} }, particles: [], projectiles: [], gulls: [], caps: [], aiming: false });
   },
