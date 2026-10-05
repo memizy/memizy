@@ -161,7 +161,8 @@ describe('solo', () => {
         return `<button data-act="answer" data-payload='{"answer":1}'>y</button><p class="score">${state.scores.me ?? 0}</p>`;
       },
     });
-    await wait(150);
+    // Poll instead of a fixed delay: the test can share the CPU with the relay end-to-end test.
+    for (let i = 0; i < 100 && !(events.some((e) => e.type === 'started') && root.querySelector('button')); i++) await wait(20);
     expect(events.some((e) => e.type === 'started')).toBe(true);
     (root.querySelector('button') as HTMLButtonElement).click();
     await wait(2500); // ui.save is debounced by the SDK (1 s) and by the host (1 s)

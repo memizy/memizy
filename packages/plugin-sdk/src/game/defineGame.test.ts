@@ -107,13 +107,13 @@ describe('defineGame end to end', () => {
     expect(router.errors).toEqual([]);
   });
 
-  it('calls update after renders and accepts actions from the handle (canvas / 3D games)', async () => {
+  it('calls afterRender after renders and accepts actions from the handle (canvas / 3D games)', async () => {
     const router = new LocalRouter({ items });
     const updates: { view: string; answered: number }[] = [];
     const def: Omit<GameDefinition<State>, 'root'> = {
       ...quiz,
       render: (state) => `<p class="count">${Object.keys(state.answers).length}</p><div id="scene" data-keep></div>`,
-      update(state, ui) {
+      afterRender(state, ui) {
         updates.push({ view: ui.view, answered: Object.keys(state.answers).length });
         const scene = ui.view === 'board' ? board.querySelector('#scene')! : null;
         if (scene && !scene.firstChild) scene.appendChild(document.createElement('canvas'));

@@ -95,6 +95,8 @@ export default {
       playLive: 'Zahrát si naživo',
       playLiveHint: 'Otevře hostování s touto hrou – hráči se připojí z telefonů PINem.',
       host: 'host',
+      localeApp: 'Jazyk aplikace',
+      configHint: 'Jazyk a téma, které hra dostane – vyzkoušej svou hru česky, anglicky i tmavou.',
     },
     inspector: {
       empty: 'Zatím žádné zprávy.',

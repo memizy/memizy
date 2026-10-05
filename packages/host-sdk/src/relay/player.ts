@@ -11,6 +11,7 @@ import {
   extractManifestFromHtml,
   type HostApi,
   type InitPayload,
+  type Theme,
   type PluginApi,
   type RelayBundle,
   type RelayErrorCode,
@@ -43,6 +44,11 @@ export interface RelayPlayerOptions {
   callTimeoutMs?: number;
   /** Adjusts the downloaded plugin HTML before it runs (e.g. points the SDK import to a local build). */
   transformHtml?: (html: string) => string;
+  /**
+   * Language and theme of this device. They replace the host's values, so every
+   * player sees the game in the language and theme of their own app.
+   */
+  config?: () => Partial<Theme>;
   /** Creates the plugin instance (default: a sandboxed iframe; tests connect the SDK directly). */
   createFrame?: FrameFactory;
 }
@@ -83,6 +89,8 @@ export class RelayPlayer {
   private readonly pending = new Map<number, Pending>();
   /** Host clock minus local clock (ms). */
   private skewMs = 0;
+  /** The config the host sent last (before this device's overrides). */
+  private hostConfig: Theme | null = null;
   private mountQueue: Promise<void> = Promise.resolve();
 
   constructor(options: RelayPlayerOptions) {
@@ -109,6 +117,16 @@ export class RelayPlayer {
 
   private emit(event: RelayPlayerEvent): void {
     for (const listener of this.listeners) listener(event);
+  }
+
+  /** Call when this device's language or theme changed (see `config`). */
+  updateConfig(): void {
+    if (!this.plugin || !this.hostConfig) return;
+    this.plugin.configChanged(this.localConfig(this.hostConfig)).catch(() => {});
+  }
+
+  private localConfig(host: Theme): Theme {
+    return { ...host, ...this.options.config?.() };
   }
 
   rename(name: string): void {
@@ -196,7 +214,8 @@ export class RelayPlayer {
             this.skewMs = msg.hostNow + (now - call.sentAt) / 2 - now;
           }
           const init = value as InitPayload;
-          value = { ...init, set: structuredClone(this.bundle.data.set), clock: { offsetMs: init.clock.offsetMs + this.skewMs } };
+          this.hostConfig = init.config;
+          value = { ...init, set: structuredClone(this.bundle.data.set), clock: { offsetMs: init.clock.offsetMs + this.skewMs }, config: this.localConfig(init.config) };
         } else if (isSerializedBlob(value)) {
           value = jsonToBlob(value);
         }
@@ -210,6 +229,10 @@ export class RelayPlayer {
           return;
         }
         let args = msg.args;
+        if (msg.method === 'configChanged') {
+          this.hostConfig = args[0] as Theme;
+          args = [this.localConfig(this.hostConfig)];
+        }
         if (msg.method === 'clockChanged') {
           const clock = args[0] as { offsetMs: number };
           args = [{ offsetMs: clock.offsetMs + this.skewMs }];

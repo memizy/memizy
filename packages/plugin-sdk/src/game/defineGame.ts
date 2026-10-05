@@ -207,7 +207,7 @@ abstract class BaseController implements Controller {
     }
   }
 
-  /** Runs after each render (`update` of the game definition). */
+  /** Runs after each render (`afterRender` of the game definition). */
   protected afterRender(): void {}
 
   protected report(code: string, message: string): void {
@@ -288,7 +288,7 @@ class GameController<S> extends BaseController {
   }
 
   protected override afterRender(): void {
-    if (this.def.update && this.runtime.state !== undefined && this.lastUi) this.def.update(this.runtime.state, this.lastUi);
+    if (this.def.afterRender && this.runtime.state !== undefined && this.lastUi) this.def.afterRender(this.runtime.state, this.lastUi);
   }
 
   act(name: string, payload: unknown): void {
@@ -470,7 +470,7 @@ function validateDefinition(def: GameDefinition<any>): void {
   if (!def.actions || typeof def.actions !== 'object') problems.push('actions must be an object of functions');
   else for (const [name, fn] of Object.entries(def.actions)) if (typeof fn !== 'function') problems.push(`actions.${name} must be a function`);
   if (typeof def.render !== 'function') problems.push('render must be a function returning HTML');
-  if (def.update !== undefined && typeof def.update !== 'function') problems.push('update must be a function (state, ui) => void');
+  if (def.afterRender !== undefined && typeof def.afterRender !== 'function') problems.push('afterRender must be a function (state, ui) => void');
   if (problems.length > 0) throw new Error(`defineGame: ${problems.join('; ')}`);
 }
 

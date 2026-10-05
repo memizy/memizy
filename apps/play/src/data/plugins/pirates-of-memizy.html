@@ -885,9 +885,9 @@ function render(state, ui) {
 }
 
 /* ═════════════════════════════════════════════════════════
-   update(): reacts to state changes on the device (3D, messages)
+   afterRender(): reacts to state changes on the device (3D, messages)
    ═════════════════════════════════════════════════════════ */
-function update(state, ui) {
+function afterRender(state, ui) {
   if (ui.view === 'board' || state.phase === 'teams' || !G.team) return;
   const me = ui.self?.id;
   const shot = state.lastShot;
@@ -1515,7 +1515,7 @@ const game = defineGame({
     return `<section class="screen"><div style="font-size:64px">🦜</div><div class="panel-title" style="font-size:20px">${L.waitTitle}</div><div class="muted">${L.waitSub}</div></section>`;
   },
   render,
-  update,
+  afterRender,
 });
 </script>
 </body>

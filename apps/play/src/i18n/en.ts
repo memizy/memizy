@@ -97,6 +97,8 @@ const en: typeof cs = {
       playLive: 'Play it live',
       playLiveHint: 'Opens hosting with this game – players join from their phones with the PIN.',
       host: 'host',
+      localeApp: 'App language',
+      configHint: 'The language and theme the game gets – try your game in Czech, English and dark.',
     },
     inspector: {
       empty: 'No messages yet.',

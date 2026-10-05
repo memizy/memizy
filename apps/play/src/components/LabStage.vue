@@ -24,6 +24,11 @@ type Phase = 'lobby' | 'countdown' | 'running' | 'ended';
 const props = defineProps<{ plugin: LoadedPlugin | null; set: OQSEFile | null; liveTo?: string | null }>();
 const emit = defineEmits<{ played: ['answer' | 'end'] }>();
 const { t, locale } = useI18n();
+/** What the plugin gets: app language or a test language, light or dark theme. */
+const previewLocale = ref<'app' | 'cs' | 'en'>('app');
+const previewTheme = ref<'light' | 'dark'>('light');
+const pluginConfig = computed(() => ({ locale: previewLocale.value === 'app' ? locale.value : previewLocale.value, theme: previewTheme.value }));
+const frameBg = computed(() => (previewTheme.value === 'dark' ? 'bg-slate-900' : 'bg-white'));
 
 const mode = ref<StageMode>('solo');
 const session = shallowRef<LocalSession | null>(null);
@@ -135,7 +140,7 @@ function build(): void {
       hostAs: mode.value === 'solo' ? undefined : mode.value,
       players: roster,
       settings: settings.value,
-      config: { locale: locale.value, theme: 'light' },
+      config: pluginConfig.value,
     });
     stopListening = next.on(handle);
     players.value = next.players;
@@ -158,7 +163,7 @@ watch(
   },
 );
 watch([() => props.plugin, () => props.set, mode], build, { immediate: true });
-watch(locale, (value) => session.value?.setConfig({ locale: value }));
+watch(pluginConfig, (config) => session.value?.setConfig(config));
 onBeforeUnmount(teardown);
 
 let settingsTimer: ReturnType<typeof setTimeout> | undefined;
@@ -237,6 +242,17 @@ const phaseLabel = computed(() => {
         {{ phaseLabel }}
       </span>
 
+      <div class="flex items-center gap-1 text-xs" :title="t('lab.preview.configHint')">
+        <select v-model="previewLocale" class="rounded-lg border border-slate-200 bg-white px-2 py-1 font-semibold">
+          <option value="app">{{ t('lab.preview.localeApp') }}</option>
+          <option value="cs">CS</option>
+          <option value="en">EN</option>
+        </select>
+        <button type="button" class="rounded-lg border border-slate-200 bg-white px-2 py-1 font-semibold" @click="previewTheme = previewTheme === 'light' ? 'dark' : 'light'">
+          {{ previewTheme === 'light' ? '☀️' : '🌙' }}
+        </button>
+      </div>
+
       <div v-if="modes.length" class="flex rounded-xl border border-slate-200 bg-slate-50 p-0.5 text-sm">
         <button
           v-for="m in modes"
@@ -278,7 +294,7 @@ const phaseLabel = computed(() => {
         <!-- Settings before the start -->
         <div v-if="showSettingsScreen" class="w-full max-w-3xl">
           <div class="section-label mb-2 text-slate-400">{{ t('lab.preview.settings') }}</div>
-          <div class="overflow-hidden rounded-2xl bg-white" :class="runtime?.settingsScreen?.size === 'large' ? 'h-[480px]' : 'h-[300px]'">
+          <div class="overflow-hidden rounded-2xl" :class="[frameBg, runtime?.settingsScreen?.size === 'large' ? 'h-[480px]' : 'h-[300px]']">
             <PluginFrame :session="session" :address="SETTINGS_ADDRESS" @error="frameError" />
           </div>
         </div>
@@ -290,8 +306,8 @@ const phaseLabel = computed(() => {
         <!-- Solo -->
         <template v-if="mode === 'solo'">
           <div
-            class="overflow-hidden bg-white shadow-2xl"
-            :class="soloWide ? 'aspect-video w-full max-w-4xl rounded-2xl' : 'h-[700px] w-[360px] rounded-[2.5rem] border-[10px] border-slate-700'"
+            class="overflow-hidden shadow-2xl"
+            :class="[frameBg, soloWide ? 'aspect-video w-full max-w-4xl rounded-2xl' : 'h-[700px] w-[360px] rounded-[2.5rem] border-[10px] border-slate-700']"
           >
             <PluginFrame :session="session" address="me" @error="frameError" />
           </div>
@@ -306,7 +322,7 @@ const phaseLabel = computed(() => {
                 <ArrowPathIcon class="inline size-3.5" /> {{ t('lab.preview.reload') }}
               </button>
             </div>
-            <div class="aspect-video overflow-hidden rounded-2xl border border-slate-700 bg-white shadow-2xl">
+            <div class="aspect-video overflow-hidden rounded-2xl border border-slate-700 shadow-2xl" :class="frameBg">
               <PluginFrame :session="session" address="board" @error="frameError" />
             </div>
           </div>
@@ -348,8 +364,8 @@ const phaseLabel = computed(() => {
                 </span>
               </div>
               <div
-                class="relative overflow-hidden rounded-[2.25rem] border-[10px] border-slate-700 bg-white shadow-2xl"
-                :class="wide ? 'h-[320px] w-[600px] max-w-[85vw]' : 'h-[600px] w-[300px]'"
+                class="relative overflow-hidden rounded-[2.25rem] border-[10px] border-slate-700 shadow-2xl"
+                :class="[frameBg, wide ? 'h-[320px] w-[600px] max-w-[85vw]' : 'h-[600px] w-[300px]']"
               >
                 <PluginFrame :key="player.id" :session="session" :address="player.id" @error="frameError" />
                 <div v-if="!isConnected(player.id)" class="absolute inset-0 grid place-items-center bg-slate-900/70 text-white">

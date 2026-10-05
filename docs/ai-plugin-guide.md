@@ -100,7 +100,7 @@ defineGame({
     return `<h1>Hello ${ui.self?.name ?? ''}</h1>`;
   },
 
-  update(state, ui) {},                  // optional: after each render, for canvas / 3D (section 6.1)
+  afterRender(state, ui) {},             // optional: after each render, for canvas / 3D (section 6.1)
 });
 ```
 
@@ -236,8 +236,8 @@ if (state.score > best) ui.save('set', { ...ui.saved.set, level: state.level + 1
 HTML from `render` is for text, buttons and menus. For a canvas or a 3D scene (e.g. Three.js):
 
 * Put an empty element with **`data-keep`** into the HTML: `<div id="scene" data-keep></div>`. The SDK never touches what is inside it, so your canvas survives every render.
-* Create the scene once and update it in **`update(state, ui)`**, which runs after every render with the same state: move objects, start an explosion when `state.lastShot` changed, show the new score. Keep your own animation loop (`requestAnimationFrame`) for smooth movement.
-* Clicks inside the scene: call **`game.act('fire', { target: 2 })`** (the handle returned by `defineGame`) or `ui.act` in `update`. Never change the state outside actions.
+* Create the scene once and update it in **`afterRender(state, ui)`**, which runs after every render with the same state (not every animation frame): move objects, start an explosion when `state.lastShot` changed, show the new score. It must not change the state: game rules stay in `actions`. Keep your own animation loop (`requestAnimationFrame`) for smooth movement.
+* Clicks inside the scene: call **`game.act('fire', { target: 2 })`** (the handle returned by `defineGame`) or `ui.act` in `afterRender`. Never change the state outside actions.
 * The state holds only what matters for the game (positions after a move, hits, health), not animation frames: send an action per player decision, not per frame (limit 30 messages per second).
 * Not every device can run WebGL well. Check that a WebGL context can be created, offer a simpler 2D view (another `render` branch) when it fails or the frame rate stays low, and show a button to switch to 2D. Lower the quality on phones (no or small shadow maps, `setPixelRatio(Math.min(devicePixelRatio, 2))`).
 * Load libraries from `https://cdn.jsdelivr.net/npm/...` as ES modules (e.g. `https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.min.js`).
@@ -429,7 +429,7 @@ defineGame({
 
 ## 10. Common Mistakes
 
-1. Changing state inside `render` or in event listeners instead of in `actions`.
+1. Changing state inside `render`, `afterRender` or event listeners instead of in `actions`.
 2. Storing whole items or DOM elements in the state.
 3. Using `onclick="..."` – functions inside `<script type="module">` are not global, so inline handlers cannot call them; use `data-act`.
 4. Assuming the board is a player (it is not in `ctx.players`) or that the host never plays.

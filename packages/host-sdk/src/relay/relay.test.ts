@@ -51,7 +51,7 @@ const race: Omit<GameDefinition<State>, 'root'> = {
   render: (state, ui) =>
     ui.view === 'board'
       ? `<p class="total">${Object.values(state.scores).reduce((a, b) => a + b, 0)}</p>`
-      : `<h1 class="q">${ui.escape(ui.items[0]?.type === 'mcq-single' ? (ui.items[0] as any).question : '?')}</h1><button data-act="answer">go</button><p class="score">${state.scores[ui.self!.id] ?? 0}</p><p class="clock">${Math.abs(ui.now() - Date.now()) < 5000 ? 'ok' : 'skewed'}</p>`,
+      : `<h1 class="q">${ui.escape(ui.items[0]?.type === 'mcq-single' ? (ui.items[0] as any).question : '?')}</h1><button data-act="answer">go</button><p class="score">${state.scores[ui.self!.id] ?? 0}</p><p class="clock">${Math.abs(ui.now() - Date.now()) < 5000 ? 'ok' : 'skewed'}</p><p class="loc">${ui.locale}</p>`,
 };
 
 const games: GameHandle[] = [];
@@ -86,12 +86,12 @@ function sdkFrames(): { factory: FrameFactory; roots: HTMLElement[] } {
   return { factory, roots };
 }
 
-function joinPlayer(pin: string, name: string, token?: string) {
+function joinPlayer(pin: string, name: string, token?: string, locale?: string) {
   const frames = sdkFrames();
   const container = document.createElement('div');
   document.body.appendChild(container);
   const events: RelayPlayerEvent[] = [];
-  const player = new RelayPlayer({ serverUrl, WebSocket: WebSocketImpl, pin, name, token, container: () => container, createFrame: frames.factory });
+  const player = new RelayPlayer({ serverUrl, WebSocket: WebSocketImpl, pin, name, token, container: () => container, createFrame: frames.factory, config: locale ? () => ({ locale }) : undefined });
   player.on((e) => events.push(e));
   const root = () => frames.roots.at(-1);
   return { player, events, root, container };
@@ -136,7 +136,7 @@ describe('relayed multiplayer', () => {
     expect(host.pin).toMatch(/^\d{6}$/);
 
     const anna = joinPlayer(host.pin, 'Anna');
-    const ben = joinPlayer(host.pin, 'Ben');
+    const ben = joinPlayer(host.pin, 'Ben', undefined, 'en');
     await until(() => host.players.length === 2 && host.players.every((p) => p.connected));
     await until(() => anna.player.state?.phase === 'lobby');
 
@@ -171,6 +171,9 @@ describe('relayed multiplayer', () => {
     // The set came from the bundle, the clock is synchronized.
     expect(anna.root()!.querySelector('.q')!.textContent).toBe('Who barks?');
     expect(anna.root()!.querySelector('.clock')!.textContent).toBe('ok');
+    // Each device uses its own language (Ben's app is in English, the host's in Czech).
+    expect(anna.root()!.querySelector('.loc')!.textContent).toBe('cs');
+    expect(ben.root()!.querySelector('.loc')!.textContent).toBe('en');
 
     // Actions travel player → relay → host → board, state comes back.
     (anna.root()!.querySelector('button') as HTMLButtonElement).click();

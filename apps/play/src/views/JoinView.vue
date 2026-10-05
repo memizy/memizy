@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { ArrowLeftIcon, ArrowPathIcon, RocketLaunchIcon, SignalSlashIcon } from '@heroicons/vue/20/solid';
@@ -13,7 +13,7 @@ import { withSdkSource } from '@/lib/plugins';
 
 type Stage = 'form' | 'joining' | 'joined' | 'gone';
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const route = useRoute();
 const router = useRouter();
 
@@ -89,6 +89,8 @@ function connect(token: string | null): void {
     token: token ?? undefined,
     container: () => frameBox.value,
     transformHtml: (html) => withSdkSource(html, 'local'),
+    // The game uses this phone's language, not the host's (Memizy Play has a light theme only).
+    config: () => ({ locale: locale.value, theme: 'light' }),
   });
   player.value = p;
   p.on(onEvent);
@@ -186,6 +188,8 @@ function onVisible(): void {
     if (frameActive.value) void lockScreen();
   }
 }
+
+watch(locale, () => player.value?.updateConfig());
 
 onMounted(() => {
   document.addEventListener('visibilitychange', onVisible);
