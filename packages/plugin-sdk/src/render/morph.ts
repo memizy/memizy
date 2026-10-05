@@ -29,6 +29,14 @@ function sameKind(a: Node, b: Node): boolean {
 
 function morphChildren(from: ParentNode & Node, to: ParentNode & Node): void {
   const target = [...to.childNodes];
+  const targetKeys = new Set(target.map(keyOf).filter((key): key is string => key !== null));
+
+  // Keyed children that disappear are removed first, so the ones after them stay where
+  // they are (moving a node in the DOM takes the focus away from an input inside it).
+  for (const child of [...from.childNodes]) {
+    const key = keyOf(child);
+    if (key !== null && !targetKeys.has(key)) from.removeChild(child);
+  }
 
   // Existing keyed children, so they can be moved instead of recreated.
   const keyed = new Map<string, Node>();
@@ -45,7 +53,16 @@ function morphChildren(from: ParentNode & Node, to: ParentNode & Node): void {
     if (key !== null) {
       const match = keyed.get(key);
       if (match && match !== current && sameKind(match, wanted)) {
-        from.insertBefore(match, current);
+        // Moving a node takes the focus away from an input inside it. When the match is
+        // further on and only nodes that are not needed elsewhere are in the way
+        // (whitespace, unkeyed elements), remove them instead.
+        let between: Node | null = current;
+        while (between && between !== match && !(keyOf(between) !== null && targetKeys.has(keyOf(between)!))) between = between.nextSibling;
+        if (between === match) {
+          while (from.childNodes[i] !== match) from.removeChild(from.childNodes[i]);
+        } else {
+          from.insertBefore(match, current);
+        }
         current = match;
       }
     }
@@ -54,6 +71,9 @@ function morphChildren(from: ParentNode & Node, to: ParentNode & Node): void {
       from.appendChild(adopt(from, wanted));
     } else if (sameKind(current, wanted)) {
       morphNode(current, wanted);
+    } else if (keyOf(current) !== null && targetKeys.has(keyOf(current)!)) {
+      // A new element appears before a keyed one that stays: insert it, do not replace.
+      from.insertBefore(adopt(from, wanted), current);
     } else {
       from.replaceChild(adopt(from, wanted), current);
     }

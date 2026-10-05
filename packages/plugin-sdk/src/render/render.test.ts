@@ -92,6 +92,48 @@ describe('morph', () => {
     expect(root.querySelector('span')!.textContent).toBe('y^2');
   });
 
+  it('keeps focus and typed text when keyed elements appear or disappear before an input', () => {
+    const root = document.createElement('div');
+    document.body.appendChild(root);
+    const form = (before: string) => `${before}<div id="quiz"><input name="text"></div>`;
+    morph(root, form(''));
+    const input = root.querySelector('input')!;
+    input.focus();
+    input.value = 'Praha';
+    morph(root, form('<div id="toast">💥 Hit!</div>')); // a message appears above the question
+    expect(root.querySelector('input')).toBe(input);
+    expect(document.activeElement).toBe(input);
+    expect(input.value).toBe('Praha');
+    morph(root, form('')); // and disappears again
+    expect(root.querySelector('input')).toBe(input);
+    expect(document.activeElement).toBe(input);
+    expect(input.value).toBe('Praha');
+    expect(root.querySelector('#toast')).toBeNull();
+    root.remove();
+  });
+
+  it('keeps focus when a conditional element between whitespace disappears (template literals)', () => {
+    const root = document.createElement('div');
+    document.body.appendChild(root);
+    // Like `${show ? '<div data-key="toast">…</div>' : ''}` inside a multi-line template.
+    const view = (show: boolean) => `
+      <div data-key="hud">HUD</div>
+      ${show ? '<div data-key="toast">💥</div>' : ''}
+      <div data-key="quiz"><input name="text"></div>
+    `;
+    morph(root, view(true));
+    const input = root.querySelector('input')!;
+    input.focus();
+    input.value = 'psíček';
+    morph(root, view(false));
+    expect(document.activeElement).toBe(input);
+    morph(root, view(true));
+    expect(document.activeElement).toBe(input);
+    expect(input.value).toBe('psíček');
+    expect(root.querySelectorAll('[data-key="toast"]')).toHaveLength(1);
+    root.remove();
+  });
+
   it('keeps data-keep elements with what the plugin put into them', () => {
     const root = document.createElement('div');
     morph(root, '<p>Score 0</p><div id="scene" data-keep></div>');

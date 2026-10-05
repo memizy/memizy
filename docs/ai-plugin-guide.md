@@ -227,6 +227,7 @@ if (state.score > best) ui.save('set', { ...ui.saved.set, level: state.level + 1
 * **Buttons:** `<button data-act="answer" data-payload='{"answer":2}'>B</button>` calls the action `answer` with payload `{ answer: 2 }`.
 * **Forms:** `<form data-act="submitText"><input name="text"><button>OK</button></form>` calls `submitText` with `{ text: "…" }` on submit.
 * Screen-only UI state (selected but not yet submitted option) goes to `ui.local`; call `ui.act` when the player confirms.
+* Elements that appear and disappear (messages, popups, timers) need an `id` or `data-key`, e.g. `<div data-key="toast">`. Without it, an input below them can lose focus and the typed text while the player is writing.
 * Escape names and your own strings with `ui.escape(text)`; text from the study set always goes through `ui.text`.
 * A controller can be a **phone, tablet or computer**: make it responsive, with big buttons (min. 48 px), one column on narrow screens and no hover-only interactions. Design the board for a **projector**: large font, high contrast, visible from the back of the classroom. Browsers grey out disabled buttons; if you show disabled options on the board, add `button:disabled { color: inherit; }`.
 * Support light and dark mode with `light-dark(lightColor, darkColor)` in CSS. The SDK sets `color-scheme` to the theme of the app; do not use `prefers-color-scheme` (it follows the operating system, not the app).

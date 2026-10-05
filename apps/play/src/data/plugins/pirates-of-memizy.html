@@ -263,7 +263,7 @@ const TEXTS = {
     magazineSub: 'Otázka → dělová koule', carpenterSub: 'Otázka → prkna na opravu', fireSub: 'Vystřel na nepřítele', fire: '💣 Vystřelit',
     breaches: 'Díry v trupu', noBreaches: 'Trup je celý.',
     quizAmmo: '🧨 PRACHÁRNA', quizMaterial: '🪵 TESAŘSKÁ DÍLNA', submit: 'Odeslat', yourAnswer: 'Tvoje odpověď…', truth: 'Pravda', lie: 'Nepravda',
-    correctAmmo: '✅ Správně! Máš dělovou kouli!', correctPlank: '✅ Správně! Máš prkna!', wrong: (d) => `❌ Špatně! Naše loď −${d}`, timeUp: (d) => `⏰ Čas vypršel! Naše loď −${d}`, correctWas: 'Správně:', yourWas: 'Tvoje odpověď:',
+    correctAmmo: '✅ Správně! Máš kouli – běž k dělu!', correctPlank: '✅ Správně! Máš prkna – oprav díru v trupu!', wrong: (d) => `❌ Špatně! Naše loď −${d}`, timeUp: (d) => `⏰ Čas vypršel! Naše loď −${d}`, correctWas: 'Správně:', yourWas: 'Tvoje odpověď:',
     review: 'Podívej se, co bylo správně', continueIn: (n) => `Pokračuješ za ${n} s`, waitReview: (n) => `⏳ Pokračuješ za ${n} s`, msgSelf: (d) => `🔥 Špatná odpověď — naše loď −${d}`,
     aimTitle: '🎯 K dělu!', aimHint: 'Hlaveň se houpe s vlnami — klepni a VYSTŘEL, až bude na nepřátelské lodi!',
     msgHands: '🙌 Tohle už neseš — nejdřív to použij!', msgNoQ: '📭 Sada nemá žádné otázky!', msgStunned: '⏳ Nejdřív si přečti správnou odpověď.', msgPatched: '✨ Tahle díra už je opravená.',
@@ -296,7 +296,7 @@ const TEXTS = {
     magazineSub: 'Question → cannonball', carpenterSub: 'Question → planks', fireSub: 'Fire at the enemy', fire: '💣 Fire',
     breaches: 'Breaches in the hull', noBreaches: 'The hull is intact.',
     quizAmmo: '🧨 POWDER MAGAZINE', quizMaterial: '🪵 CARPENTER’S STORE', submit: 'Submit', yourAnswer: 'Your answer…', truth: 'True', lie: 'False',
-    correctAmmo: '✅ Correct! Cannonball acquired!', correctPlank: '✅ Correct! Planks acquired!', wrong: (d) => `❌ Wrong! Our ship −${d}`, timeUp: (d) => `⏰ Time’s up! Our ship −${d}`, correctWas: 'Correct:', yourWas: 'Your answer:',
+    correctAmmo: '✅ Correct! A cannonball – to a cannon!', correctPlank: '✅ Correct! Planks – repair a breach!', wrong: (d) => `❌ Wrong! Our ship −${d}`, timeUp: (d) => `⏰ Time’s up! Our ship −${d}`, correctWas: 'Correct:', yourWas: 'Your answer:',
     review: 'Look at what was right', continueIn: (n) => `You continue in ${n} s`, waitReview: (n) => `⏳ You continue in ${n} s`, msgSelf: (d) => `🔥 Wrong answer — our ship −${d}`,
     aimTitle: '🎯 Man the Cannon!', aimHint: 'The barrel sways with the waves — tap to FIRE when it steadies on the enemy hull!',
     msgHands: '🙌 You already carry that — use it first!', msgNoQ: '📭 No questions in this study set!', msgStunned: '⏳ Read the correct answer first.', msgPatched: '✨ That breach is already patched.',
@@ -660,7 +660,7 @@ const G = {
 };
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 const fmtTime = (ms) => { const sec = Math.ceil(Math.max(0, ms) / 1000); return `${String(Math.floor(sec / 60)).padStart(2, '0')}:${String(sec % 60).padStart(2, '0')}`; };
-function floatMsg(text, color = '#fff') { G.float = { text, color, until: performance.now() + 1600 }; }
+function floatMsg(text, color = '#fff', ms = 1600) { G.float = { text, color, until: performance.now() + ms }; }
 const pct = (ship) => (ship ? clamp((ship.hp / ship.maxHp) * 100, 0, 100) : 0);
 
 /** A small seeded shuffle for displaying options (stable across renders). */
@@ -860,7 +860,7 @@ function renderQuiz(state, ui, me) {
   const pending = state.pending[me];
   const fb = G.feedback;
   const reviewLeft = (state.stunnedUntil[me] ?? 0) - ui.now();
-  const showFb = fb && (fb.correct ? fb.until > performance.now() : reviewLeft > 0);
+  const showFb = fb && !fb.correct && reviewLeft > 0;
   const itemId = pending?.itemId ?? (showFb ? fb.itemId : null);
   if (!itemId) return '';
   const item = ui.item(itemId);
@@ -870,24 +870,17 @@ function renderQuiz(state, ui, me) {
   if (pending) {
     const left = ui.timeLeft(pending.deadline);
     const frac = clamp(left / (state.timerSec * 1000), 0, 1);
-    return `<div class="quiz"><div class="quiz-inner">
+    return `<div class="quiz" data-key="quiz"><div class="quiz-inner">
       <div class="quiz-tag"><span>${tag}</span><span>${Math.ceil(left / 1000)} s</span></div>
       <div class="quiz-timer"><div style="width:${frac * 100}%;background:${frac > 0.5 ? 'var(--gold)' : frac > 0.25 ? '#e8974a' : 'var(--danger)'}"></div></div>
       <div class="quiz-q">${ui.text(item.question ?? '', { item })}</div>
       ${quizControls(item, pending.seq, ui)}
     </div></div>`;
   }
-  if (fb.correct) {
-    return `<div class="quiz"><div class="quiz-inner">
-      <div class="quiz-tag"><span>${tag}</span></div>
-      <div class="quiz-q">${ui.text(item.question ?? '', { item })}</div>
-      <div class="feedback fb-correct">${crate === 'ammo' ? L.correctAmmo : L.correctPlank}</div>
-    </div></div>`;
-  }
   // Wrong or too late: time to look at the correct answer (the player cannot act meanwhile).
   const choice = item.type === 'mcq-single' || item.type === 'mcq-multi' || item.type === 'true-false';
   const total = REVIEW_MS;
-  return `<div class="quiz review"><div class="quiz-inner">
+  return `<div class="quiz review" data-key="quiz"><div class="quiz-inner">
     <div class="quiz-tag"><span>${tag}</span><span>${L.review}</span></div>
     <div class="feedback fb-wrong">${fb.timedOut ? L.timeUp(fb.dmg) : L.wrong(fb.dmg)}</div>
     <div class="quiz-q">${ui.text(item.question ?? '', { item })}</div>
@@ -925,7 +918,7 @@ function renderDeck2d(state, ui, me) {
   const breaches = state.hits[team] ?? [];
   const busy = !!state.pending[me] || G.walking || !!state.aiming[me];
   const shaking = G.shake2d && G.shake2d.until > performance.now();
-  return `<div class="deck2d">
+  return `<div class="deck2d" data-key="deck2d">
     <div class="ships2d">
       <span class="ship2d own${shaking ? ' shake' : ''}">${TEAMS[team].flag}<br>⛵</span>
       ${shotAnim2d()}
@@ -971,9 +964,9 @@ function renderAim(state, ui, aim) {
   const left = ui.timeLeft(aim.start + AIM_MS);
   const head = `<div class="aim-head"><span>${L.aimTitle}</span><span>${Math.ceil(left / 1000)} s</span></div>
     <div class="aim-track"><div style="width:${clamp(left / AIM_MS, 0, 1) * 100}%"></div></div>`;
-  if (!G.mode2d) return `<div class="aim" data-local="fire">${head}<div class="aim-mid"><div class="reticle"></div></div><div class="aim-hint">${L.aimHint}</div></div>`;
+  if (!G.mode2d) return `<div class="aim" data-key="aim" data-local="fire">${head}<div class="aim-mid"><div class="reticle"></div></div><div class="aim-hint">${L.aimHint}</div></div>`;
   // 2D: the enemy ship in the middle, the sight sways with exactly the same motion as the 3D barrel.
-  return `<div class="aim aim-2d" data-local="fire">${head}
+  return `<div class="aim aim-2d" data-key="aim" data-local="fire">${head}
     <div class="aim-mid" id="aim2d" data-keep>
       <div class="aim-sea"></div>
       <div class="aim-foe">${state.solo ? '☠️' : TEAMS[otherTeam(G.team)].flag}<br>⛵</div>
@@ -997,19 +990,19 @@ function renderBattle(state, ui) {
   const quiz = renderQuiz(state, ui, me);
   return `<div class="game">
     ${G.mode2d ? renderDeck2d(state, ui, me) : '<div id="sea" data-keep></div>'}
-    <div class="hud-top">
+    <div class="hud-top" data-key="hud-top">
       <div class="hp-row"><span class="hp-label">${TEAMS[team].flag} ${Math.round(pct(own))}%</span><div class="hp-track"><div class="hp-fill" style="width:${pct(own)}%;background:linear-gradient(90deg,#1d7a4f,var(--green))"></div></div></div>
       <div class="hp-row"><span class="hp-label">${state.solo ? '☠️' : TEAMS[foe].flag} ${Math.round(pct(enemy))}%</span><div class="hp-track"><div class="hp-fill" style="width:${pct(enemy)}%;background:linear-gradient(90deg,#8c1823,var(--danger))"></div></div></div>
       <div class="hud-row"><span class="hud-timer">⏳ ${fmtTime(ui.timeLeft(state.battleEndsAt))}</span><span class="hud-score">🏆 ${state.scores[me] ?? 0}</span>
         <span class="hud-inv">${inv === 'ball' ? L.ball : inv === 'plank' ? L.plank : L.empty}</span></div>
     </div>
-    <div class="hud-bot">
+    <div class="hud-bot" data-key="hud-bot">
       <span class="hint">${hintText(state, me)}</span>
       <span class="streak">${streak >= 2 ? L.streak(streak) : ''}</span>
       <button class="mode-btn" data-local="toggle2d" title="${esc(G.reason2d ?? '')}">${G.mode2d ? L.to3d : L.to2d}</button>
     </div>
-    ${reviewLeft > 0 && !quiz ? `<div class="wait-banner">${L.waitReview(Math.ceil(reviewLeft / 1000))}</div>` : ''}
-    ${showFloat ? `<div class="float" style="color:${G.float.color}">${esc(G.float.text)}</div>` : ''}
+    ${reviewLeft > 0 && !quiz ? `<div class="wait-banner" data-key="wait">${L.waitReview(Math.ceil(reviewLeft / 1000))}</div>` : ''}
+    ${showFloat ? `<div class="float" data-key="float" style="color:${G.float.color}">${esc(G.float.text)}</div>` : ''}
     ${quiz}
     ${aim && state.phase === 'battle' ? renderAim(state, ui, aim) : ''}
     ${finishedBanner}
@@ -1022,7 +1015,7 @@ function resultBanner(state, me) {
   if (!w || w === 'draw') text = `🤝 ${L.draw}`;
   else if (w === mine) text = `🏆 ${state.reason === 'sunk' ? L.winSunk : L.winTime}`;
   else text = `💀 ${state.reason === 'sunk' ? L.loseSunk : L.loseTime}`;
-  return `<div class="result-banner"><div>${text}</div></div>`;
+  return `<div class="result-banner" data-key="result"><div>${text}</div></div>`;
 }
 
 function renderPlayerFinished(state, ui) {
@@ -1076,7 +1069,12 @@ function afterRender(state, ui) {
   }
   if (result && result.seq !== G.seen.result) {
     G.seen.result = result.seq;
-    G.feedback = { ...result, until: performance.now() + (result.correct ? 1200 : 2600) };
+    if (result.correct) {
+      G.feedback = null;
+      floatMsg(result.crate === 'ammo' ? L.correctAmmo : L.correctPlank, '#2ec27e', 2400);
+    } else {
+      G.feedback = { ...result };
+    }
   }
   const selfHit = state.selfHit;
   if (G.seen.self === undefined) G.seen.self = selfHit?.seq ?? 0;
