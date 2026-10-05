@@ -560,6 +560,60 @@
   <p style="font-size:36px;margin-top:24px;opacity:.9">Vytvořte hru pro celou třídu</p>
 </section>
 
+<!-- 22a. Roles -->
+<section class="slide">
+  <div class="kicker">Jako ve skutečném týmu</div>
+  <h2>Vývojáři a testeři</h2>
+  <div class="grid2" style="align-items:stretch">
+    <div class="card" style="border:3px solid var(--orange)">
+      <span class="emoji">💻</span>
+      <h3>Vývojáři <span class="muted" style="font-size:22px;font-weight:600">· počítač + AI</span></h3>
+      <p class="muted">Vymyslí hru, nechají AI napsat kód, otestují ji v Labu a pak si přizvou testery.</p>
+      <svg viewBox="0 0 560 120" width="100%" height="120" style="margin-top:18px">
+        <g font-weight="700" font-size="22" text-anchor="middle">
+          <rect x="0" y="30" width="160" height="60" rx="18" fill="#FFF3E0" /><text x="80" y="68" fill="#E65100">💡 nápad</text>
+          <rect x="200" y="30" width="160" height="60" rx="18" fill="#EDE7F6" /><text x="280" y="68" fill="#5E35B1">🤖 AI kód</text>
+          <rect x="400" y="30" width="160" height="60" rx="18" fill="#E3F2FD" /><text x="480" y="68" fill="#1565C0">🧪 Lab</text>
+          <path d="M163 60 H192 M363 60 H392" stroke="#CBD5E1" stroke-width="5" />
+        </g>
+      </svg>
+    </div>
+    <div class="card" style="border:3px solid var(--blue)">
+      <span class="emoji">📱</span>
+      <h3>Testeři <span class="muted" style="font-size:22px;font-weight:600">· jen mobil</span></h3>
+      <p class="muted">Nejdřív se rozehřejí v námořní bitvě 🏴‍☠️ s otázkami z dnešní přednášky. Pak je vývojáři přizvou do svých her.</p>
+      <div style="display:flex;align-items:center;gap:24px;margin-top:14px">
+        <div class="qr" data-qr="join" data-size="150" style="padding:12px"><div class="code"></div><span class="url" style="font-size:15px"></span></div>
+        <p style="font-size:24px"><b>Pirates of Memizy</b><br /><span class="muted">PIN na tabuli</span></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 22b. How to test -->
+<section class="slide">
+  <div class="kicker">Pro testery</div>
+  <h2>Jak najít chybu, na kterou vývojář nemyslel</h2>
+  <div class="grid2" style="align-items:start">
+    <div class="grid2 fade-in" style="gap:20px;flex:none">
+      <div class="card"><span class="emoji">🔄</span><p><b>Obnov stránku</b> uprostřed hry</p></div>
+      <div class="card"><span class="emoji">👯</span><p><b>Dva najednou</b> – klikněte ve stejnou chvíli</p></div>
+      <div class="card"><span class="emoji">🤪</span><p><b>Divné vstupy</b> – prázdná odpověď, emoji, 500 znaků</p></div>
+      <div class="card"><span class="emoji">📲</span><p><b>Otoč telefon</b>, zhasni, odejdi a vrať se</p></div>
+    </div>
+    <div class="card" style="background:#0F172A;color:#fff;border:none">
+      <h3 style="color:var(--orange)">🐞 Dobré hlášení chyby</h3>
+      <ol style="margin:14px 0 0 28px;display:flex;flex-direction:column;gap:10px">
+        <li style="font-size:26px"><b>Co jsem dělal</b> <span style="color:#94A3B8">– krok za krokem</span></li>
+        <li style="font-size:26px"><b>Co jsem čekal</b></li>
+        <li style="font-size:26px"><b>Co se stalo</b> <span style="color:#94A3B8">– + screenshot</span></li>
+        <li style="font-size:26px"><b>Jaký telefon</b> a prohlížeč</li>
+      </ol>
+      <p style="margin-top:20px;font-size:22px;color:#94A3B8">Vývojář ho vloží do AI. Čím přesnější hlášení, tím rychlejší oprava.</p>
+    </div>
+  </div>
+</section>
+
 <!-- 23. Steps -->
 <section class="slide">
   <div class="kicker">Postup</div>
@@ -625,8 +679,8 @@
 <script>
   // Links shown as QR codes (change before the workshop if needed).
   const LINKS = {
-    lab: 'https://memizy.com/play/lab',
-    join: 'https://memizy.com/play/join',
+    lab: 'https://play.memizy.com/lab',
+    join: 'https://play.memizy.com/join',
     github: 'https://github.com/memizy/memizy',
   };
 

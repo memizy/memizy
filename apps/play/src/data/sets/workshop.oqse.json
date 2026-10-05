@@ -5,13 +5,22 @@
     "id": "0192f0c4-a002-7000-8000-000000000000",
     "language": "cs",
     "title": "Od webovky k multiplayerové aplikaci",
-    "description": "Kvíz k workshopu: proč skutečný software tvoří architektura a systémové myšlení, jak pomáhá git a Cloudflare, jak na uživatelské účty a jak řídit AI.",
+    "description": "Kvíz k workshopu „Od nápadu k aplikaci s AI“: co je pod hladinou, frontend a backend, Cloudflare, účty, git, jak se ptát AI, data, bezpečnost a skutečné chyby z vývoje Memizy.",
     "subject": "Informatika",
     "createdAt": "2026-10-04T12:00:00Z",
-    "updatedAt": "2026-10-04T12:00:00Z",
+    "updatedAt": "2026-10-05T12:00:00Z",
     "license": "CC-BY-4.0",
-    "requirements": { "features": ["markdown"] },
-    "tags": ["workshop", "ai", "web", "git"]
+    "requirements": {
+      "features": [
+        "markdown"
+      ]
+    },
+    "tags": [
+      "workshop",
+      "ai",
+      "web",
+      "git"
+    ]
   },
   "items": [
     {
@@ -19,7 +28,12 @@
       "type": "mcq-single",
       "topic": "Architektura",
       "question": "Co odlišuje skutečný software od hromady kódu, který vygenerovala AI?",
-      "options": ["Počet řádků kódu", "Promyšlená architektura a systémové myšlení", "Hezké barvy tlačítek", "Programovací jazyk"],
+      "options": [
+        "Počet řádků kódu",
+        "Promyšlená architektura a systémové myšlení",
+        "Hezké barvy tlačítek",
+        "Programovací jazyk"
+      ],
       "correctIndex": 1,
       "explanation": "AI napíše stovky řádků za minutu. Aby z nich byla fungující aplikace, musí někdo rozhodnout, z jakých částí se skládá a jak spolu mluví."
     },
@@ -43,7 +57,12 @@
       "type": "mcq-single",
       "topic": "Webovka vs. aplikace",
       "question": "Co potřebuje multiplayerová hra navíc oproti jednoduché webovce?",
-      "options": ["Jen hezčí CSS", "Server, který propojuje hráče v reálném čase", "Větší obrázky", "Nic, stačí GitHub Pages"],
+      "options": [
+        "Jen hezčí CSS",
+        "Server, který propojuje hráče v reálném čase",
+        "Větší obrázky",
+        "Nic, stačí GitHub Pages"
+      ],
       "correctIndex": 1
     },
     {
@@ -51,7 +70,12 @@
       "type": "mcq-single",
       "topic": "Git",
       "question": "K čemu je git při vibe codingu nejdůležitější?",
-      "options": ["Zrychlí odpovědi AI", "Umožní vrátit se k funkční verzi, když AI něco rozbije", "Zašifruje kód", "Nahradí testování"],
+      "options": [
+        "Zrychlí odpovědi AI",
+        "Umožní vrátit se k funkční verzi, když AI něco rozbije",
+        "Zašifruje kód",
+        "Nahradí testování"
+      ],
       "correctIndex": 1,
       "explanation": "AI občas „opraví“ jednu věc a rozbije tři další. S gitem se během vteřiny vrátíš k poslední funkční verzi."
     },
@@ -67,8 +91,17 @@
       "type": "mcq-multi",
       "topic": "Git",
       "question": "Co ti git dává?",
-      "options": ["Historii všech změn", "Možnost vrátit chybnou změnu", "Větve pro bezpečné pokusy", "Automatickou opravu chyb v kódu"],
-      "correctIndices": [0, 1, 2],
+      "options": [
+        "Historii všech změn",
+        "Možnost vrátit chybnou změnu",
+        "Větve pro bezpečné pokusy",
+        "Automatickou opravu chyb v kódu"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        2
+      ],
       "explanation": "Git chyby sám neopravuje – jen si pamatuje každou verzi, takže se k ní můžeš vrátit."
     },
     {
@@ -76,14 +109,22 @@
       "type": "short-answer",
       "topic": "Git",
       "question": "Jak se jmenuje příkaz, kterým v gitu uložíš změny do historie? (jedno slovo)",
-      "correctAnswers": ["commit", "git commit"]
+      "correctAnswers": [
+        "commit",
+        "git commit"
+      ]
     },
     {
       "id": "0192f0c4-a002-7000-8000-000000000009",
       "type": "mcq-single",
       "topic": "Cloudflare",
       "question": "Proč je Cloudflare skvělý pro malé projekty?",
-      "options": ["Je jen pro velké firmy", "Zdarma nabízí hosting stránek, CDN, ochranu před útoky a správu domény", "Napíše za tebe kód", "Nahrazuje git"],
+      "options": [
+        "Je jen pro velké firmy",
+        "Zdarma nabízí hosting stránek, CDN, ochranu před útoky a správu domény",
+        "Napíše za tebe kód",
+        "Nahrazuje git"
+      ],
       "correctIndex": 1
     },
     {
@@ -99,7 +140,12 @@
       "type": "mcq-single",
       "topic": "Uživatelské účty",
       "question": "Jak nejbezpečněji přidat do aplikace uživatelské účty?",
-      "options": ["Uložit hesla do textového souboru", "Použít ověřenou službu pro přihlašování (např. přihlášení přes Google)", "Posílat hesla e-mailem", "Hesla si pamatovat v proměnné"],
+      "options": [
+        "Uložit hesla do textového souboru",
+        "Použít ověřenou službu pro přihlašování (např. přihlášení přes Google)",
+        "Posílat hesla e-mailem",
+        "Hesla si pamatovat v proměnné"
+      ],
       "correctIndex": 1,
       "explanation": "Přihlašování je bezpečnostně citlivé. Ověřené služby řeší hesla, dvoufázové ověření i útoky za tebe."
     },
@@ -116,15 +162,29 @@
       "type": "mcq-multi",
       "topic": "Řízení AI",
       "question": "Co pomáhá, aby AI dělala to, co chceš?",
-      "options": ["Jasné zadání a omezení", "Kontext – ukázky a dokumentace", "Malé kroky a kontrola každého výsledku", "Psát co nejméně, ať si to domyslí"],
-      "correctIndices": [0, 1, 2]
+      "options": [
+        "Jasné zadání a omezení",
+        "Kontext – ukázky a dokumentace",
+        "Malé kroky a kontrola každého výsledku",
+        "Psát co nejméně, ať si to domyslí"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        2
+      ]
     },
     {
       "id": "0192f0c4-a002-7000-8000-000000000014",
       "type": "mcq-single",
       "topic": "Řízení AI",
       "question": "Co je „prompt“?",
-      "options": ["Zadání neboli instrukce pro AI", "Programovací jazyk", "Typ serveru", "Chyba v kódu"],
+      "options": [
+        "Zadání neboli instrukce pro AI",
+        "Programovací jazyk",
+        "Typ serveru",
+        "Chyba v kódu"
+      ],
       "correctIndex": 0
     },
     {
@@ -140,7 +200,12 @@
       "type": "mcq-single",
       "topic": "Architektura multiplayeru",
       "question": "Co v multiplayerové hře dělá „authority“?",
-      "options": ["Kreslí grafiku", "Drží stav hry a rozhoduje podle pravidel", "Ukládá hesla", "Posílá e-maily"],
+      "options": [
+        "Kreslí grafiku",
+        "Drží stav hry a rozhoduje podle pravidel",
+        "Ukládá hesla",
+        "Posílá e-maily"
+      ],
       "correctIndex": 1
     },
     {
@@ -148,7 +213,12 @@
       "type": "mcq-single",
       "topic": "Architektura multiplayeru",
       "question": "Proč běží pluginy v Memizy v izolovaném rámu (sandboxu)?",
-      "options": ["Aby byly rychlejší", "Aby se nedostaly k datům aplikace a uživatele", "Kvůli barvám", "Aby fungovaly bez internetu"],
+      "options": [
+        "Aby byly rychlejší",
+        "Aby se nedostaly k datům aplikace a uživatele",
+        "Kvůli barvám",
+        "Aby fungovaly bez internetu"
+      ],
       "correctIndex": 1
     },
     {
@@ -156,7 +226,11 @@
       "type": "short-answer",
       "topic": "Architektura multiplayeru",
       "question": "Jak se jmenuje technologie pro obousměrné spojení prohlížeče a serveru v reálném čase?",
-      "correctAnswers": ["WebSocket", "WebSockets", "web socket"],
+      "correctAnswers": [
+        "WebSocket",
+        "WebSockets",
+        "web socket"
+      ],
       "acceptPartial": true
     },
     {
@@ -164,7 +238,12 @@
       "type": "mcq-single",
       "topic": "Náklady",
       "question": "Kolik může stát vytvoření a provoz malé webové aplikace?",
-      "options": ["Tisíce korun měsíčně", "Může to být zdarma díky free tierům", "Bez placeného serveru to nejde", "Jen se studentskou licencí"],
+      "options": [
+        "Tisíce korun měsíčně",
+        "Může to být zdarma díky free tierům",
+        "Bez placeného serveru to nejde",
+        "Jen se studentskou licencí"
+      ],
       "correctIndex": 1
     },
     {
@@ -180,6 +259,276 @@
       "topic": "Pojmy",
       "front": "Free tier",
       "back": "Bezplatná úroveň služby (hosting, databáze, CDN), která pro malé projekty bohatě stačí."
+    },
+    {
+      "id": "0192f0c4-a002-7000-8000-000000000022",
+      "type": "mcq-multi",
+      "topic": "Architektura",
+      "question": "Co je u aplikace „pod hladinou“ – tedy to, co AI za vás nevymyslí a co musíte promyslet vy?",
+      "options": [
+        "Architektura",
+        "Data a jejich struktura",
+        "Bezpečnost",
+        "Barva tlačítek",
+        "Nasazení a údržba"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "explanation": "Kód je jen špička ledovce. Pod hladinou je architektura, data, bezpečnost, nasazení a údržba – tam rozhodujete vy."
+    },
+    {
+      "id": "0192f0c4-a002-7000-8000-000000000023",
+      "type": "mcq-single",
+      "topic": "Nástroje",
+      "question": "Co umí AI agent v editoru (IDE) navíc oproti obyčejnému chatu?",
+      "options": [
+        "Mluví česky",
+        "Čte a upravuje soubory celého projektu a spouští příkazy a testy",
+        "Je vždycky zdarma",
+        "Nikdy se nemýlí"
+      ],
+      "correctIndex": 1,
+      "explanation": "Chat vidí jen to, co mu vložíte. Agent pracuje přímo v projektu – a proto potřebuje pojistku: git."
+    },
+    {
+      "id": "0192f0c4-a002-7000-8000-000000000024",
+      "type": "match-pairs",
+      "topic": "Anatomie aplikace",
+      "question": "Přiřaď části aplikace k restauraci.",
+      "prompts": [
+        "Frontend",
+        "Backend",
+        "Databáze"
+      ],
+      "matches": [
+        "Sál – co vidí host",
+        "Kuchyně – pravidla a tajemství",
+        "Spíž – co si pamatujeme"
+      ],
+      "explanation": "Host (uživatel) nikdy nechodí do kuchyně: to, co je ve frontendu, může kdokoliv vidět i změnit."
+    },
+    {
+      "id": "0192f0c4-a002-7000-8000-000000000025",
+      "type": "true-false",
+      "topic": "Anatomie aplikace",
+      "question": "To, co je ve frontendu (v prohlížeči), může uživatel vidět i změnit.",
+      "correctAnswer": true,
+      "explanation": "Kód i data ve frontendu má uživatel ve svém prohlížeči. Tajemství a pravidla patří na backend."
+    },
+    {
+      "id": "0192f0c4-a002-7000-8000-000000000026",
+      "type": "mcq-single",
+      "topic": "Webovka vs. aplikace",
+      "question": "Kdy potřebuješ backend (server)?",
+      "options": [
+        "Když chci hezčí design",
+        "Když uživatelé sdílejí data nebo hrají spolu naživo",
+        "Když stránka obsahuje obrázky",
+        "Nikdy, vše jde ve frontendu"
+      ],
+      "correctIndex": 1,
+      "explanation": "Kvíz pro sebe nebo portfolio stačí jako statická stránka. Účty, sdílení a multiplayer potřebují server a databázi."
+    },
+    {
+      "id": "0192f0c4-a002-7000-8000-000000000027",
+      "type": "match-pairs",
+      "topic": "Cloudflare",
+      "question": "Přiřaď služby Cloudflare k tomu, k čemu slouží.",
+      "prompts": [
+        "Pages",
+        "Workers",
+        "D1",
+        "R2"
+      ],
+      "matches": [
+        "Hosting frontendu",
+        "Backend (kód na serveru)",
+        "SQL databáze",
+        "Soubory a obrázky"
+      ],
+      "explanation": "S Cloudflare jde celá malá aplikace postavit zdarma: Pages, Workers, D1 a R2."
+    },
+    {
+      "id": "0192f0c4-a002-7000-8000-000000000028",
+      "type": "true-false",
+      "topic": "Cloudflare",
+      "question": "Bezplatný projekt na Supabase se po týdnu bez aktivity uspí.",
+      "correctAnswer": true,
+      "explanation": "Supabase je pohodlná (databáze + přihlášení), ale nečinný free projekt se uspí. Je dobré to vědět dopředu."
+    },
+    {
+      "id": "0192f0c4-a002-7000-8000-000000000029",
+      "type": "mcq-single",
+      "topic": "Uživatelské účty",
+      "question": "Jak nejlépe přidat přihlášení do vlastní aplikace?",
+      "options": [
+        "Hesla ukládat do databáze tak, jak je uživatel napsal",
+        "Přihlášení přes Google/GitHub (OAuth) a hotová knihovna",
+        "Heslo uložit do localStorage",
+        "Přihlášení vůbec neověřovat"
+      ],
+      "correctIndex": 1,
+      "explanation": "Hesla si neukládejte sami. Nechte to Googlu nebo GitHubu a použijte hotovou knihovnu; backend pak ověřuje každý požadavek."
+    },
+    {
+      "id": "0192f0c4-a002-7000-8000-000000000030",
+      "type": "short-answer",
+      "topic": "Git",
+      "question": "Jakým příkazem zjistíš, co přesně AI v projektu změnila?",
+      "correctAnswers": [
+        "git diff",
+        "diff"
+      ],
+      "explanation": "`git diff` ukáže každou změněnou řádku. Čtěte ho po každém kroku AI."
+    },
+    {
+      "id": "0192f0c4-a002-7000-8000-000000000031",
+      "type": "mcq-single",
+      "topic": "Git",
+      "question": "AI ti rozbila půl aplikace a změny ještě nejsou commitnuté. Co uděláš?",
+      "options": [
+        "Smažu celý projekt",
+        "`git restore .` – zahodím neuložené změny a jsem zpět u posledního commitu",
+        "Napíšu AI, ať to nějak spraví",
+        "Počkám, jestli se to opraví samo"
+      ],
+      "correctIndex": 1,
+      "explanation": "Proto se commituje po každém kroku, který funguje: návrat je pak jeden příkaz."
+    },
+    {
+      "id": "0192f0c4-a002-7000-8000-000000000032",
+      "type": "sort-items",
+      "topic": "Git",
+      "question": "Seřaď správný postup práce s AI.",
+      "items": [
+        "Napíšu zadání (prompt)",
+        "AI udělá změnu",
+        "Vyzkouším, že to funguje",
+        "Commitnu"
+      ],
+      "explanation": "Malé kroky: zadání → změna → test → commit. Když něco selže, vrátíte se jen o jeden krok."
+    },
+    {
+      "id": "0192f0c4-a002-7000-8000-000000000033",
+      "type": "true-false",
+      "topic": "Jak se ptát AI",
+      "question": "Když se AI zeptáš „Jsou v tom kódu chyby?“, najde je jen tehdy, když tam opravdu jsou.",
+      "correctAnswer": false,
+      "explanation": "AI se vás snaží potěšit – na takovou otázku skoro vždy nějaké chyby „najde“, i vymyšlené."
+    },
+    {
+      "id": "0192f0c4-a002-7000-8000-000000000034",
+      "type": "mcq-single",
+      "topic": "Jak se ptát AI",
+      "question": "Která otázka na AI je nejlepší?",
+      "options": [
+        "Je to dobře?",
+        "Jsou tam chyby?",
+        "Co se stane, když dva hráči odpoví ve stejnou chvíli? Napiš test, který to ověří.",
+        "Zlepši to."
+      ],
+      "correctIndex": 2,
+      "explanation": "Konkrétní situace + důkaz testem. Na obecnou otázku dostanete obecnou (často vymyšlenou) odpověď."
+    },
+    {
+      "id": "0192f0c4-a002-7000-8000-000000000035",
+      "type": "mcq-multi",
+      "topic": "Jak se ptát AI",
+      "question": "Co patří do dobrého zadání pro AI?",
+      "options": [
+        "Cíl – co stavím a pro koho",
+        "Omezení – technologie, co nesmí",
+        "Kdy je hotovo – jak poznám, že to funguje",
+        "Ať se mě nejdřív zeptá na to, co neví",
+        "Co nejvíc vykřičníků"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "explanation": "Cíl, omezení, kritéria hotovo, prostor pro otázky a malé kroky."
+    },
+    {
+      "id": "0192f0c4-a002-7000-8000-000000000036",
+      "type": "mcq-single",
+      "topic": "Data",
+      "question": "„Může mít sada víc autorů?“ Kdo to má rozhodnout?",
+      "options": [
+        "AI – ví nejlépe, co chci",
+        "Vy – je to rozhodnutí o produktu, ne o kódu",
+        "Databáze sama",
+        "Nikdo, na tom nezáleží"
+      ],
+      "correctIndex": 1,
+      "explanation": "AI není věštec vašeho nápadu. Datové schéma vychází z toho, jak má produkt fungovat."
+    },
+    {
+      "id": "0192f0c4-a002-7000-8000-000000000037",
+      "type": "mcq-single",
+      "topic": "Bezpečnost",
+      "question": "Sada se sdílí odkazem `/api/sets/8f3a…`, ale endpoint `/api/sets` vrátí všechny sady. Co je špatně?",
+      "options": [
+        "Nic, tak to má být",
+        "Kdokoliv si stáhne i cizí soukromé sady",
+        "Je to jen pomalejší",
+        "Odkaz je moc dlouhý"
+      ],
+      "correctIndex": 1,
+      "explanation": "AI dělá, aby to fungovalo, ne aby to bylo bezpečné. Zkuste po ní: „Teď jsi útočník. Jak bys dostal cizí data?“"
+    },
+    {
+      "id": "0192f0c4-a002-7000-8000-000000000038",
+      "type": "mcq-single",
+      "topic": "Skutečné chyby",
+      "question": "Místnosti v Memizy byly chráněné PINem. V čem byla chyba, kterou AI udělala?",
+      "options": [
+        "PIN měl jen 4 číslice",
+        "Endpoint `/api/rooms` vrátil všechny místnosti i s PINy",
+        "Místnosti nešly vytvořit",
+        "PIN se nedal zadat na mobilu"
+      ],
+      "correctIndex": 1,
+      "explanation": "Funkce fungovala, ale „chráněné“ PINy šlo jedním požadavkem vypsat. Kdokoliv se mohl připojit kamkoliv."
+    },
+    {
+      "id": "0192f0c4-a002-7000-8000-000000000039",
+      "type": "mcq-single",
+      "topic": "Skutečné chyby",
+      "question": "Co je špatně na kódu `.catch(() => {})`?",
+      "options": [
+        "Je moc dlouhý",
+        "Spolkne chybu – něco tiše selže a nikdo se to nedozví",
+        "Zpomalí aplikaci",
+        "Nic, je to nejlepší praxe"
+      ],
+      "correctIndex": 1,
+      "explanation": "V Memizy se kvůli tomu tiše neukládala hra a po obnovení stránky se ztratila. Chyby nepolykejte, aspoň je vypište."
+    },
+    {
+      "id": "0192f0c4-a002-7000-8000-000000000040",
+      "type": "mcq-multi",
+      "topic": "Testování",
+      "question": "Co by měl tester vyzkoušet?",
+      "options": [
+        "Obnovit stránku uprostřed hry",
+        "Hrát ve dvou ve stejnou chvíli",
+        "Zadat divnou nebo prázdnou odpověď",
+        "Otočit telefon",
+        "Jen to, co popsal vývojář"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "explanation": "Tester hledá situace, na které vývojář nemyslel. Dobré hlášení: co jsem dělal, co jsem čekal, co se stalo, jaký telefon."
     }
   ]
 }
