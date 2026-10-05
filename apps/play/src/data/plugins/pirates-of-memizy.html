@@ -456,8 +456,7 @@ function applyShot(state, ctx, team, res, by) {
   state.stats[team].fired += 1;
   if (res.dmg > 0) {
     state.ships[foe].hp = Math.max(0, state.ships[foe].hp - res.dmg);
-    state.hits[foe].push({ id: `h${nextSeq(state)}`, x, y, sev: res.label });
-    if (state.hits[foe].length > 14) state.hits[foe].shift();
+    addBreach(state, ctx, foe, res.dmg, res.label, x, y);
     state.stats[team].hitCount += 1;
     if (by !== 'ai') state.scores[by] = (state.scores[by] ?? 0) + res.dmg;
     pushFeed(state, ctx, { type: res.label, by, team, dmg: res.dmg });
@@ -468,11 +467,24 @@ function applyShot(state, ctx, team, res, by) {
   state.lastShot = { seq: nextSeq(state), from: team, dmg: res.dmg, label: res.label, x, y, by };
 }
 
+/** Share of a hit's damage that planks can repair; the rest stays as a scar (no endless repairing). */
+const REPAIRABLE = 0.8;
+const MAX_BREACHES = 16;
+
+/** A new breach in a hull; it carries the damage that can still be repaired. */
+function addBreach(state, ctx, team, dmg, sev, x, y) {
+  const list = state.hits[team];
+  list.push({ id: `h${nextSeq(state)}`, x, y, sev, left: Math.round(dmg * REPAIRABLE) });
+  if (list.length > MAX_BREACHES) {
+    const oldest = list.shift();
+    list[0].left += oldest.left; // keep its damage repairable
+  }
+}
+
 function selfDamage(state, ctx, team, dmg, pid) {
   const ship = state.ships[team];
   ship.hp = Math.max(0, ship.hp - dmg);
-  state.hits[team].push({ id: `h${nextSeq(state)}`, x: ctx.random() * 1.8 - 0.9, y: ctx.random() * 0.5, sev: 'self' });
-  if (state.hits[team].length > 14) state.hits[team].shift();
+  addBreach(state, ctx, team, dmg, 'self', ctx.random() * 1.8 - 0.9, ctx.random() * 0.5);
   state.selfHit = { seq: nextSeq(state), team, dmg, by: pid };
   if (ship.hp <= 0) ctx.after(1800, 'finish', { winner: otherTeam(team) }, { key: 'sunk' });
 }
@@ -690,12 +702,23 @@ const rules = {
       if (!team) return;
       const pid = ctx.playerId;
       if (state.inventory[pid] !== 'plank') return notice(state, pid, 'needPlank');
-      const i = state.hits[team].findIndex((h) => h.id === hitId);
+      const list = state.hits[team];
+      const i = list.findIndex((h) => h.id === hitId);
       if (i === -1) return notice(state, pid, 'patched');
-      state.hits[team].splice(i, 1);
       state.inventory[pid] = null;
+      // The planks fix the chosen breach first; what is left over goes to the next ones
+      // (a strong repair closes several small breaches, a big breach takes several repairs).
       const power = powerOf(state, team);
-      const amount = Math.round((75 + ctx.random() * 50) * power);
+      let budget = Math.round((75 + ctx.random() * 50) * power);
+      let amount = 0;
+      for (const breach of [list[i], ...list.filter((_, j) => j !== i)]) {
+        if (budget <= 0) break;
+        const used = Math.min(budget, breach.left ?? 100);
+        breach.left = (breach.left ?? 100) - used;
+        budget -= used;
+        amount += used;
+      }
+      state.hits[team] = list.filter((h) => (h.left ?? 100) > 0);
       state.ships[team].hp = Math.min(state.ships[team].maxHp, state.ships[team].hp + amount);
       state.scores[pid] = (state.scores[pid] ?? 0) + Math.round(75 * power);
       state.stats[team].repairs += 1;
@@ -997,7 +1020,7 @@ function renderDeck2d(state, ui, me) {
     <button class="station${inv === 'ball' ? ' ok' : ''}" data-local="go2d" data-to="cannon" ${inv !== 'ball' || busy ? 'disabled' : ''}>
       <span class="ico">💣</span><span>${L.fire.replace('💣 ', '')}<small>${L.fireSub}</small></span></button>
     <div class="muted" style="text-align:left">${L.breaches}</div>
-    <div class="breaches">${breaches.length ? breaches.map((h, i) => `<button class="breach" data-local="go2d" data-to="hull" data-hit="${h.id}" ${inv !== 'plank' || busy ? 'disabled' : ''}>${L.repair} #${i + 1}${h.sev === 'crit' ? ' 🔥' : ''}</button>`).join('') : `<span class="muted">${L.noBreaches}</span>`}</div>
+    <div class="breaches">${breaches.length ? breaches.map((h, i) => `<button class="breach" data-local="go2d" data-to="hull" data-hit="${h.id}" ${inv !== 'plank' || busy ? 'disabled' : ''}>${L.repair} #${i + 1}${h.sev === 'crit' ? ' 🔥' : ''} <small>(${h.left ?? 100})</small></button>`).join('') : `<span class="muted">${L.noBreaches}</span>`}</div>
   </div>`;
 }
 
@@ -1415,6 +1438,9 @@ const Scene = {
           ship.add(s);
           this.decals[slot][h.id] = s;
         }
+        // The size shows how much is still to repair (a partly repaired breach shrinks).
+        const size = clamp(1.1 + (h.left ?? 100) / 70, 1.1, 3.4) * scale;
+        this.decals[slot][h.id].scale.set(size, size, 1);
       }
       for (const id of Object.keys(this.decals[slot])) {
         if (seen.has(id)) continue;
