@@ -1,0 +1,1522 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Pirates of Memizy</title>
+  <script type="application/oqse-manifest+json">
+  {
+    "version": "0.2",
+    "id": "https://memizy.com/plugins/pirates-of-memizy",
+    "appName": "Pirates of Memizy",
+    "pluginVersion": "2.0.0",
+    "description": "Two pirate crews battle at sea: answer questions to earn cannonballs and repair planks, aim your shots and sink the enemy ship. Solo: you against an enemy galleon.",
+    "author": { "name": "BC Praha" },
+    "locales": ["cs", "en"],
+    "tags": ["quiz", "multiplayer", "solo", "game", "pirates", "teams", "battle", "3d"],
+    "capabilities": {
+      "actions": ["render"],
+      "types": ["mcq-single", "mcq-multi", "true-false", "match-pairs", "sort-items", "short-answer"],
+      "features": ["markdown", "latex"]
+    },
+    "appSpecific": {
+      "memizy": {
+        "protocol": "1.0",
+        "modes": {
+          "solo": {},
+          "multiplayer": { "players": { "min": 2, "max": 60, "recommended": 10 }, "hostAs": ["presenter"], "lateJoin": true }
+        },
+        "settings": [
+          { "id": "timerSec", "type": "number", "label": { "cs": "Sekundy na otázku", "en": "Seconds per question" }, "default": 20, "min": 5, "max": 120 },
+          { "id": "battleMin", "type": "number", "label": { "cs": "Délka bitvy (minuty)", "en": "Battle duration (minutes)" }, "description": { "cs": "Když se žádná loď nepotopí, vyhraje pevnější trup.", "en": "If no ship sinks, the stronger hull wins." }, "default": 7, "min": 2, "max": 30 },
+          { "id": "aimMode", "type": "boolean", "label": { "cs": "Zaměřovací minihra", "en": "Aiming minigame" }, "description": { "cs": "Poškození závisí na přesnosti výstřelu.", "en": "Damage depends on the accuracy of the shot." }, "default": true },
+          { "id": "doShuffle", "type": "boolean", "label": { "cs": "Míchat otázky", "en": "Shuffle questions" }, "default": true },
+          { "id": "enemySkill", "type": "select", "label": { "cs": "Nepřátelská loď (solo)", "en": "Enemy ship (solo)" }, "default": "normal",
+            "options": [
+              { "value": "easy", "label": { "cs": "Slabá", "en": "Weak" } },
+              { "value": "normal", "label": { "cs": "Normální", "en": "Normal" } },
+              { "value": "hard", "label": { "cs": "Silná", "en": "Strong" } }
+            ] }
+        ],
+        "display": { "orientation": "portrait" }
+      }
+    }
+  }
+  </script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    :root {
+      --deep: #06121f; --panel: rgba(8, 20, 33, 0.94); --border: rgba(212, 165, 74, 0.4);
+      --gold: #d4a54a; --gold-bright: #f0c96c; --red-team: #e63946; --red-team-soft: #ff7d88;
+      --black-team: #8d99ae; --black-team-soft: #c9d3e4; --green: #2ec27e; --danger: #ef476f; --blue: #4cc9f0;
+    }
+    html, body { height: 100%; overflow: hidden; background: var(--deep); color: #fff; font-family: 'Segoe UI', system-ui, sans-serif; touch-action: manipulation; }
+    #app { height: 100vh; height: 100dvh; position: relative; overflow: hidden; }
+    .screen { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 18px; gap: 14px; overflow-y: auto; }
+    .panel { background: linear-gradient(160deg, rgba(16,32,50,0.97), rgba(8,18,30,0.97)); border: 1.5px solid var(--border); border-radius: 16px; padding: 22px; width: 100%; max-width: 560px; box-shadow: 0 18px 50px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06); }
+    .panel-title { font-size: 24px; font-weight: 900; color: var(--gold-bright); text-align: center; letter-spacing: 0.03em; }
+    .panel-sub { font-size: 13px; color: #93a5b8; text-align: center; margin-top: 4px; margin-bottom: 16px; }
+    .big-emoji { text-align: center; font-size: 52px; }
+    .gbtn { border: none; border-radius: 12px; padding: 12px 26px; font-size: 15px; font-weight: 800; cursor: pointer; letter-spacing: 0.02em; }
+    .gbtn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .gbtn.pri { background: linear-gradient(180deg, var(--gold-bright), #b3862f); color: #221604; }
+    .gbtn.sec { background: #2c3b4d; color: #dbe5f0; }
+    .gbtn.danger { background: var(--danger); color: #fff; }
+    .row { display: flex; gap: 10px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
+    .muted { font-size: 12px; color: #8fa1b4; text-align: center; }
+
+    /* team select */
+    .teams-wrap { display: flex; gap: 12px; width: 100%; max-width: 760px; flex-wrap: wrap; justify-content: center; }
+    .team-card { flex: 1; min-width: 250px; max-width: 370px; background: var(--panel); border: 2px solid rgba(255,255,255,0.12); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+    .team-card.red-side { border-color: rgba(230,57,70,0.55); }
+    .team-card.black-side { border-color: rgba(141,153,174,0.55); }
+    .team-card.mine { box-shadow: 0 0 24px rgba(212,165,74,0.35); border-color: var(--gold); }
+    .team-flag { font-size: 40px; text-align: center; }
+    .team-name { font-size: 17px; font-weight: 900; text-align: center; }
+    .red-side .team-name { color: var(--red-team-soft); }
+    .black-side .team-name { color: var(--black-team-soft); }
+    .team-count { font-size: 12px; color: #8fa1b4; text-align: center; }
+    .team-roster { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; min-height: 30px; }
+    .chip { background: rgba(255,255,255,0.09); border-radius: 20px; padding: 4px 11px; font-size: 12px; display: inline-flex; align-items: center; gap: 5px; }
+    .chip.me { background: rgba(212,165,74,0.28); border: 1px solid var(--gold); }
+    .join-btn { border: none; border-radius: 10px; padding: 13px; font-size: 15px; font-weight: 800; cursor: pointer; color: #fff; }
+    .red-side .join-btn { background: linear-gradient(180deg, #ff5964, #c22833); }
+    .black-side .join-btn { background: linear-gradient(180deg, #5f6f8a, #39445c); }
+    .join-btn:disabled { opacity: 0.5; cursor: default; }
+
+    /* board dashboard */
+    .dash { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--deep); }
+    .hd-bar { display: flex; align-items: center; justify-content: space-between; padding: 12px 18px; background: rgba(0,0,0,0.45); gap: 8px; }
+    .hd-title { font-size: 22px; font-weight: 900; color: var(--gold-bright); }
+    .hd-timer { font-size: 34px; font-weight: 900; background: rgba(212,165,74,0.2); border: 1px solid var(--border); border-radius: 10px; padding: 4px 18px; font-variant-numeric: tabular-nums; }
+    .hd-ships { display: flex; gap: 14px; padding: 14px 18px; flex-wrap: wrap; }
+    .hd-ship { flex: 1; min-width: 300px; background: var(--panel); border-radius: 14px; padding: 14px 16px; border: 1.5px solid rgba(255,255,255,0.1); }
+    .hd-ship.red-side { border-color: rgba(230,57,70,0.5); }
+    .hd-ship.black-side { border-color: rgba(141,153,174,0.5); }
+    .hd-ship-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; font-size: 20px; font-weight: 900; }
+    .hpbar { height: 26px; border-radius: 13px; background: rgba(255,255,255,0.09); overflow: hidden; border: 1px solid rgba(255,255,255,0.12); }
+    .hpfill { height: 100%; border-radius: 13px; transition: width 0.5s ease; }
+    .hd-ship-stats { display: flex; gap: 14px; margin-top: 10px; font-size: 15px; color: #b6c5d4; flex-wrap: wrap; }
+    .feed { flex: 1; overflow-y: auto; padding: 6px 18px 18px; display: flex; flex-direction: column; gap: 7px; }
+    .feed-item { background: rgba(255,255,255,0.05); border-radius: 8px; padding: 9px 13px; font-size: 17px; display: flex; gap: 10px; align-items: flex-start; }
+    .feed-item.hit, .feed-item.wrong { border-left: 4px solid var(--danger); }
+    .feed-item.crit, .feed-item.sys { border-left: 4px solid var(--gold); }
+    .feed-item.miss { border-left: 4px solid #5a6c80; }
+    .feed-item.repair { border-left: 4px solid var(--green); }
+    .feed-item.correct { border-left: 4px solid var(--blue); }
+    .feed-detail { color: #8698ab; font-size: 13px; margin-top: 2px; }
+    .section-lbl { font-size: 12px; color: #6f8296; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; padding: 6px 18px; }
+
+    /* leaderboard */
+    .lb-row { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.05); border-radius: 8px; padding: 8px 12px; margin-bottom: 6px; font-size: 14px; }
+    .lb-rank { color: var(--gold-bright); font-weight: 800; min-width: 30px; }
+    .lb-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .lb-score { color: var(--gold); font-weight: 700; margin-left: auto; }
+
+    /* game */
+    .game { position: absolute; inset: 0; }
+    #sea { position: absolute; inset: 0; }
+    #sea canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+    .labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+    .slabel { position: absolute; transform: translate(-50%,-100%); background: rgba(4,12,20,0.82); border: 1px solid var(--border); border-radius: 7px; padding: 3px 9px; font-size: 11px; font-weight: 800; color: var(--gold-bright); white-space: nowrap; }
+    .slabel.ok { border-color: var(--green); color: #b7f4d5; }
+    .slabel.dim { opacity: 0.55; }
+    .hud-top { position: absolute; top: 0; left: 0; right: 0; z-index: 20; padding: 8px 10px 6px; background: linear-gradient(to bottom, rgba(3,9,16,0.92), transparent); display: flex; flex-direction: column; gap: 5px; pointer-events: none; }
+    .hp-row { display: flex; align-items: center; gap: 8px; }
+    .hp-label { font-size: 11px; font-weight: 800; min-width: 74px; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
+    .hp-track { flex: 1; height: 13px; border-radius: 7px; background: rgba(255,255,255,0.13); overflow: hidden; border: 1px solid rgba(255,255,255,0.18); }
+    .hp-fill { height: 100%; border-radius: 7px; transition: width 0.45s ease; }
+    .hud-row { display: flex; align-items: center; justify-content: space-between; margin-top: 2px; gap: 6px; }
+    .hud-timer { font-size: 16px; font-weight: 900; color: var(--gold-bright); text-shadow: 0 1px 4px rgba(0,0,0,0.8); font-variant-numeric: tabular-nums; }
+    .hud-score { font-size: 13px; font-weight: 800; text-shadow: 0 1px 4px rgba(0,0,0,0.8); }
+    .hud-inv { font-size: 13px; font-weight: 800; background: rgba(0,0,0,0.55); border: 1px solid var(--border); border-radius: 20px; padding: 4px 12px; }
+    .hud-bot { position: absolute; bottom: 0; left: 0; right: 0; z-index: 20; padding: 10px 12px 12px; background: linear-gradient(to top, rgba(3,9,16,0.93), transparent); display: flex; align-items: center; gap: 10px; }
+    .hint { flex: 1; font-size: 13px; font-weight: 700; color: #ffe9b8; text-shadow: 0 1px 6px rgba(0,0,0,0.85); pointer-events: none; }
+    .streak { font-size: 12px; font-weight: 800; color: var(--blue); pointer-events: none; }
+    .mode-btn { pointer-events: auto; border: 1px solid var(--border); background: rgba(0,0,0,0.55); color: #ffe9b8; border-radius: 10px; padding: 5px 10px; font-size: 11px; font-weight: 800; cursor: pointer; }
+    .stun { position: absolute; inset: 0; z-index: 60; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 18%; background: rgba(239,71,111,0.12); box-shadow: inset 0 0 110px rgba(239,71,111,0.5); pointer-events: none; }
+    .stun-text { font-size: 26px; font-weight: 900; background: var(--danger); padding: 8px 22px; border-radius: 14px; border: 3px solid #fff; animation: shake .25s infinite; }
+    .stun-cd { font-size: 20px; font-weight: 800; background: #06121f; padding: 4px 16px; border-radius: 10px; margin-top: 8px; border: 2px solid rgba(255,255,255,0.25); }
+    @keyframes shake { 0%,100% { transform: translateX(0); } 33% { transform: translateX(-5px); } 66% { transform: translateX(5px); } }
+    .float { position: absolute; top: 38%; left: 50%; transform: translate(-50%,-50%); z-index: 70; pointer-events: none; font-size: 24px; font-weight: 900; text-shadow: 0 2px 12px rgba(0,0,0,0.95); text-align: center; padding: 0 12px; width: 100%; }
+    .result-banner { position: absolute; inset: 0; z-index: 80; display: flex; align-items: center; justify-content: center; background: rgba(3,9,16,0.55); }
+    .result-banner div { font-size: 30px; font-weight: 900; text-align: center; text-shadow: 0 4px 18px rgba(0,0,0,0.9); padding: 18px 30px; border-radius: 20px; background: rgba(4,12,20,0.8); border: 2px solid var(--border); margin: 0 16px; }
+
+    /* 2D deck */
+    .deck2d { position: absolute; inset: 0; padding: 104px 14px 64px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto;
+      background: radial-gradient(ellipse at 50% 120%, #1d6f8e 0%, #0b3a52 55%, #06121f 100%); }
+    .ships2d { display: flex; justify-content: space-around; align-items: center; font-size: 46px; padding: 8px 0; }
+    .ships2d .vs { font-size: 16px; color: var(--gold-bright); font-weight: 900; }
+    .station { display: flex; align-items: center; gap: 12px; width: 100%; border: 2px solid var(--border); border-radius: 16px; padding: 14px 16px; background: rgba(8,20,33,0.9); color: #fff; font-size: 17px; font-weight: 800; cursor: pointer; text-align: left; }
+    .station .ico { font-size: 30px; }
+    .station small { display: block; font-size: 12px; color: #93a5b8; font-weight: 600; }
+    .station.ok { border-color: var(--green); }
+    .station:disabled { opacity: 0.45; cursor: not-allowed; }
+    .breaches { display: flex; flex-wrap: wrap; gap: 8px; }
+    .breach { border: 2px solid var(--danger); background: rgba(239,71,111,0.15); color: #fff; border-radius: 12px; padding: 10px 14px; font-weight: 800; cursor: pointer; }
+    .breach:disabled { opacity: 0.5; }
+
+    /* quiz */
+    .quiz { position: absolute; inset: 0; z-index: 90; display: flex; align-items: center; justify-content: center; padding: 14px; background: rgba(3,9,16,0.9); }
+    .quiz-inner { background: linear-gradient(155deg, #14263b, #0a1626); border: 2px solid var(--border); border-radius: 18px; padding: 18px; width: 100%; max-width: 470px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.85); max-height: 92%; overflow-y: auto; }
+    .quiz-tag { font-size: 11px; color: var(--gold); font-weight: 800; text-transform: uppercase; letter-spacing: 2px; display: flex; justify-content: space-between; }
+    .quiz-timer { height: 5px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden; }
+    .quiz-timer div { height: 100%; border-radius: 3px; transition: width .25s linear; }
+    .quiz-q { font-size: 15px; font-weight: 600; line-height: 1.5; }
+    .quiz-q img { max-width: 100%; height: auto; border-radius: 8px; }
+    .qgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .qbtn { border: 2px solid transparent; border-radius: 10px; padding: 13px 10px; font-size: 14px; font-weight: 700; cursor: pointer; color: #fff; text-align: left; line-height: 1.35; }
+    .qbtn:disabled { cursor: default; color: #fff; }
+    .qbtn:nth-child(4n+1) { background: #7f1d2c; } .qbtn:nth-child(4n+2) { background: #1d3a6e; }
+    .qbtn:nth-child(4n+3) { background: #14532d; } .qbtn:nth-child(4n+4) { background: #6d4a12; }
+    .qsub { background: linear-gradient(180deg, var(--gold-bright), #b3862f); border: none; border-radius: 10px; padding: 11px 24px; font-size: 14px; font-weight: 800; color: #221604; cursor: pointer; align-self: center; }
+    .qinput, .qsel { width: 100%; background: #0d1c2e; border: 1px solid rgba(255,255,255,.2); border-radius: 8px; padding: 10px 12px; color: #fff; font-size: 14px; }
+    .qcheck { display: flex; align-items: center; gap: 9px; background: rgba(255,255,255,.06); border-radius: 8px; padding: 10px; cursor: pointer; font-size: 14px; }
+    .qcheck input { width: 18px; height: 18px; accent-color: var(--gold); }
+    .qpair { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; align-items: center; font-size: 13px; font-weight: 600; }
+    .qform { display: flex; flex-direction: column; gap: 8px; }
+    .feedback { text-align: center; font-size: 18px; font-weight: 900; }
+    .fb-correct { color: var(--green); } .fb-wrong { color: var(--danger); }
+    .fb-answer { text-align: center; font-size: 13px; color: #cfd8e3; }
+
+    /* aim */
+    .aim { position: absolute; inset: 0; z-index: 85; display: flex; flex-direction: column; }
+    .aim-head { padding: 8px 14px; display: flex; align-items: center; justify-content: space-between; background: rgba(3,9,16,0.75); font-size: 13px; font-weight: 900; color: var(--gold-bright); }
+    .aim-track { height: 6px; background: rgba(255,255,255,0.12); }
+    .aim-track div { height: 100%; background: var(--gold); }
+    .aim-mid { flex: 1; position: relative; cursor: crosshair; touch-action: none; background: radial-gradient(ellipse at center, transparent 52%, rgba(3,9,16,0.55) 100%); }
+    .reticle { position: absolute; left: 50%; top: 50%; width: 74px; height: 74px; transform: translate(-50%,-50%); border: 2.5px solid #ffe08a; border-radius: 50%; box-shadow: 0 0 16px rgba(255,224,138,0.4); pointer-events: none; }
+    .aim-hint { padding: 10px; text-align: center; font-size: 13px; font-weight: 700; color: #ffe9b8; background: rgba(3,9,16,0.75); }
+
+    @media (max-width: 680px) {
+      .panel { padding: 16px; } .panel-title { font-size: 20px; } .qgrid { grid-template-columns: 1fr; }
+      .hp-label { min-width: 62px; font-size: 10px; } .result-banner div { font-size: 24px; }
+    }
+  </style>
+</head>
+<body>
+<div id="app"></div>
+<script type="module">
+import { defineGame, checkAnswer } from 'https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1/+esm';
+
+/* ═════════════════════════════════════════════════════════
+   Texts (Czech + English)
+   ═════════════════════════════════════════════════════════ */
+const TEXTS = {
+  cs: {
+    redName: 'Karmínoví korzáři', blackName: 'Bratrstvo černé vlajky', sailors: (n) => `${n} ${n === 1 ? 'námořník' : n >= 2 && n <= 4 ? 'námořníci' : 'námořníků'}`,
+    waitTitle: 'Čekáme na kapitána…', waitSub: 'Hra začne, až ji hostitel spustí.',
+    musterTitle: 'Seřaďte posádky', musterSub: 'Hráči si vybírají loď. Kdo nevybere, půjde na menší loď.',
+    balance: '⚖️ Rozdělit rovnoměrně', begin: '⚔️ Zahájit bitvu', undecided: (names) => `⏳ Nerozhodnutí: ${names}`, allChosen: 'Všichni si vybrali loď.',
+    chooseShip: 'Vyber si loď', chooseSub: 'Bitva začne na povel kapitána.', youSail: (name) => `Pluješ s posádkou ${name}. Čekáme na kapitána…`,
+    joinRed: 'Přidat se ke korzárům', joinBlack: 'Přidat se k bratrstvu', noSailors: 'Zatím nikdo',
+    endBattle: '✕ Ukončit bitvu', battleLog: '📡 Lodní deník', calmSea: 'Moře je zatím klidné…',
+    fired: 'výstřelů', hits: 'zásahů', repairs: 'oprav',
+    feedHit: (who, d) => `${who} zasáhl za <b>${d}</b>!`, feedCrit: (who, d) => `${who}: KRITICKÝ zásah za <b>${d}</b>!`, feedMiss: (who) => `${who} minul — šplouch!`,
+    feedRepair: (who) => `${who} opravil trup (+100)`, feedCorrect: (who, crate) => `${who} odpověděl správně u ${crate === 'ammo' ? 'prachárny' : 'tesařské dílny'}`,
+    feedWrong: (who) => `${who} odpověděl špatně — omráčen!`, feedStart: (r, b) => `K dělům! Korzáři (${r}) proti Bratrstvu (${b}).`, feedJoin: (who, team) => `${who} se přidává k posádce ${team}!`,
+    feedWin: (team) => `${team} vyhrávají bitvu!`, feedDraw: 'Bitva skončila nerozhodně.',
+    yourShip: 'TVOJE LOĎ', enemy: 'NEPŘÍTEL', empty: '🙌 prázdné ruce', ball: '💣 dělová koule', plank: '🪵 prkna',
+    hintBall: '💣 Odnes kouli k dělu!', hintPlank: '🔨 Klepni na díru v trupu a oprav ji!', hintPlankNone: '🪵 Není co opravovat — nebo vyměň prkna za kouli v prachárně.',
+    hintEmpty: '❓ Odpověz na otázku u bedny a vyzbroj se!', hintRun: '🏃 Běžím…', hintQuestion: '⏳ Ubikační má pro tebe otázku…',
+    stunned: '😵 OMRÁČEN!', streak: (n) => `🔥 série ×${n}`, to2d: '2D', to3d: '3D',
+    magazine: '🧨 Prachárna', carpenter: '🪵 Tesařská dílna', cannons: '💣 Děla', repair: '🔨 Oprav',
+    magazineSub: 'Otázka → dělová koule', carpenterSub: 'Otázka → prkna na opravu', fireSub: 'Vystřel na nepřítele', fire: '💣 Vystřelit',
+    breaches: 'Díry v trupu', noBreaches: 'Trup je celý.',
+    quizAmmo: '🧨 PRACHÁRNA', quizMaterial: '🪵 TESAŘSKÁ DÍLNA', submit: 'Odeslat', yourAnswer: 'Tvoje odpověď…', truth: 'Pravda', lie: 'Nepravda',
+    correctAmmo: '✅ Správně! Máš dělovou kouli!', correctPlank: '✅ Správně! Máš prkna!', wrong: '❌ Špatně! Omráčen na 3 s', timeUp: '⏰ Čas vypršel!', correctWas: 'Správně je:',
+    aimTitle: '🎯 K dělu!', aimHint: 'Hlaveň se houpe s vlnami — klepni a VYSTŘEL, až bude na nepřátelské lodi!',
+    msgHands: '🙌 Tohle už neseš — nejdřív to použij!', msgNoQ: '📭 Sada nemá žádné otázky!', msgStunned: '😵 Pořád jsi omráčen!', msgPatched: '✨ Tahle díra už je opravená.',
+    msgNeedBall: '💣 Potřebuješ kouli! Zajdi do prachárny.', msgNeedPlank: '🪵 Potřebuješ prkna! Zajdi do dílny.', msgHaveBall: '💣 Kouli už neseš!', msgHavePlank: '🪵 Prkna už neseš!',
+    msgSplash: '🌊 Šplouch! Vedle…', msgHit: (d) => `💥 Zásah! −${d}`, msgCrit: (d) => `💥 KRITICKÝ ZÁSAH! −${d}`, msgWeHit: (d) => `🚨 Dostali jsme zásah! −${d}`,
+    winSunk: 'Nepřátelská loď je potopena! VÍTĚZSTVÍ!', winTime: 'Tvůj trup vydržel víc — VÍTĚZSTVÍ!', loseSunk: 'Tvoje loď mizí pod hladinou…', loseTime: 'Nepřátelský trup vydržel víc. Porážka.', draw: 'Vyrovnaná bitva — remíza!',
+    victory: 'Vítězství!', defeat: 'Porážka…', drawTitle: 'Remíza na moři', rule: (team) => `${team} vládnou těmto vodám.`, bothLive: 'Obě posádky se vrátí bojovat jindy.',
+    myScore: (n) => `Tvoje skóre: ${n} b.`, battleOver: 'Konec bitvy!', winsTitle: (team) => `${team} vyhrávají!`, sunkSub: 'Jedna loď odpočívá na dně.', timeSub: 'Čas vypršel — vyhrál pevnější trup.',
+    hull: 'trup', correctAnswers: 'správných odpovědí', soloEnemy: 'Nepřátelská galeona', soloSub: 'Odpovídej, nabíjej děla a potop galeonu, než ona potopí tebe!',
+    notInCrew: 'Čekáme, až tě kapitán přidělí k posádce…',
+  },
+  en: {
+    redName: 'Crimson Corsairs', blackName: 'Black Flag Brotherhood', sailors: (n) => `${n} sailor${n === 1 ? '' : 's'}`,
+    waitTitle: 'Waiting for the Captain…', waitSub: 'The game starts when the host starts it.',
+    musterTitle: 'Muster the Crews', musterSub: 'Players are choosing their ships. Unassigned sailors join the smaller crew.',
+    balance: '⚖️ Auto-balance', begin: '⚔️ Begin the Battle', undecided: (names) => `⏳ Undecided: ${names}`, allChosen: 'All sailors have chosen a ship.',
+    chooseShip: 'Choose Your Ship', chooseSub: 'The battle begins when the captain gives the order.', youSail: (name) => `You sail with the ${name}. Waiting for the captain…`,
+    joinRed: 'Join the Corsairs', joinBlack: 'Join the Brotherhood', noSailors: 'No sailors yet',
+    endBattle: '✕ End Battle', battleLog: '📡 Battle Log', calmSea: 'The sea is calm… for now.',
+    fired: 'fired', hits: 'hits', repairs: 'repairs',
+    feedHit: (who, d) => `${who} lands a hit for <b>${d}</b>!`, feedCrit: (who, d) => `${who} scores a CRITICAL for <b>${d}</b>!`, feedMiss: (who) => `${who} misses — splash!`,
+    feedRepair: (who) => `${who} repairs the hull (+100)`, feedCorrect: (who, crate) => `${who} answered right at the ${crate === 'ammo' ? 'powder magazine' : 'carpenter’s store'}`,
+    feedWrong: (who) => `${who} answered wrong — stunned!`, feedStart: (r, b) => `Battle stations! ${r} Corsairs vs ${b} Brotherhood.`, feedJoin: (who, team) => `${who} joins the ${team}!`,
+    feedWin: (team) => `${team} win the battle!`, feedDraw: 'The battle ends in a draw.',
+    yourShip: 'YOUR SHIP', enemy: 'ENEMY', empty: '🙌 empty hands', ball: '💣 cannonball', plank: '🪵 planks',
+    hintBall: '💣 Take your cannonball to a cannon!', hintPlank: '🔨 Tap a scorch mark on your hull to repair it!', hintPlankNone: '🪵 Nothing to repair — or swap the planks for a cannonball.',
+    hintEmpty: '❓ Answer a question at a crate to arm yourself!', hintRun: '🏃 Running…', hintQuestion: '⏳ The quartermaster has a question for you…',
+    stunned: '😵 STUNNED!', streak: (n) => `🔥 streak ×${n}`, to2d: '2D', to3d: '3D',
+    magazine: '🧨 Powder Magazine', carpenter: '🪵 Carpenter’s Store', cannons: '💣 Cannons', repair: '🔨 Repair',
+    magazineSub: 'Question → cannonball', carpenterSub: 'Question → planks', fireSub: 'Fire at the enemy', fire: '💣 Fire',
+    breaches: 'Breaches in the hull', noBreaches: 'The hull is intact.',
+    quizAmmo: '🧨 POWDER MAGAZINE', quizMaterial: '🪵 CARPENTER’S STORE', submit: 'Submit', yourAnswer: 'Your answer…', truth: 'True', lie: 'False',
+    correctAmmo: '✅ Correct! Cannonball acquired!', correctPlank: '✅ Correct! Planks acquired!', wrong: '❌ Wrong! Stunned for 3 s', timeUp: '⏰ Time’s up!', correctWas: 'Correct:',
+    aimTitle: '🎯 Man the Cannon!', aimHint: 'The barrel sways with the waves — tap to FIRE when it steadies on the enemy hull!',
+    msgHands: '🙌 You already carry that — use it first!', msgNoQ: '📭 No questions in this study set!', msgStunned: '😵 Still stunned!', msgPatched: '✨ That breach is already patched.',
+    msgNeedBall: '💣 You need a cannonball! Visit the powder magazine.', msgNeedPlank: '🪵 You need planks! Visit the carpenter’s store.', msgHaveBall: '💣 Already carrying a cannonball!', msgHavePlank: '🪵 Already carrying planks!',
+    msgSplash: '🌊 Splash! The shot went wide…', msgHit: (d) => `💥 Hit! −${d}`, msgCrit: (d) => `💥 CRITICAL! −${d}`, msgWeHit: (d) => `🚨 We’re hit! −${d}`,
+    winSunk: 'The enemy ship is sunk! VICTORY!', winTime: 'Your hull held stronger — VICTORY!', loseSunk: 'Your ship slips beneath the waves…', loseTime: 'The enemy hull held stronger. Defeat.', draw: 'A dead-even broadside — draw!',
+    victory: 'Victory!', defeat: 'Defeat…', drawTitle: 'A Draw at Sea', rule: (team) => `The ${team} rule these waters.`, bothLive: 'Both crews live to fight another day.',
+    myScore: (n) => `Your score: ${n} pts`, battleOver: 'Battle Over!', winsTitle: (team) => `${team} Win!`, sunkSub: 'A ship rests on the seabed.', timeSub: 'Time ran out — the sturdiest hull takes the day.',
+    hull: 'hull', correctAnswers: 'correct answers', soloEnemy: 'Enemy Galleon', soloSub: 'Answer, load the cannons and sink the galleon before it sinks you!',
+    notInCrew: 'Waiting for the captain to assign you to a crew…',
+  },
+};
+let L = TEXTS.en;
+const setLang = (locale) => { L = String(locale || '').toLowerCase().startsWith('cs') ? TEXTS.cs : TEXTS.en; };
+
+/* ═════════════════════════════════════════════════════════
+   Rules (they run on the authority: the board, or the device in solo)
+   ═════════════════════════════════════════════════════════ */
+const SUPPORTED = ['true-false', 'mcq-single', 'mcq-multi', 'short-answer', 'match-pairs', 'sort-items'];
+const AIM_MS = 6000;
+const STUN_MS = 3000;
+const AI = { easy: { every: 15000, min: 35, max: 75, hp: 450, miss: 0.3 }, normal: { every: 11000, min: 55, max: 105, hp: 600, miss: 0.2 }, hard: { every: 8000, min: 75, max: 135, hp: 800, miss: 0.12 } };
+const TEAMS = {
+  red:   { flag: '🚩', color: '#e63946', hullColor: 0x6e3a24, trimColor: 0xb3202c, sailColor: 0xf1e4c8, flagColor: 0xe63946 },
+  black: { flag: '🏴‍☠️', color: '#8d99ae', hullColor: 0x3d3128, trimColor: 0x22262e, sailColor: 0xd8d5cc, flagColor: 0x22262e },
+};
+const teamName = (t) => (t === 'red' ? L.redName : L.blackName);
+const otherTeam = (t) => (t === 'red' ? 'black' : 'red');
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+function teamOf(state, pid) {
+  if (state?.teams?.red?.includes(pid)) return 'red';
+  if (state?.teams?.black?.includes(pid)) return 'black';
+  return null;
+}
+const blankStats = () => ({ fired: 0, hitCount: 0, repairs: 0, correct: 0, wrong: 0 });
+const nextSeq = (state) => ++state.seq;
+function pushFeed(state, ctx, entry) {
+  state.feed.unshift({ ...entry, at: ctx.now });
+  if (state.feed.length > 30) state.feed.length = 30;
+}
+function notice(state, pid, type) { state.notice[pid] = { seq: nextSeq(state), type }; }
+const hpFor = (enemyCount) => Math.max(400, enemyCount * 200);
+const nameOf = (ctxOrUi, pid) => (pid === 'ai' ? L.soloEnemy : ctxOrUi.players.find((p) => p.id === pid)?.name ?? '?');
+
+/** The swaying barrel: the same formula on the device (animation) and on the authority (hit). */
+function sway(seed, elapsedMs) {
+  const t = elapsedMs / 1000 + seed;
+  return { yaw: Math.sin(t * 1.05) * 0.10 + Math.sin(t * 2.45) * 0.035, pitch: Math.sin(t * 1.65 + 1) * 0.055 + Math.cos(t * 0.85) * 0.03 };
+}
+const accuracyAt = (seed, elapsedMs) => { const s = sway(seed, elapsedMs); return clamp(1 - Math.hypot(s.yaw, s.pitch) / 0.13, 0, 1); };
+
+function computeDamage(aimed, accuracy, mult, random) {
+  if (aimed && typeof accuracy === 'number' && Number.isFinite(accuracy)) {
+    const acc = clamp(accuracy, 0, 1);
+    if (acc < 0.12) return { dmg: 0, label: 'miss' };
+    let dmg = 30 + 115 * Math.pow(acc, 1.5);
+    let label = 'hit';
+    if (acc > 0.92) { dmg *= 1.35; label = 'crit'; }
+    return { dmg: Math.round(dmg * mult), label };
+  }
+  const r = random();
+  if (r < 0.08) return { dmg: 0, label: 'miss' };
+  if (r > 0.87) return { dmg: Math.round((150 + random() * 40) * mult), label: 'crit' };
+  return { dmg: Math.round((70 + random() * 60) * mult), label: 'hit' };
+}
+
+function startBattle(state, ctx) {
+  const s = ctx.settings;
+  if (state.solo) {
+    const ai = AI[s.enemySkill] ?? AI.normal;
+    state.ships = { red: { hp: 600, maxHp: 600 }, black: { hp: ai.hp, maxHp: ai.hp } };
+  } else {
+    state.ships = {
+      red: { hp: hpFor(state.teams.black.length), maxHp: hpFor(state.teams.black.length) },
+      black: { hp: hpFor(state.teams.red.length), maxHp: hpFor(state.teams.red.length) },
+    };
+    pushFeed(state, ctx, { type: 'sys', key: 'start', r: state.teams.red.length, b: state.teams.black.length });
+  }
+  const ms = clamp(Number(s.battleMin ?? 7), 2, 30) * 60_000;
+  state.battleEndsAt = ctx.now + ms;
+  state.phase = 'battle';
+  ctx.after(ms, 'timeUp', null, { key: 'battle' });
+  if (state.solo) ctx.after((AI[s.enemySkill] ?? AI.normal).every, 'aiFire', null, { key: 'ai' });
+}
+
+function finishBattle(state, ctx, winner, reason) {
+  if (state.phase !== 'battle') return;
+  state.phase = 'finished';
+  state.winner = winner;
+  state.reason = reason;
+  state.pending = {};
+  state.aiming = {};
+  ctx.cancel('battle');
+  ctx.cancel('ai');
+  pushFeed(state, ctx, { type: 'sys', key: winner === 'draw' ? 'draw' : 'win', team: winner });
+  ctx.end({ scores: state.scores });
+}
+
+function finishByHull(state, ctx, reason) {
+  const rf = state.ships.red.hp / state.ships.red.maxHp;
+  const bf = state.ships.black.hp / state.ships.black.maxHp;
+  finishBattle(state, ctx, Math.abs(rf - bf) < 0.001 ? 'draw' : rf > bf ? 'red' : 'black', reason);
+}
+
+function applyShot(state, ctx, team, res, by) {
+  const foe = otherTeam(team);
+  const x = ctx.random() * 1.8 - 0.9;
+  const y = ctx.random();
+  state.stats[team].fired += 1;
+  if (res.dmg > 0) {
+    state.ships[foe].hp = Math.max(0, state.ships[foe].hp - res.dmg);
+    state.hits[foe].push({ id: `h${nextSeq(state)}`, x, y, sev: res.label });
+    if (state.hits[foe].length > 14) state.hits[foe].shift();
+    state.stats[team].hitCount += 1;
+    if (by !== 'ai') state.scores[by] = (state.scores[by] ?? 0) + res.dmg;
+    pushFeed(state, ctx, { type: res.label, by, team, dmg: res.dmg });
+    if (state.ships[foe].hp <= 0) ctx.after(1800, 'finish', { winner: team }, { key: 'sunk' });
+  } else {
+    pushFeed(state, ctx, { type: 'miss', by, team });
+  }
+  state.lastShot = { seq: nextSeq(state), from: team, dmg: res.dmg, label: res.label, x, y, by };
+}
+
+function playerFire(state, ctx, pid, accuracy) {
+  const team = teamOf(state, pid);
+  if (!team || state.inventory[pid] !== 'ball') return;
+  state.inventory[pid] = null;
+  delete state.aiming[pid];
+  const mult = 1 + Math.min(state.streaks[pid] ?? 0, 5) * 0.06;
+  applyShot(state, ctx, team, computeDamage(accuracy !== null, accuracy, mult, ctx.random), pid);
+}
+
+/** Answers from buttons and forms (form values are strings). */
+function normalizeAnswer(item, p) {
+  switch (item.type) {
+    case 'mcq-single': return Number(p.answer);
+    case 'true-false': return p.answer === true || p.answer === 'true';
+    case 'mcq-multi': return [].concat(p.sel ?? []).map(Number);
+    case 'short-answer': return String(p.text ?? '');
+    case 'sort-items': return item.items.map((_, i) => Number(p[`o${i}`]));
+    case 'match-pairs': return item.prompts.map((_, i) => Number(p[`p${i}`]));
+    default: return null;
+  }
+}
+
+/** Common checks of crew actions; returns the team or null. */
+function crewMember(state, ctx, { allowStunned = false } = {}) {
+  const pid = ctx.playerId;
+  if (!pid || state.phase !== 'battle') return null;
+  const team = teamOf(state, pid);
+  if (!team) return null;
+  if (!allowStunned && (state.stunnedUntil[pid] ?? 0) > ctx.now) { notice(state, pid, 'stunned'); return null; }
+  return team;
+}
+
+const rules = {
+  initialState(ctx) {
+    const ids = ctx.items.filter((it) => SUPPORTED.includes(it.type)).map((it) => it.id);
+    const state = {
+      phase: 'teams', solo: ctx.mode === 'solo',
+      teams: { red: [], black: [] }, scores: {}, inventory: {}, pending: {}, result: {}, notice: {}, aiming: {},
+      stunnedUntil: {}, streaks: {}, positions: {},
+      ships: { red: { hp: 1, maxHp: 1 }, black: { hp: 1, maxHp: 1 } }, hits: { red: [], black: [] },
+      stats: { red: blankStats(), black: blankStats() }, feed: [], battleEndsAt: 0, winner: null, reason: null, lastShot: null,
+      order: ctx.settings.doShuffle === false ? ids : ctx.shuffle(ids), qIdx: {}, seq: 0,
+      aimMode: ctx.settings.aimMode !== false, timerSec: clamp(Number(ctx.settings.timerSec ?? 20), 5, 120),
+    };
+    for (const p of ctx.players) state.scores[p.id] = 0;
+    if (state.solo) {
+      state.teams.red = ctx.players.map((p) => p.id);
+      state.teams.black = ['ai'];
+      startBattle(state, ctx);
+    }
+    return state;
+  },
+
+  playerJoined(state, player, ctx) {
+    state.scores[player.id] ??= 0;
+    if (state.phase === 'battle' && !teamOf(state, player.id)) {
+      const side = state.teams.red.length <= state.teams.black.length ? 'red' : 'black';
+      state.teams[side].push(player.id);
+      pushFeed(state, ctx, { type: 'sys', key: 'join', by: player.id, team: side });
+    }
+  },
+
+  actions: {
+    /* ---- lobby ---- */
+    join_team(state, { team } = {}, ctx) {
+      if (state.phase !== 'teams' || !ctx.playerId || (team !== 'red' && team !== 'black')) return;
+      state.teams.red = state.teams.red.filter((id) => id !== ctx.playerId);
+      state.teams.black = state.teams.black.filter((id) => id !== ctx.playerId);
+      state.teams[team].push(ctx.playerId);
+    },
+    balance(state, _p, ctx) {
+      if (!ctx.fromHost || state.phase !== 'teams') return;
+      const ids = ctx.shuffle(ctx.players.map((p) => p.id));
+      state.teams = { red: [], black: [] };
+      ids.forEach((pid, i) => state.teams[i % 2 === 0 ? 'red' : 'black'].push(pid));
+    },
+    begin(state, _p, ctx) {
+      if (!ctx.fromHost || state.phase !== 'teams') return;
+      for (const p of ctx.players) {
+        if (!teamOf(state, p.id)) state.teams[state.teams.red.length <= state.teams.black.length ? 'red' : 'black'].push(p.id);
+      }
+      if (!state.teams.red.length || !state.teams.black.length) {
+        const from = state.teams.red.length ? 'red' : 'black';
+        if (state.teams[from].length < 2) return; // a ship cannot sail without a crew
+        state.teams[otherTeam(from)].push(state.teams[from].pop());
+      }
+      startBattle(state, ctx);
+    },
+    end_battle(state, _p, ctx) {
+      if (ctx.fromHost && state.phase === 'battle') finishByHull(state, ctx, 'time');
+    },
+
+    /* ---- timers ---- */
+    timeUp(state, _p, ctx) { if (state.phase === 'battle') finishByHull(state, ctx, 'time'); },
+    finish(state, { winner } = {}, ctx) { finishBattle(state, ctx, winner, 'sunk'); },
+    questionTimeout(state, { pid, seq } = {}, ctx) {
+      const pending = state.pending[pid];
+      if (!pending || pending.seq !== seq) return;
+      delete state.pending[pid];
+      state.qIdx[pid] = (state.qIdx[pid] ?? 0) + 1;
+      state.stunnedUntil[pid] = ctx.now + STUN_MS;
+      state.streaks[pid] = 0;
+      state.result[pid] = { seq, correct: false, timedOut: true, itemId: pending.itemId, crate: pending.crate };
+      const team = teamOf(state, pid);
+      if (team) state.stats[team].wrong += 1;
+      ctx.recordAnswer(pending.itemId, false, { playerId: pid, isSkipped: true });
+    },
+    aimTimeout(state, { pid, seq } = {}, ctx) {
+      const aim = state.aiming[pid];
+      if (aim && aim.seq === seq && state.phase === 'battle') playerFire(state, ctx, pid, accuracyAt(aim.seed, AIM_MS));
+    },
+    aiFire(state, _p, ctx) {
+      if (state.phase !== 'battle') return;
+      const ai = AI[ctx.settings.enemySkill] ?? AI.normal;
+      const res = ctx.random() < ai.miss ? { dmg: 0, label: 'miss' } : { dmg: Math.round(ai.min + ctx.random() * (ai.max - ai.min)), label: 'hit' };
+      if (res.dmg > ai.max * 0.92) res.label = 'crit';
+      applyShot(state, ctx, 'black', res, 'ai');
+      ctx.after(Math.round(ai.every * (0.75 + ctx.random() * 0.5)), 'aiFire', null, { key: 'ai' });
+    },
+
+    /* ---- crew ---- */
+    move(state, { x } = {}, ctx) {
+      if (!ctx.playerId || state.phase !== 'battle' || !Number.isFinite(Number(x))) return;
+      state.positions[ctx.playerId] = clamp(Number(x), -4.9, 4.9);
+    },
+    request_question(state, { crate } = {}, ctx) {
+      if (!crewMember(state, ctx)) return;
+      const pid = ctx.playerId;
+      crate = crate === 'material' ? 'material' : 'ammo';
+      if (state.inventory[pid] === (crate === 'ammo' ? 'ball' : 'plank')) return notice(state, pid, 'hands');
+      if (state.pending[pid]) return;
+      if (!state.order.length) return notice(state, pid, 'noQuestions');
+      state.qIdx[pid] ??= Math.floor(ctx.random() * state.order.length); // everyone starts somewhere else
+      const itemId = state.order[state.qIdx[pid] % state.order.length];
+      const seq = nextSeq(state);
+      state.pending[pid] = { seq, itemId, crate, deadline: ctx.now + state.timerSec * 1000 };
+      ctx.after(state.timerSec * 1000 + 1000, 'questionTimeout', { pid, seq });
+    },
+    submit_answer(state, payload = {}, ctx) {
+      const team = crewMember(state, ctx, { allowStunned: true });
+      if (!team) return;
+      const pid = ctx.playerId;
+      const pending = state.pending[pid];
+      if (!pending || pending.seq !== Number(payload.seq)) return;
+      delete state.pending[pid];
+      state.qIdx[pid] = (state.qIdx[pid] ?? 0) + 1;
+      const item = ctx.item(pending.itemId);
+      const correct = !!item && checkAnswer(item, normalizeAnswer(item, payload));
+      if (correct) {
+        state.inventory[pid] = pending.crate === 'ammo' ? 'ball' : 'plank';
+        state.scores[pid] = (state.scores[pid] ?? 0) + 50;
+        state.streaks[pid] = (state.streaks[pid] ?? 0) + 1;
+        state.stats[team].correct += 1;
+        pushFeed(state, ctx, { type: 'correct', by: pid, team, crate: pending.crate, itemId: pending.itemId });
+      } else {
+        state.stunnedUntil[pid] = ctx.now + STUN_MS;
+        state.streaks[pid] = 0;
+        state.stats[team].wrong += 1;
+        pushFeed(state, ctx, { type: 'wrong', by: pid, team, itemId: pending.itemId });
+      }
+      state.result[pid] = { seq: pending.seq, correct, timedOut: false, itemId: pending.itemId, crate: pending.crate };
+      ctx.recordAnswer(pending.itemId, correct);
+    },
+    aim(state, { cannon } = {}, ctx) {
+      if (!crewMember(state, ctx)) return;
+      const pid = ctx.playerId;
+      if (state.inventory[pid] !== 'ball') return notice(state, pid, 'needBall');
+      if (!state.aimMode) return playerFire(state, ctx, pid, null);
+      const seq = nextSeq(state);
+      state.aiming[pid] = { seq, start: ctx.now, seed: ctx.random() * 100, cannon: clamp(Number(cannon) || 0, 0, 2) };
+      ctx.after(AIM_MS + 1500, 'aimTimeout', { pid, seq });
+    },
+    fire(state, { t, noAim } = {}, ctx) {
+      if (!crewMember(state, ctx)) return;
+      const pid = ctx.playerId;
+      const aim = state.aiming[pid];
+      if (noAim || !state.aimMode || !aim) {
+        if (state.aimMode && aim) return; // aiming is running: fire by tapping it
+        return playerFire(state, ctx, pid, null);
+      }
+      // The authority computes the hit from the moment of the tap (not trusting a sent accuracy).
+      const when = clamp(Number.isFinite(Number(t)) ? Math.min(Number(t), ctx.now) : ctx.now, aim.start, aim.start + AIM_MS);
+      playerFire(state, ctx, pid, accuracyAt(aim.seed, when - aim.start));
+    },
+    repair(state, { hitId } = {}, ctx) {
+      const team = crewMember(state, ctx);
+      if (!team) return;
+      const pid = ctx.playerId;
+      if (state.inventory[pid] !== 'plank') return notice(state, pid, 'needPlank');
+      const i = state.hits[team].findIndex((h) => h.id === hitId);
+      if (i === -1) return notice(state, pid, 'patched');
+      state.hits[team].splice(i, 1);
+      state.inventory[pid] = null;
+      state.ships[team].hp = Math.min(state.ships[team].maxHp, state.ships[team].hp + 100);
+      state.scores[pid] = (state.scores[pid] ?? 0) + 75;
+      state.stats[team].repairs += 1;
+      pushFeed(state, ctx, { type: 'repair', by: pid, team });
+    },
+  },
+};
+
+/* ═════════════════════════════════════════════════════════
+   Device-local state (screens, 3D scene, messages)
+   ═════════════════════════════════════════════════════════ */
+const G = {
+  state: null, ui: null, me: null, team: null,
+  mode2d: false, reason2d: null, userChose: false,
+  float: null, feedback: null,
+  seen: null,               // last processed seq of shots / notices / results
+  finishedAt: null,
+};
+const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+const fmtTime = (ms) => { const sec = Math.ceil(Math.max(0, ms) / 1000); return `${String(Math.floor(sec / 60)).padStart(2, '0')}:${String(sec % 60).padStart(2, '0')}`; };
+function floatMsg(text, color = '#fff') { G.float = { text, color, until: performance.now() + 1600 }; }
+const pct = (ship) => (ship ? clamp((ship.hp / ship.maxHp) * 100, 0, 100) : 0);
+
+/** A small seeded shuffle for displaying options (stable across renders). */
+function stableShuffle(list, seed) {
+  const a = list.map((v, i) => ({ v, i }));
+  let s = seed * 9301 + 49297;
+  for (let i = a.length - 1; i > 0; i--) { s = (s * 9301 + 49297) % 233280; const j = Math.floor((s / 233280) * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
+
+/* ═════════════════════════════════════════════════════════
+   Rendering: board
+   ═════════════════════════════════════════════════════════ */
+function chipList(ids, ui, meId) {
+  return ids.map((pid) => `<span class="chip${pid === meId ? ' me' : ''}">${esc(nameOf(ui, pid))}</span>`).join('') || `<span class="muted">${L.noSailors}</span>`;
+}
+
+function renderBoardLobby(state, ui) {
+  const all = ui.players.map((p) => p.id);
+  const undecided = ui.players.filter((p) => !teamOf(state, p.id));
+  return `<section class="screen"><div class="panel" style="max-width:820px">
+    <div class="big-emoji">⚓</div>
+    <div class="panel-title">${L.musterTitle}</div>
+    <div class="panel-sub">${L.musterSub}</div>
+    <div class="teams-wrap">
+      ${['red', 'black'].map((t) => `<div class="team-card ${t}-side">
+        <div class="team-flag">${TEAMS[t].flag}</div><div class="team-name">${teamName(t)}</div>
+        <div class="team-count">${L.sailors(state.teams[t].length)}</div>
+        <div class="team-roster">${chipList(state.teams[t], ui)}</div></div>`).join('')}
+    </div>
+    <div class="muted" style="margin-top:10px">${undecided.length ? esc(L.undecided(undecided.map((p) => p.name).join(', '))) : L.allChosen}</div>
+    <div class="row">
+      <button class="gbtn sec" data-act="balance">${L.balance}</button>
+      <button class="gbtn pri" data-act="begin" ${all.length < 2 ? 'disabled' : ''}>${L.begin}</button>
+    </div>
+  </div></section>`;
+}
+
+function feedLine(f, ui) {
+  const who = f.by ? `<b style="color:${f.team ? TEAMS[f.team].color : '#fff'}">${esc(nameOf(ui, f.by))}</b>` : '';
+  const q = f.itemId ? ui.item(f.itemId) : null;
+  const detail = q ? `<div class="feed-detail">${ui.text(q.question ?? '', { inline: true, item: q })}</div>` : '';
+  switch (f.type) {
+    case 'hit': return `<div class="feed-item hit"><div>💥</div><div>${L.feedHit(who, f.dmg)}</div></div>`;
+    case 'crit': return `<div class="feed-item crit"><div>🎯</div><div>${L.feedCrit(who, f.dmg)}</div></div>`;
+    case 'miss': return `<div class="feed-item miss"><div>🌊</div><div>${L.feedMiss(who)}</div></div>`;
+    case 'repair': return `<div class="feed-item repair"><div>🔨</div><div>${L.feedRepair(who)}</div></div>`;
+    case 'correct': return `<div class="feed-item correct"><div>✅</div><div>${L.feedCorrect(who, f.crate)}${detail}</div></div>`;
+    case 'wrong': return `<div class="feed-item wrong"><div>❌</div><div>${L.feedWrong(who)}${detail}</div></div>`;
+    case 'sys': {
+      const text = f.key === 'start' ? L.feedStart(f.r, f.b) : f.key === 'join' ? L.feedJoin(esc(nameOf(ui, f.by)), teamName(f.team)) : f.key === 'win' ? L.feedWin(teamName(f.team)) : L.feedDraw;
+      return `<div class="feed-item sys"><div>⚓</div><div>${text}</div></div>`;
+    }
+    default: return '';
+  }
+}
+
+function renderBoardBattle(state, ui) {
+  return `<div class="dash">
+    <div class="hd-bar">
+      <span class="hd-title">🏴‍☠️ Pirates of Memizy</span>
+      <span class="hd-timer">${fmtTime(ui.timeLeft(state.battleEndsAt))}</span>
+      <button class="gbtn danger" style="padding:8px 14px;font-size:13px" data-act="end_battle">${L.endBattle}</button>
+    </div>
+    <div class="hd-ships">
+      ${['red', 'black'].map((t) => {
+        const ship = state.ships[t], st = state.stats[t];
+        return `<div class="hd-ship ${t}-side">
+          <div class="hd-ship-head"><span style="color:var(--${t}-team-soft)">${TEAMS[t].flag} ${teamName(t)}</span><span>${Math.max(0, Math.round(ship.hp))} / ${ship.maxHp}</span></div>
+          <div class="hpbar"><div class="hpfill" style="width:${pct(ship)}%;background:linear-gradient(90deg,${t === 'red' ? '#8c1823,var(--red-team)' : '#4a5670,var(--black-team)'})"></div></div>
+          <div class="hd-ship-stats"><span>💥 ${st.fired} ${L.fired}</span><span>🎯 ${st.hitCount} ${L.hits}</span><span>🔨 ${st.repairs} ${L.repairs}</span><span>✅ ${st.correct}</span><span>❌ ${st.wrong}</span></div>
+          <div class="team-roster" style="justify-content:flex-start;margin-top:10px">${state.teams[t].map((pid) => `<span class="chip">${esc(nameOf(ui, pid))} <b style="color:var(--gold)">${state.scores[pid] ?? 0}</b></span>`).join('')}</div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div class="section-lbl">${L.battleLog}</div>
+    <div class="feed">${state.feed.slice(0, 20).map((f) => feedLine(f, ui)).join('') || `<div class="muted">${L.calmSea}</div>`}</div>
+  </div>`;
+}
+
+function leaderboardHtml(state, ui) {
+  const medals = ['🥇', '🥈', '🥉'];
+  return ui.players
+    .map((p) => ({ id: p.id, name: p.name, score: state.scores[p.id] ?? 0, team: teamOf(state, p.id) }))
+    .sort((a, b) => b.score - a.score)
+    .map((r, i) => `<div class="lb-row"><span class="lb-rank">${medals[i] || `${i + 1}.`}</span>
+      <span class="lb-dot" style="background:${r.team ? TEAMS[r.team].color : '#666'}"></span>
+      <span style="flex:1">${esc(r.name)}</span><span class="lb-score">${r.score}</span></div>`).join('');
+}
+
+function renderBoardFinished(state, ui) {
+  const w = state.winner, r = state.ships.red, b = state.ships.black;
+  const correct = state.stats.red.correct + state.stats.black.correct;
+  return `<section class="screen"><div class="panel" style="max-width:520px">
+    <div class="big-emoji">${!w || w === 'draw' ? '🤝' : TEAMS[w].flag}</div>
+    <div class="panel-title">${!w || w === 'draw' ? L.drawTitle : L.winsTitle(teamName(w))}</div>
+    <div class="panel-sub">${state.reason === 'sunk' ? L.sunkSub : L.timeSub}</div>
+    <div class="muted" style="margin-bottom:14px;font-size:14px">🚩 ${L.hull} <b>${Math.round(pct(r))} %</b> · 🏴‍☠️ ${L.hull} <b>${Math.round(pct(b))} %</b> · ✅ ${correct} ${L.correctAnswers}</div>
+    ${leaderboardHtml(state, ui)}
+  </div></section>`;
+}
+
+/* ═════════════════════════════════════════════════════════
+   Rendering: player (controller / solo)
+   ═════════════════════════════════════════════════════════ */
+function renderTeamSelect(state, ui) {
+  const me = ui.self?.id;
+  const mine = teamOf(state, me);
+  return `<section class="screen">
+    <div style="text-align:center"><div style="font-size:40px">⚓</div>
+      <div class="panel-title" style="font-size:20px">${L.chooseShip}</div>
+      <div class="muted" style="margin-top:4px">${mine ? L.youSail(teamName(mine)) : L.chooseSub}</div></div>
+    <div class="teams-wrap">
+      ${['red', 'black'].map((t) => `<div class="team-card ${t}-side${mine === t ? ' mine' : ''}">
+        <div class="team-flag">${TEAMS[t].flag}</div><div class="team-name">${teamName(t)}</div>
+        <div class="team-count">${L.sailors(state.teams[t].length)}</div>
+        <div class="team-roster">${chipList(state.teams[t], ui, me)}</div>
+        <button class="join-btn" data-act="join_team" data-payload='{"team":"${t}"}' ${mine === t ? 'disabled' : ''}>${t === 'red' ? L.joinRed : L.joinBlack}</button>
+      </div>`).join('')}
+    </div></section>`;
+}
+
+function answerText(item, ui) {
+  const inline = (s) => ui.text(String(s ?? ''), { inline: true, item });
+  switch (item.type) {
+    case 'mcq-single': return inline(item.options[item.correctIndex]);
+    case 'true-false': return item.correctAnswer ? L.truth : L.lie;
+    case 'mcq-multi': return item.correctIndices.map((i) => inline(item.options[i])).join(', ');
+    case 'short-answer': return esc(item.correctAnswers.slice(0, 3).join(' / '));
+    case 'sort-items': return item.items.map(inline).join(' → ');
+    case 'match-pairs': return item.prompts.map((p, i) => `${inline(p)} = ${inline(item.matches[i])}`).join('; ');
+    default: return '';
+  }
+}
+
+function quizControls(item, seq, ui) {
+  const inline = (s) => ui.text(String(s ?? ''), { inline: true, item });
+  const hidden = `<input type="hidden" name="seq" value="${seq}">`;
+  const submit = `<button class="qsub" type="submit">${L.submit}</button>`;
+  switch (item.type) {
+    case 'mcq-single':
+      return `<div class="qgrid">${item.options.map((o, i) => `<button class="qbtn" data-act="submit_answer" data-payload='{"seq":${seq},"answer":${i}}'>${inline(o)}</button>`).join('')}</div>`;
+    case 'true-false':
+      return `<div class="qgrid"><button class="qbtn" data-act="submit_answer" data-payload='{"seq":${seq},"answer":true}'>${L.truth}</button><button class="qbtn" data-act="submit_answer" data-payload='{"seq":${seq},"answer":false}'>${L.lie}</button></div>`;
+    case 'mcq-multi':
+      return `<form class="qform" data-act="submit_answer">${hidden}${item.options.map((o, i) => `<label class="qcheck"><input type="checkbox" name="sel" value="${i}"><span>${inline(o)}</span></label>`).join('')}${submit}</form>`;
+    case 'short-answer':
+      return `<form class="qform" data-act="submit_answer">${hidden}<input class="qinput" name="text" autocomplete="off" placeholder="${L.yourAnswer}">${submit}</form>`;
+    case 'sort-items': {
+      const shuffled = stableShuffle(item.items, seq);
+      return `<form class="qform" data-act="submit_answer">${hidden}${item.items.map((_, pos) => `<div class="qpair"><b style="color:var(--gold-bright)">${pos + 1}.</b>
+        <select class="qsel" name="o${pos}">${shuffled.map(({ v, i }) => `<option value="${i}">${esc(String(v).replace(/[*_`$]/g, ''))}</option>`).join('')}</select></div>`).join('')}${submit}</form>`;
+    }
+    case 'match-pairs': {
+      const shuffled = stableShuffle(item.matches, seq);
+      return `<form class="qform" data-act="submit_answer">${hidden}${item.prompts.map((p, pi) => `<div class="qpair"><div>${inline(p)}</div>
+        <select class="qsel" name="p${pi}">${shuffled.map(({ v, i }) => `<option value="${i}">${esc(String(v).replace(/[*_`$]/g, ''))}</option>`).join('')}</select></div>`).join('')}${submit}</form>`;
+    }
+    default: return '';
+  }
+}
+
+function renderQuiz(state, ui, me) {
+  const pending = state.pending[me];
+  const fb = G.feedback && G.feedback.until > performance.now() ? G.feedback : null;
+  const itemId = pending?.itemId ?? fb?.itemId;
+  if (!itemId) return '';
+  const item = ui.item(itemId);
+  if (!item) return '';
+  const crate = pending?.crate ?? fb?.crate;
+  let body;
+  if (pending) {
+    const left = ui.timeLeft(pending.deadline);
+    const frac = clamp(left / (state.timerSec * 1000), 0, 1);
+    body = `<div class="quiz-timer"><div style="width:${frac * 100}%;background:${frac > 0.5 ? 'var(--gold)' : frac > 0.25 ? '#e8974a' : 'var(--danger)'}"></div></div>
+      <div class="quiz-q">${ui.text(item.question ?? '', { item })}</div>
+      ${quizControls(item, pending.seq, ui)}`;
+    body = `<div class="quiz-tag"><span>${crate === 'ammo' ? L.quizAmmo : L.quizMaterial}</span><span>${Math.ceil(left / 1000)} s</span></div>${body}`;
+  } else {
+    body = `<div class="quiz-tag"><span>${crate === 'ammo' ? L.quizAmmo : L.quizMaterial}</span></div>
+      <div class="quiz-q">${ui.text(item.question ?? '', { item })}</div>
+      <div class="feedback ${fb.correct ? 'fb-correct' : 'fb-wrong'}">${fb.correct ? (crate === 'ammo' ? L.correctAmmo : L.correctPlank) : fb.timedOut ? L.timeUp : L.wrong}</div>
+      ${fb.correct ? '' : `<div class="fb-answer">${L.correctWas} ${answerText(item, ui)}</div>`}`;
+  }
+  return `<div class="quiz"><div class="quiz-inner">${body}</div></div>`;
+}
+
+function hintText(state, me) {
+  if (G.walking) return L.hintRun;
+  const inv = state.inventory[me];
+  if (inv === 'ball') return L.hintBall;
+  if (inv === 'plank') return state.hits[G.team]?.length ? L.hintPlank : L.hintPlankNone;
+  return L.hintEmpty;
+}
+
+function renderDeck2d(state, ui, me) {
+  const inv = state.inventory[me] ?? null;
+  const team = G.team, foe = otherTeam(team);
+  const breaches = state.hits[team] ?? [];
+  const busy = !!state.pending[me];
+  return `<div class="deck2d">
+    <div class="ships2d"><span>${TEAMS[team].flag}⛵</span><span class="vs">VS</span><span>⛵${state.solo ? '☠️' : TEAMS[foe].flag}</span></div>
+    <button class="station${inv !== 'ball' ? ' ok' : ''}" data-act="request_question" data-payload='{"crate":"ammo"}' ${inv === 'ball' || busy ? 'disabled' : ''}>
+      <span class="ico">🧨</span><span>${L.magazine.replace('🧨 ', '')}<small>${L.magazineSub}</small></span></button>
+    <button class="station${inv !== 'plank' ? ' ok' : ''}" data-act="request_question" data-payload='{"crate":"material"}' ${inv === 'plank' || busy ? 'disabled' : ''}>
+      <span class="ico">🪵</span><span>${L.carpenter.replace('🪵 ', '')}<small>${L.carpenterSub}</small></span></button>
+    <button class="station${inv === 'ball' ? ' ok' : ''}" data-act="fire" data-payload='{"noAim":true}' ${inv !== 'ball' ? 'disabled' : ''}>
+      <span class="ico">💣</span><span>${L.fire.replace('💣 ', '')}<small>${L.fireSub}</small></span></button>
+    <div class="muted" style="text-align:left">${L.breaches}</div>
+    <div class="breaches">${breaches.length ? breaches.map((h, i) => `<button class="breach" data-act="repair" data-payload='{"hitId":"${h.id}"}' ${inv !== 'plank' ? 'disabled' : ''}>${L.repair} #${i + 1}${h.sev === 'crit' ? ' 🔥' : ''}</button>`).join('') : `<span class="muted">${L.noBreaches}</span>`}</div>
+  </div>`;
+}
+
+function renderBattle(state, ui) {
+  const me = ui.self?.id;
+  const team = G.team;
+  const foe = otherTeam(team);
+  const own = state.ships[team], enemy = state.ships[foe];
+  const inv = state.inventory[me] ?? null;
+  const stunLeft = (state.stunnedUntil[me] ?? 0) - ui.now();
+  const streak = state.streaks[me] ?? 0;
+  const aim = state.aiming[me];
+  const showFloat = G.float && G.float.until > performance.now();
+  const finishedBanner = state.phase === 'finished' ? resultBanner(state, me) : '';
+  return `<div class="game">
+    ${G.mode2d ? renderDeck2d(state, ui, me) : '<div id="sea" data-keep></div>'}
+    <div class="hud-top">
+      <div class="hp-row"><span class="hp-label">${TEAMS[team].flag} ${Math.round(pct(own))}%</span><div class="hp-track"><div class="hp-fill" style="width:${pct(own)}%;background:linear-gradient(90deg,#1d7a4f,var(--green))"></div></div></div>
+      <div class="hp-row"><span class="hp-label">${state.solo ? '☠️' : TEAMS[foe].flag} ${Math.round(pct(enemy))}%</span><div class="hp-track"><div class="hp-fill" style="width:${pct(enemy)}%;background:linear-gradient(90deg,#8c1823,var(--danger))"></div></div></div>
+      <div class="hud-row"><span class="hud-timer">⏳ ${fmtTime(ui.timeLeft(state.battleEndsAt))}</span><span class="hud-score">🏆 ${state.scores[me] ?? 0}</span>
+        <span class="hud-inv">${inv === 'ball' ? L.ball : inv === 'plank' ? L.plank : L.empty}</span></div>
+    </div>
+    <div class="hud-bot">
+      <span class="hint">${hintText(state, me)}</span>
+      <span class="streak">${streak >= 2 ? L.streak(streak) : ''}</span>
+      <button class="mode-btn" data-local="toggle2d" title="${esc(G.reason2d ?? '')}">${G.mode2d ? L.to3d : L.to2d}</button>
+    </div>
+    ${stunLeft > 0 ? `<div class="stun"><div class="stun-text">${L.stunned}</div><div class="stun-cd">${Math.ceil(stunLeft / 1000)}</div></div>` : ''}
+    ${showFloat ? `<div class="float" style="color:${G.float.color}">${esc(G.float.text)}</div>` : ''}
+    ${renderQuiz(state, ui, me)}
+    ${aim && !G.mode2d && state.phase === 'battle' ? `<div class="aim" data-local="fire">
+      <div class="aim-head"><span>${L.aimTitle}</span><span>${Math.ceil(ui.timeLeft(aim.start + AIM_MS) / 1000)} s</span></div>
+      <div class="aim-track"><div style="width:${clamp(ui.timeLeft(aim.start + AIM_MS) / AIM_MS, 0, 1) * 100}%"></div></div>
+      <div class="aim-mid"><div class="reticle"></div></div>
+      <div class="aim-hint">${L.aimHint}</div></div>` : ''}
+    ${finishedBanner}
+  </div>`;
+}
+
+function resultBanner(state, me) {
+  const mine = teamOf(state, me), w = state.winner;
+  let text;
+  if (!w || w === 'draw') text = `🤝 ${L.draw}`;
+  else if (w === mine) text = `🏆 ${state.reason === 'sunk' ? L.winSunk : L.winTime}`;
+  else text = `💀 ${state.reason === 'sunk' ? L.loseSunk : L.loseTime}`;
+  return `<div class="result-banner"><div>${text}</div></div>`;
+}
+
+function renderPlayerFinished(state, ui) {
+  const me = ui.self?.id, mine = teamOf(state, me), w = state.winner;
+  const won = w && w !== 'draw' && w === mine;
+  return `<section class="screen"><div class="panel" style="max-width:440px">
+    <div class="big-emoji">${!w || w === 'draw' ? '🤝' : won ? '🏆' : '💀'}</div>
+    <div class="panel-title">${!w || w === 'draw' ? L.drawTitle : won ? L.victory : L.defeat}</div>
+    <div class="panel-sub">${w && w !== 'draw' ? L.rule(teamName(w)) : L.bothLive}</div>
+    <div style="text-align:center;font-size:14px;color:var(--gold-bright);margin:6px 0 14px;font-weight:800">${L.myScore(state.scores[me] ?? 0)}</div>
+    ${state.solo ? '' : leaderboardHtml(state, ui)}
+  </div></section>`;
+}
+
+function render(state, ui) {
+  setLang(ui.locale);
+  G.state = state;
+  G.ui = ui;
+  if (ui.view === 'board') {
+    if (state.phase === 'teams') return renderBoardLobby(state, ui);
+    if (state.phase === 'battle') return renderBoardBattle(state, ui);
+    return renderBoardFinished(state, ui);
+  }
+  const me = ui.self?.id;
+  G.me = me;
+  if (state.phase === 'teams') return renderTeamSelect(state, ui);
+  G.team = teamOf(state, me);
+  if (!G.team) return `<section class="screen"><div style="font-size:64px">🦜</div><div class="panel-title" style="font-size:20px">${L.notInCrew}</div></section>`;
+  if (state.phase === 'finished') {
+    G.finishedAt ??= performance.now();
+    if (performance.now() - G.finishedAt > 4500) return renderPlayerFinished(state, ui);
+  }
+  return renderBattle(state, ui);
+}
+
+/* ═════════════════════════════════════════════════════════
+   update(): reacts to state changes on the device (3D, messages)
+   ═════════════════════════════════════════════════════════ */
+function update(state, ui) {
+  if (ui.view === 'board' || state.phase === 'teams' || !G.team) return;
+  const me = ui.self?.id;
+  const shot = state.lastShot;
+  const notice = state.notice[me];
+  const result = state.result[me];
+  if (!G.seen) G.seen = { shot: shot?.seq ?? 0, notice: notice?.seq ?? 0, result: result?.seq ?? 0 }; // no replay after (re)joining
+
+  if (notice && notice.seq !== G.seen.notice) {
+    G.seen.notice = notice.seq;
+    const map = { hands: L.msgHands, noQuestions: L.msgNoQ, stunned: L.msgStunned, patched: L.msgPatched, needBall: L.msgNeedBall, needPlank: L.msgNeedPlank };
+    if (map[notice.type]) floatMsg(map[notice.type], '#f0c96c');
+  }
+  if (result && result.seq !== G.seen.result) {
+    G.seen.result = result.seq;
+    G.feedback = { ...result, until: performance.now() + (result.correct ? 1200 : 2600) };
+  }
+  if (shot && shot.seq !== G.seen.shot) {
+    G.seen.shot = shot.seq;
+    const outgoing = shot.from === G.team;
+    const message = () => {
+      if (shot.label === 'miss') { if (outgoing) floatMsg(L.msgSplash, '#9fd3e8'); }
+      else if (outgoing) floatMsg(shot.label === 'crit' ? L.msgCrit(shot.dmg) : L.msgHit(shot.dmg), shot.label === 'crit' ? '#f0c96c' : '#2ec27e');
+      else floatMsg(L.msgWeHit(shot.dmg), '#ef476f');
+    };
+    if (Scene.ready) Scene.shot(shot, outgoing, message);
+    else message();
+  }
+
+  if (!G.mode2d) {
+    if (!Scene.state) void Scene.init(G.team);
+    if (Scene.ready) Scene.sync(state, me);
+  }
+}
+
+/* ═════════════════════════════════════════════════════════
+   The 3D scene (Three.js, loaded only when needed) + checks
+   ═════════════════════════════════════════════════════════ */
+const THREE_URL = 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js';
+let THREE = null;
+
+function switchTo2d(reason, byUser = false) {
+  if (G.mode2d) return;
+  G.mode2d = true;
+  G.reason2d = reason;
+  if (byUser) G.userChose = true;
+  Scene.dispose();
+}
+
+function webglAvailable() {
+  try {
+    const c = document.createElement('canvas');
+    return !!(c.getContext('webgl2') || c.getContext('webgl'));
+  } catch { return false; }
+}
+
+const Scene = {
+  state: null, ready: false,
+  ren: null, scene: null, cam: null, canvas: null, labels: null, raf: 0,
+  own: null, enemy: null, ocean: null, oceanGeo: null, avatar: null,
+  mates: {}, stations: [], decals: { own: {}, enemy: {} }, particles: [], projectiles: [], gulls: [], caps: [],
+  shake: 0, tex: null, avatarState: { targetX: 0, pending: null }, layout: null,
+
+  async init(team) {
+    this.state = 'loading';
+    if (!webglAvailable()) return switchTo2d('WebGL is not available');
+    try {
+      THREE = THREE ?? (await import(THREE_URL));
+    } catch {
+      return switchTo2d('3D library could not be loaded');
+    }
+    const host = document.getElementById('sea');
+    if (!host || G.mode2d) { this.state = null; return; }
+    try {
+      this.build(host, team);
+    } catch (error) {
+      console.warn('[pirates] 3D failed:', error);
+      return switchTo2d('3D scene could not start');
+    }
+    this.ready = true;
+    this.state = 'running';
+    this.start();
+  },
+
+  build(host, team) {
+    const canvas = document.createElement('canvas');
+    const labels = document.createElement('div');
+    labels.className = 'labels';
+    host.replaceChildren(canvas, labels);
+    this.canvas = canvas;
+    this.labels = labels;
+    canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); switchTo2d('the graphics card lost the 3D context'); });
+    const ren = new THREE.WebGLRenderer({ canvas, antialias: devicePixelRatio < 2 });
+    ren.setPixelRatio(Math.min(devicePixelRatio, 2));
+    ren.outputColorSpace = THREE.SRGBColorSpace;
+    ren.toneMapping = THREE.ACESFilmicToneMapping;
+    ren.toneMappingExposure = 1.08;
+    this.ren = ren;
+    this.tex = makeTextures();
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.Fog(0xc9dfe9, 60, 215);
+    this.scene = scene;
+    const skyMat = new THREE.ShaderMaterial({
+      side: THREE.BackSide, depthWrite: false,
+      uniforms: { cTop: { value: new THREE.Color(0x3f87b5) }, cMid: { value: new THREE.Color(0x9fcfe2) }, cBot: { value: new THREE.Color(0xf6d9a8) } },
+      vertexShader: 'varying float vY; void main() { vY = normalize(position).y; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: 'varying float vY; uniform vec3 cTop; uniform vec3 cMid; uniform vec3 cBot; void main() { vec3 c = vY > 0.12 ? mix(cMid, cTop, smoothstep(0.12, 0.65, vY)) : mix(cBot, cMid, smoothstep(-0.04, 0.12, vY)); gl_FragColor = vec4(c, 1.0); }',
+    });
+    const sky = new THREE.Mesh(new THREE.SphereGeometry(330, 24, 12), skyMat);
+    sky.renderOrder = -1;
+    scene.add(sky);
+    this.cam = new THREE.PerspectiveCamera(52, 1, 0.1, 400);
+    scene.add(new THREE.HemisphereLight(0xfff4dd, 0x1d4a5e, 0.95));
+    const sun = new THREE.DirectionalLight(0xffe9c0, 1.5);
+    sun.position.set(-30, 40, 25);
+    scene.add(sun);
+    const sunDisc = new THREE.Mesh(new THREE.CircleGeometry(11, 24), new THREE.MeshBasicMaterial({ color: 0xfff3cf, fog: false }));
+    sunDisc.position.set(-90, 42, -200);
+    sunDisc.lookAt(0, 8, 20);
+    scene.add(sunDisc);
+    for (let i = 0; i < 8; i++) {
+      const c = sprite(this.tex.splash, 24 + Math.random() * 26, 0.42);
+      c.material.color = new THREE.Color().setHSL(0.09, 0.3, 0.92);
+      c.material.fog = false;
+      c.position.set(-140 + Math.random() * 280, 28 + Math.random() * 24, -130 - Math.random() * 60);
+      scene.add(c);
+    }
+    this.oceanGeo = new THREE.PlaneGeometry(400, 260, 48, 30);
+    this.ocean = new THREE.Mesh(this.oceanGeo, new THREE.MeshPhongMaterial({ color: 0x1d6f8e, specular: 0x9fd8ea, shininess: 70, transparent: true, opacity: 0.96 }));
+    this.ocean.rotation.x = -Math.PI / 2;
+    scene.add(this.ocean);
+    for (const [ix, iz, s] of [[-95, -150, 1.4], [75, -160, 1.0], [-30, -180, 1.9]]) {
+      const isl = new THREE.Mesh(new THREE.ConeGeometry(18 * s, 10 * s, 7), new THREE.MeshLambertMaterial({ color: 0x5d7a6b }));
+      isl.position.set(ix, -1, iz);
+      scene.add(isl);
+    }
+    for (let i = 0; i < 4; i++) {
+      const gull = new THREE.Group();
+      const wingMat = new THREE.MeshBasicMaterial({ color: 0xf6f3ea, side: THREE.DoubleSide });
+      const wl = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.28), wingMat); wl.position.x = -0.55;
+      const wr = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.28), wingMat); wr.position.x = 0.55;
+      gull.add(wl, wr);
+      gull.userData = { wl, wr, r: 14 + Math.random() * 22, h: 13 + Math.random() * 9, ph: Math.random() * Math.PI * 2, sp: 0.15 + Math.random() * 0.12 };
+      scene.add(gull);
+      this.gulls.push(gull);
+    }
+    for (let i = 0; i < 24; i++) {
+      const cap = sprite(this.tex.splash, 1.5 + Math.random() * 2.5, 0);
+      cap.position.set(-90 + Math.random() * 180, 0.42, 30 - Math.random() * 160);
+      cap.userData.ph = Math.random() * Math.PI * 2;
+      scene.add(cap);
+      this.caps.push(cap);
+    }
+    this.own = buildShip(team, true, this.stations, this.tex);
+    scene.add(this.own);
+    this.enemy = buildShip(otherTeam(team), false, null, this.tex);
+    this.enemy.position.set(8, 0, -80);
+    this.enemy.scale.setScalar(0.8);
+    scene.add(this.enemy);
+    this.avatar = buildAvatar(team);
+    this.avatar.position.set(0, 2.4, 0.95);
+    this.own.add(this.avatar);
+
+    const layout = () => {
+      const w = canvas.clientWidth || 1, h = canvas.clientHeight || 1;
+      ren.setSize(w, h, false);
+      const cam = this.cam;
+      cam.aspect = w / h;
+      if (cam.aspect < 0.9) {
+        this.own.rotation.y = Math.PI / 2;
+        this.enemy.position.set(-72, this.enemy.position.y, -26);
+        cam.position.set(-6, 19, 14);
+        cam.lookAt(0, 0.5, -5.5);
+      } else {
+        this.own.rotation.y = 0;
+        this.enemy.position.set(8, this.enemy.position.y, -70);
+        cam.position.set(2.0, cam.aspect < 1.4 ? 16 : 13, cam.aspect < 1.4 ? 11.5 : 9.5);
+        cam.lookAt(2.0, -1.0, -11.5);
+      }
+      const toUs = new THREE.Vector3().subVectors(this.own.position, this.enemy.position);
+      this.enemy.rotation.y = Math.atan2(toUs.x, toUs.z);
+      cam.fov = 52;
+      cam.updateProjectionMatrix();
+    };
+    this.layout = layout;
+    new ResizeObserver(layout).observe(canvas);
+    layout();
+    canvas.addEventListener('pointerdown', (e) => this.onTap(e));
+  },
+
+  /** Render loop with the "is the 3D actually visible and fast enough?" checks. */
+  start() {
+    let last = performance.now(), wake = 0, frames = 0, checkStart = last, checked = false, lowQuality = false;
+    const loop = (now) => {
+      if (!this.canvas?.isConnected) return this.dispose();
+      this.raf = requestAnimationFrame(loop);
+      const dt = Math.min((now - last) / 1000, 0.08);
+      last = now;
+      const t = now * 0.001;
+      this.animate(t, dt, (wake += dt) > 0.35 && !(wake = 0));
+      this.ren.render(this.scene, this.cam);
+      if (!checked) {
+        checked = true;
+        if (looksBlack(this.ren)) return switchTo2d('the 3D scene renders black on this device');
+      }
+      frames++;
+      if (now - checkStart > 4000) {
+        const fps = (frames * 1000) / (now - checkStart);
+        frames = 0;
+        checkStart = now;
+        if (fps < 20 && !lowQuality) { lowQuality = true; this.ren.setPixelRatio(1); this.layout(); }
+        else if (fps < 12 && lowQuality && !G.userChose) return switchTo2d(`the 3D scene is too slow here (${Math.round(fps)} fps)`);
+      }
+      this.updateLabels();
+    };
+    this.raf = requestAnimationFrame(loop);
+  },
+
+  animate(t, dt, wakeNow) {
+    const pos = this.oceanGeo.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i), y = pos.getY(i);
+      pos.setZ(i, Math.sin(x * 0.14 + t * 1.1) * 0.42 + Math.cos(y * 0.19 + t * 0.7) * 0.34);
+    }
+    pos.needsUpdate = true;
+    for (const gull of this.gulls) {
+      const u = gull.userData, a = t * u.sp + u.ph;
+      gull.position.set(Math.cos(a) * u.r, u.h + Math.sin(t * 0.9 + u.ph) * 1.2, -22 + Math.sin(a) * u.r * 0.7);
+      gull.rotation.y = -a;
+      const flap = Math.sin(t * 7 + u.ph) * 0.6;
+      u.wl.rotation.z = flap; u.wr.rotation.z = -flap;
+    }
+    for (const cap of this.caps) cap.material.opacity = Math.max(0, Math.sin(t * 0.7 + cap.userData.ph)) * 0.28;
+    if (wakeNow && !this.own.userData.sinking) {
+      const bow = this.own.localToWorld(new THREE.Vector3(7.6, 0.15, 0));
+      this.particle(this.scene, this.tex.splash, bow.x, 0.35, bow.z, { scale: 1.6, vy: 0.25, vx: 0.3, maxLife: 1.1, grow: 1.6, opacity: 0.5 });
+    }
+    for (const [ship, phase] of [[this.own, 0], [this.enemy, 2.1]]) {
+      if (ship.userData.sinking) {
+        const st = (ship.userData.sinkT = (ship.userData.sinkT ?? 0) + dt);
+        ship.rotation.z = Math.min(0.55, st * 0.16);
+        ship.position.y = Math.max(-6.5, -st * 0.9);
+        if (st < 4 && Math.random() < 0.3) this.smoke(ship, (Math.random() - 0.5) * 8, 2.5, 1.2);
+      } else {
+        ship.position.y = Math.sin(t * 0.9 + phase) * 0.28;
+        ship.rotation.z = Math.sin(t * 0.7 + phase) * 0.035;
+        ship.rotation.x = Math.sin(t * 0.55 + phase * 1.7) * 0.02;
+      }
+      ship.traverse((o) => {
+        if (o.userData.flag) o.rotation.y = Math.sin(t * 3 + phase) * 0.4;
+        else if (o.userData.sail) o.scale.x = 1 + Math.sin(t * 1.4 + o.position.x + phase) * 0.05;
+      });
+    }
+    this.moveAvatar(dt);
+    this.moveMates(dt);
+    this.moveParticles(dt);
+    this.moveProjectiles(dt);
+    if (this.shake > 0.002) {
+      this.cam.position.x += (Math.random() - 0.5) * this.shake;
+      this.cam.position.y += (Math.random() - 0.5) * this.shake;
+      this.shake *= Math.pow(0.02, dt);
+    }
+    this.aimCamera();
+  },
+
+  /* ---- state → scene ---- */
+  sync(state, me) {
+    setCarried(this.avatar, state.inventory[me] ?? null);
+    const mapping = [['own', G.team, this.own, 1], ['enemy', otherTeam(G.team), this.enemy, 0.85]];
+    for (const [slot, team, ship, scale] of mapping) {
+      const hits = state.hits[team] || [];
+      const seen = new Set();
+      for (const h of hits) {
+        seen.add(h.id);
+        if (!this.decals[slot][h.id]) {
+          const s = sprite(this.tex.scorch, (h.sev === 'crit' ? 2.6 : 1.9) * scale, 0.95);
+          s.position.set(h.x * 4.6, 0.7 + h.y * 1.3, 1.78);
+          ship.add(s);
+          this.decals[slot][h.id] = s;
+        }
+      }
+      for (const id of Object.keys(this.decals[slot])) {
+        if (seen.has(id)) continue;
+        const s = this.decals[slot][id];
+        s.parent?.remove(s);
+        if (slot === 'own') this.particle(this.own, this.tex.glow, s.position.x, s.position.y, s.position.z, { scale: 2, vy: 0.8, maxLife: 0.7, grow: 2 });
+        delete this.decals[slot][id];
+      }
+    }
+    if (state.ships[G.team]?.hp <= 0) this.own.userData.sinking = true;
+    if (state.ships[otherTeam(G.team)]?.hp <= 0) this.enemy.userData.sinking = true;
+  },
+
+  shot(shot, outgoing, done) {
+    const src = outgoing ? this.own : this.enemy, dst = outgoing ? this.enemy : this.own;
+    const from = new THREE.Vector3(); src.getWorldPosition(from); from.y += 3;
+    const to = new THREE.Vector3(); dst.getWorldPosition(to); to.y += 1.6;
+    if (shot.label === 'miss') { to.x += (Math.random() - 0.5) * 14; to.z += 6 + Math.random() * 6; to.y = 0; }
+    else { to.x += (shot.x ?? 0) * 4; to.y += (shot.y ?? 0.4) * 1.6; }
+    const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.28, 8, 8), new THREE.MeshLambertMaterial({ color: 0x15151a }));
+    mesh.position.copy(from);
+    this.scene.add(mesh);
+    this.explosion(this.scene, from.x, from.y, from.z, false);
+    this.projectiles.push({ mesh, from, to, t: 0, dur: 1.15, arcH: 9 + Math.random() * 4, onDone: () => {
+      if (shot.label === 'miss') this.splash(to.x, 0, to.z);
+      else {
+        this.explosion(this.scene, to.x, to.y, to.z, shot.label === 'crit');
+        if (!outgoing) this.shake = shot.label === 'crit' ? 0.55 : 0.35;
+      }
+      done();
+    } });
+  },
+
+  /* ---- input ---- */
+  onTap(e) {
+    const state = G.state, me = G.me;
+    if (!state || state.phase !== 'battle' || state.aiming[me]) return;
+    if ((state.stunnedUntil[me] ?? 0) > G.ui.now()) return floatMsg(L.msgStunned, '#ef476f');
+    const rect = this.canvas.getBoundingClientRect();
+    const ray = new THREE.Raycaster();
+    ray.setFromCamera({ x: ((e.clientX - rect.left) / rect.width) * 2 - 1, y: -((e.clientY - rect.top) / rect.height) * 2 + 1 }, this.cam);
+    const decals = Object.entries(this.decals.own);
+    if (decals.length) {
+      const hit = ray.intersectObjects(decals.map(([, s]) => s))[0];
+      if (hit) {
+        const hitId = decals.find(([, s]) => s === hit.object)?.[0];
+        if (state.inventory[me] !== 'plank') return floatMsg(L.msgNeedPlank, '#f0c96c');
+        return this.walkTo(hit.object.position.x, () => game.act('repair', { hitId }));
+      }
+    }
+    const station = ray.intersectObjects(this.stations)[0]?.object.userData;
+    const inv = state.inventory[me];
+    if (station?.station === 'ammo') {
+      if (inv === 'ball') return floatMsg(L.msgHaveBall, '#f0c96c');
+      return this.walkTo(this.own.userData.ammoX, () => game.act('request_question', { crate: 'ammo' }));
+    }
+    if (station?.station === 'material') {
+      if (inv === 'plank') return floatMsg(L.msgHavePlank, '#f0c96c');
+      return this.walkTo(this.own.userData.materialX, () => game.act('request_question', { crate: 'material' }));
+    }
+    if (station?.station === 'cannon') {
+      if (inv !== 'ball') return floatMsg(L.msgNeedBall, '#f0c96c');
+      const idx = station.idx ?? 0;
+      return this.walkTo(this.own.userData.cannons[idx].x, () => game.act('aim', { cannon: idx }));
+    }
+    const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -(this.own.position.y + 2.3));
+    const target = new THREE.Vector3();
+    if (ray.ray.intersectPlane(plane, target)) {
+      const local = this.own.worldToLocal(target.clone());
+      if (Math.abs(local.x) < 7.5 && Math.abs(local.z) < 5) this.walkTo(local.x, null);
+    }
+  },
+
+  walkTo(x, then) {
+    this.avatarState.targetX = clamp(x, -4.9, 4.9);
+    this.avatarState.pending = then;
+    G.walking = true;
+    game.act('move', { x: this.avatarState.targetX });
+  },
+
+  moveAvatar(dt) {
+    const a = this.avatar, s = this.avatarState;
+    const dx = s.targetX - a.position.x;
+    if (Math.abs(dx) > 0.06) {
+      a.position.x += Math.sign(dx) * Math.min(Math.abs(dx), 3.4 * dt);
+      a.position.y = 2.4 + Math.abs(Math.sin(performance.now() * 0.012)) * 0.09;
+      a.rotation.y = dx > 0 ? 0.3 : -0.3;
+    } else {
+      a.position.y = 2.4;
+      a.rotation.y = 0;
+      G.walking = false;
+      if (s.pending) { const then = s.pending; s.pending = null; then(); }
+    }
+  },
+
+  moveMates(dt) {
+    const state = G.state;
+    if (!state) return;
+    const ids = (state.teams[G.team] ?? []).filter((id) => id !== G.me && id !== 'ai');
+    ids.forEach((pid, i) => {
+      if (!this.mates[pid]) {
+        const m = buildAvatar(G.team);
+        m.scale.setScalar(0.9);
+        const x0 = -2.5 + (i % 5) * 1.3;
+        m.position.set(x0, 2.4, 0.3);
+        this.own.add(m);
+        this.mates[pid] = { mesh: m, cur: x0, tgt: x0 };
+      }
+      const px = state.positions[pid];
+      if (typeof px === 'number') this.mates[pid].tgt = px;
+    });
+    for (const pid of Object.keys(this.mates)) {
+      const M = this.mates[pid];
+      if (!ids.includes(pid)) { this.own.remove(M.mesh); delete this.mates[pid]; continue; }
+      M.cur += (M.tgt - M.cur) * Math.min(1, dt * 3.5);
+      M.mesh.position.x = M.cur;
+      const moving = Math.abs(M.tgt - M.cur) > 0.08;
+      M.mesh.position.y = 2.4 + (moving ? Math.abs(Math.sin(performance.now() * 0.011 + M.cur)) * 0.08 : 0);
+    }
+  },
+
+  /** Looking down the swaying barrel while aiming (same sway as the authority computes). */
+  aimCamera() {
+    const aim = G.state?.aiming?.[G.me];
+    if (!aim || G.state.phase !== 'battle') {
+      if (this.aiming) { this.aiming = false; this.layout(); }
+      return;
+    }
+    this.aiming = true;
+    const elapsed = clamp(G.ui.now() - aim.start, 0, AIM_MS);
+    const s = sway(aim.seed, elapsed);
+    const cannon = this.own.userData.cannons[aim.cannon] || this.own.userData.cannons[0];
+    const cpos = this.own.localToWorld(new THREE.Vector3(cannon.x, 3.15, -1.35));
+    const target = new THREE.Vector3(); this.enemy.getWorldPosition(target); target.y += 2.2;
+    this.cam.fov = 38;
+    this.cam.updateProjectionMatrix();
+    this.cam.position.copy(cpos);
+    this.cam.lookAt(target);
+    this.cam.rotateY(s.yaw);
+    this.cam.rotateX(s.pitch);
+  },
+
+  updateLabels() {
+    const state = G.state, me = G.me;
+    if (!state || state.phase !== 'battle' || this.aiming) { if (this.labels.innerHTML) this.labels.innerHTML = ''; return; }
+    const rect = this.canvas.getBoundingClientRect();
+    const inv = state.inventory[me] ?? null;
+    const project = (v) => { const p = v.project(this.cam); return p.z > 1 ? null : { x: (p.x * 0.5 + 0.5) * rect.width, y: (-p.y * 0.5 + 0.5) * rect.height }; };
+    let html = '';
+    for (const d of [{ id: 'ammo', text: L.magazine, x: -3.6, y: 4.3 }, { id: 'material', text: L.carpenter, x: 4.2, y: 3.9 }, { id: 'cannon', text: L.cannons, x: 0.2, y: 4.1 }]) {
+      const p = project(this.own.localToWorld(new THREE.Vector3(d.x, d.y, 0)));
+      if (!p) continue;
+      const cls = d.id === 'cannon' ? (inv === 'ball' ? ' ok' : ' dim') : d.id === 'ammo' ? (inv === 'ball' ? ' dim' : ' ok') : (inv === 'plank' ? ' dim' : ' ok');
+      html += `<div class="slabel${cls}" style="left:${p.x}px;top:${p.y}px">${d.text}</div>`;
+    }
+    if (inv === 'plank') {
+      for (const s of Object.values(this.decals.own)) {
+        const p = project(s.getWorldPosition(new THREE.Vector3()));
+        if (p) html += `<div class="slabel ok" style="left:${p.x}px;top:${p.y}px">${L.repair}</div>`;
+      }
+    }
+    if (this.labels.innerHTML !== html) this.labels.innerHTML = html;
+  },
+
+  /* ---- effects ---- */
+  particle(parent, tex, x, y, z, o = {}) {
+    const s = sprite(tex, o.scale ?? 1.5, o.opacity ?? 0.9);
+    s.position.set(x, y, z);
+    parent.add(s);
+    this.particles.push({ s, parent, vx: o.vx ?? 0, vy: o.vy ?? 0.9, vz: o.vz ?? 0, life: 0, max: o.maxLife ?? 1.6, grow: o.grow ?? 1.2 });
+  },
+  smoke(ship, x, y, scale = 1) {
+    this.particle(ship, this.tex.smoke, x + (Math.random() - 0.5) * 0.4, y, 1.4, { scale: scale * (0.8 + Math.random() * 0.8), vy: 0.7 + Math.random() * 0.5, vx: 0.25 + Math.random() * 0.2, maxLife: 1.4 + Math.random(), grow: 1.5, opacity: 0.55 });
+  },
+  explosion(parent, x, y, z, big) {
+    this.particle(parent, this.tex.boom, x, y, z, { scale: big ? 4.5 : 2.8, vy: 0.4, maxLife: 0.5, grow: 5, opacity: 1 });
+    for (let i = 0; i < (big ? 8 : 4); i++) this.particle(parent, this.tex.smoke, x, y, z, { scale: 1 + Math.random(), vx: (Math.random() - 0.5) * 3, vy: 1 + Math.random() * 2, vz: (Math.random() - 0.5) * 2, maxLife: 1 + Math.random(), grow: 2, opacity: 0.7 });
+  },
+  splash(x, y, z) {
+    this.particle(this.scene, this.tex.splash, x, y + 0.5, z, { scale: 3, vy: 1.6, maxLife: 0.8, grow: 2.4, opacity: 0.95 });
+  },
+  moveParticles(dt) {
+    for (let i = this.particles.length - 1; i >= 0; i--) {
+      const p = this.particles[i];
+      p.life += dt;
+      if (p.life >= p.max) { p.parent.remove(p.s); p.s.material.dispose(); this.particles.splice(i, 1); continue; }
+      p.s.position.x += p.vx * dt; p.s.position.y += p.vy * dt; p.s.position.z += p.vz * dt;
+      const sc = p.s.scale.x * (1 + p.grow * dt * 0.6);
+      p.s.scale.set(sc, sc, 1);
+      p.s.material.opacity = (1 - p.life / p.max) * 0.9;
+    }
+  },
+  moveProjectiles(dt) {
+    for (let i = this.projectiles.length - 1; i >= 0; i--) {
+      const p = this.projectiles[i];
+      p.t += dt / p.dur;
+      if (p.t >= 1) { this.scene.remove(p.mesh); this.projectiles.splice(i, 1); p.onDone(); continue; }
+      p.mesh.position.lerpVectors(p.from, p.to, p.t);
+      p.mesh.position.y += Math.sin(p.t * Math.PI) * p.arcH;
+    }
+  },
+
+  dispose() {
+    cancelAnimationFrame(this.raf);
+    try { this.ren?.dispose(); } catch { /* ignore */ }
+    Object.assign(this, { state: null, ready: false, ren: null, scene: null, canvas: null, labels: null, own: null, enemy: null, avatar: null, mates: {}, stations: [], decals: { own: {}, enemy: {} }, particles: [], projectiles: [], gulls: [], caps: [], aiming: false });
+  },
+};
+
+/** True when the rendered frame is (almost) completely black: a broken GPU driver. */
+function looksBlack(ren) {
+  try {
+    const gl = ren.getContext();
+    const w = gl.drawingBufferWidth, h = gl.drawingBufferHeight;
+    const px = new Uint8Array(4);
+    let dark = 0;
+    for (const [x, y] of [[w / 2, h - 4], [w / 4, h * 0.8], [w * 0.75, h * 0.8]]) {
+      gl.readPixels(Math.floor(x), Math.floor(y), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+      if (px[0] + px[1] + px[2] < 24) dark++;
+    }
+    return dark === 3;
+  } catch { return false; }
+}
+
+function makeTextures() {
+  const radial = (inner, outer, stops) => {
+    const cv = document.createElement('canvas'); cv.width = 128; cv.height = 128;
+    const c = cv.getContext('2d');
+    const g = c.createRadialGradient(64, 64, inner, 64, 64, outer);
+    for (const [o, col] of stops) g.addColorStop(o, col);
+    c.fillStyle = g; c.fillRect(0, 0, 128, 128);
+    const tex = new THREE.CanvasTexture(cv);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  };
+  return {
+    scorch: radial(4, 60, [[0, 'rgba(12,8,4,0.95)'], [0.45, 'rgba(20,12,6,0.8)'], [1, 'rgba(0,0,0,0)']]),
+    smoke: radial(4, 60, [[0, 'rgba(70,70,74,0.65)'], [1, 'rgba(70,70,74,0)']]),
+    boom: radial(2, 60, [[0, 'rgba(255,240,180,1)'], [0.35, 'rgba(255,150,50,0.9)'], [1, 'rgba(200,60,20,0)']]),
+    splash: radial(4, 60, [[0, 'rgba(235,250,255,0.9)'], [1, 'rgba(180,220,240,0)']]),
+    glow: radial(2, 60, [[0, 'rgba(255,235,170,0.9)'], [1, 'rgba(255,200,80,0)']]),
+  };
+}
+function sprite(tex, scale, opacity = 1) {
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, opacity, depthWrite: false }));
+  s.scale.set(scale, scale, 1);
+  return s;
+}
+
+function buildShip(teamKey, detail, stations, tex) {
+  const T = TEAMS[teamKey];
+  const W = (c) => new THREE.MeshLambertMaterial({ color: c });
+  const g = new THREE.Group();
+  const add = (geo, mat, x, y, z, setup) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); setup?.(m); g.add(m); return m; };
+  add(new THREE.BoxGeometry(11, 2.4, 3.4), W(T.hullColor), 0, 1.1, 0);
+  add(new THREE.BoxGeometry(11.25, 0.4, 3.6), W(T.trimColor), 0, 2.0, 0);
+  add(new THREE.ConeGeometry(1.7, 3.2, 4), W(T.hullColor), 7.0, 1.1, 0, (m) => { m.rotation.z = -Math.PI / 2; m.rotation.y = Math.PI / 4; m.scale.set(1, 1, 0.72); });
+  add(new THREE.BoxGeometry(2.6, 1.7, 3.0), W(T.hullColor), -4.5, 3.0, 0);
+  add(new THREE.BoxGeometry(2.9, 0.25, 3.3), W(T.trimColor), -4.5, 3.95, 0);
+  add(new THREE.BoxGeometry(10.4, 0.22, 3.0), W(0x9a7648), 0, 2.3, 0);
+  for (const zz of [-1.55, 1.55]) add(new THREE.BoxGeometry(10.4, 0.5, 0.14), W(T.trimColor), 0, 2.75, zz);
+  add(new THREE.BoxGeometry(11.35, 0.55, 3.05), W(0x2a1a0f), 0, -0.05, 0);
+  for (const zz of [1.73, -1.73]) for (let i = 0; i < 4; i++) add(new THREE.BoxGeometry(0.56, 0.46, 0.07), W(0x140f0a), -3.4 + i * 2.2, 1.3, zz);
+  add(new THREE.CylinderGeometry(0.07, 0.12, 3.6, 6), W(0x7a5a34), 8.4, 2.5, 0, (m) => { m.rotation.z = -1.12; });
+  const sailMat = new THREE.MeshLambertMaterial({ color: T.sailColor, side: THREE.DoubleSide });
+  for (const [mx, mh, sw] of [[2.3, 8.4, 3.6], [-1.6, 7.2, 3.0]]) {
+    add(new THREE.CylinderGeometry(0.13, 0.19, mh, 6), W(0x7a5a34), mx, 2.3 + mh / 2, 0);
+    for (const [sy, ss] of [[0.76, 0.95], [0.52, 0.72]]) {
+      const sw2 = sw * ss, sh2 = mh * 0.24, r = sw2 * 1.15;
+      const theta = 2 * Math.asin(Math.min(1, sw2 / (2 * r)));
+      const geo = new THREE.CylinderGeometry(r, r * 0.93, sh2, 10, 1, true, -theta / 2, theta);
+      geo.translate(0, 0, -r);
+      add(geo, sailMat, mx + 0.3, 2.3 + mh * sy, 0, (m) => { m.rotation.y = 1.05; m.userData.sail = true; });
+    }
+  }
+  add(new THREE.PlaneGeometry(1.5, 0.9), new THREE.MeshBasicMaterial({ color: T.flagColor, side: THREE.DoubleSide }), 3.1, 11.0, 0, (m) => { m.userData.flag = true; });
+  if (detail) {
+    for (const [bx, bz] of [[-1.4, 1.05], [1.2, 1.1], [-4.6, -0.9]]) add(new THREE.CylinderGeometry(0.28, 0.3, 0.6, 9), W(0x8a6134), bx, 2.7, bz);
+    add(new THREE.TorusGeometry(0.42, 0.055, 6, 12), W(0x7a5a34), -3.05, 4.35, 0, (m) => { m.rotation.y = Math.PI / 2; });
+    add(new THREE.SphereGeometry(0.17, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffd98a }), -6.0, 4.3, 0);
+    const glow = sprite(tex.glow, 1.7, 0.75); glow.position.set(-6.0, 4.3, 0); g.add(glow);
+    const hitMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
+    const hitBox = (x, z, station, idx) => add(new THREE.BoxGeometry(2.3, 3.0, 2.4), hitMat, x, 3.4, z, (m) => { m.userData = { station, idx }; stations.push(m); });
+    g.userData.cannons = [];
+    [-2.2, 0.2, 2.6].forEach((cx, i) => {
+      add(new THREE.BoxGeometry(0.8, 0.5, 0.7), W(0x4a3a2a), cx, 2.6, -1.05, (m) => { m.userData = { station: 'cannon', idx: i }; stations.push(m); });
+      add(new THREE.CylinderGeometry(0.16, 0.22, 1.5, 8), W(0x2b2b30), cx, 2.95, -1.45, (m) => { m.rotation.x = Math.PI / 2 - 0.28; m.userData = { station: 'cannon', idx: i }; stations.push(m); });
+      hitBox(cx, -1.05, 'cannon', i);
+      g.userData.cannons.push({ x: cx });
+    });
+    add(new THREE.BoxGeometry(1.3, 0.9, 1.1), W(0x33261a), -3.6, 2.85, 0.7, (m) => { m.userData = { station: 'ammo' }; stations.push(m); });
+    for (const [bx, bz] of [[-3.85, 0.55], [-3.35, 0.55], [-3.6, 0.95]]) add(new THREE.SphereGeometry(0.22, 8, 8), W(0x1c1c22), bx, 3.5, bz);
+    hitBox(-3.6, 0.7, 'ammo');
+    g.userData.ammoX = -3.6;
+    for (let i = 0; i < 4; i++) add(new THREE.BoxGeometry(1.6, 0.14, 0.5), W(i % 2 ? 0xb98d54 : 0xa87a44), 4.2 + (i % 2) * 0.12, 2.5 + i * 0.16, 0.7, (m) => { m.rotation.y = (i % 2) * 0.25; m.userData = { station: 'material' }; stations.push(m); });
+    hitBox(4.2, 0.7, 'material');
+    g.userData.materialX = 4.2;
+  }
+  return g;
+}
+
+function buildAvatar(teamKey) {
+  const T = TEAMS[teamKey];
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.3, 0.75, 8), new THREE.MeshLambertMaterial({ color: T.trimColor })); body.position.y = 0.45;
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.21, 10, 8), new THREE.MeshLambertMaterial({ color: 0xd9a97c })); head.position.y = 1.0;
+  const band = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2.4), new THREE.MeshLambertMaterial({ color: T.flagColor })); band.position.y = 1.06;
+  const carry = new THREE.Group(); carry.position.set(0.32, 0.75, 0);
+  g.add(body, head, band, carry);
+  g.userData.carry = carry;
+  return g;
+}
+
+function setCarried(avatar, inv) {
+  const carry = avatar?.userData.carry;
+  if (!carry || carry.userData.inv === inv) return;
+  carry.userData.inv = inv;
+  carry.clear();
+  if (inv === 'ball') carry.add(new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 8), new THREE.MeshLambertMaterial({ color: 0x1c1c22 })));
+  else if (inv === 'plank') { const p = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.1, 0.3), new THREE.MeshLambertMaterial({ color: 0xb98d54 })); p.rotation.z = 0.4; carry.add(p); }
+}
+
+/* ═════════════════════════════════════════════════════════
+   Device-only buttons (not game actions)
+   ═════════════════════════════════════════════════════════ */
+document.addEventListener('pointerdown', (e) => {
+  const local = e.target.closest?.('[data-local]')?.getAttribute('data-local');
+  if (local === 'fire') { e.preventDefault(); game.act('fire', { t: G.ui?.now() }); }
+});
+document.addEventListener('click', (e) => {
+  const local = e.target.closest?.('[data-local]')?.getAttribute('data-local');
+  if (local !== 'toggle2d') return;
+  if (G.mode2d) { G.mode2d = false; G.reason2d = null; G.userChose = true; }
+  else switchTo2d('switched by the player', true);
+});
+
+/* ═════════════════════════════════════════════════════════
+   Start
+   ═════════════════════════════════════════════════════════ */
+const game = defineGame({
+  root: document.getElementById('app'),
+  tickMs: 250,
+  ...rules,
+  renderWaiting(ui) {
+    setLang(ui.locale);
+    return `<section class="screen"><div style="font-size:64px">🦜</div><div class="panel-title" style="font-size:20px">${L.waitTitle}</div><div class="muted">${L.waitSub}</div></section>`;
+  },
+  render,
+  update,
+});
+</script>
+</body>
+</html>

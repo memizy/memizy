@@ -5,6 +5,7 @@
  */
 
 import guide from '../../../../docs/ai-plugin-guide.md?raw';
+import pirates from '@/data/plugins/pirates-of-memizy.html?raw';
 
 /** The import URL plugins use (docs/ai-plugin-guide.md). */
 export const CDN_SDK_URL = 'https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1/+esm';
@@ -33,7 +34,10 @@ function guideExample(): string {
   return match[1];
 }
 
-export const EXAMPLE_PLUGINS: ExamplePlugin[] = [{ key: 'quiz-race', title: 'Quiz Race (AI guide example)', html: guideExample() }];
+export const EXAMPLE_PLUGINS: ExamplePlugin[] = [
+  { key: 'pirates', title: 'Pirates of Memizy 🏴‍☠️', html: pirates },
+  { key: 'quiz-race', title: 'Quiz Race (AI guide example)', html: guideExample() },
+];
 
 export const AI_GUIDE = guide;
 

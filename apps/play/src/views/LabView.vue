@@ -95,7 +95,7 @@ async function onPluginUrl(): Promise<void> {
 }
 
 function insertExample(): void {
-  code.value = EXAMPLE_PLUGINS[0].html;
+  code.value = (EXAMPLE_PLUGINS.find((p) => p.key === 'quiz-race') ?? EXAMPLE_PLUGINS[0]).html;
 }
 
 const pluginSummary = computed(() => {
