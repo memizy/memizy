@@ -24,14 +24,14 @@
         "protocol": "1.0",
         "modes": {
           "solo": {},
-          "multiplayer": { "players": { "min": 2, "max": 60, "recommended": 10 }, "hostAs": ["presenter"], "lateJoin": true }
+          "multiplayer": { "players": { "min": 1, "max": 60, "recommended": 10 }, "hostAs": ["presenter"], "lateJoin": true }
         },
         "settings": [
           { "id": "timerSec", "type": "number", "label": { "cs": "Sekundy na otázku", "en": "Seconds per question" }, "default": 20, "min": 5, "max": 120 },
           { "id": "battleMin", "type": "number", "label": { "cs": "Délka bitvy (minuty)", "en": "Battle duration (minutes)" }, "description": { "cs": "Když se žádná loď nepotopí, vyhraje pevnější trup.", "en": "If no ship sinks, the stronger hull wins." }, "default": 7, "min": 2, "max": 30 },
           { "id": "aimMode", "type": "boolean", "label": { "cs": "Zaměřovací minihra", "en": "Aiming minigame" }, "description": { "cs": "Poškození závisí na přesnosti výstřelu.", "en": "Damage depends on the accuracy of the shot." }, "default": true },
           { "id": "doShuffle", "type": "boolean", "label": { "cs": "Míchat otázky", "en": "Shuffle questions" }, "default": true },
-          { "id": "enemySkill", "type": "select", "modes": ["solo"], "label": { "cs": "Síla nepřátelské lodi", "en": "Enemy ship strength" }, "default": "normal",
+          { "id": "enemySkill", "type": "select", "label": { "cs": "Síla počítačové lodi", "en": "Computer ship strength" }, "description": { "cs": "V solu a když se všichni hráči přidají k jedné posádce.", "en": "In solo, and when all players join one crew." }, "default": "normal",
             "options": [
               { "value": "easy", "label": { "cs": "Slabá", "en": "Weak" } },
               { "value": "normal", "label": { "cs": "Normální", "en": "Normal" } },
@@ -250,13 +250,13 @@ const TEXTS = {
   cs: {
     redName: 'Karmínoví korzáři', blackName: 'Bratrstvo černé vlajky', sailors: (n) => `${n} ${n === 1 ? 'námořník' : n >= 2 && n <= 4 ? 'námořníci' : 'námořníků'}`,
     waitTitle: 'Čekáme na kapitána…', waitSub: 'Hra začne, až ji hostitel spustí.',
-    musterTitle: 'Seřaďte posádky', musterSub: 'Hráči si vybírají loď. Kdo nevybere, půjde na menší loď.',
+    musterTitle: 'Seřaďte posádky', musterSub: 'Hráči si vybírají loď. Kdo nevybere, půjde na menší loď. Když se všichni přidají k jedné posádce, poplujete proti počítačové galeoně.',
     balance: '⚖️ Rozdělit rovnoměrně', begin: '⚔️ Zahájit bitvu', undecided: (names) => `⏳ Nerozhodnutí: ${names}`, allChosen: 'Všichni si vybrali loď.',
     chooseShip: 'Vyber si loď', chooseSub: 'Bitva začne na povel kapitána.', youSail: (name) => `Pluješ s posádkou ${name}. Čekáme na kapitána…`,
     joinRed: 'Přidat se ke korzárům', joinBlack: 'Přidat se k bratrstvu', noSailors: 'Zatím nikdo',
     endBattle: '✕ Ukončit bitvu', battleLog: '📡 Lodní deník', calmSea: 'Moře je zatím klidné…',
     fired: 'výstřelů', hits: 'zásahů', repairs: 'oprav',
-    feedHit: (who, d) => `${who} zasáhl za <b>${d}</b>!`, feedCrit: (who, d) => `${who}: KRITICKÝ zásah za <b>${d}</b>!`, feedMiss: (who) => `${who} minul — šplouch!`,
+    feedHit: (who, d, ai) => `${who} ${ai ? 'zasáhla' : 'zasáhl'} za <b>${d}</b>!`, feedCrit: (who, d) => `${who}: KRITICKÝ zásah za <b>${d}</b>!`, feedMiss: (who, ai) => `${who} ${ai ? 'minula' : 'minul'} — šplouch!`,
     feedRepair: (who, n) => `${who} opravil trup (+${n})`, feedCorrect: (who, crate) => `${who} odpověděl správně u ${crate === 'ammo' ? 'prachárny' : 'tesařské dílny'}`,
     feedWrong: (who, d) => `${who} odpověděl špatně — vlastní loď −${d}`, feedStart: (r, b) => `K dělům! Korzáři (${r}) proti Bratrstvu (${b}).`, feedJoin: (who, team) => `${who} se přidává k posádce ${team}!`,
     feedWin: (team) => `${team} vyhrávají bitvu!`, feedDraw: 'Bitva skončila nerozhodně.',
@@ -284,7 +284,7 @@ const TEXTS = {
   en: {
     redName: 'Crimson Corsairs', blackName: 'Black Flag Brotherhood', sailors: (n) => `${n} sailor${n === 1 ? '' : 's'}`,
     waitTitle: 'Waiting for the Captain…', waitSub: 'The game starts when the host starts it.',
-    musterTitle: 'Muster the Crews', musterSub: 'Players are choosing their ships. Unassigned sailors join the smaller crew.',
+    musterTitle: 'Muster the Crews', musterSub: 'Players are choosing their ships. Unassigned sailors join the smaller crew. If everyone joins one crew, you sail against a computer galleon.',
     balance: '⚖️ Auto-balance', begin: '⚔️ Begin the Battle', undecided: (names) => `⏳ Undecided: ${names}`, allChosen: 'All sailors have chosen a ship.',
     chooseShip: 'Choose Your Ship', chooseSub: 'The battle begins when the captain gives the order.', youSail: (name) => `You sail with the ${name}. Waiting for the captain…`,
     joinRed: 'Join the Corsairs', joinBlack: 'Join the Brotherhood', noSailors: 'No sailors yet',
@@ -336,6 +336,10 @@ const TEAMS = {
   black: { flag: '🏴‍☠️', color: '#8d99ae', hullColor: 0x3d3128, trimColor: 0x22262e, sailColor: 0xd8d5cc, flagColor: 0x22262e },
 };
 const teamName = (t) => (t === 'red' ? L.redName : L.blackName);
+/** The crew name, or "Enemy Galleon" for a crew sailed by the computer. */
+const crewName = (state, t) => (state.ai === t ? L.soloEnemy : teamName(t));
+/** Strength of the computer ship (also in multiplayer): hull factor in multiplayer. */
+const AI_HULL = { easy: 0.75, normal: 1, hard: 1.3 };
 const otherTeam = (t) => (t === 'red' ? 'black' : 'red');
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 function teamOf(state, pid) {
@@ -357,7 +361,7 @@ const hullFor = (state) => Math.max(400, 200 * Math.max(state.teams.red.length, 
  * bigger / own times (shots, repairs, penalties, points). 1 vs 2 → ×2 and ×1.
  */
 function powerOf(state, team) {
-  if (state.solo) return 1;
+  if (state.solo) return 1; // solo has its own balance (AI table)
   const own = state.teams[team].length, other = state.teams[otherTeam(team)].length;
   return own > 0 && other > own ? other / own : 1;
 }
@@ -412,6 +416,10 @@ function startBattle(state, ctx) {
   } else {
     const hull = hullFor(state);
     state.ships = { red: { hp: hull, maxHp: hull }, black: { hp: hull, maxHp: hull } };
+    if (state.ai) {
+      const aiHull = Math.round(hull * (AI_HULL[s.enemySkill] ?? 1));
+      state.ships[state.ai] = { hp: aiHull, maxHp: aiHull };
+    }
     pushFeed(state, ctx, { type: 'sys', key: 'start', r: state.teams.red.length, b: state.teams.black.length });
   }
   assignSlots(state);
@@ -419,7 +427,7 @@ function startBattle(state, ctx) {
   state.battleEndsAt = ctx.now + ms;
   state.phase = 'battle';
   ctx.after(ms, 'timeUp', null, { key: 'battle' });
-  if (state.solo) ctx.after((AI[s.enemySkill] ?? AI.normal).every, 'aiFire', null, { key: 'ai' });
+  if (state.ai) ctx.after((AI[s.enemySkill] ?? AI.normal).every, 'aiFire', null, { key: 'ai' });
 }
 
 function finishBattle(state, ctx, winner, reason) {
@@ -516,13 +524,14 @@ const rules = {
       stunnedUntil: {}, streaks: {}, positions: {},
       ships: { red: { hp: 1, maxHp: 1 }, black: { hp: 1, maxHp: 1 } }, hits: { red: [], black: [] },
       stats: { red: blankStats(), black: blankStats() }, feed: [], battleEndsAt: 0, winner: null, reason: null, lastShot: null,
-      order: ctx.settings.doShuffle === false ? ids : ctx.shuffle(ids), qIdx: {}, slots: {}, slotStart: {}, seq: 0,
+      order: ctx.settings.doShuffle === false ? ids : ctx.shuffle(ids), qIdx: {}, slots: {}, slotStart: {}, seq: 0, ai: null,
       aimMode: ctx.settings.aimMode !== false, timerSec: clamp(Number(ctx.settings.timerSec ?? 20), 5, 120),
     };
     for (const p of ctx.players) state.scores[p.id] = 0;
     if (state.solo) {
       state.teams.red = ctx.players.map((p) => p.id);
       state.teams.black = ['ai'];
+      state.ai = 'black';
       startBattle(state, ctx);
     }
     return state;
@@ -531,7 +540,7 @@ const rules = {
   playerJoined(state, player, ctx) {
     state.scores[player.id] ??= 0;
     if (state.phase === 'battle' && !teamOf(state, player.id)) {
-      const side = state.teams.red.length <= state.teams.black.length ? 'red' : 'black';
+      const side = state.ai ? otherTeam(state.ai) : state.teams.red.length <= state.teams.black.length ? 'red' : 'black';
       state.teams[side].push(player.id);
       state.slots[player.id] ??= state.teams[side].length - 1;
       rescaleHulls(state);
@@ -558,10 +567,12 @@ const rules = {
       for (const p of ctx.players) {
         if (!teamOf(state, p.id)) state.teams[state.teams.red.length <= state.teams.black.length ? 'red' : 'black'].push(p.id);
       }
+      // Everyone in one crew: the computer sails the other ship.
       if (!state.teams.red.length || !state.teams.black.length) {
-        const from = state.teams.red.length ? 'red' : 'black';
-        if (state.teams[from].length < 2) return; // a ship cannot sail without a crew
-        state.teams[otherTeam(from)].push(state.teams[from].pop());
+        const empty = state.teams.red.length ? 'black' : 'red';
+        if (!state.teams[otherTeam(empty)].length) return;
+        state.teams[empty] = ['ai'];
+        state.ai = empty;
       }
       startBattle(state, ctx);
     },
@@ -597,9 +608,10 @@ const rules = {
     aiFire(state, _p, ctx) {
       if (state.phase !== 'battle') return;
       const ai = AI[ctx.settings.enemySkill] ?? AI.normal;
-      const res = ctx.random() < ai.miss ? { dmg: 0, label: 'miss' } : { dmg: Math.round(ai.min + ctx.random() * (ai.max - ai.min)), label: 'hit' };
-      if (res.dmg > ai.max * 0.92) res.label = 'crit';
-      applyShot(state, ctx, 'black', res, 'ai');
+      const power = powerOf(state, state.ai);
+      const raw = ai.min + ctx.random() * (ai.max - ai.min);
+      const res = ctx.random() < ai.miss ? { dmg: 0, label: 'miss' } : { dmg: Math.round(raw * power), label: raw > ai.max * 0.92 ? 'crit' : 'hit' };
+      applyShot(state, ctx, state.ai, res, 'ai');
       ctx.after(Math.round(ai.every * (0.75 + ctx.random() * 0.5)), 'aiFire', null, { key: 'ai' });
     },
 
@@ -738,7 +750,7 @@ function renderBoardLobby(state, ui) {
     <div class="muted" style="margin-top:10px">${undecided.length ? esc(L.undecided(undecided.map((p) => p.name).join(', '))) : L.allChosen}</div>
     <div class="row">
       <button class="gbtn sec" data-act="balance">${L.balance}</button>
-      <button class="gbtn pri" data-act="begin" ${all.length < 2 ? 'disabled' : ''}>${L.begin}</button>
+      <button class="gbtn pri" data-act="begin" ${all.length < 1 ? 'disabled' : ''}>${L.begin}</button>
     </div>
   </div></section>`;
 }
@@ -748,9 +760,9 @@ function feedLine(f, ui) {
   const q = f.itemId ? ui.item(f.itemId) : null;
   const detail = q ? `<div class="feed-detail">${ui.text(q.question ?? '', { inline: true, item: q })}</div>` : '';
   switch (f.type) {
-    case 'hit': return `<div class="feed-item hit"><div>💥</div><div>${L.feedHit(who, f.dmg)}</div></div>`;
+    case 'hit': return `<div class="feed-item hit"><div>💥</div><div>${L.feedHit(who, f.dmg, f.by === 'ai')}</div></div>`;
     case 'crit': return `<div class="feed-item crit"><div>🎯</div><div>${L.feedCrit(who, f.dmg)}</div></div>`;
-    case 'miss': return `<div class="feed-item miss"><div>🌊</div><div>${L.feedMiss(who)}</div></div>`;
+    case 'miss': return `<div class="feed-item miss"><div>🌊</div><div>${L.feedMiss(who, f.by === 'ai')}</div></div>`;
     case 'repair': return `<div class="feed-item repair"><div>🔨</div><div>${L.feedRepair(who, f.amount ?? 100)}</div></div>`;
     case 'correct': return `<div class="feed-item correct"><div>✅</div><div>${L.feedCorrect(who, f.crate)}${detail}</div></div>`;
     case 'wrong': return `<div class="feed-item wrong"><div>❌</div><div>${L.feedWrong(who, f.dmg ?? 0)}${detail}</div></div>`;
@@ -773,7 +785,7 @@ function renderBoardBattle(state, ui) {
       ${['red', 'black'].map((t) => {
         const ship = state.ships[t], st = state.stats[t];
         return `<div class="hd-ship ${t}-side">
-          <div class="hd-ship-head"><span style="color:var(--${t}-team-soft)">${TEAMS[t].flag} ${teamName(t)}${powerOf(state, t) > 1 ? `<span class="power" title="${L.strengthHint}">${L.strength(roundPower(powerOf(state, t)))}</span>` : ''}</span><span>${Math.max(0, Math.round(ship.hp))} / ${ship.maxHp}</span></div>
+          <div class="hd-ship-head"><span style="color:var(--${t}-team-soft)">${state.ai === t ? '☠️' : TEAMS[t].flag} ${crewName(state, t)}${powerOf(state, t) > 1 ? `<span class="power" title="${L.strengthHint}">${L.strength(roundPower(powerOf(state, t)))}</span>` : ''}</span><span>${Math.max(0, Math.round(ship.hp))} / ${ship.maxHp}</span></div>
           <div class="hpbar"><div class="hpfill" style="width:${pct(ship)}%;background:linear-gradient(90deg,${t === 'red' ? '#8c1823,var(--red-team)' : '#4a5670,var(--black-team)'})"></div></div>
           <div class="hd-ship-stats"><span>💥 ${st.fired} ${L.fired}</span><span>🎯 ${st.hitCount} ${L.hits}</span><span>🔨 ${st.repairs} ${L.repairs}</span><span>✅ ${st.correct}</span><span>❌ ${st.wrong}</span></div>
           <div class="team-roster" style="justify-content:flex-start;margin-top:10px">${state.teams[t].map((pid) => `<span class="chip">${esc(nameOf(ui, pid))} <b style="color:var(--gold)">${state.scores[pid] ?? 0}</b></span>`).join('')}</div>
@@ -800,7 +812,7 @@ function renderBoardFinished(state, ui) {
   const correct = state.stats.red.correct + state.stats.black.correct;
   return `<section class="screen"><div class="panel" style="max-width:520px">
     <div class="big-emoji">${!w || w === 'draw' ? '🤝' : TEAMS[w].flag}</div>
-    <div class="panel-title">${!w || w === 'draw' ? L.drawTitle : L.winsTitle(teamName(w))}</div>
+    <div class="panel-title">${!w || w === 'draw' ? L.drawTitle : L.winsTitle(crewName(state, w))}</div>
     <div class="panel-sub">${state.reason === 'sunk' ? L.sunkSub : L.timeSub}</div>
     <div class="muted" style="margin-bottom:14px;font-size:14px">🚩 ${L.hull} <b>${Math.round(pct(r))} %</b> · 🏴‍☠️ ${L.hull} <b>${Math.round(pct(b))} %</b> · ✅ ${correct} ${L.correctAnswers}</div>
     ${leaderboardHtml(state, ui)}
@@ -970,7 +982,7 @@ function renderDeck2d(state, ui, me) {
       <span class="ship2d own${shaking ? ' shake' : ''}">${TEAMS[team].flag}<br>⛵</span>
       ${shotAnim2d()}
       <span class="vs">VS</span>
-      <span class="ship2d foe">${state.solo ? '☠️' : TEAMS[foe].flag}<br>⛵</span>
+      <span class="ship2d foe">${state.ai === foe ? '☠️' : TEAMS[foe].flag}<br>⛵</span>
     </div>
     <div class="deckbar">
       <span class="deck-spot" style="left:${DECK_X.ammo}%">🧨</span>
@@ -1016,7 +1028,7 @@ function renderAim(state, ui, aim) {
   return `<div class="aim aim-2d" data-key="aim" data-local="fire">${head}
     <div class="aim-mid" id="aim2d" data-keep>
       <div class="aim-sea"></div>
-      <div class="aim-foe">${state.solo ? '☠️' : TEAMS[otherTeam(G.team)].flag}<br>⛵</div>
+      <div class="aim-foe">${state.ai === otherTeam(G.team) ? '☠️' : TEAMS[otherTeam(G.team)].flag}<br>⛵</div>
       <div class="aim-ring"></div>
       <div class="reticle2d"></div>
     </div>
@@ -1039,7 +1051,7 @@ function renderBattle(state, ui) {
     ${G.mode2d ? renderDeck2d(state, ui, me) : '<div id="sea" data-keep></div>'}
     <div class="hud-top" data-key="hud-top">
       <div class="hp-row"><span class="hp-label">${TEAMS[team].flag} ${Math.round(pct(own))}%${powerOf(state, team) > 1 ? `<span class="power" title="${L.strengthHint}">${L.strength(roundPower(powerOf(state, team)))}</span>` : ''}</span><div class="hp-track"><div class="hp-fill" style="width:${pct(own)}%;background:linear-gradient(90deg,#1d7a4f,var(--green))"></div></div></div>
-      <div class="hp-row"><span class="hp-label">${state.solo ? '☠️' : TEAMS[foe].flag} ${Math.round(pct(enemy))}%</span><div class="hp-track"><div class="hp-fill" style="width:${pct(enemy)}%;background:linear-gradient(90deg,#8c1823,var(--danger))"></div></div></div>
+      <div class="hp-row"><span class="hp-label">${state.ai === foe ? '☠️' : TEAMS[foe].flag} ${Math.round(pct(enemy))}%</span><div class="hp-track"><div class="hp-fill" style="width:${pct(enemy)}%;background:linear-gradient(90deg,#8c1823,var(--danger))"></div></div></div>
       <div class="hud-row"><span class="hud-timer">⏳ ${fmtTime(ui.timeLeft(state.battleEndsAt))}</span><span class="hud-score">🏆 ${state.scores[me] ?? 0}</span>
         <span class="hud-inv">${inv === 'ball' ? L.ball : inv === 'plank' ? L.plank : L.empty}</span></div>
     </div>
@@ -1071,7 +1083,7 @@ function renderPlayerFinished(state, ui) {
   return `<section class="screen"><div class="panel" style="max-width:440px">
     <div class="big-emoji">${!w || w === 'draw' ? '🤝' : won ? '🏆' : '💀'}</div>
     <div class="panel-title">${!w || w === 'draw' ? L.drawTitle : won ? L.victory : L.defeat}</div>
-    <div class="panel-sub">${w && w !== 'draw' ? L.rule(teamName(w)) : L.bothLive}</div>
+    <div class="panel-sub">${w && w !== 'draw' ? L.rule(crewName(state, w)) : L.bothLive}</div>
     <div style="text-align:center;font-size:14px;color:var(--gold-bright);margin:6px 0 14px;font-weight:800">${L.myScore(state.scores[me] ?? 0)}</div>
     ${state.solo ? '' : leaderboardHtml(state, ui)}
   </div></section>`;
@@ -1399,7 +1411,7 @@ const Scene = {
         seen.add(h.id);
         if (!this.decals[slot][h.id]) {
           const s = sprite(this.tex.scorch, (h.sev === 'crit' ? 2.6 : 1.9) * scale, 0.95);
-          s.position.set(h.x * 4.6, 0.7 + h.y * 1.3, 1.78);
+          s.position.set(h.x * 4.6, 1.15 + h.y * 0.95, 1.78); // above the waterline (waves cut them into half circles)
           ship.add(s);
           this.decals[slot][h.id] = s;
         }
@@ -1678,14 +1690,14 @@ function buildShip(teamKey, detail, stations, tex) {
   const add = (geo, mat, x, y, z, setup) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); setup?.(m); g.add(m); return m; };
   add(new THREE.BoxGeometry(11, 2.4, 3.4), W(T.hullColor), 0, 1.1, 0);
   add(new THREE.BoxGeometry(11.25, 0.4, 3.6), W(T.trimColor), 0, 2.0, 0);
-  add(new THREE.ConeGeometry(1.7, 3.2, 4), W(T.hullColor), 7.0, 1.1, 0, (m) => { m.rotation.z = -Math.PI / 2; m.rotation.y = Math.PI / 4; m.scale.set(1, 1, 0.72); });
+  buildBow(g, W(T.hullColor), W(0x9a7648), W(T.trimColor));
   add(new THREE.BoxGeometry(2.6, 1.7, 3.0), W(T.hullColor), -4.5, 3.0, 0);
   add(new THREE.BoxGeometry(2.9, 0.25, 3.3), W(T.trimColor), -4.5, 3.95, 0);
   add(new THREE.BoxGeometry(10.4, 0.22, 3.0), W(0x9a7648), 0, 2.3, 0);
   for (const zz of [-1.55, 1.55]) add(new THREE.BoxGeometry(10.4, 0.5, 0.14), W(T.trimColor), 0, 2.75, zz);
   add(new THREE.BoxGeometry(11.35, 0.55, 3.05), W(0x2a1a0f), 0, -0.05, 0);
   for (const zz of [1.73, -1.73]) for (let i = 0; i < 4; i++) add(new THREE.BoxGeometry(0.56, 0.46, 0.07), W(0x140f0a), -3.4 + i * 2.2, 1.3, zz);
-  add(new THREE.CylinderGeometry(0.07, 0.12, 3.6, 6), W(0x7a5a34), 8.4, 2.5, 0, (m) => { m.rotation.z = -1.12; });
+  add(new THREE.CylinderGeometry(0.07, 0.12, 3.6, 6), W(0x7a5a34), 9.9, 3.45, 0, (m) => { m.rotation.z = -1.12; });
   const sailMat = new THREE.MeshLambertMaterial({ color: T.sailColor, side: THREE.DoubleSide });
   for (const [mx, mh, sw] of [[2.3, 8.4, 3.6], [-1.6, 7.2, 3.0]]) {
     add(new THREE.CylinderGeometry(0.13, 0.19, mh, 6), W(0x7a5a34), mx, 2.3 + mh / 2, 0);
@@ -1721,6 +1733,37 @@ function buildShip(teamKey, detail, stations, tex) {
     g.userData.materialX = 4.2;
   }
   return g;
+}
+
+/**
+ * The bow: a wedge that continues the hull (narrower keel, a raked stem) and rises
+ * towards the tip, with a forecastle deck, a trim stripe and rails.
+ */
+function buildBow(g, hullMat, deckMat, trimMat) {
+  const V = (x, y, z) => new THREE.Vector3(x, y, z);
+  const TL = V(5.5, 2.3, -1.7), TR = V(5.5, 2.3, 1.7), BL = V(5.5, -0.1, -1.15), BR = V(5.5, -0.1, 1.15);
+  const ML = V(7.3, 1.35, -0.95), MR = V(7.3, 1.35, 0.95); // the curve of the flanks
+  const T = V(8.9, 2.85, 0), S = V(7.3, -0.1, 0);
+  const tris = (list) => {
+    const geo = new THREE.BufferGeometry().setFromPoints(list.flat());
+    geo.computeVertexNormals();
+    return geo;
+  };
+  const sides = tris([[TL, BL, ML], [TL, ML, T], [BL, S, ML], [ML, S, T], [TR, MR, BR], [TR, T, MR], [BR, MR, S], [MR, T, S], [BL, BR, S]]);
+  g.add(new THREE.Mesh(sides, Object.assign(hullMat.clone(), { side: THREE.DoubleSide })));
+  const deck = new THREE.Mesh(tris([[V(5.4, 2.32, -1.6), V(5.4, 2.32, 1.6), V(8.7, 2.84, 0)]]), Object.assign(deckMat.clone(), { side: THREE.DoubleSide }));
+  g.add(deck);
+  const beam = (a, b, thick, mat) => {
+    const dir = b.clone().sub(a);
+    const m = new THREE.Mesh(new THREE.BoxGeometry(dir.length(), thick, thick), mat);
+    m.position.copy(a.clone().add(b).multiplyScalar(0.5));
+    m.quaternion.setFromUnitVectors(V(1, 0, 0), dir.normalize());
+    g.add(m);
+  };
+  for (const z of [-1, 1]) {
+    beam(V(5.4, 2.0, 1.78 * z), V(8.6, 2.55, 0.08 * z), 0.32, trimMat);   // trim stripe
+    beam(V(5.4, 2.75, 1.55 * z), V(8.5, 3.15, 0.08 * z), 0.14, trimMat);  // rail
+  }
 }
 
 function buildAvatar(teamKey) {
