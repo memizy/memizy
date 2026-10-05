@@ -99,8 +99,12 @@ defineGame({
   render(state, ui) {                    // draw the screen; return an HTML string
     return `<h1>Hello ${ui.self?.name ?? ''}</h1>`;
   },
+
+  update(state, ui) {},                  // optional: after each render, for canvas / 3D (section 6.1)
 });
 ```
+
+`defineGame` returns a handle: `const game = defineGame({...})`; `game.act(name, payload)` calls an action from your own code (section 6.1).
 
 ### 4.1 Before the game starts
 
@@ -226,6 +230,17 @@ if (state.score > best) ui.save('set', { ...ui.saved.set, level: state.level + 1
 * Escape names and your own strings with `ui.escape(text)`; text from the study set always goes through `ui.text`.
 * A controller can be a **phone, tablet or computer**: make it responsive, with big buttons (min. 48 px), one column on narrow screens and no hover-only interactions. Design the board for a **projector**: large font, high contrast, visible from the back of the classroom. Browsers grey out disabled buttons; if you show disabled options on the board, add `button:disabled { color: inherit; }`.
 * Support light and dark mode with `light-dark(lightColor, darkColor)` in CSS. The SDK sets `color-scheme` to the theme of the app; do not use `prefers-color-scheme` (it follows the operating system, not the app).
+
+### 6.1 Canvas, WebGL and 3D Games
+
+HTML from `render` is for text, buttons and menus. For a canvas or a 3D scene (e.g. Three.js):
+
+* Put an empty element with **`data-keep`** into the HTML: `<div id="scene" data-keep></div>`. The SDK never touches what is inside it, so your canvas survives every render.
+* Create the scene once and update it in **`update(state, ui)`**, which runs after every render with the same state: move objects, start an explosion when `state.lastShot` changed, show the new score. Keep your own animation loop (`requestAnimationFrame`) for smooth movement.
+* Clicks inside the scene: call **`game.act('fire', { target: 2 })`** (the handle returned by `defineGame`) or `ui.act` in `update`. Never change the state outside actions.
+* The state holds only what matters for the game (positions after a move, hits, health), not animation frames: send an action per player decision, not per frame (limit 30 messages per second).
+* Not every device can run WebGL well. Check that a WebGL context can be created, offer a simpler 2D view (another `render` branch) when it fails or the frame rate stays low, and show a button to switch to 2D. Lower the quality on phones (no or small shadow maps, `setPixelRatio(Math.min(devicePixelRatio, 2))`).
+* Load libraries from `https://cdn.jsdelivr.net/npm/...` as ES modules (e.g. `https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.min.js`).
 
 ---
 
@@ -422,3 +437,4 @@ defineGame({
 6. Forgetting that a player may join late: `state.answers[id]` and `state.scores[id]` may be missing – use `?? 0`.
 7. Using `localStorage` – it throws an error inside Memizy; use `ui.save`.
 8. Teacher-only actions without `ctx.fromHost` – students could skip questions or end the game.
+9. A canvas or 3D scene inside `render` HTML without `data-keep` – it is recreated on every render (black or flickering screen). Also never call `location.reload()`: it disconnects the game from Memizy.

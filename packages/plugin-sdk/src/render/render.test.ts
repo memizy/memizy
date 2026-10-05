@@ -91,6 +91,18 @@ describe('morph', () => {
     morph(root, '<span class="mz-math" data-mz-src="y^2">y^2</span>');
     expect(root.querySelector('span')!.textContent).toBe('y^2');
   });
+
+  it('keeps data-keep elements with what the plugin put into them', () => {
+    const root = document.createElement('div');
+    morph(root, '<p>Score 0</p><div id="scene" data-keep></div>');
+    const scene = root.querySelector('#scene')!;
+    const canvas = document.createElement('canvas');
+    scene.appendChild(canvas);
+    morph(root, '<p>Score 5</p><div id="scene" data-keep></div>');
+    expect(root.querySelector('p')!.textContent).toBe('Score 5');
+    expect(root.querySelector('#scene')).toBe(scene);
+    expect(scene.firstChild).toBe(canvas);
+  });
 });
 
 describe('events', () => {

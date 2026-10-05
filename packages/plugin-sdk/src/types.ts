@@ -106,6 +106,13 @@ export interface GameDefinition<S = any> {
   playerJoined?(state: S, player: Player, ctx: GameContext): void | S;
   playerLeft?(state: S, player: Player, ctx: GameContext): void | S;
   render(state: S, ui: GameUI): RenderResult;
+  /**
+   * Called after every render with the same state: update a canvas, a 3D scene or
+   * play effects (things that are not HTML). Do not change the state here; react
+   * to input with `ui.act` (or `handle.act`). Put the canvas into an element with
+   * `data-keep` (or outside `root`) so rendering does not replace it.
+   */
+  update?(state: S, ui: GameUI): void;
   renderWaiting?(ui: GameUI): RenderResult;
   renderSettings?(settings: Record<string, unknown>, ui: GameUI): RenderResult;
   validateSettings?(settings: Record<string, unknown>): string | void | null | undefined;

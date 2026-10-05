@@ -107,6 +107,39 @@ describe('defineGame end to end', () => {
     expect(router.errors).toEqual([]);
   });
 
+  it('calls update after renders and accepts actions from the handle (canvas / 3D games)', async () => {
+    const router = new LocalRouter({ items });
+    const updates: { view: string; answered: number }[] = [];
+    const def: Omit<GameDefinition<State>, 'root'> = {
+      ...quiz,
+      render: (state) => `<p class="count">${Object.keys(state.answers).length}</p><div id="scene" data-keep></div>`,
+      update(state, ui) {
+        updates.push({ view: ui.view, answered: Object.keys(state.answers).length });
+        const scene = ui.view === 'board' ? board.querySelector('#scene')! : null;
+        if (scene && !scene.firstChild) scene.appendChild(document.createElement('canvas'));
+      },
+    };
+    const board = mount(router, 'board', def);
+    const annaRoot = document.createElement('div');
+    document.body.appendChild(annaRoot);
+    const anna = startGame({ ...def, root: annaRoot }, { connector: router.connector('anna') });
+    handles.push(anna);
+    anna.act('answer', { answer: 1 }); // before the start: ignored with a warning
+    await Promise.all(handles.map((h) => h.ready));
+    await router.start();
+    await wait();
+    const canvas = board.querySelector('#scene canvas');
+    expect(canvas).not.toBeNull();
+
+    anna.act('answer', { answer: 1 }); // e.g. a tap in a 3D scene
+    await wait(150);
+    expect(board.querySelector('.count')!.textContent).toBe('1');
+    expect(board.querySelector('#scene canvas')).toBe(canvas); // the scene survived re-rendering
+    expect(updates.some((u) => u.view === 'board' && u.answered === 1)).toBe(true);
+    expect(router.records).toEqual([{ playerId: 'anna', itemId: 'q1', isCorrect: true }]);
+    expect(router.errors).toEqual([]);
+  });
+
   it('shows a render error instead of a blank screen and reports it', async () => {
     const router = new LocalRouter({ items, mode: 'solo' });
     const root = mount(router, 'me', { ...quiz, render: () => { throw new Error('oops'); } });

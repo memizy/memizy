@@ -6,7 +6,9 @@
  *  - children are matched by `id` / `data-key` when present, otherwise by position and tag;
  *  - what the user typed or checked is kept unless the plugin changes the `value` / `checked`
  *    attribute in its HTML (and a focused field is never overwritten);
- *  - elements already enhanced (`data-mz-rendered` === new `data-mz-src`) are kept as they are.
+ *  - elements already enhanced (`data-mz-rendered` === new `data-mz-src`) are kept as they are;
+ *  - an element with `data-keep` (in both the page and the new HTML) is kept as it is, with
+ *    everything the plugin put into it (a canvas, a WebGL scene…).
  */
 
 export function morph(root: Element, html: string): void {
@@ -76,6 +78,8 @@ function morphNode(from: Node, to: Node): void {
   // Enhanced content (math, diagrams) that has not changed.
   const src = toEl.getAttribute('data-mz-src');
   if (src !== null && fromEl.getAttribute('data-mz-rendered') === src) return;
+  // Content owned by the plugin's own code (canvas, 3D scene).
+  if (fromEl.hasAttribute('data-keep') && toEl.hasAttribute('data-keep')) return;
 
   const previous = { value: fromEl.getAttribute('value'), checked: fromEl.hasAttribute('checked'), selected: fromEl.hasAttribute('selected'), text: fromEl.tagName === 'TEXTAREA' ? fromEl.textContent : null };
   morphAttributes(fromEl, toEl);
