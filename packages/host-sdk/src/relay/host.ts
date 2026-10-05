@@ -148,6 +148,15 @@ export class RelayHost {
     this.socket.close();
   }
 
+  /**
+   * Leaves the room without closing it (the page is going away). The room and its
+   * players stay on the server, so the host can come back (reload) or take it over.
+   */
+  disconnect(): void {
+    this.detach();
+    this.socket.close();
+  }
+
   /** Updates the lobby/game state shown by the player apps. */
   setState(update: Partial<RemoteLobbyState>): void {
     this.state = { ...this.state, ...update };

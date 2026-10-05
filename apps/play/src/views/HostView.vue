@@ -407,8 +407,9 @@ onBeforeUnmount(() => {
   clearTimeout(uploadTimer);
   void game.value?.end('closed').catch(() => {});
   void lobbySession.value?.end('closed').catch(() => {});
-  // The room stays alive for a reload (sessionStorage); it expires on the server otherwise.
-  room.value?.detach();
+  // Close our connection (otherwise this page and the next one would fight over the
+  // room); the room stays on the server for a reload (sessionStorage) and expires otherwise.
+  room.value?.disconnect();
 });
 
 const statusClass = computed(() =>
@@ -418,6 +419,13 @@ const statusClass = computed(() =>
 
 <template>
   <div class="min-h-dvh">
+    <div v-if="roomStatus === 'replaced'" class="fixed inset-0 z-50 grid place-items-center bg-slate-900/80 p-6">
+      <div class="card max-w-md p-6 text-center">
+        <p class="text-lg font-bold">{{ t('host.replaced') }}</p>
+        <p class="mt-2 text-sm text-text-gray">{{ t('host.replacedText') }}</p>
+        <button type="button" class="btn-primary mt-4" @click="openRoom()">{{ t('host.takeOver') }}</button>
+      </div>
+    </div>
     <!-- Running game -->
     <StartScreen
       v-if="game && (phase === 'starting' || countdown)"

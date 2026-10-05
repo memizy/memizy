@@ -211,6 +211,22 @@ describe('relayed multiplayer', () => {
     cyril.player.leave();
   }, 30_000);
 
+  it('a second host connection takes the room over without a reconnect fight', async () => {
+    const first = await RelayHost.create({ serverUrl, WebSocket: WebSocketImpl });
+    await until(() => first.status === 'online');
+    const statuses: string[] = [];
+    first.on((e) => e.type === 'status' && statuses.push(e.status));
+    // e.g. the host page opened again in another tab (the room is resumed from sessionStorage)
+    const second = RelayHost.resume({ serverUrl, WebSocket: WebSocketImpl }, { pin: first.pin, hostToken: first.hostToken });
+    await until(() => second.status === 'online');
+    await until(() => first.status === 'replaced');
+    await wait(2000); // the old one must not reconnect and push the new one out
+    expect(second.status).toBe('online');
+    expect(first.status).toBe('replaced');
+    expect(statuses.filter((s) => s === 'online')).toEqual([]);
+    second.close();
+  });
+
   it('rejects a wrong PIN', async () => {
     const lost = joinPlayer('999999', 'Lost');
     await until(() => lost.events.some((e) => e.type === 'error'));

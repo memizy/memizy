@@ -5,7 +5,8 @@
 
 import type { RelayClientMessage, RelayServerMessage } from '@memizy/protocol';
 
-export type RelayStatus = 'connecting' | 'online' | 'offline' | 'closed';
+/** `replaced`: the same host or player connected from another tab or device; this one stops. */
+export type RelayStatus = 'connecting' | 'online' | 'offline' | 'closed' | 'replaced';
 
 export interface RelaySocketOptions {
   /** `ws(s)://…/ws` */
@@ -100,10 +101,17 @@ export class RelaySocket {
       for (const listener of this.messageListeners) listener(msg);
       if (this.stopped) this.close();
     };
-    ws.onclose = () => {
+    ws.onclose = (event) => {
       if (this.ws !== ws) return;
       clearInterval(this.pingTimer);
       this.ws = null;
+      // Reconnecting would take the room back from the newer connection, which would
+      // reconnect too: two tabs would push each other out forever.
+      if (event.reason?.startsWith('replaced')) {
+        this.stopped = true;
+        this.setStatus('replaced');
+        return;
+      }
       if (this.stopped) {
         this.setStatus('closed');
         return;

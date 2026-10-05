@@ -107,7 +107,10 @@ export default {
   },
   host: {
     title: 'Hostit hru',
-    status: { connecting: 'Připojování…', online: 'Online', offline: 'Spojení přerušeno', closed: 'Ukončeno' },
+    replaced: 'Místnost je otevřená v jiném okně',
+    replacedText: 'Hru teď řídí jiná karta nebo jiné zařízení. Můžeš ji převzít sem.',
+    takeOver: 'Převzít sem',
+    status: { connecting: 'Připojování…', online: 'Online', offline: 'Spojení přerušeno', closed: 'Ukončeno', replaced: 'Jinde' },
     endSession: 'Ukončit sezení',
     joinInfo: 'Informace pro připojení',
     enlarge: 'Zvětšit',
@@ -150,6 +153,8 @@ export default {
     playersOnline: '{n} hráčů',
   },
   join: {
+    replaced: 'Hraješ v jiném okně nebo na jiném zařízení.',
+    playHere: 'Hrát tady',
     title: 'Zadej PIN',
     yourName: 'Tvé jméno',
     another: 'Dej mi jiné',

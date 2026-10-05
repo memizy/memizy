@@ -109,7 +109,10 @@ const en: typeof cs = {
   },
   host: {
     title: 'Host a game',
-    status: { connecting: 'Connecting…', online: 'Online', offline: 'Connection lost', closed: 'Closed' },
+    replaced: 'The room is open in another window',
+    replacedText: 'Another tab or device controls the game now. You can take it over here.',
+    takeOver: 'Take over here',
+    status: { connecting: 'Connecting…', online: 'Online', offline: 'Connection lost', closed: 'Closed', replaced: 'Elsewhere' },
     endSession: 'End session',
     joinInfo: 'How to join',
     enlarge: 'Enlarge',
@@ -152,6 +155,8 @@ const en: typeof cs = {
     playersOnline: '{n} players',
   },
   join: {
+    replaced: 'You are playing in another window or on another device.',
+    playHere: 'Play here',
     title: 'Enter the PIN',
     yourName: 'Your name',
     another: 'Give me another',

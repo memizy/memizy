@@ -100,6 +100,14 @@ function onEvent(event: RelayPlayerEvent): void {
   switch (event.type) {
     case 'status':
       status.value = event.status;
+      if (event.status === 'replaced') {
+        // Joined again in another tab or on another device: this one steps aside.
+        player.value = null;
+        frameActive.value = false;
+        goneReason.value = t('join.replaced');
+        stage.value = 'gone';
+        void releaseScreen();
+      }
       break;
     case 'joined':
       stage.value = 'joined';
@@ -161,6 +169,12 @@ function another(): void {
   // Debounced like the original multiplayer: re-rolling quickly sends one rename.
   clearTimeout(renameTimer);
   renameTimer = setTimeout(() => player.value?.rename(name.value), 500);
+}
+
+function playHere(): void {
+  goneReason.value = null;
+  stage.value = 'joining';
+  connect(savedToken(pin.value));
 }
 
 function startOver(): void {
@@ -305,7 +319,8 @@ const waitingForHost = computed(() => !hostConnected.value || state.value?.autho
       <!-- Removed / closed -->
       <main v-else class="flex flex-1 flex-col items-center justify-center gap-4 text-center">
         <p class="text-xl font-bold">{{ goneReason }}</p>
-        <button type="button" class="btn-primary" @click="startOver">{{ t('join.again') }}</button>
+        <button v-if="goneReason === t('join.replaced') && savedToken(pin)" type="button" class="btn-primary" @click="playHere">{{ t('join.playHere') }}</button>
+        <button type="button" :class="goneReason === t('join.replaced') ? 'btn-secondary' : 'btn-primary'" @click="startOver">{{ t('join.again') }}</button>
       </main>
     </div>
   </div>
