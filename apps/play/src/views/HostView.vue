@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { settingsForMode } from '@memizy/protocol';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
@@ -567,13 +568,13 @@ const statusClass = computed(() =>
             </div>
           </section>
 
-          <section v-if="plugin && multi && (lobbySession || plugin.runtime.settings.length)" class="card overflow-hidden">
+          <section v-if="plugin && multi && (lobbySession || settingsForMode(plugin.runtime.settings, 'multiplayer').length)" class="card overflow-hidden">
             <h2 class="card-title border-b border-slate-100 px-5 py-3">{{ t('host.settings') }}</h2>
             <div v-if="lobbySession" class="bg-white" :class="plugin.runtime.settingsScreen?.size === 'large' ? 'h-[480px]' : 'h-[300px]'">
               <PluginFrame :key="lobbySession.id" :session="lobbySession" :address="SETTINGS_ADDRESS" />
             </div>
             <div v-else class="p-5">
-              <SettingsForm v-model="settings" :definitions="plugin.runtime.settings" />
+              <SettingsForm v-model="settings" :definitions="settingsForMode(plugin.runtime.settings, 'multiplayer')" />
             </div>
           </section>
 

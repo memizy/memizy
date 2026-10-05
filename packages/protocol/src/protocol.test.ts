@@ -22,6 +22,7 @@ import {
   HOST_API_ARGS,
   HOST_API_METHODS,
   type SettingDefinition,
+ settingsForMode
 } from './index';
 
 const root = resolve(import.meta.dirname, '../../..');
@@ -235,5 +236,18 @@ describe('host call validation', () => {
     expect(() => parseHostCall('recordAnswer', [{ itemId: 'x', isCorrect: true, confidence: 5 }])).toThrow(/INVALID_ARGUMENT/);
     expect(() => parseHostCall('resize', [{ height: -1 }])).toThrow(/INVALID_ARGUMENT/);
     expect(() => parseHostCall('hello', [{ protocol: 'one', sdk: {}, plugin: {}, features: [] }])).toThrow(/INVALID_ARGUMENT/);
+  });
+});
+
+describe('setting modes (RC2)', () => {
+  it('validates modes and filters settings for a mode', () => {
+    const solo = { id: 'enemy', type: 'select', label: 'Enemy', default: 'normal', options: [{ value: 'normal', label: 'Normal' }], modes: ['solo'] };
+    const both = { id: 'time', type: 'number', label: 'Time', default: 20 };
+    expect(SettingDefinitionSchema.safeParse(solo).success).toBe(true);
+    expect(SettingDefinitionSchema.safeParse({ ...both, modes: [] }).success).toBe(false);
+    expect(SettingDefinitionSchema.safeParse({ ...both, modes: ['party'] }).success).toBe(false);
+    const defs = [solo, both] as { id: string; modes?: string[] }[];
+    expect(settingsForMode(defs, 'solo').map((d) => d.id)).toEqual(['enemy', 'time']);
+    expect(settingsForMode(defs, 'multiplayer').map((d) => d.id)).toEqual(['time']);
   });
 });

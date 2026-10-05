@@ -24,10 +24,22 @@ import { SeededRandom, seedFromString } from './random';
 
 /** Messages exchanged between SDK instances (inside protocol `send` / `deliver`). */
 export type SyncMessage =
-  | { t: 'act'; n: string; p: unknown }
+  /** An action of a player; `i` numbers the actions of the sender (for `ui.pending`). */
+  | { t: 'act'; n: string; p: unknown; i?: number }
   | { t: 'sync' }
-  | { t: 'state'; v: number; s: unknown }
-  | { t: 'patch'; b: number; v: number; p: Patches };
+  /** `a`: the last action number the authority processed, per sender. */
+  | { t: 'state'; v: number; s: unknown; a?: Record<string, number> }
+  | { t: 'patch'; b: number; v: number; p: Patches; a?: Record<string, number> };
+
+/** An action of this device the authority has not confirmed yet (`ui.pending`). */
+export interface PendingAction {
+  name: string;
+  payload: unknown;
+  sentAt: number;
+}
+
+/** Pending actions are forgotten after this time (lost message, authority away). */
+const PENDING_TIMEOUT_MS = 5000;
 
 interface TimerEntry {
   key: string;
@@ -98,6 +110,13 @@ export class GameRuntime<S = unknown> {
   private sentVersion = 0;
   private flushHandle: ReturnType<typeof setTimeout> | undefined;
   private snapshotHandle: ReturnType<typeof setTimeout> | undefined;
+  /** This device's actions waiting for the authority (controllers only). */
+  private pendingActions: (PendingAction & { id: number })[] = [];
+  private actionSeq = 0;
+  private pendingTimer: ReturnType<typeof setTimeout> | undefined;
+  /** Authority: last processed action number per sender, not yet broadcast. */
+  private acks: Record<string, number> = {};
+  private acksDirty = false;
 
   constructor(def: GameDefinition<S>, host: HostApi, init: InitPayload, options: RuntimeOptions = {}) {
     this.def = def;
@@ -108,7 +127,7 @@ export class GameRuntime<S = unknown> {
     this.clockOffset = init.clock.offsetMs;
     this.rng = new SeededRandom(seedFromString(init.session.id));
     this.itemsById = new Map(init.set.items.map((item) => [item.id, item]));
-    this.options = { flushMs: options.flushMs ?? 50, snapshotMs: options.snapshotMs ?? 500 };
+    this.options = { flushMs: options.flushMs ?? 16, snapshotMs: options.snapshotMs ?? 500 };
     this.reportError =
       options.onError ??
       ((code, message) => {
@@ -182,6 +201,31 @@ export class GameRuntime<S = unknown> {
     for (const timer of this.timers.values()) clearTimeout(timer.handle);
     clearTimeout(this.flushHandle);
     clearTimeout(this.snapshotHandle);
+    clearTimeout(this.pendingTimer);
+  }
+
+  /** Actions of this device that the authority has not processed yet. */
+  get waitingActions(): readonly PendingAction[] {
+    return this.pendingActions.map(({ name, payload, sentAt }) => ({ name, payload, sentAt }));
+  }
+
+  private confirmActions(acks: Record<string, number> | undefined): void {
+    const done = acks?.[this.init.session.self];
+    if (typeof done !== 'number' || !this.pendingActions.length) return;
+    this.pendingActions = this.pendingActions.filter((a) => a.id > done);
+  }
+
+  /** Forgets actions the authority never confirmed (and re-renders when they expire). */
+  private expirePending(): void {
+    clearTimeout(this.pendingTimer);
+    const now = Date.now();
+    const before = this.pendingActions.length;
+    this.pendingActions = this.pendingActions.filter((a) => now - a.sentAt < PENDING_TIMEOUT_MS);
+    if (this.pendingActions.length !== before) this.onChange();
+    if (this.pendingActions.length) {
+      const next = Math.min(...this.pendingActions.map((a) => a.sentAt)) + PENDING_TIMEOUT_MS - now;
+      this.pendingTimer = setTimeout(() => this.expirePending(), Math.max(10, next));
+    }
   }
 
   // ==========================================================================
@@ -194,7 +238,11 @@ export class GameRuntime<S = unknown> {
     if (this.isAuthority) {
       this.runAction(name, payload, this.selfPlayerId(), true); // the authority is the board, the host or the solo player
     } else if (this.authorityConnected) {
-      this.sendToAuthority({ t: 'act', n: name, p: payload ?? null });
+      const id = ++this.actionSeq;
+      this.pendingActions.push({ id, name, payload: payload ?? null, sentAt: Date.now() });
+      this.sendToAuthority({ t: 'act', n: name, p: payload ?? null, i: id });
+      this.expirePending();
+      this.onChange(); // show "sent" right away
     }
   }
 
@@ -208,6 +256,12 @@ export class GameRuntime<S = unknown> {
         if (this.ended) return;
         const player = this.players.find((p) => p.id === message.from);
         this.runAction(data.n, data.p, player ? player.id : null, message.from === BOARD_ADDRESS || player?.isHost === true);
+        if (typeof data.i === 'number') {
+          // Confirm it even when the rules ignored it (no state change), so ui.pending clears.
+          this.acks[message.from] = data.i;
+          this.acksDirty = true;
+          this.scheduleFlush();
+        }
       } else if (data.t === 'sync' && this.state !== undefined) {
         this.send([message.from], { t: 'state', v: this.version, s: this.state });
       }
@@ -217,8 +271,10 @@ export class GameRuntime<S = unknown> {
     if (data.t === 'state') {
       this.state = data.s as S;
       this.version = data.v;
+      this.confirmActions(data.a);
       this.onChange();
     } else if (data.t === 'patch') {
+      this.confirmActions(data.a);
       if (this.state === undefined || data.b !== this.version) {
         this.sendToAuthority({ t: 'sync' });
         return;
@@ -449,10 +505,11 @@ export class GameRuntime<S = unknown> {
 
   /** Sends the accumulated changes to all other instances. */
   flush(): void {
-    if (this.state === undefined || this.version === this.sentVersion) return;
-    let message: SyncMessage = { t: 'patch', b: this.sentVersion, v: this.version, p: this.pending };
+    if (this.state === undefined || (this.version === this.sentVersion && !this.acksDirty)) return;
+    const acks = this.acksDirty ? { a: this.acks } : {};
+    let message: SyncMessage = { t: 'patch', b: this.sentVersion, v: this.version, p: this.pending, ...acks };
     if (this.needFullState || jsonByteSize(message) > LIMITS.messageBytes - 1024) {
-      message = { t: 'state', v: this.version, s: this.state };
+      message = { t: 'state', v: this.version, s: this.state, ...acks };
       if (jsonByteSize(message) > LIMITS.messageBytes - 1024) {
         this.reportError('STATE_TOO_LARGE', `The game state is larger than ${LIMITS.messageBytes} bytes; keep it small (store IDs, not whole items).`);
         return;
@@ -461,6 +518,8 @@ export class GameRuntime<S = unknown> {
     this.pending = [];
     this.needFullState = false;
     this.sentVersion = this.version;
+    this.acks = {};
+    this.acksDirty = false;
     this.send('all', message);
   }
 

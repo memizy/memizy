@@ -68,7 +68,8 @@ Declare what the game supports. Adjust `id`, `appName`, `types` and `modes`.
 * Remove `solo` or `multiplayer` if the game does not support it. In `hostAs` keep `"presenter"` only if you draw a `board` view, keep `"player"` only if the game works without a board.
 * `settings`: options of the game (types `number`, `boolean`, `select`, `text`). Read them as `ctx.settings.questionTime`.
   * **Multiplayer:** the teacher sets them in the lobby; the app generates a form automatically.
-  * **Solo:** the app shows **no** settings screen. The game gets the defaults (or values preset by the app). If the player should choose something (difficulty, level), make it the **first phase of your game**.
+  * **Solo:** the app may show a simple form before the start (no settings screen of your game). If the player should choose something during the game (a level, a character), make it the **first phase of your game**.
+  * A setting only for one mode: `"modes": ["solo"]` or `"modes": ["multiplayer"]` (e.g. the strength of a computer opponent only in solo). Without `modes` it applies to both.
 * Optional, multiplayer only: `"settingsScreen": { "size": "compact" }` (a panel in the lobby) or `{ "size": "large" }` (a full-screen dialog): the game draws its own settings screen with `renderSettings` (section 4.1), e.g. to preview the chosen map. The `settings` list is still required – it defines types, defaults and limits.
 
 ---
@@ -153,6 +154,7 @@ validateSettings(settings) {
 | `ui.renderNote(note, { titleLevel }?)` | Safe HTML of a whole `note` item. |
 | `ui.local` | An object for this screen only (e.g. the currently selected option). Not shared, not saved. |
 | `ui.act(name, payload)` | Call an action from your own JavaScript (normally use `data-act`). |
+| `ui.isPending(name?)`, `ui.pending` | Whether an action of this device (of that name) still waits for the authority / the list of such actions `{ name, payload, sentAt }`. Always empty on the authority and in solo. |
 | `ui.escape(text)` | Escape plain text (player names, your own strings) for HTML. |
 | `ui.progress` | Learning progress of this player: `{ [itemId]: { bucket: 0-4, ... } }` (empty on the board). Useful to prefer items the player does not know yet. |
 | `ui.saved` / `ui.save(scope, value)` | Data saved between games for this player (section 5.3). |
@@ -227,6 +229,7 @@ if (state.score > best) ui.save('set', { ...ui.saved.set, level: state.level + 1
 * **Buttons:** `<button data-act="answer" data-payload='{"answer":2}'>B</button>` calls the action `answer` with payload `{ answer: 2 }`.
 * **Forms:** `<form data-act="submitText"><input name="text"><button>OK</button></form>` calls `submitText` with `{ text: "…" }` on submit.
 * Screen-only UI state (selected but not yet submitted option) goes to `ui.local`; call `ui.act` when the player confirms.
+* In multiplayer an action travels to the authority and back (~0.1–0.3 s). Show it right away with `ui.isPending('answer')` (e.g. the chosen option highlighted and "Sent ✓"), but let the result (correct / wrong, hit / miss) come from the state.
 * Elements that appear and disappear (messages, popups, timers) need an `id` or `data-key`, e.g. `<div data-key="toast">`. Without it, an input below them can lose focus and the typed text while the player is writing.
 * Escape names and your own strings with `ui.escape(text)`; text from the study set always goes through `ui.text`.
 * A controller can be a **phone, tablet or computer**: make it responsive, with big buttons (min. 48 px), one column on narrow screens and no hover-only interactions. Design the board for a **projector**: large font, high contrast, visible from the back of the classroom. Browsers grey out disabled buttons; if you show disabled options on the board, add `button:disabled { color: inherit; }`.

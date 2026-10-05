@@ -80,7 +80,9 @@ The OQSEM part describes **content** (item types, assets, features) and is used 
 | `settingsScreen` | `{ size }` | No | Multiplayer lobby only. Present = the plugin renders its own settings screen (view `settings`) on the host's device; absent = the host generates a form from `settings`. `size: "compact"` – a panel next to the player list (the user may expand it to full screen); `size: "large"` – opened as a full-screen dialog from a "Game settings" button. |
 | `display.orientation` | `"any"` \| `"portrait"` \| `"landscape"` | No | Preferred orientation of player screens. Default `"any"`. |
 
-**SettingDefinition:** `{ id, type, label, default, description?, ...typeSpecific }`
+**SettingDefinition:** `{ id, type, label, default, description?, modes?, ...typeSpecific }`
+
+`modes`: `["solo"]`, `["multiplayer"]` or both (default when absent). Hosts show a setting only in the modes it applies to; the plugin still receives a value (the default) for every declared setting.
 
 | `type` | Extra keys | Value |
 | :--- | :--- | :--- |
@@ -144,7 +146,7 @@ A plugin does not declare views. They follow from what it declares, so the two c
 4. **Running.** Late joiners (if `lateJoin`) and reconnecting players get a new instance, which synchronizes with the authority. A recreated authority receives the last `snapshot` and continues without `start()`. While the authority is unreachable, see section 6.1.
 5. **End.** The authority calls `end(result)`; the host shows results and finally closes the instances with `sessionEnded`.
 
-**Solo:** one instance in view `solo`. The host shows **no settings screen and no countdown**: it creates the instance with the settings values – the defaults from the manifest, or values preset by the host (e.g. a course step "practise this set with 10 questions") – and calls `start()` right after `ready()`. If the game wants to let the player choose something (difficulty, level), it does so inside the game, typically as its first phase.
+**Solo:** one instance in view `solo`. There is **no plugin settings screen and no countdown**. Before creating the instance, the host MAY show a form generated from the settings that apply to solo (`modes`); otherwise it uses the defaults or values it presets (e.g. a course step "practise this set with 10 questions"). It calls `start()` right after `ready()`. Choices that belong to the game itself (a level, a character) are made inside the game, typically as its first phase.
 
 ---
 
@@ -409,3 +411,4 @@ Allowed in `1.x`: new optional fields, new methods guarded by a feature, new set
 ## Changelog
 
 * **RC1 (2026-10-04):** first release candidate.
+* **RC2 (2026-10-06):** `SettingDefinition.modes`; the host may show solo settings before the start (section 3.3). Additive: RC1 plugins and hosts keep working.

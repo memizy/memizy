@@ -227,7 +227,7 @@ abstract class BaseController implements Controller {
     };
   }
 
-  protected baseUi(): Omit<GameUI, 'view' | 'self' | 'isAuthority' | 'act' | 'timeLeft' | 'now' | 'item' | 'items' | 'save' | 'setProgress' | 'progress' | 'saved'> {
+  protected baseUi(): Omit<GameUI, 'view' | 'self' | 'isAuthority' | 'act' | 'pending' | 'isPending' | 'timeLeft' | 'now' | 'item' | 'items' | 'save' | 'setProgress' | 'progress' | 'saved'> {
     const init = this.init;
     return {
       mode: init.session.mode,
@@ -309,6 +309,8 @@ class GameController<S> extends BaseController {
       progress: this.progress,
       saved: this.saved,
       act: (name, payload) => runtime.dispatch(name, payload),
+      pending: runtime.waitingActions,
+      isPending: (name) => runtime.waitingActions.some((a) => name === undefined || a.name === name),
       timeLeft: (deadline) => Math.max(0, (typeof deadline === 'number' ? deadline : 0) - runtime.now()),
       now: () => runtime.now(),
       save: (scope, value) => this.save(scope, value),
@@ -411,6 +413,8 @@ class SettingsController extends BaseController {
       progress: {},
       saved: { plugin: null, set: null },
       act: () => this.report('NOT_ALLOWED_IN_VIEW', 'Actions are not available on the settings screen.'),
+      pending: [],
+      isPending: () => false,
       timeLeft: (deadline) => Math.max(0, deadline - (Date.now() + this.init.clock.offsetMs)),
       now: () => Date.now() + this.init.clock.offsetMs,
       save: () => this.report('NOT_ALLOWED_IN_VIEW', 'ui.save is not available on the settings screen.'),

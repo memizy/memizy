@@ -78,6 +78,13 @@ export interface GameUI {
   readonly local: Record<string, any>;
   /** Call an action (normally use `data-act`). */
   act(name: string, payload?: unknown): void;
+  /**
+   * Actions of this device the authority has not processed yet (multiplayer
+   * controllers; always empty on the authority). Use it to show "sent" right away.
+   */
+  readonly pending: readonly { name: string; payload: unknown; sentAt: number }[];
+  /** `true` while an action (of this name, or any) of this device waits for the authority. */
+  isPending(name?: string): boolean;
   /** Milliseconds until `deadline` on the session clock (≥ 0). */
   timeLeft(deadline: number): number;
   /** Current session clock in ms. */

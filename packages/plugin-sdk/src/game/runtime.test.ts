@@ -282,3 +282,34 @@ describe('host-only actions (ctx.fromHost)', () => {
     expect(session.get('ben').state?.round).toBe(1);
   });
 });
+
+describe('pending actions (ui.pending)', () => {
+  it('marks an action as pending until the authority has processed it', async () => {
+    const session = new FakeSession(quiz);
+    session.start();
+    await tick();
+    const anna = session.get('anna');
+    anna.dispatch('answer', { answer: 1 });
+    expect(anna.waitingActions.map((a) => a.name)).toEqual(['answer']);
+    await tick(50);
+    expect(anna.waitingActions).toEqual([]);
+    // An action the rules ignore (already answered) is confirmed too.
+    anna.dispatch('answer', { answer: 0 });
+    expect(anna.waitingActions).toHaveLength(1);
+    await tick(50);
+    expect(anna.waitingActions).toEqual([]);
+    expect(session.get('board').waitingActions).toEqual([]);
+  });
+
+  it('forgets an action the authority never confirms', async () => {
+    const session = new FakeSession(quiz);
+    session.start();
+    await tick();
+    session.disconnected.add('board'); // the message is lost
+    const anna = session.get('anna');
+    anna.dispatch('answer', { answer: 1 });
+    expect(anna.waitingActions).toHaveLength(1);
+    await tick(5100);
+    expect(anna.waitingActions).toEqual([]);
+  });
+});

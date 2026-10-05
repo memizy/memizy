@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { settingsForMode } from '@memizy/protocol';
 import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import {
@@ -53,7 +54,9 @@ const modeLabels: Record<StageMode, string> = { solo: 'lab.preview.solo', presen
 const wide = computed(() => runtime.value?.orientation === 'landscape');
 const soloWide = computed(() => runtime.value?.orientation !== 'portrait');
 const showSettingsScreen = computed(() => mode.value !== 'solo' && !!runtime.value?.settingsScreen && phase.value === 'lobby');
-const showSettingsForm = computed(() => !showSettingsScreen.value && (runtime.value?.settings.length ?? 0) > 0 && phase.value === 'lobby');
+/** Settings for this mode (`modes` in the manifest); in solo they stay visible – a change restarts the game. */
+const modeSettings = computed(() => (runtime.value ? settingsForMode(runtime.value.settings, mode.value === 'solo' ? 'solo' : 'multiplayer') : []));
+const showSettingsForm = computed(() => !showSettingsScreen.value && modeSettings.value.length > 0 && (mode.value === 'solo' || phase.value === 'lobby'));
 
 function addLog(entry: Omit<LogEntry, 'id' | 'time'>): void {
   const next = [...log.value, { ...entry, id: nextLog++, time: new Date() }];
@@ -300,7 +303,7 @@ const phaseLabel = computed(() => {
         </div>
         <div v-else-if="showSettingsForm" class="w-full max-w-md rounded-2xl bg-white p-4">
           <div class="section-label mb-3">{{ t('lab.preview.settings') }}</div>
-          <SettingsForm :definitions="runtime!.settings" :model-value="settings" @update:model-value="applySettings" />
+          <SettingsForm :definitions="modeSettings" :model-value="settings" @update:model-value="applySettings" />
         </div>
 
         <!-- Solo -->

@@ -62,6 +62,11 @@ export function resolveSettings(
   return { values, errors };
 }
 
+/** The settings a host shows for a mode (`modes` absent = both modes). */
+export function settingsForMode<T extends { modes?: readonly string[] }>(definitions: readonly T[], mode: 'solo' | 'multiplayer'): T[] {
+  return definitions.filter((def) => !def.modes || def.modes.includes(mode));
+}
+
 /**
  * Picks the best text for a locale: exact match (`cs-CZ`), language (`cs`),
  * English, then the first available.

@@ -31,7 +31,7 @@
           { "id": "battleMin", "type": "number", "label": { "cs": "Délka bitvy (minuty)", "en": "Battle duration (minutes)" }, "description": { "cs": "Když se žádná loď nepotopí, vyhraje pevnější trup.", "en": "If no ship sinks, the stronger hull wins." }, "default": 7, "min": 2, "max": 30 },
           { "id": "aimMode", "type": "boolean", "label": { "cs": "Zaměřovací minihra", "en": "Aiming minigame" }, "description": { "cs": "Poškození závisí na přesnosti výstřelu.", "en": "Damage depends on the accuracy of the shot." }, "default": true },
           { "id": "doShuffle", "type": "boolean", "label": { "cs": "Míchat otázky", "en": "Shuffle questions" }, "default": true },
-          { "id": "enemySkill", "type": "select", "label": { "cs": "Nepřátelská loď (solo)", "en": "Enemy ship (solo)" }, "default": "normal",
+          { "id": "enemySkill", "type": "select", "modes": ["solo"], "label": { "cs": "Síla nepřátelské lodi", "en": "Enemy ship strength" }, "default": "normal",
             "options": [
               { "value": "easy", "label": { "cs": "Slabá", "en": "Weak" } },
               { "value": "normal", "label": { "cs": "Normální", "en": "Normal" } },
@@ -188,6 +188,11 @@
     .reticle { position: absolute; left: 50%; top: 50%; width: 74px; height: 74px; transform: translate(-50%,-50%); border: 2.5px solid #ffe08a; border-radius: 50%; box-shadow: 0 0 16px rgba(255,224,138,0.4); pointer-events: none; }
     .aim-hint { padding: 10px; text-align: center; font-size: 13px; font-weight: 700; color: #ffe9b8; background: rgba(3,9,16,0.75); }
 
+    /* instant feedback while the board decides (ui.pending) */
+    .qbtn.chosen { outline: 3px solid #fff; outline-offset: 1px; filter: brightness(1.25); }
+    .sent { text-align: center; font-weight: 800; color: var(--gold-bright); }
+    .power { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 8px; background: var(--gold); color: #221604; font-size: 11px; font-weight: 900; }
+
     /* review after a wrong answer */
     .review .quiz-inner { border-color: rgba(239,71,111,0.6); }
     .rv-list { display: flex; flex-direction: column; gap: 6px; }
@@ -252,12 +257,13 @@ const TEXTS = {
     endBattle: '✕ Ukončit bitvu', battleLog: '📡 Lodní deník', calmSea: 'Moře je zatím klidné…',
     fired: 'výstřelů', hits: 'zásahů', repairs: 'oprav',
     feedHit: (who, d) => `${who} zasáhl za <b>${d}</b>!`, feedCrit: (who, d) => `${who}: KRITICKÝ zásah za <b>${d}</b>!`, feedMiss: (who) => `${who} minul — šplouch!`,
-    feedRepair: (who) => `${who} opravil trup (+100)`, feedCorrect: (who, crate) => `${who} odpověděl správně u ${crate === 'ammo' ? 'prachárny' : 'tesařské dílny'}`,
+    feedRepair: (who, n) => `${who} opravil trup (+${n})`, feedCorrect: (who, crate) => `${who} odpověděl správně u ${crate === 'ammo' ? 'prachárny' : 'tesařské dílny'}`,
     feedWrong: (who, d) => `${who} odpověděl špatně — vlastní loď −${d}`, feedStart: (r, b) => `K dělům! Korzáři (${r}) proti Bratrstvu (${b}).`, feedJoin: (who, team) => `${who} se přidává k posádce ${team}!`,
     feedWin: (team) => `${team} vyhrávají bitvu!`, feedDraw: 'Bitva skončila nerozhodně.',
     yourShip: 'TVOJE LOĎ', enemy: 'NEPŘÍTEL', empty: '🙌 prázdné ruce', ball: '💣 dělová koule', plank: '🪵 prkna',
     hintBall: '💣 Odnes kouli k dělu!', hintPlank: '🔨 Klepni na díru v trupu a oprav ji!', hintPlankNone: '🪵 Není co opravovat — nebo vyměň prkna za kouli v prachárně.',
     hintEmpty: '❓ Odpověz na otázku u bedny a vyzbroj se!', hintRun: '🏃 Běžím…', hintQuestion: '⏳ Ubikační má pro tebe otázku…',
+    sent: '⏳ Odesláno…', strength: (f) => `×${f} síla`, strengthHint: 'Menší posádka: každá akce se počítá víckrát, aby to bylo férové.',
     stunned: '😵 OMRÁČEN!', streak: (n) => `🔥 série ×${n}`, to2d: '2D', to3d: '3D',
     magazine: '🧨 Prachárna', carpenter: '🪵 Tesařská dílna', cannons: '💣 Děla', repair: '🔨 Oprav',
     magazineSub: 'Otázka → dělová koule', carpenterSub: 'Otázka → prkna na opravu', fireSub: 'Vystřel na nepřítele', fire: '💣 Vystřelit',
@@ -285,12 +291,13 @@ const TEXTS = {
     endBattle: '✕ End Battle', battleLog: '📡 Battle Log', calmSea: 'The sea is calm… for now.',
     fired: 'fired', hits: 'hits', repairs: 'repairs',
     feedHit: (who, d) => `${who} lands a hit for <b>${d}</b>!`, feedCrit: (who, d) => `${who} scores a CRITICAL for <b>${d}</b>!`, feedMiss: (who) => `${who} misses — splash!`,
-    feedRepair: (who) => `${who} repairs the hull (+100)`, feedCorrect: (who, crate) => `${who} answered right at the ${crate === 'ammo' ? 'powder magazine' : 'carpenter’s store'}`,
+    feedRepair: (who, n) => `${who} repairs the hull (+${n})`, feedCorrect: (who, crate) => `${who} answered right at the ${crate === 'ammo' ? 'powder magazine' : 'carpenter’s store'}`,
     feedWrong: (who, d) => `${who} answered wrong — own ship −${d}`, feedStart: (r, b) => `Battle stations! ${r} Corsairs vs ${b} Brotherhood.`, feedJoin: (who, team) => `${who} joins the ${team}!`,
     feedWin: (team) => `${team} win the battle!`, feedDraw: 'The battle ends in a draw.',
     yourShip: 'YOUR SHIP', enemy: 'ENEMY', empty: '🙌 empty hands', ball: '💣 cannonball', plank: '🪵 planks',
     hintBall: '💣 Take your cannonball to a cannon!', hintPlank: '🔨 Tap a scorch mark on your hull to repair it!', hintPlankNone: '🪵 Nothing to repair — or swap the planks for a cannonball.',
     hintEmpty: '❓ Answer a question at a crate to arm yourself!', hintRun: '🏃 Running…', hintQuestion: '⏳ The quartermaster has a question for you…',
+    sent: '⏳ Sent…', strength: (f) => `×${f} power`, strengthHint: 'Smaller crew: every action counts more, to keep it fair.',
     stunned: '😵 STUNNED!', streak: (n) => `🔥 streak ×${n}`, to2d: '2D', to3d: '3D',
     magazine: '🧨 Powder Magazine', carpenter: '🪵 Carpenter’s Store', cannons: '💣 Cannons', repair: '🔨 Repair',
     magazineSub: 'Question → cannonball', carpenterSub: 'Question → planks', fireSub: 'Fire at the enemy', fire: '💣 Fire',
@@ -343,7 +350,36 @@ function pushFeed(state, ctx, entry) {
   if (state.feed.length > 30) state.feed.length = 30;
 }
 function notice(state, pid, type) { state.notice[pid] = { seq: nextSeq(state), type }; }
-const hpFor = (enemyCount) => Math.max(400, enemyCount * 200);
+/** Both ships get the same hull, growing with the bigger crew (the game does not end at once). */
+const hullFor = (state) => Math.max(400, 200 * Math.max(state.teams.red.length, state.teams.black.length));
+/**
+ * The smaller crew plays "for more players": everything its sailors do counts
+ * bigger / own times (shots, repairs, penalties, points). 1 vs 2 → ×2 and ×1.
+ */
+function powerOf(state, team) {
+  if (state.solo) return 1;
+  const own = state.teams[team].length, other = state.teams[otherTeam(team)].length;
+  return own > 0 && other > own ? other / own : 1;
+}
+const roundPower = (f) => Math.round(f * 100) / 100;
+
+/** Grows or shrinks both hulls when the crews change, keeping the percentage. */
+function rescaleHulls(state) {
+  const max = hullFor(state);
+  for (const team of ['red', 'black']) {
+    const ship = state.ships[team];
+    ship.hp = Math.round((ship.hp / ship.maxHp) * max);
+    ship.maxHp = max;
+  }
+}
+
+/**
+ * Question slots: sailor no. 1 of each crew gets the same questions in the same
+ * order, sailor no. 2 too, and so on (fair between crews, different between sailors).
+ */
+function assignSlots(state) {
+  for (const team of ['red', 'black']) state.teams[team].forEach((pid, i) => { state.slots[pid] ??= i; });
+}
 const nameOf = (ctxOrUi, pid) => (pid === 'ai' ? L.soloEnemy : ctxOrUi.players.find((p) => p.id === pid)?.name ?? '?');
 
 /** The swaying barrel: the same formula on the device (animation) and on the authority (hit). */
@@ -374,12 +410,11 @@ function startBattle(state, ctx) {
     const ai = AI[s.enemySkill] ?? AI.normal;
     state.ships = { red: { hp: 600, maxHp: 600 }, black: { hp: ai.hp, maxHp: ai.hp } };
   } else {
-    state.ships = {
-      red: { hp: hpFor(state.teams.black.length), maxHp: hpFor(state.teams.black.length) },
-      black: { hp: hpFor(state.teams.red.length), maxHp: hpFor(state.teams.red.length) },
-    };
+    const hull = hullFor(state);
+    state.ships = { red: { hp: hull, maxHp: hull }, black: { hp: hull, maxHp: hull } };
     pushFeed(state, ctx, { type: 'sys', key: 'start', r: state.teams.red.length, b: state.teams.black.length });
   }
+  assignSlots(state);
   const ms = clamp(Number(s.battleMin ?? 7), 2, 30) * 60_000;
   state.battleEndsAt = ctx.now + ms;
   state.phase = 'battle';
@@ -445,7 +480,7 @@ function playerFire(state, ctx, pid, accuracy) {
   if (!team || state.inventory[pid] !== 'ball') return;
   state.inventory[pid] = null;
   delete state.aiming[pid];
-  const mult = 1 + Math.min(state.streaks[pid] ?? 0, 5) * 0.06;
+  const mult = (1 + Math.min(state.streaks[pid] ?? 0, 5) * 0.06) * powerOf(state, team);
   applyShot(state, ctx, team, computeDamage(accuracy !== null, accuracy, mult, ctx.random), pid);
 }
 
@@ -481,7 +516,7 @@ const rules = {
       stunnedUntil: {}, streaks: {}, positions: {},
       ships: { red: { hp: 1, maxHp: 1 }, black: { hp: 1, maxHp: 1 } }, hits: { red: [], black: [] },
       stats: { red: blankStats(), black: blankStats() }, feed: [], battleEndsAt: 0, winner: null, reason: null, lastShot: null,
-      order: ctx.settings.doShuffle === false ? ids : ctx.shuffle(ids), qIdx: {}, seq: 0,
+      order: ctx.settings.doShuffle === false ? ids : ctx.shuffle(ids), qIdx: {}, slots: {}, slotStart: {}, seq: 0,
       aimMode: ctx.settings.aimMode !== false, timerSec: clamp(Number(ctx.settings.timerSec ?? 20), 5, 120),
     };
     for (const p of ctx.players) state.scores[p.id] = 0;
@@ -498,6 +533,8 @@ const rules = {
     if (state.phase === 'battle' && !teamOf(state, player.id)) {
       const side = state.teams.red.length <= state.teams.black.length ? 'red' : 'black';
       state.teams[side].push(player.id);
+      state.slots[player.id] ??= state.teams[side].length - 1;
+      rescaleHulls(state);
       pushFeed(state, ctx, { type: 'sys', key: 'join', by: player.id, team: side });
     }
   },
@@ -543,7 +580,8 @@ const rules = {
       state.stunnedUntil[pid] = ctx.now + REVIEW_MS;
       state.streaks[pid] = 0;
       const team = teamOf(state, pid);
-      const dmg = selfDamageFor(0, 1);
+      const dmg = team ? Math.round(selfDamageFor(0, 1) * powerOf(state, team)) : 0;
+      if (team) state.scores[pid] = Math.max(0, (state.scores[pid] ?? 0) - dmg);
       state.result[pid] = { seq, correct: false, timedOut: true, itemId: pending.itemId, crate: pending.crate, dmg, given: null };
       if (team && state.phase === 'battle') {
         state.stats[team].wrong += 1;
@@ -577,8 +615,11 @@ const rules = {
       if (state.inventory[pid] === (crate === 'ammo' ? 'ball' : 'plank')) return notice(state, pid, 'hands');
       if (state.pending[pid]) return;
       if (!state.order.length) return notice(state, pid, 'noQuestions');
-      state.qIdx[pid] ??= Math.floor(ctx.random() * state.order.length); // everyone starts somewhere else
-      const itemId = state.order[state.qIdx[pid] % state.order.length];
+      assignSlots(state);
+      const slot = state.slots[pid] ?? 0;
+      state.slotStart[slot] ??= Math.floor(ctx.random() * state.order.length); // shared by sailor no. `slot` of both crews
+      state.qIdx[pid] ??= 0;
+      const itemId = state.order[(state.slotStart[slot] + state.qIdx[pid]) % state.order.length];
       const seq = nextSeq(state);
       state.pending[pid] = { seq, itemId, crate, deadline: ctx.now + state.timerSec * 1000 };
       ctx.after(state.timerSec * 1000 + 1000, 'questionTimeout', { pid, seq });
@@ -597,12 +638,13 @@ const rules = {
       let dmg = 0;
       if (correct) {
         state.inventory[pid] = pending.crate === 'ammo' ? 'ball' : 'plank';
-        state.scores[pid] = (state.scores[pid] ?? 0) + 50;
+        state.scores[pid] = (state.scores[pid] ?? 0) + Math.round(50 * powerOf(state, team));
         state.streaks[pid] = (state.streaks[pid] ?? 0) + 1;
         state.stats[team].correct += 1;
         pushFeed(state, ctx, { type: 'correct', by: pid, team, crate: pending.crate, itemId: pending.itemId });
       } else {
-        dmg = selfDamageFor(pending.deadline - ctx.now, state.timerSec * 1000);
+        dmg = Math.round(selfDamageFor(pending.deadline - ctx.now, state.timerSec * 1000) * powerOf(state, team));
+        state.scores[pid] = Math.max(0, (state.scores[pid] ?? 0) - dmg);
         state.stunnedUntil[pid] = ctx.now + REVIEW_MS;
         state.streaks[pid] = 0;
         state.stats[team].wrong += 1;
@@ -640,10 +682,12 @@ const rules = {
       if (i === -1) return notice(state, pid, 'patched');
       state.hits[team].splice(i, 1);
       state.inventory[pid] = null;
-      state.ships[team].hp = Math.min(state.ships[team].maxHp, state.ships[team].hp + 100);
-      state.scores[pid] = (state.scores[pid] ?? 0) + 75;
+      const power = powerOf(state, team);
+      const amount = Math.round((75 + ctx.random() * 50) * power);
+      state.ships[team].hp = Math.min(state.ships[team].maxHp, state.ships[team].hp + amount);
+      state.scores[pid] = (state.scores[pid] ?? 0) + Math.round(75 * power);
       state.stats[team].repairs += 1;
-      pushFeed(state, ctx, { type: 'repair', by: pid, team });
+      pushFeed(state, ctx, { type: 'repair', by: pid, team, amount });
     },
   },
 };
@@ -707,7 +751,7 @@ function feedLine(f, ui) {
     case 'hit': return `<div class="feed-item hit"><div>💥</div><div>${L.feedHit(who, f.dmg)}</div></div>`;
     case 'crit': return `<div class="feed-item crit"><div>🎯</div><div>${L.feedCrit(who, f.dmg)}</div></div>`;
     case 'miss': return `<div class="feed-item miss"><div>🌊</div><div>${L.feedMiss(who)}</div></div>`;
-    case 'repair': return `<div class="feed-item repair"><div>🔨</div><div>${L.feedRepair(who)}</div></div>`;
+    case 'repair': return `<div class="feed-item repair"><div>🔨</div><div>${L.feedRepair(who, f.amount ?? 100)}</div></div>`;
     case 'correct': return `<div class="feed-item correct"><div>✅</div><div>${L.feedCorrect(who, f.crate)}${detail}</div></div>`;
     case 'wrong': return `<div class="feed-item wrong"><div>❌</div><div>${L.feedWrong(who, f.dmg ?? 0)}${detail}</div></div>`;
     case 'sys': {
@@ -729,7 +773,7 @@ function renderBoardBattle(state, ui) {
       ${['red', 'black'].map((t) => {
         const ship = state.ships[t], st = state.stats[t];
         return `<div class="hd-ship ${t}-side">
-          <div class="hd-ship-head"><span style="color:var(--${t}-team-soft)">${TEAMS[t].flag} ${teamName(t)}</span><span>${Math.max(0, Math.round(ship.hp))} / ${ship.maxHp}</span></div>
+          <div class="hd-ship-head"><span style="color:var(--${t}-team-soft)">${TEAMS[t].flag} ${teamName(t)}${powerOf(state, t) > 1 ? `<span class="power" title="${L.strengthHint}">${L.strength(roundPower(powerOf(state, t)))}</span>` : ''}</span><span>${Math.max(0, Math.round(ship.hp))} / ${ship.maxHp}</span></div>
           <div class="hpbar"><div class="hpfill" style="width:${pct(ship)}%;background:linear-gradient(90deg,${t === 'red' ? '#8c1823,var(--red-team)' : '#4a5670,var(--black-team)'})"></div></div>
           <div class="hd-ship-stats"><span>💥 ${st.fired} ${L.fired}</span><span>🎯 ${st.hitCount} ${L.hits}</span><span>🔨 ${st.repairs} ${L.repairs}</span><span>✅ ${st.correct}</span><span>❌ ${st.wrong}</span></div>
           <div class="team-roster" style="justify-content:flex-start;margin-top:10px">${state.teams[t].map((pid) => `<span class="chip">${esc(nameOf(ui, pid))} <b style="color:var(--gold)">${state.scores[pid] ?? 0}</b></span>`).join('')}</div>
@@ -796,15 +840,17 @@ function answerText(item, ui) {
   }
 }
 
-function quizControls(item, seq, ui) {
+function quizControls(item, seq, ui, sent) {
   const inline = (s) => ui.text(String(s ?? ''), { inline: true, item });
   const hidden = `<input type="hidden" name="seq" value="${seq}">`;
-  const submit = `<button class="qsub" type="submit">${L.submit}</button>`;
+  const submit = sent ? `<div class="sent">${L.sent}</div>` : `<button class="qsub" type="submit">${L.submit}</button>`;
+  const chosen = (answer) => (sent && sent.answer === answer ? ' chosen' : '');
+  const off = sent ? 'disabled' : '';
   switch (item.type) {
     case 'mcq-single':
-      return `<div class="qgrid">${item.options.map((o, i) => `<button class="qbtn" data-act="submit_answer" data-payload='{"seq":${seq},"answer":${i}}'>${inline(o)}</button>`).join('')}</div>`;
+      return `<div class="qgrid">${item.options.map((o, i) => `<button class="qbtn${chosen(i)}" ${off} data-act="submit_answer" data-payload='{"seq":${seq},"answer":${i}}'>${inline(o)}</button>`).join('')}</div>${sent ? `<div class="sent">${L.sent}</div>` : ''}`;
     case 'true-false':
-      return `<div class="qgrid"><button class="qbtn" data-act="submit_answer" data-payload='{"seq":${seq},"answer":true}'>${L.truth}</button><button class="qbtn" data-act="submit_answer" data-payload='{"seq":${seq},"answer":false}'>${L.lie}</button></div>`;
+      return `<div class="qgrid"><button class="qbtn${chosen(true)}" ${off} data-act="submit_answer" data-payload='{"seq":${seq},"answer":true}'>${L.truth}</button><button class="qbtn${chosen(false)}" ${off} data-act="submit_answer" data-payload='{"seq":${seq},"answer":false}'>${L.lie}</button></div>${sent ? `<div class="sent">${L.sent}</div>` : ''}`;
     case 'mcq-multi':
       return `<form class="qform" data-act="submit_answer">${hidden}${item.options.map((o, i) => `<label class="qcheck"><input type="checkbox" name="sel" value="${i}"><span>${inline(o)}</span></label>`).join('')}${submit}</form>`;
     case 'short-answer':
@@ -874,7 +920,7 @@ function renderQuiz(state, ui, me) {
       <div class="quiz-tag"><span>${tag}</span><span>${Math.ceil(left / 1000)} s</span></div>
       <div class="quiz-timer"><div style="width:${frac * 100}%;background:${frac > 0.5 ? 'var(--gold)' : frac > 0.25 ? '#e8974a' : 'var(--danger)'}"></div></div>
       <div class="quiz-q">${ui.text(item.question ?? '', { item })}</div>
-      ${quizControls(item, pending.seq, ui)}
+      ${quizControls(item, pending.seq, ui, ui.pending.find((a) => a.name === 'submit_answer' && Number(a.payload?.seq) === pending.seq)?.payload)}
     </div></div>`;
   }
   // Wrong or too late: time to look at the correct answer (the player cannot act meanwhile).
@@ -892,8 +938,9 @@ function renderQuiz(state, ui, me) {
   </div></div>`;
 }
 
-function hintText(state, me) {
+function hintText(state, me, ui) {
   if (G.walking) return L.hintRun;
+  if (ui?.isPending('request_question')) return L.hintQuestion;
   const inv = state.inventory[me];
   if (inv === 'ball') return L.hintBall;
   if (inv === 'plank') return state.hits[G.team]?.length ? L.hintPlank : L.hintPlankNone;
@@ -991,20 +1038,20 @@ function renderBattle(state, ui) {
   return `<div class="game">
     ${G.mode2d ? renderDeck2d(state, ui, me) : '<div id="sea" data-keep></div>'}
     <div class="hud-top" data-key="hud-top">
-      <div class="hp-row"><span class="hp-label">${TEAMS[team].flag} ${Math.round(pct(own))}%</span><div class="hp-track"><div class="hp-fill" style="width:${pct(own)}%;background:linear-gradient(90deg,#1d7a4f,var(--green))"></div></div></div>
+      <div class="hp-row"><span class="hp-label">${TEAMS[team].flag} ${Math.round(pct(own))}%${powerOf(state, team) > 1 ? `<span class="power" title="${L.strengthHint}">${L.strength(roundPower(powerOf(state, team)))}</span>` : ''}</span><div class="hp-track"><div class="hp-fill" style="width:${pct(own)}%;background:linear-gradient(90deg,#1d7a4f,var(--green))"></div></div></div>
       <div class="hp-row"><span class="hp-label">${state.solo ? '☠️' : TEAMS[foe].flag} ${Math.round(pct(enemy))}%</span><div class="hp-track"><div class="hp-fill" style="width:${pct(enemy)}%;background:linear-gradient(90deg,#8c1823,var(--danger))"></div></div></div>
       <div class="hud-row"><span class="hud-timer">⏳ ${fmtTime(ui.timeLeft(state.battleEndsAt))}</span><span class="hud-score">🏆 ${state.scores[me] ?? 0}</span>
         <span class="hud-inv">${inv === 'ball' ? L.ball : inv === 'plank' ? L.plank : L.empty}</span></div>
     </div>
     <div class="hud-bot" data-key="hud-bot">
-      <span class="hint">${hintText(state, me)}</span>
+      <span class="hint">${hintText(state, me, ui)}</span>
       <span class="streak">${streak >= 2 ? L.streak(streak) : ''}</span>
       <button class="mode-btn" data-local="toggle2d" title="${esc(G.reason2d ?? '')}">${G.mode2d ? L.to3d : L.to2d}</button>
     </div>
     ${reviewLeft > 0 && !quiz ? `<div class="wait-banner" data-key="wait">${L.waitReview(Math.ceil(reviewLeft / 1000))}</div>` : ''}
     ${showFloat ? `<div class="float" data-key="float" style="color:${G.float.color}">${esc(G.float.text)}</div>` : ''}
     ${quiz}
-    ${aim && state.phase === 'battle' ? renderAim(state, ui, aim) : ''}
+    ${aim && state.phase === 'battle' && !ui.isPending('fire') ? renderAim(state, ui, aim) : ''}
     ${finishedBanner}
   </div>`;
 }
@@ -1389,6 +1436,13 @@ const Scene = {
     } });
   },
 
+  muzzle(cannonIdx) {
+    const cannon = this.own.userData.cannons[cannonIdx] || this.own.userData.cannons[0];
+    const p = this.own.localToWorld(new THREE.Vector3(cannon.x, 3.0, -1.9));
+    this.explosion(this.scene, p.x, p.y, p.z, false);
+    this.shake = Math.max(this.shake, 0.15);
+  },
+
   selfHit() {
     const wp = new THREE.Vector3(); this.own.getWorldPosition(wp);
     this.explosion(this.scene, wp.x, wp.y + 2, wp.z + 1.5, false);
@@ -1490,7 +1544,7 @@ const Scene = {
   /** Looking down the swaying barrel while aiming (same sway as the authority computes). */
   aimCamera() {
     const aim = G.state?.aiming?.[G.me];
-    if (!aim || G.state.phase !== 'battle') {
+    if (!aim || G.state.phase !== 'battle' || G.ui?.isPending('fire')) {
       if (this.aiming) { this.aiming = false; this.layout(); }
       return;
     }
@@ -1713,7 +1767,11 @@ function aim2dLoop() {
    ═════════════════════════════════════════════════════════ */
 document.addEventListener('pointerdown', (e) => {
   const local = e.target.closest?.('[data-local]')?.getAttribute('data-local');
-  if (local === 'fire') { e.preventDefault(); game.act('fire', { t: G.ui?.now() }); }
+  if (local === 'fire') {
+    e.preventDefault();
+    game.act('fire', { t: G.ui?.now() });
+    if (Scene.ready) Scene.muzzle(G.state?.aiming?.[G.me]?.cannon ?? 1); // the flash right away
+  }
 });
 document.addEventListener('click', (e) => {
   const el = e.target.closest?.('[data-local]');

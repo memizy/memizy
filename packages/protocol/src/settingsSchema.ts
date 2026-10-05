@@ -22,6 +22,8 @@ const SettingBase = {
   id: z.string().regex(/^[a-zA-Z][a-zA-Z0-9_-]{0,63}$/, 'Setting id must start with a letter and contain only letters, digits, "_" and "-"'),
   label: LocalizedTextSchema,
   description: LocalizedTextSchema.optional(),
+  /** Modes the setting applies to (default: both). Hosts show only the relevant ones. */
+  modes: z.array(z.enum(['solo', 'multiplayer'])).min(1, 'modes needs at least one mode').optional(),
 };
 
 const NumberSettingSchema = z
