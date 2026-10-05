@@ -109,7 +109,9 @@ export class FakeSession<S> {
     return {
       hello: async () => { throw new Error('not used'); },
       ready: async () => {},
-      send: async (message) => {
+      // Arguments are cloned like postMessage does (catches drafts and other non-cloneable values).
+      send: async (input) => {
+        const message = structuredClone(input);
         assertJsonWithin(message.data, LIMITS.messageBytes, 'MESSAGE_TOO_LARGE', 'message');
         this.sent.push({ from: address, to: message.to, data: message.data });
         if (message.to === 'authority') {
@@ -121,12 +123,12 @@ export class FakeSession<S> {
         }
       },
       saveSnapshot: async (snapshot) => { this.snapshot = structuredClone(snapshot); },
-      recordAnswer: async (answer) => { this.records.push(answer); },
+      recordAnswer: async (answer) => { this.records.push(structuredClone(answer)); },
       saveProgress: async () => {},
       saveData: async () => {},
       updateSettings: async () => {},
       getAsset: async () => new Blob(),
-      end: async (result) => { this.results.push(result); },
+      end: async (result) => { this.results.push(structuredClone(result)); },
       resize: async () => {},
       reportError: async (error) => { this.errors.push(`${error.code}: ${error.message}`); },
       exit: async () => {},

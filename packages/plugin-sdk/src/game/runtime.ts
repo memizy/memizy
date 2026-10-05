@@ -63,6 +63,15 @@ export interface RuntimeOptions {
   onError?: (code: string, message: string) => void;
 }
 
+/**
+ * Copies a value passed to ctx inside an action. Values taken from the state
+ * (`ctx.end({ scores: state.scores })`) are drafts that stop working when the
+ * action ends, and cannot be sent to the host (postMessage cannot clone them).
+ */
+function detach<T>(value: T): T {
+  return value === undefined ? value : (JSON.parse(JSON.stringify(value)) as T);
+}
+
 export class GameRuntime<S = unknown> {
   readonly init: InitPayload;
   readonly isAuthority: boolean;
@@ -350,17 +359,17 @@ export class GameRuntime<S = unknown> {
         if (typeof action !== 'string') throw new Error('ctx.after: action must be the name of an action');
         timerSeq += 1;
         const key = options?.key ?? `#${timerSeq}`;
-        effects.push({ type: 'after', timer: { key, at: now + ms, action, payload: payload ?? null } });
+        effects.push({ type: 'after', timer: { key, at: now + ms, action, payload: detach(payload ?? null) } });
         this.timerSeq = timerSeq;
       },
       cancel: (key) => {
         effects.push({ type: 'cancel', key });
       },
       recordAnswer: (itemId, isCorrect, options = {}) => {
-        effects.push({ type: 'record', itemId, isCorrect, options, playerId });
+        effects.push({ type: 'record', itemId, isCorrect, options: detach(options), playerId });
       },
       end: (result = {}) => {
-        effects.push({ type: 'end', result });
+        effects.push({ type: 'end', result: detach(result) });
       },
     };
     return ctx;
