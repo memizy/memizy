@@ -124,7 +124,28 @@ function labCode(): string {
     return '';
   }
 }
-const labAvailable = computed(() => labCode().trim().length > 0);
+// The Lab saves its code to localStorage; the storage event tells other tabs about it.
+const labRev = ref(0);
+const labAvailable = computed(() => labRev.value >= 0 && labCode().trim().length > 0);
+const labReloaded = ref(false);
+let labChangedInGame = false;
+let labNoticeTimer: ReturnType<typeof setTimeout> | undefined;
+
+function reloadFromLab(): void {
+  void loadChoice();
+  labReloaded.value = true;
+  clearTimeout(labNoticeTimer);
+  labNoticeTimer = setTimeout(() => (labReloaded.value = false), 3000);
+}
+
+function onStorage(e: StorageEvent): void {
+  if (e.key !== 'memizy-play:lab-code') return;
+  labRev.value++;
+  if (choice.value.kind !== 'lab') return;
+  // Only in the lobby: a running game keeps its code until it ends.
+  if (phase.value === 'lobby') reloadFromLab();
+  else labChangedInGame = true;
+}
 
 async function loadChoice(): Promise<void> {
   const c = choice.value;
@@ -216,13 +237,20 @@ function scheduleUpload(): void {
   uploadTimer = setTimeout(() => void ensureUploaded(), 400);
 }
 
+/** FNV-1a hash of the whole game code (a change anywhere uploads it again). */
+function hash(text: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 0x01000193);
+  return (h >>> 0).toString(36);
+}
+
 function ensureUploaded(): Promise<void> {
   uploading = uploading.then(async () => {
     const r = room.value;
     const raw = pluginRaw.value;
     const set = prepared.value?.set;
     if (!r || !raw || !set || !multi.value) return;
-    const key = `${r.pin}|${raw.length}|${raw.slice(0, 200)}|${studySet.value?.key}|${set.items.length}`;
+    const key = `${r.pin}|${hash(raw)}|${studySet.value?.key}|${set.items.length}`;
     if (key === uploadedKey) return;
     try {
       await r.uploadBundle(raw, set);
@@ -382,6 +410,11 @@ function backToLobby(): void {
   room.value?.setOpen(true);
   game.value = null;
   phase.value = 'lobby';
+  if (labChangedInGame && choice.value.kind === 'lab') {
+    labChangedInGame = false;
+    reloadFromLab();
+    return;
+  }
   // Recreate the settings screen session.
   plugin.value = plugin.value ? { ...plugin.value } : null;
 }
@@ -399,11 +432,14 @@ function useUrl(): void {
 }
 
 onMounted(async () => {
+  window.addEventListener('storage', onStorage);
   sets.value = [...BUILTIN_SETS, ...(await loadStoredSets())];
   if (await openRoom()) await restoreGame();
 });
 
 onBeforeUnmount(() => {
+  window.removeEventListener('storage', onStorage);
+  clearTimeout(labNoticeTimer);
   stopRoom?.();
   clearTimeout(uploadTimer);
   void game.value?.end('closed').catch(() => {});
@@ -525,6 +561,9 @@ const statusClass = computed(() =>
                 <input type="radio" class="accent-accent-orange" :checked="choice.kind === 'lab'" :disabled="!labAvailable" @change="choice = { kind: 'lab' }" />
                 <span class="text-sm font-semibold" :class="labAvailable ? '' : 'text-text-gray'">{{ t('host.fromLab') }}</span>
                 <span v-if="!labAvailable" class="text-xs text-text-gray">– {{ t('host.fromLabMissing') }}</span>
+                <span v-else-if="choice.kind === 'lab'" class="text-xs" :class="labReloaded ? 'font-semibold text-green-700' : 'text-text-gray'">
+                  – {{ labReloaded ? t('host.fromLabReloaded') : t('host.fromLabLive') }}
+                </span>
               </label>
               <form class="flex gap-2" @submit.prevent="useUrl">
                 <input v-model="pluginUrl" type="url" class="input" :placeholder="t('lab.code.urlPlaceholder')" />

@@ -128,6 +128,8 @@ const en: typeof cs = {
     examples: 'Example games',
     fromLab: 'Game from the Lab',
     fromLabMissing: 'There is no valid game in the Lab yet.',
+    fromLabLive: 'changes in the Lab load automatically',
+    fromLabReloaded: 'reloaded from the Lab ✓',
     fromUrl: 'From a URL',
     multiplayerOnly: 'This game does not support multiplayer.',
     hostRole: 'My role',

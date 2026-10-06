@@ -126,6 +126,8 @@ export default {
     examples: 'Ukázkové hry',
     fromLab: 'Hra z Labu',
     fromLabMissing: 'V Labu zatím není platná hra.',
+    fromLabLive: 'změny v Labu se načtou samy',
+    fromLabReloaded: 'načteno znovu z Labu ✓',
     fromUrl: 'Z adresy URL',
     multiplayerOnly: 'Tahle hra nepodporuje multiplayer.',
     hostRole: 'Moje role',
