@@ -72,6 +72,8 @@
 
 html,
 body {
+  /* No double-tap zoom (iOS Safari zooms the page around a game frame on quick taps). */
+  touch-action: manipulation;
   background-color: var(--color-off-white);
   color: var(--color-text-dark);
   font-family: var(--font-sans);

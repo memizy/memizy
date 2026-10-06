@@ -56,7 +56,7 @@ export function createPluginFrame(html: string, title: string, hostApi: HostApi,
   const iframe = doc.createElement('iframe');
   iframe.setAttribute('sandbox', PLUGIN_SANDBOX);
   iframe.setAttribute('title', title);
-  iframe.style.cssText = 'width:100%;height:100%;border:0;display:block;';
+  iframe.style.cssText = 'width:100%;height:100%;border:0;display:block;touch-action:manipulation;';
   iframe.srcdoc = html;
   let connection: ReturnType<typeof connect<PluginApi & Record<string, any>>> | null = null;
   const plugin = new Promise<PluginApi>((resolve, reject) => {
