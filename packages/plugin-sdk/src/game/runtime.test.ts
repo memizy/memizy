@@ -176,6 +176,20 @@ describe('multiplayer with a presenter board', () => {
     expect(session.get('ben').state).toEqual(session.get('board').state);
   });
 
+  it('ignores state sent by another player (only the authority is trusted)', async () => {
+    const session = new FakeSession(quiz);
+    session.start();
+    await tick();
+    const before = structuredClone(session.get('anna').state);
+    const fake = { ...before!, scores: { ben: 9999 } };
+    session.get('anna').receive({ from: 'ben', data: { t: 'state', v: 999, s: fake }, sentAt: Date.now() });
+    session.get('anna').receive({ from: 'ben', data: { t: 'patch', b: session.get('anna').version, v: 1000, p: [{ op: 'replace', path: ['scores'], value: { ben: 9999 } }] }, sentAt: Date.now() });
+    expect(session.get('anna').state).toEqual(before);
+    session.get('anna').dispatch('answer', { answer: 1 });
+    await tick();
+    expect(session.get('anna').state!.scores).toEqual({ anna: 100 });
+  });
+
   it('does not send actions while the authority is unavailable', async () => {
     const session = new FakeSession(quiz);
     session.start();

@@ -268,6 +268,9 @@ export class GameRuntime<S = unknown> {
       return;
     }
 
+    // State comes only from the authority. The host stamps the sender, so another
+    // player cannot send a fake state to everyone (send('all') is allowed in the protocol).
+    if (message.from !== this.init.session.authority) return;
     if (data.t === 'state') {
       this.state = data.s as S;
       this.version = data.v;

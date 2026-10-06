@@ -1,6 +1,6 @@
 # Memizy Plugin Guide for AI Assistants
 
-> Status: **Release Candidate 1** (2026-10-04) – describes `@memizy/plugin-sdk@1` (being implemented).
+> Status: **Release Candidate 2** (2026-10-06) – describes `@memizy/plugin-sdk@1` (being implemented).
 > Paste this whole document into your AI assistant together with your idea for a game.
 
 You are writing a **Memizy plugin**: a learning game in **one HTML file**. Memizy (the host app) gives the game a study set (questions, notes) and runs it alone (**solo**) or with a whole class (**multiplayer**). You write only the game rules and the screens. The SDK handles connection, synchronization between devices, reconnecting, timers, rendering of formatted text and saving learning progress.

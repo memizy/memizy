@@ -1,6 +1,6 @@
 # Memizy Plugin Protocol v1
 
-> Status: **Release Candidate 1** (2026-10-04) · Final `1.0` after the acceptance test with AI-generated plugins (planned 2026-10-19/20).
+> Status: **Release Candidate 2** (2026-10-06) · Final `1.0` after the acceptance test with AI-generated plugins (planned 2026-10-19/20).
 >
 > RC rules: the design does not change unless the implementation or the acceptance test proves that something does not work. Every change until `1.0` is recorded in the changelog at the end.
 
