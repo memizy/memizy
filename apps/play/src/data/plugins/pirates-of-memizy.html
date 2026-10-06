@@ -28,7 +28,8 @@
         },
         "settings": [
           { "id": "timerSec", "type": "number", "label": { "cs": "Sekundy na otázku", "en": "Seconds per question" }, "default": 20, "min": 5, "max": 120 },
-          { "id": "battleMin", "type": "number", "label": { "cs": "Délka bitvy (minuty)", "en": "Battle duration (minutes)" }, "description": { "cs": "Když se žádná loď nepotopí, vyhraje pevnější trup.", "en": "If no ship sinks, the stronger hull wins." }, "default": 7, "min": 2, "max": 30 },
+          { "id": "expectedMin", "type": "number", "label": { "cs": "Bitva potrvá zhruba (minuty)", "en": "The battle takes about (minutes)" }, "description": { "cs": "Podle toho se spočítá odolnost lodí.", "en": "The strength of the hulls is computed from it." }, "default": 5, "min": 2, "max": 20 },
+          { "id": "battleMin", "type": "number", "label": { "cs": "Časový limit (minuty)", "en": "Time limit (minutes)" }, "description": { "cs": "Když se do té doby žádná loď nepotopí, vyhraje pevnější trup.", "en": "If no ship sinks by then, the stronger hull wins." }, "default": 10, "min": 2, "max": 40 },
           { "id": "aimMode", "type": "boolean", "label": { "cs": "Zaměřovací minihra", "en": "Aiming minigame" }, "description": { "cs": "Poškození závisí na přesnosti výstřelu.", "en": "Damage depends on the accuracy of the shot." }, "default": true },
           { "id": "doShuffle", "type": "boolean", "label": { "cs": "Míchat otázky", "en": "Shuffle questions" }, "default": true },
           { "id": "enemySkill", "type": "select", "label": { "cs": "Síla počítačové lodi", "en": "Computer ship strength" }, "description": { "cs": "V solu a když se všichni hráči přidají k jedné posádce.", "en": "In solo, and when all players join one crew." }, "default": "normal",
@@ -259,7 +260,7 @@ const TEXTS = {
     feedHit: (who, d, ai) => `${who} ${ai ? 'zasáhla' : 'zasáhl'} za <b>${d}</b>!`, feedCrit: (who, d) => `${who}: KRITICKÝ zásah za <b>${d}</b>!`, feedMiss: (who, ai) => `${who} ${ai ? 'minula' : 'minul'} — šplouch!`,
     feedRepair: (who, n) => `${who} opravil trup (+${n})`, feedCorrect: (who, crate) => `${who} odpověděl správně u ${crate === 'ammo' ? 'prachárny' : 'tesařské dílny'}`,
     feedWrong: (who, d) => `${who} odpověděl špatně — vlastní loď −${d}`, feedStart: (r, b) => `K dělům! Korzáři (${r}) proti Bratrstvu (${b}).`, feedJoin: (who, team) => `${who} se přidává k posádce ${team}!`,
-    feedWin: (team) => `${team} vyhrávají bitvu!`, feedDraw: 'Bitva skončila nerozhodně.',
+    feedWin: (team, pl) => `${team} ${pl ? 'vyhrávají' : 'vyhrává'} bitvu!`, feedDraw: 'Bitva skončila nerozhodně.',
     yourShip: 'TVOJE LOĎ', enemy: 'NEPŘÍTEL', empty: '🙌 prázdné ruce', ball: '💣 dělová koule', plank: '🪵 prkna',
     hintBall: '💣 Odnes kouli k dělu!', hintPlank: '🔨 Klepni na díru v trupu a oprav ji!', hintPlankNone: '🪵 Není co opravovat — nebo vyměň prkna za kouli v prachárně.',
     hintEmpty: '❓ Odpověz na otázku u bedny a vyzbroj se!', hintRun: '🏃 Běžím…', hintQuestion: '⏳ Ubikační má pro tebe otázku…',
@@ -276,8 +277,8 @@ const TEXTS = {
     msgNeedBall: '💣 Potřebuješ kouli! Zajdi do prachárny.', msgNeedPlank: '🪵 Potřebuješ prkna! Zajdi do dílny.', msgHaveBall: '💣 Kouli už neseš!', msgHavePlank: '🪵 Prkna už neseš!',
     msgSplash: '🌊 Šplouch! Vedle…', msgHit: (d) => `💥 Zásah! −${d}`, msgCrit: (d) => `💥 KRITICKÝ ZÁSAH! −${d}`, msgWeHit: (d) => `🚨 Dostali jsme zásah! −${d}`,
     winSunk: 'Nepřátelská loď je potopena! VÍTĚZSTVÍ!', winTime: 'Tvůj trup vydržel víc — VÍTĚZSTVÍ!', loseSunk: 'Tvoje loď mizí pod hladinou…', loseTime: 'Nepřátelský trup vydržel víc. Porážka.', draw: 'Vyrovnaná bitva — remíza!',
-    victory: 'Vítězství!', defeat: 'Porážka…', drawTitle: 'Remíza na moři', rule: (team) => `${team} vládnou těmto vodám.`, bothLive: 'Obě posádky se vrátí bojovat jindy.',
-    myScore: (n) => `Tvoje skóre: ${n} b.`, battleOver: 'Konec bitvy!', winsTitle: (team) => `${team} vyhrávají!`, sunkSub: 'Jedna loď odpočívá na dně.', timeSub: 'Čas vypršel — vyhrál pevnější trup.',
+    victory: 'Vítězství!', defeat: 'Porážka…', drawTitle: 'Remíza na moři', rule: (team, pl) => `${team} ${pl ? 'vládnou' : 'vládne'} těmto vodám.`, bothLive: 'Obě posádky se vrátí bojovat jindy.',
+    myScore: (n) => `Tvoje skóre: ${n} b.`, battleOver: 'Konec bitvy!', winsTitle: (team, pl) => `${team} ${pl ? 'vyhrávají' : 'vyhrává'}!`, sunkSub: 'Jedna loď odpočívá na dně.', timeSub: 'Čas vypršel — vyhrál pevnější trup.',
     hull: 'trup', correctAnswers: 'správných odpovědí', soloEnemy: 'Nepřátelská galeona', soloSub: 'Odpovídej, nabíjej děla a potop galeonu, než ona potopí tebe!',
     notInCrew: 'Čekáme, až tě kapitán přidělí k posádce…',
   },
@@ -293,7 +294,7 @@ const TEXTS = {
     feedHit: (who, d) => `${who} lands a hit for <b>${d}</b>!`, feedCrit: (who, d) => `${who} scores a CRITICAL for <b>${d}</b>!`, feedMiss: (who) => `${who} misses — splash!`,
     feedRepair: (who, n) => `${who} repairs the hull (+${n})`, feedCorrect: (who, crate) => `${who} answered right at the ${crate === 'ammo' ? 'powder magazine' : 'carpenter’s store'}`,
     feedWrong: (who, d) => `${who} answered wrong — own ship −${d}`, feedStart: (r, b) => `Battle stations! ${r} Corsairs vs ${b} Brotherhood.`, feedJoin: (who, team) => `${who} joins the ${team}!`,
-    feedWin: (team) => `${team} win the battle!`, feedDraw: 'The battle ends in a draw.',
+    feedWin: (team, pl) => `${team} ${pl ? 'win' : 'wins'} the battle!`, feedDraw: 'The battle ends in a draw.',
     yourShip: 'YOUR SHIP', enemy: 'ENEMY', empty: '🙌 empty hands', ball: '💣 cannonball', plank: '🪵 planks',
     hintBall: '💣 Take your cannonball to a cannon!', hintPlank: '🔨 Tap a scorch mark on your hull to repair it!', hintPlankNone: '🪵 Nothing to repair — or swap the planks for a cannonball.',
     hintEmpty: '❓ Answer a question at a crate to arm yourself!', hintRun: '🏃 Running…', hintQuestion: '⏳ The quartermaster has a question for you…',
@@ -310,8 +311,8 @@ const TEXTS = {
     msgNeedBall: '💣 You need a cannonball! Visit the powder magazine.', msgNeedPlank: '🪵 You need planks! Visit the carpenter’s store.', msgHaveBall: '💣 Already carrying a cannonball!', msgHavePlank: '🪵 Already carrying planks!',
     msgSplash: '🌊 Splash! The shot went wide…', msgHit: (d) => `💥 Hit! −${d}`, msgCrit: (d) => `💥 CRITICAL! −${d}`, msgWeHit: (d) => `🚨 We’re hit! −${d}`,
     winSunk: 'The enemy ship is sunk! VICTORY!', winTime: 'Your hull held stronger — VICTORY!', loseSunk: 'Your ship slips beneath the waves…', loseTime: 'The enemy hull held stronger. Defeat.', draw: 'A dead-even broadside — draw!',
-    victory: 'Victory!', defeat: 'Defeat…', drawTitle: 'A Draw at Sea', rule: (team) => `The ${team} rule these waters.`, bothLive: 'Both crews live to fight another day.',
-    myScore: (n) => `Your score: ${n} pts`, battleOver: 'Battle Over!', winsTitle: (team) => `${team} Win!`, sunkSub: 'A ship rests on the seabed.', timeSub: 'Time ran out — the sturdiest hull takes the day.',
+    victory: 'Victory!', defeat: 'Defeat…', drawTitle: 'A Draw at Sea', rule: (team, pl) => `The ${team} ${pl ? 'rule' : 'rules'} these waters.`, bothLive: 'Both crews live to fight another day.',
+    myScore: (n) => `Your score: ${n} pts`, battleOver: 'Battle Over!', winsTitle: (team, pl) => `${team} ${pl ? 'Win' : 'Wins'}!`, sunkSub: 'A ship rests on the seabed.', timeSub: 'Time ran out — the sturdiest hull takes the day.',
     hull: 'hull', correctAnswers: 'correct answers', soloEnemy: 'Enemy Galleon', soloSub: 'Answer, load the cannons and sink the galleon before it sinks you!',
     notInCrew: 'Waiting for the captain to assign you to a crew…',
   },
@@ -330,7 +331,7 @@ const REVIEW_MS = 4500;
 const WALK_MS = 700;
 /** A wrong answer damages your own ship: a quick guess hurts more than a late try. */
 const selfDamageFor = (leftMs, totalMs) => Math.round(15 + 20 * clamp(leftMs / totalMs, 0, 1));
-const AI = { easy: { every: 15000, min: 35, max: 75, hp: 450, miss: 0.3 }, normal: { every: 11000, min: 55, max: 105, hp: 600, miss: 0.2 }, hard: { every: 8000, min: 75, max: 135, hp: 800, miss: 0.12 } };
+const AI = { easy: { every: 12000, min: 20, max: 46, miss: 0.25 }, normal: { every: 12000, min: 28, max: 64, miss: 0.2 }, hard: { every: 10000, min: 32, max: 72, miss: 0.15 } };
 const TEAMS = {
   red:   { flag: '🚩', color: '#e63946', hullColor: 0x6e3a24, trimColor: 0xb3202c, sailColor: 0xf1e4c8, flagColor: 0xe63946 },
   black: { flag: '🏴‍☠️', color: '#8d99ae', hullColor: 0x3d3128, trimColor: 0x22262e, sailColor: 0xd8d5cc, flagColor: 0x22262e },
@@ -338,6 +339,8 @@ const TEAMS = {
 const teamName = (t) => (t === 'red' ? L.redName : L.blackName);
 /** The crew name, or "Enemy Galleon" for a crew sailed by the computer. */
 const crewName = (state, t) => (state.ai === t ? L.soloEnemy : teamName(t));
+/** Grammatical number of a crew name ("Corsairs" plural, "Brotherhood" and the galleon singular). */
+const crewPlural = (state, t) => t === 'red' && state.ai !== 'red';
 /** Strength of the computer ship (also in multiplayer): hull factor in multiplayer. */
 const AI_HULL = { easy: 0.75, normal: 1, hard: 1.3 };
 const otherTeam = (t) => (t === 'red' ? 'black' : 'red');
@@ -355,7 +358,16 @@ function pushFeed(state, ctx, entry) {
 }
 function notice(state, pid, type) { state.notice[pid] = { seq: nextSeq(state), type }; }
 /** Both ships get the same hull, growing with the bigger crew (the game does not end at once). */
-const hullFor = (state) => Math.max(400, 200 * Math.max(state.teams.red.length, state.teams.black.length));
+/**
+ * Net damage one sailor does per minute (shots minus what the other crew repairs);
+ * the hulls are sized from it so that a battle takes about the expected minutes.
+ * Calibrate after playtesting.
+ */
+const DAMAGE_PER_MINUTE = 150;
+/** Hull per player of the bigger crew, from the "battle takes about" setting. */
+const hullPerSailor = (settings) => DAMAGE_PER_MINUTE * clamp(Number(settings.expectedMin ?? 5), 2, 20);
+/** Both ships get the same hull, growing with the bigger crew. */
+const hullFor = (state) => Math.max(300, Math.round((state.hullPerSailor ?? 750) * Math.max(state.teams.red.length, state.teams.black.length)));
 /**
  * The smaller crew plays "for more players": everything its sailors do counts
  * bigger / own times (shots, repairs, penalties, points). 1 vs 2 → ×2 and ×1.
@@ -410,9 +422,11 @@ function computeDamage(aimed, accuracy, mult, random) {
 
 function startBattle(state, ctx) {
   const s = ctx.settings;
+  state.hullPerSailor = hullPerSailor(s);
   if (state.solo) {
-    const ai = AI[s.enemySkill] ?? AI.normal;
-    state.ships = { red: { hp: 600, maxHp: 600 }, black: { hp: ai.hp, maxHp: ai.hp } };
+    const hull = hullFor(state);
+    const aiHull = Math.round(hull * (AI_HULL[s.enemySkill] ?? 1));
+    state.ships = { red: { hp: hull, maxHp: hull }, black: { hp: aiHull, maxHp: aiHull } };
   } else {
     const hull = hullFor(state);
     state.ships = { red: { hp: hull, maxHp: hull }, black: { hp: hull, maxHp: hull } };
@@ -423,7 +437,7 @@ function startBattle(state, ctx) {
     pushFeed(state, ctx, { type: 'sys', key: 'start', r: state.teams.red.length, b: state.teams.black.length });
   }
   assignSlots(state);
-  const ms = clamp(Number(s.battleMin ?? 7), 2, 30) * 60_000;
+  const ms = clamp(Number(s.battleMin ?? 10), 2, 40) * 60_000;
   state.battleEndsAt = ctx.now + ms;
   state.phase = 'battle';
   ctx.after(ms, 'timeUp', null, { key: 'battle' });
@@ -467,8 +481,13 @@ function applyShot(state, ctx, team, res, by) {
   state.lastShot = { seq: nextSeq(state), from: team, dmg: res.dmg, label: res.label, x, y, by };
 }
 
-/** Share of a hit's damage that planks can repair; the rest stays as a scar (no endless repairing). */
-const REPAIRABLE = 0.8;
+/** A breach carries all of its damage; repairing it gets less efficient over time (repairEfficiency). */
+const REPAIRABLE = 1;
+/**
+ * Repairs are strong at first (more than an average hit) and get weaker the more the
+ * crew has repaired, measured in hulls (fair for crews of any size): 1.6x → 0.4x.
+ */
+const repairEfficiency = (state, team) => clamp(1.6 - 1.2 * ((state.repaired?.[team] ?? 0) / state.ships[team].maxHp), 0.4, 1.6);
 const MAX_BREACHES = 16;
 
 /** A new breach in a hull; it carries the damage that can still be repaired. */
@@ -537,6 +556,7 @@ const rules = {
       ships: { red: { hp: 1, maxHp: 1 }, black: { hp: 1, maxHp: 1 } }, hits: { red: [], black: [] },
       stats: { red: blankStats(), black: blankStats() }, feed: [], battleEndsAt: 0, winner: null, reason: null, lastShot: null,
       order: ctx.settings.doShuffle === false ? ids : ctx.shuffle(ids), qIdx: {}, slots: {}, slotStart: {}, seq: 0, ai: null,
+      hullPerSailor: hullPerSailor(ctx.settings), repaired: { red: 0, black: 0 },
       aimMode: ctx.settings.aimMode !== false, timerSec: clamp(Number(ctx.settings.timerSec ?? 20), 5, 120),
     };
     for (const p of ctx.players) state.scores[p.id] = 0;
@@ -709,7 +729,7 @@ const rules = {
       // The planks fix the chosen breach first; what is left over goes to the next ones
       // (a strong repair closes several small breaches, a big breach takes several repairs).
       const power = powerOf(state, team);
-      let budget = Math.round((75 + ctx.random() * 50) * power);
+      let budget = Math.round(100 * (0.75 + ctx.random() * 0.5) * power * repairEfficiency(state, team));
       let amount = 0;
       for (const breach of [list[i], ...list.filter((_, j) => j !== i)]) {
         if (budget <= 0) break;
@@ -720,6 +740,8 @@ const rules = {
       }
       state.hits[team] = list.filter((h) => (h.left ?? 100) > 0);
       state.ships[team].hp = Math.min(state.ships[team].maxHp, state.ships[team].hp + amount);
+      state.repaired ??= { red: 0, black: 0 };
+      state.repaired[team] = (state.repaired[team] ?? 0) + amount;
       state.scores[pid] = (state.scores[pid] ?? 0) + Math.round(75 * power);
       state.stats[team].repairs += 1;
       pushFeed(state, ctx, { type: 'repair', by: pid, team, amount });
@@ -778,7 +800,7 @@ function renderBoardLobby(state, ui) {
   </div></section>`;
 }
 
-function feedLine(f, ui) {
+function feedLine(f, ui, state) {
   const who = f.by ? `<b style="color:${f.team ? TEAMS[f.team].color : '#fff'}">${esc(nameOf(ui, f.by))}</b>` : '';
   const q = f.itemId ? ui.item(f.itemId) : null;
   const detail = q ? `<div class="feed-detail">${ui.text(q.question ?? '', { inline: true, item: q })}</div>` : '';
@@ -790,7 +812,7 @@ function feedLine(f, ui) {
     case 'correct': return `<div class="feed-item correct"><div>✅</div><div>${L.feedCorrect(who, f.crate)}${detail}</div></div>`;
     case 'wrong': return `<div class="feed-item wrong"><div>❌</div><div>${L.feedWrong(who, f.dmg ?? 0)}${detail}</div></div>`;
     case 'sys': {
-      const text = f.key === 'start' ? L.feedStart(f.r, f.b) : f.key === 'join' ? L.feedJoin(esc(nameOf(ui, f.by)), teamName(f.team)) : f.key === 'win' ? L.feedWin(teamName(f.team)) : L.feedDraw;
+      const text = f.key === 'start' ? L.feedStart(f.r, f.b) : f.key === 'join' ? L.feedJoin(esc(nameOf(ui, f.by)), teamName(f.team)) : f.key === 'win' ? L.feedWin(crewName(state, f.team), crewPlural(state, f.team)) : L.feedDraw;
       return `<div class="feed-item sys"><div>⚓</div><div>${text}</div></div>`;
     }
     default: return '';
@@ -816,7 +838,7 @@ function renderBoardBattle(state, ui) {
       }).join('')}
     </div>
     <div class="section-lbl">${L.battleLog}</div>
-    <div class="feed">${state.feed.slice(0, 20).map((f) => feedLine(f, ui)).join('') || `<div class="muted">${L.calmSea}</div>`}</div>
+    <div class="feed">${state.feed.slice(0, 20).map((f) => feedLine(f, ui, state)).join('') || `<div class="muted">${L.calmSea}</div>`}</div>
   </div>`;
 }
 
@@ -835,7 +857,7 @@ function renderBoardFinished(state, ui) {
   const correct = state.stats.red.correct + state.stats.black.correct;
   return `<section class="screen"><div class="panel" style="max-width:520px">
     <div class="big-emoji">${!w || w === 'draw' ? '🤝' : TEAMS[w].flag}</div>
-    <div class="panel-title">${!w || w === 'draw' ? L.drawTitle : L.winsTitle(crewName(state, w))}</div>
+    <div class="panel-title">${!w || w === 'draw' ? L.drawTitle : L.winsTitle(crewName(state, w), crewPlural(state, w))}</div>
     <div class="panel-sub">${state.reason === 'sunk' ? L.sunkSub : L.timeSub}</div>
     <div class="muted" style="margin-bottom:14px;font-size:14px">🚩 ${L.hull} <b>${Math.round(pct(r))} %</b> · 🏴‍☠️ ${L.hull} <b>${Math.round(pct(b))} %</b> · ✅ ${correct} ${L.correctAnswers}</div>
     ${leaderboardHtml(state, ui)}
@@ -1076,7 +1098,7 @@ function renderBattle(state, ui) {
       <div class="hp-row"><span class="hp-label">${TEAMS[team].flag} ${Math.round(pct(own))}%${powerOf(state, team) > 1 ? `<span class="power" title="${L.strengthHint}">${L.strength(roundPower(powerOf(state, team)))}</span>` : ''}</span><div class="hp-track"><div class="hp-fill" style="width:${pct(own)}%;background:linear-gradient(90deg,#1d7a4f,var(--green))"></div></div></div>
       <div class="hp-row"><span class="hp-label">${state.ai === foe ? '☠️' : TEAMS[foe].flag} ${Math.round(pct(enemy))}%</span><div class="hp-track"><div class="hp-fill" style="width:${pct(enemy)}%;background:linear-gradient(90deg,#8c1823,var(--danger))"></div></div></div>
       <div class="hud-row"><span class="hud-timer">⏳ ${fmtTime(ui.timeLeft(state.battleEndsAt))}</span><span class="hud-score">🏆 ${state.scores[me] ?? 0}</span>
-        <span class="hud-inv">${inv === 'ball' ? L.ball : inv === 'plank' ? L.plank : L.empty}</span></div>
+        <span class="hud-inv">${inv === 'ball' ? L.ball : inv === 'plank' ? `${L.plank} · ${Math.round(repairEfficiency(state, team) * 100)} %` : L.empty}</span></div>
     </div>
     <div class="hud-bot" data-key="hud-bot">
       <span class="hint">${hintText(state, me, ui)}</span>
@@ -1106,7 +1128,7 @@ function renderPlayerFinished(state, ui) {
   return `<section class="screen"><div class="panel" style="max-width:440px">
     <div class="big-emoji">${!w || w === 'draw' ? '🤝' : won ? '🏆' : '💀'}</div>
     <div class="panel-title">${!w || w === 'draw' ? L.drawTitle : won ? L.victory : L.defeat}</div>
-    <div class="panel-sub">${w && w !== 'draw' ? L.rule(crewName(state, w)) : L.bothLive}</div>
+    <div class="panel-sub">${w && w !== 'draw' ? L.rule(crewName(state, w), crewPlural(state, w)) : L.bothLive}</div>
     <div style="text-align:center;font-size:14px;color:var(--gold-bright);margin:6px 0 14px;font-weight:800">${L.myScore(state.scores[me] ?? 0)}</div>
     ${state.solo ? '' : leaderboardHtml(state, ui)}
   </div></section>`;
