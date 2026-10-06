@@ -9,7 +9,7 @@ You are writing a **Memizy plugin**: a learning game in **one HTML file**. Memiz
 
 ## 1. Rules (always follow)
 
-1. Produce **one complete `index.html`** file. No build step, no other files.
+1. Produce **one complete `index.html`** file. No build step, no other files. If you edit files directly (an IDE or coding agent), write it into `index.html`; otherwise give the whole file in **one** code block (```html), never in parts.
 2. Include the **manifest** `<script type="application/oqse-manifest+json">` (section 3).
 3. Import the SDK exactly like this: `import { defineGame, checkAnswer } from 'https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1/+esm';`
 4. Call `defineGame({...})` **once**. Do not use `fetch`, `WebSocket`, `localStorage`, `IndexedDB` or other network/storage APIs – they are blocked in Memizy. To remember things between games (levels, best score) use `ui.save` (section 5.3).

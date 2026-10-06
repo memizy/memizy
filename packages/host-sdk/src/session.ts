@@ -113,6 +113,15 @@ interface Instance extends SessionInstance {
 
 export const SETTINGS_ADDRESS = 'settings';
 
+/** Deep copy of JSON data that also works for proxies (which structuredClone rejects). */
+function plainCopy<T>(value: T): T {
+  try {
+    return structuredClone(value);
+  } catch {
+    return JSON.parse(JSON.stringify(value)) as T;
+  }
+}
+
 export class LocalSession {
   readonly id: string;
   readonly plugin: LoadedPlugin;
@@ -177,7 +186,8 @@ export class LocalSession {
     const resolved = resolveSettings(this.runtime.settings, config.settings ?? {});
     if (resolved.errors.length > 0) throw new Error(`Invalid settings: ${resolved.errors.join('; ')}`);
     this.settings = resolved.values;
-    this.prepared = prepareSetForPlugin(config.set, config.plugin.manifest);
+    // A plain copy: the set may be a framework proxy (Vue reactive) that structuredClone rejects.
+    this.prepared = prepareSetForPlugin(plainCopy(config.set), config.plugin.manifest);
     if (config.resume) {
       this.started = true;
       this.resumeStartPending = true;

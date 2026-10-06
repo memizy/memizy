@@ -48,8 +48,10 @@ export function buildAiPrompt(r: AiRequest): string {
     '- Keep questions short (they are read on a phone during a game).',
     '- Add a "topic" (a subtopic of two or three words) to every item.',
     '',
-    'Answer with JSON only (no Markdown, no comments), in this shape:',
+    'Answer with the JSON only, in this shape:',
     '{"title":"A short title of the set","items":[ …the items… ]}',
+    'Put the whole JSON in one code block (```json … ```) so it can be copied with one click; no comments inside the JSON.',
+    'If you edit files directly (an IDE or coding agent), save it as `questions.json` and still show it in the code block: it is pasted into the Lab.',
   ].join('\n');
 }
 

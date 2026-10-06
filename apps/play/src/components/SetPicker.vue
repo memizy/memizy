@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, shallowRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { ArrowUpTrayIcon, TrashIcon } from '@heroicons/vue/20/solid';
 import type { LoadedPlugin } from '@memizy/host-sdk';
@@ -11,7 +11,8 @@ const selected = defineModel<string>({ required: true });
 const emit = defineEmits<{ change: [StudySet | null] }>();
 const { t } = useI18n();
 
-const stored = ref<StudySet[]>([]);
+// shallowRef: a reactive proxy of a set could not be sent to the game (structuredClone)
+const stored = shallowRef<StudySet[]>([]);
 const url = ref('');
 const errors = ref<string[]>([]);
 const busy = ref(false);

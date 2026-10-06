@@ -150,6 +150,17 @@ describe('loading', () => {
   });
 });
 
+describe('set data', () => {
+  it('accepts a set wrapped in proxies (e.g. Vue reactive) and sends a plain copy', () => {
+    const wrap = <T,>(v: T): T => (v && typeof v === 'object' ? new Proxy(v as object, { get: (t, k) => wrap((t as Record<PropertyKey, unknown>)[k]) }) as T : v);
+    const proxied = wrap(setFile);
+    expect(() => structuredClone(proxied)).toThrow();
+    const { session } = newSession({ set: proxied });
+    expect(() => structuredClone(session.prepared.set)).not.toThrow();
+    expect(session.prepared.set.items.length).toBe(prepareSetForPlugin(setFile, plugin.manifest).set.items.length);
+  });
+});
+
 describe('solo', () => {
   it('starts when ready, records answers with the learning algorithm and saves data', async () => {
     const storage = new MemoryStorage();

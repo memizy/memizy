@@ -22,7 +22,7 @@ export function buildCreatePrompt(idea: string, set: OQSEFile | null): string {
       'Declare in the manifest `types` only the item types your game really handles.',
     );
   }
-  parts.push('## Output', 'Answer with the complete `index.html` file only.');
+  parts.push('## Output', 'The complete `index.html` file only. If you edit files directly (an IDE or coding agent), write it into `index.html`. Otherwise put the whole file in **one** code block (```html … ```), so it can be copied with one click: no other code blocks, no parts left out.');
   return parts.join('\n\n');
 }
 
@@ -32,7 +32,7 @@ export function buildFixPrompt(html: string, results: LabTestResult[]): string {
   return [
     'The Memizy Plugin Lab tested my plugin and found these problems:',
     lines.join('\n'),
-    'Fix them and answer with the complete corrected `index.html` file only. Keep everything else working.',
+    'Fix them and answer with the complete corrected `index.html` file only. Keep everything else working. If you edit files directly (an IDE or coding agent), write it into `index.html`. Otherwise put the whole file in **one** code block (```html … ```), so it can be copied with one click: no other code blocks, no parts left out.',
     '```html',
     html.trim(),
     '```',
