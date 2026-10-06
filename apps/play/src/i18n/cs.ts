@@ -69,7 +69,6 @@ export default {
       copyPrompt: 'Zkopírovat prompt',
       showPrompt: 'Ukázat prompt',
       step3: 'Vlož odpověď AI (JSON)',
-      answerPlaceholder: '{"title": "…", "items": [ … ]}',
       save: 'Zkontrolovat a uložit sadu',
       untitled: 'Otázky od AI',
       'no-json': 'V odpovědi není žádný JSON. Zkopíruj celou odpověď AI.',

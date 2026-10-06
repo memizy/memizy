@@ -109,7 +109,7 @@ async function save(): Promise<void> {
       </details>
 
       <div class="section-label">3. {{ t('lab.ai.step3') }}</div>
-      <textarea v-model="answer" rows="5" class="input font-mono text-xs" :placeholder="t('lab.ai.answerPlaceholder')"></textarea>
+      <textarea v-model="answer" rows="5" class="input font-mono text-xs" placeholder='{"title": "…", "items": [ … ]}'></textarea>
       <button type="button" class="btn-primary self-start" :disabled="busy || !answer.trim()" @click="save">{{ t('lab.ai.save') }}</button>
 
       <ul v-if="errors.length" class="rounded-xl bg-red-50 p-3 text-xs text-red-700">

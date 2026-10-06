@@ -71,7 +71,6 @@ const en: typeof cs = {
       copyPrompt: 'Copy the prompt',
       showPrompt: 'Show the prompt',
       step3: "Paste the AI's answer (JSON)",
-      answerPlaceholder: '{"title": "…", "items": [ … ]}',
       save: 'Check and save the set',
       untitled: 'Questions from AI',
       'no-json': 'There is no JSON in the answer. Copy the whole answer of the AI.',
