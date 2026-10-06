@@ -4,7 +4,7 @@
  */
 
 import type { HostApi, InitPayload, Player, AnswerRecord, SessionResult } from '@memizy/protocol';
-import { BOARD_ADDRESS, ProtocolError, assertJsonWithin, LIMITS } from '@memizy/protocol';
+import { BOARD_ADDRESS, ProtocolError, assertJsonWithin, LIMITS, prepareDisplaySet } from '@memizy/protocol';
 import type { OQSEAnyItem } from '@memizy/oqse';
 import { GameRuntime } from '../game/runtime';
 import type { GameDefinition } from '../types';
@@ -15,6 +15,8 @@ export interface FakeSessionOptions {
   players?: string[];
   items?: OQSEAnyItem[];
   settings?: Record<string, unknown>;
+  /** Shuffle the display order with this seed (default: keep the order, so tests can answer by index). */
+  seed?: string;
 }
 
 export const sampleItems: OQSEAnyItem[] = [
@@ -34,7 +36,7 @@ export class FakeSession<S> {
   authority: string;
   disconnected = new Set<string>();
   private readonly def: GameDefinition<S>;
-  private readonly options: Required<FakeSessionOptions>;
+  private readonly options: Required<Omit<FakeSessionOptions, 'seed'>> & { seed?: string };
 
   constructor(def: GameDefinition<S>, options: FakeSessionOptions = {}) {
     this.def = def;
@@ -45,6 +47,7 @@ export class FakeSession<S> {
       players: options.players ?? (mode === 'solo' ? ['me'] : ['anna', 'ben']),
       items: options.items ?? sampleItems,
       settings: options.settings ?? {},
+      seed: options.seed,
     };
     this.players = this.options.players.map((id, i) => ({ id, name: id, isHost: this.options.hostAs === 'player' && i === 0, connected: true }));
     this.authority = this.options.mode === 'solo' || this.options.hostAs === 'player' ? this.players[0].id : BOARD_ADDRESS;
@@ -70,7 +73,11 @@ export class FakeSession<S> {
         lateJoin,
       },
       players: this.players,
-      set: { meta: { id: 'set', language: 'cs', title: 'Set', createdAt: '2026-01-01', updatedAt: '2026-01-01' }, items: this.options.items },
+      // Like a real host (SPEC 4.4): answers only for the authority and in solo.
+      set: (() => {
+        const sets = prepareDisplaySet({ meta: { id: 'set', language: 'cs', title: 'Set', createdAt: '2026-01-01', updatedAt: '2026-01-01' }, items: this.options.items }, this.options.seed);
+        return this.options.mode === 'multiplayer' && address !== this.authority ? sets.publicSet : sets.set;
+      })(),
       settings: this.options.settings,
       config: { locale: 'cs', theme: 'light' },
       clock: { offsetMs: 0 },

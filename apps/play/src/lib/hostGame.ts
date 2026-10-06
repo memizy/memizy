@@ -36,6 +36,8 @@ export interface HostGameRecord {
   hostName: string;
   settings: Record<string, SettingValue>;
   players: { id: string; name: string; isHost: boolean }[];
+  /** Seed of the display order (the uploaded set was shuffled with it). */
+  shuffleSeed?: string;
 }
 
 /** Games older than this are not resumed. */

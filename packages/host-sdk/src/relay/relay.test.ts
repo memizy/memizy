@@ -51,7 +51,7 @@ const race: Omit<GameDefinition<State>, 'root'> = {
   render: (state, ui) =>
     ui.view === 'board'
       ? `<p class="total">${Object.values(state.scores).reduce((a, b) => a + b, 0)}</p>`
-      : `<h1 class="q">${ui.escape(ui.items[0]?.type === 'mcq-single' ? (ui.items[0] as any).question : '?')}</h1><button data-act="answer">go</button><p class="score">${state.scores[ui.self!.id] ?? 0}</p><p class="clock">${Math.abs(ui.now() - Date.now()) < 5000 ? 'ok' : 'skewed'}</p><p class="loc">${ui.locale}</p>`,
+      : `<h1 class="q">${ui.escape(ui.items[0]?.type === 'mcq-single' ? (ui.items[0] as any).question : '?')}</h1><p class="hidden">${(ui.items[0] as any)?.answerHidden ? 'yes' : 'no'}</p><button data-act="answer">go</button><p class="score">${state.scores[ui.self!.id] ?? 0}</p><p class="clock">${Math.abs(ui.now() - Date.now()) < 5000 ? 'ok' : 'skewed'}</p><p class="loc">${ui.locale}</p>`,
 };
 
 const games: GameHandle[] = [];
@@ -151,8 +151,12 @@ describe('relayed multiplayer', () => {
     });
     const events: SessionEvent[] = [];
     session.on((e) => events.push(e));
-    await host.uploadBundle(plugin.html, session.prepared.set);
+    await host.uploadBundle(plugin.html, session.prepared.publicSet);
     host.attach(session);
+    // Anyone with the PIN can download the bundle: it has no answers (SPEC 4.4).
+    const bundle = await (await fetch(`${serverUrl}/api/rooms/${host.pin}/bundle`)).json();
+    expect(bundle.set.items[0]).toMatchObject({ answerHidden: true, question: 'Who barks?' });
+    expect(bundle.set.items[0]).not.toHaveProperty('correctIndex');
 
     const boardRoot = document.createElement('div');
     document.body.appendChild(boardRoot);
@@ -170,6 +174,7 @@ describe('relayed multiplayer', () => {
 
     // The set came from the bundle, the clock is synchronized.
     expect(anna.root()!.querySelector('.q')!.textContent).toBe('Who barks?');
+    expect(anna.root()!.querySelector('.hidden')!.textContent).toBe('yes');
     expect(anna.root()!.querySelector('.clock')!.textContent).toBe('ok');
     // Each device uses its own language (Ben's app is in English, the host's in Czech).
     expect(anna.root()!.querySelector('.loc')!.textContent).toBe('cs');

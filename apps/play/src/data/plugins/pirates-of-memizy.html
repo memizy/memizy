@@ -661,6 +661,7 @@ const rules = {
       const dmg = team ? Math.round(selfDamageFor(0, 1) * powerOf(state, team)) : 0;
       if (team) state.scores[pid] = Math.max(0, (state.scores[pid] ?? 0) - dmg);
       state.result[pid] = { seq, correct: false, timedOut: true, itemId: pending.itemId, crate: pending.crate, dmg, given: null };
+      ctx.reveal(pending.itemId, { to: pid });
       if (team && state.phase === 'battle') {
         state.stats[team].wrong += 1;
         pushFeed(state, ctx, { type: 'wrong', by: pid, team, itemId: pending.itemId, dmg });
@@ -740,6 +741,7 @@ const rules = {
         state.stats[team].wrong += 1;
         pushFeed(state, ctx, { type: 'wrong', by: pid, team, itemId: pending.itemId, dmg });
         selfDamage(state, ctx, team, dmg, pid);
+        ctx.reveal(pending.itemId, { to: pid }); // the review shows the right answer to this player
       }
       state.result[pid] = { seq: pending.seq, correct, timedOut: false, itemId: pending.itemId, crate: pending.crate, dmg, given: correct ? null : givenAnswer(answer) };
       ctx.recordAnswer(pending.itemId, correct);
@@ -920,8 +922,9 @@ function answerText(item, ui) {
     case 'true-false': return item.correctAnswer ? L.truth : L.lie;
     case 'mcq-multi': return item.correctIndices.map((i) => inline(item.options[i])).join(', ');
     case 'short-answer': return esc(item.correctAnswers.slice(0, 3).join(' / '));
-    case 'sort-items': return item.items.map(inline).join(' → ');
-    case 'match-pairs': return item.prompts.map((p, i) => `${inline(p)} = ${inline(item.matches[i])}`).join('; ');
+    // The host shuffles the lists; the right order comes with the item (SPEC 4.4).
+    case 'sort-items': return (item.correctOrder ?? item.items.map((_, i) => i)).map((i) => inline(item.items[i])).join(' → ');
+    case 'match-pairs': return item.prompts.map((p, i) => `${inline(p)} = ${inline(item.matches[item.correctMatches?.[i] ?? i])}`).join('; ');
     default: return '';
   }
 }
@@ -1012,11 +1015,14 @@ function renderQuiz(state, ui, me) {
   // Wrong or too late: time to look at the correct answer (the player cannot act meanwhile).
   const choice = item.type === 'mcq-single' || item.type === 'mcq-multi' || item.type === 'true-false';
   const total = REVIEW_MS;
+  // The answer arrives from the board a moment later (ctx.reveal); until then only the question.
+  const known = !item.answerHidden;
   return `<div class="quiz review" data-key="quiz"><div class="quiz-inner">
     <div class="quiz-tag"><span>${tag}</span><span>${L.review}</span></div>
     <div class="feedback fb-wrong">${fb.timedOut ? L.timeUp(fb.dmg) : L.wrong(fb.dmg)}</div>
     <div class="quiz-q">${ui.text(item.question ?? '', { item })}</div>
-    ${choice ? `<div class="rv-list">${reviewOptions(item, fb.given, ui)}</div>`
+    ${!known ? `<div class="rv-text"><b>${L.yourWas}</b> ${givenText(item, fb.given, ui)}</div>`
+      : choice ? `<div class="rv-list">${reviewOptions(item, fb.given, ui)}</div>`
       : `<div class="rv-text"><b>${L.yourWas}</b> ${givenText(item, fb.given, ui)}</div><div class="rv-text rv-ok"><b>${L.correctWas}</b> ${answerText(item, ui)}</div>`}
     ${item.explanation ? `<div class="rv-expl">${ui.text(item.explanation, { item })}</div>` : ''}
     <div class="rv-wait"><div style="width:${clamp(reviewLeft / total, 0, 1) * 100}%"></div></div>

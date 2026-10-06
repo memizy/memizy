@@ -1,6 +1,6 @@
 # Memizy Plugin Protocol v1
 
-> Status: **Release Candidate 2** (2026-10-06) · Final `1.0` after the acceptance test with AI-generated plugins (planned 2026-10-19/20).
+> Status: **Release Candidate 3** (2026-10-06) · Final `1.0` after the acceptance test with AI-generated plugins (planned 2026-10-19/20).
 >
 > RC rules: the design does not change unless the implementation or the acceptance test proves that something does not work. Every change until `1.0` is recorded in the changelog at the end.
 
@@ -192,7 +192,7 @@ interface InitPayload {
   players: Player[];                    // current roster (presenter is not a player)
   set: {
     meta: OQSEMeta;
-    items: OQSEAnyItem[];               // only types the plugin declared; loaded with loadOQSEFile
+    items: OQSEAnyItem[];               // only types the plugin declared, in display order (4.4); public items for non-authority instances in multiplayer
   };
   settings: Record<string, unknown>;    // current values for every declared setting (defaults applied)
   config: { locale: string; theme: 'light' | 'dark' };
@@ -220,6 +220,16 @@ interface Player {
 * The negotiated MINOR is the lower of both. Neither side uses a method, field or feature introduced in a higher minor than the negotiated one.
 * `manifest.appSpecific.memizy.protocol` is checked **before** loading the iframe (the host does not offer plugins it cannot run).
 * A host implementing `2.x` MUST keep supporting plugins speaking `1.x` (adapter in `@memizy/host-sdk`).
+
+### 4.4 Display order and hidden answers
+
+The host prepares the set once per session (`prepareDisplaySet` in `@memizy/protocol`; a future server authority does the same):
+
+1. **Display order.** With a seed (normally the session id), the host shuffles `options` (mcq, unless `shuffle: false`), the options of `fill-in-select` blanks, `items` of `sort-items` (never left in the correct order), `prompts` and `matches` of `match-pairs`, the sides of `match-complex`, `events` of `timeline` (unless `shuffle: false`), the entries of `categorize` and the `labels` of `diagram-label`. Answers are remapped. Where the answer is the order itself, the item gets `correctOrder` (sort-items: indices of `items`; timeline: event ids) or `correctMatches` (match-pairs: for each prompt the index of its match). Every instance sees the same order; answers refer to the lists as delivered.
+2. **Public items.** In multiplayer, every instance except the authority gets the items without the fields that give the answer away and with `answerHidden: true`: `explanation`, `incorrectFeedback`, `optionExplanations`, `correctIndex`, `correctIndices`, `correctAnswer(s)`, `alternativeAnswers`, `range`, `correctOrder`, `correctMatches`, `connections`, `correctCells`, `correctCategoryIndex`, `correctLabelIndex`, the accepted texts of `fill-in-blanks`, the `correctIndex` of select blanks, event `date`s, `hotspots` of pin items, `back` of a flashcard, `hiddenContent` of a note, `sampleAnswer` and `rubric`. Custom `x-` types are passed unchanged. In relay multiplayer the bundle on the server holds only public items.
+3. **Revealing.** The authority sends full items to the other instances in its own messages (the plugin SDK's `ctx.reveal`); the host does not take part.
+
+Solo instances and the authority get the full items in display order.
 
 ---
 
@@ -379,7 +389,7 @@ New codes may be added in minor versions; plugins MUST treat unknown codes like 
 * The iframe is sandboxed with `allow-scripts allow-forms allow-modals allow-pointer-lock` – **never** `allow-same-origin`. As a consequence, browser storage (`localStorage`, IndexedDB) is not available to plugins; they use plugin data (section 5.2).
 * The host validates every incoming call against the schemas in `@memizy/protocol` and the limits above.
 * The host never passes credentials, user e-mail or other private data. `Player.name` is the display name chosen for the session.
-* Plugins MUST NOT rely on hiding information from players: in relay multiplayer every controller receives the set. (Answer redaction for controllers may become a feature later.)
+* Answers are known only to the authority (section 4.4). Everything else a plugin puts in the game state or in messages is visible to every instance: do not put secrets there.
 
 ---
 
@@ -400,7 +410,7 @@ Allowed in `1.x`: new optional fields, new methods guarded by a feature, new set
 ## 10. Open Questions and Future Ideas
 
 1. **Teams** – postponed (`teams` feature).
-2. **Answer redaction for controllers** (anti-cheating) – postponed.
+2. ~~Answer redaction for controllers~~ – done in RC3 (section 4.4).
 3. **Host migration** when the authority's device disappears for good – v1 only resumes the same authority from the snapshot.
 4. **Editing the set from a plugin** – postponed (`edit-set` feature).
 5. **Hot-seat** (several players sharing one device, e.g. taking turns at one computer) – an idea to consider; v1 assumes one player per instance.
@@ -412,3 +422,4 @@ Allowed in `1.x`: new optional fields, new methods guarded by a feature, new set
 
 * **RC1 (2026-10-04):** first release candidate.
 * **RC2 (2026-10-06):** `SettingDefinition.modes`; the host may show solo settings before the start (section 3.3). Additive: RC1 plugins and hosts keep working.
+* **RC3 (2026-10-06):** display order and public items (section 4.4). Not fully additive: a plugin that read answers on a player's device in multiplayer must now reveal them first (`ctx.reveal` in the SDK). Answers by index refer to the delivered lists; `checkAnswer` handles `correctOrder` / `correctMatches`, so plugins that shuffled locally and sent the indices of the delivered lists keep working.

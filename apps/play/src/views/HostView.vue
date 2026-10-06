@@ -179,7 +179,11 @@ watch(multi, (m) => {
 // Random like the players' nicknames (no real names).
 const hostName = ref(generateName());
 
-const prepared = computed(() => (plugin.value && studySet.value ? prepareSetForPlugin(studySet.value.file, plugin.value.manifest) : null));
+// The order of options, pairs… for the next game (SPEC 4.4). The players get the set
+// without answers from the server; the session uses the same seed, so all agree.
+const newSeed = () => Math.random().toString(36).slice(2, 10);
+const gameSeed = ref(newSeed());
+const prepared = computed(() => (plugin.value && studySet.value ? prepareSetForPlugin(studySet.value.file, plugin.value.manifest, { seed: gameSeed.value }) : null));
 const unsupported = computed(() => {
   const types = new Set<string>(studySet.value?.file.items.map((i) => i.type));
   const declared = plugin.value?.manifest.capabilities.types as string[] | undefined;
@@ -248,9 +252,9 @@ function ensureUploaded(): Promise<void> {
   uploading = uploading.then(async () => {
     const r = room.value;
     const raw = pluginRaw.value;
-    const set = prepared.value?.set;
+    const set = prepared.value?.publicSet; // without answers: anyone with the PIN can download it
     if (!r || !raw || !set || !multi.value) return;
-    const key = `${r.pin}|${hash(raw)}|${studySet.value?.key}|${set.items.length}`;
+    const key = `${r.pin}|${hash(raw)}|${studySet.value?.key}|${set.items.length}|${gameSeed.value}`;
     if (key === uploadedKey) return;
     try {
       await r.uploadBundle(raw, set);
@@ -328,6 +332,7 @@ function launch(p: LoadedPlugin, file: OQSEFile, roster: { id: string; name: str
     settings: settings.value,
     config: { locale: locale.value, theme: 'light' },
     sessionId,
+    shuffleSeed: gameSeed.value,
     storage: new PersistentSnapshotStorage(),
     resume,
   });
@@ -335,6 +340,7 @@ function launch(p: LoadedPlugin, file: OQSEFile, roster: { id: string; name: str
   const record = () =>
     saveHostGame(r.pin, {
       sessionId,
+      shuffleSeed: gameSeed.value,
       pluginHtml,
       setKey: setKey.value,
       hostAs: hostAs.value,
@@ -377,6 +383,7 @@ async function restoreGame(): Promise<void> {
     return;
   }
   setKey.value = record.setKey;
+  gameSeed.value = record.shuffleSeed ?? record.sessionId;
   hostAs.value = record.hostAs;
   hostName.value = record.hostName;
   settings.value = record.settings;
@@ -410,6 +417,7 @@ function backToLobby(): void {
   room.value?.setOpen(true);
   game.value = null;
   phase.value = 'lobby';
+  gameSeed.value = newSeed(); // a new order for the next game (uploaded again)
   if (labChangedInGame && choice.value.kind === 'lab') {
     labChangedInGame = false;
     reloadFromLab();

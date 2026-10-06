@@ -98,6 +98,7 @@ function newSession(config: Partial<SessionConfig> = {}) {
     hostAs: 'presenter',
     players: [{ id: 'anna', name: 'Anna' }, { id: 'ben', name: 'Ben' }],
     countdownMs: 0,
+    shuffleSeed: null, // these tests answer by position; the display order has its own tests
     ...config,
   });
   session.on((e) => events.push(e));
@@ -158,6 +159,57 @@ describe('set data', () => {
     const { session } = newSession({ set: proxied });
     expect(() => structuredClone(session.prepared.set)).not.toThrow();
     expect(session.prepared.set.items.length).toBe(prepareSetForPlugin(setFile, plugin.manifest).set.items.length);
+  });
+});
+
+describe('display order and hidden answers (SPEC 4.4)', () => {
+  const reveal: Omit<GameDefinition<{ shown: boolean }>, 'root'> = {
+    initialState: () => ({ shown: false }),
+    actions: {
+      show(state, _p, ctx) {
+        state.shown = true;
+        ctx.reveal(ctx.items[0].id, { to: ctx.playerId! });
+      },
+    },
+    render: (_state, ui) => {
+      const item = ui.item(ui.items[0].id) as any;
+      return `<p class="opts">${item.options.join(',')}</p><p class="answer">${item.answerHidden ? 'hidden' : item.correctIndex}</p><button data-act="show">s</button>`;
+    },
+  };
+
+  it('shuffles once per session; only the authority has the answers until ctx.reveal', async () => {
+    const { session } = newSession({ shuffleSeed: undefined, sessionId: 'seed-7' });
+    const board = play(session, 'board', reveal);
+    const anna = play(session, 'anna', reveal);
+    const ben = play(session, 'ben', reveal);
+    await Promise.all(games.map((g) => g.ready));
+    await session.start();
+    await wait(150);
+    const full = session.prepared.set.items[0] as any;
+    expect(session.prepared.publicSet.items[0]).toMatchObject({ answerHidden: true });
+    expect('correctIndex' in session.prepared.publicSet.items[0]).toBe(false);
+    // The same order everywhere; the answer only on the board (the authority).
+    expect(board.root.querySelector('.opts')!.textContent).toBe(full.options.join(','));
+    expect(anna.root.querySelector('.opts')!.textContent).toBe(full.options.join(','));
+    expect(board.root.querySelector('.answer')!.textContent).toBe(String(full.correctIndex));
+    expect(anna.root.querySelector('.answer')!.textContent).toBe('hidden');
+    // Revealed to Anna only.
+    (anna.root.querySelector('button') as HTMLButtonElement).click();
+    await wait(150);
+    expect(anna.root.querySelector('.answer')!.textContent).toBe(String(full.correctIndex));
+    expect(ben.root.querySelector('.answer')!.textContent).toBe('hidden');
+    // A reloaded device gets the reveal again.
+    const anna2 = play(session, 'anna', reveal);
+    await anna2.game.ready;
+    await wait(150);
+    expect(anna2.root.querySelector('.answer')!.textContent).toBe(String(full.correctIndex));
+  });
+
+  it('the order depends on the seed; solo gets the answers', () => {
+    const orders = new Set(['a', 'b', 'c', 'd', 'e', 'f'].map((seed) => JSON.stringify((newSession({ shuffleSeed: seed }).session.prepared.set.items[0] as any).options)));
+    expect(orders.size).toBe(2); // two options: both orders occur
+    const solo = newSession({ mode: 'solo', players: [{ id: 'me', name: 'Me' }], shuffleSeed: undefined }).session;
+    expect(solo.prepared.set.items[0]).not.toHaveProperty('answerHidden');
   });
 });
 

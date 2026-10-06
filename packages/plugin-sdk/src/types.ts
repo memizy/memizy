@@ -19,6 +19,7 @@ export interface GameContext {
   readonly fromHost: boolean;
   /** Current players (the presenter is not a player). */
   readonly players: readonly Player[];
+  /** The items with their answers, in the session's display order (SPEC 4.4). */
   readonly items: readonly OQSEAnyItem[];
   item(id: string): OQSEAnyItem | undefined;
   readonly settings: Readonly<Record<string, unknown>>;
@@ -38,6 +39,12 @@ export interface GameContext {
   recordAnswer(itemId: string, isCorrect: boolean, options?: RecordAnswerOptions): void;
   /** End the game. */
   end(result?: { scores?: Record<string, number>; summary?: string }): void;
+  /**
+   * Show the answer of items (correct option, explanation, back of a flashcard…).
+   * In multiplayer the other devices get items without answers until they are
+   * revealed to everyone, or only to some players with `{ to }`. No effect in solo.
+   */
+  reveal(itemIds: string | string[], options?: { to?: string | string[] }): void;
 }
 
 export interface RecordAnswerOptions {
@@ -63,6 +70,10 @@ export interface GameUI {
   /** This player (`null` on the board and in the settings view). */
   readonly self: Player | null;
   readonly players: readonly Player[];
+  /**
+   * The items in display order. On the authority (and in solo) with answers; on the
+   * other devices in multiplayer without them (`answerHidden: true`) until `ctx.reveal`.
+   */
   readonly items: readonly OQSEAnyItem[];
   item(id: string): OQSEAnyItem | undefined;
   readonly settings: Readonly<Record<string, unknown>>;

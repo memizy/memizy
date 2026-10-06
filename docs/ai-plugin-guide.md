@@ -1,6 +1,6 @@
 # Memizy Plugin Guide for AI Assistants
 
-> Status: **Release Candidate 2** (2026-10-06) – describes `@memizy/plugin-sdk@1` (being implemented).
+> Status: **Release Candidate 3** (2026-10-06) – describes `@memizy/plugin-sdk@1` (being implemented).
 > Paste this whole document into your AI assistant together with your idea for a game.
 
 You are writing a **Memizy plugin**: a learning game in **one HTML file**. Memizy (the host app) gives the game a study set (questions, notes) and runs it alone (**solo**) or with a whole class (**multiplayer**). You write only the game rules and the screens. The SDK handles connection, synchronization between devices, reconnecting, timers, rendering of formatted text and saving learning progress.
@@ -19,6 +19,7 @@ You are writing a **Memizy plugin**: a learning game in **one HTML file**. Memiz
 8. Every action **validates its payload** and **checks the current phase** before changing anything. Ignore invalid or late actions (just `return`).
 9. Buttons call actions with `data-act` attributes, not with `onclick` handlers (section 6).
 10. Render text from the study set with `ui.text(...)` – never insert it as raw HTML.
+11. **Answers live only on the authority.** In multiplayer the players' devices get the items **without answers** (`item.answerHidden === true`). Check answers only in actions with `checkAnswer(ctx.item(id), answer)`. To show the right answer or the explanation, call `ctx.reveal(itemId)` (everyone) or `ctx.reveal(itemId, { to: playerId })` (one player); in `render` draw it only when `!item.answerHidden` (section 7).
 
 ---
 
@@ -132,7 +133,7 @@ validateSettings(settings) {
 | `ctx.playerId` | Who sent the action (`null` for timers and for buttons on the board – the board is not a player). |
 | `ctx.fromHost` | `true` if the action comes from the host (the board, or the host playing along) or from the game itself (timers); `false` for other players. Protect teacher-only controls with it (section 5.2). |
 | `ctx.players` | Current players `[{ id, name, isHost, connected }]` (the presenter is not a player). |
-| `ctx.items` / `ctx.item(id)` | Items of the study set. |
+| `ctx.items` / `ctx.item(id)` | Items of the study set, with answers (actions run on the authority). |
 | `ctx.settings` | Values of the manifest settings. |
 | `ctx.mode` / `ctx.hostAs` | `'solo'` / `'multiplayer'`; `'presenter'` / `'player'` / `null`. |
 | `ctx.now` | Current time in ms (same clock on all devices). |
@@ -141,6 +142,7 @@ validateSettings(settings) {
 | `ctx.cancel(key)` | Cancel a timer. |
 | `ctx.recordAnswer(itemId, isCorrect, { playerId?, confidence? }?)` | Save learning progress (default player: `ctx.playerId`). Call it for every answered question. |
 | `ctx.end({ scores })` | The game is over. `scores` = `{ [playerId]: points }`. |
+| `ctx.reveal(itemId \| itemIds, { to? }?)` | Show the answer (and `explanation`) of items on the players' devices: to everyone, or `{ to: playerId }` / `{ to: [ids] }`. Call it in the reveal phase or after a player's answer (e.g. a review of a wrong answer). Nothing happens in solo (the player already has them). |
 
 ### `ui` (in `render`)
 
@@ -148,7 +150,8 @@ validateSettings(settings) {
 | :--- | :--- |
 | `ui.view` | `'solo'`, `'board'` or `'controller'`. |
 | `ui.self` | This player (`null` on the board). |
-| `ui.players`, `ui.items`, `ui.item(id)`, `ui.settings`, `ui.mode`, `ui.hostAs` | Same as in `ctx`. |
+| `ui.players`, `ui.settings`, `ui.mode`, `ui.hostAs` | Same as in `ctx`. |
+| `ui.items`, `ui.item(id)` | The items to show. On the board/host and in solo with answers; on players' devices in multiplayer **without** them (`answerHidden: true`) until `ctx.reveal`. |
 | `ui.timeLeft(deadline)` | Milliseconds until `deadline` (≥ 0), synchronized across devices. |
 | `ui.text(markdown, { inline, item }?)` | Safe HTML for text from the set (Markdown, LaTeX, images). Use `inline: true` inside buttons; pass `item` so images of that item are found. |
 | `ui.renderNote(note, { titleLevel }?)` | Safe HTML of a whole `note` item. |
@@ -260,14 +263,14 @@ Every item has `id` and `type`. Common optional fields: `hints`, `explanation`, 
 | `short-answer` | `question` | typed text |
 | `numeric-input` | `question`, `unit?` | number |
 | `slider` | `question`, `min`, `max`, `step`, `unit?` | number |
-| `sort-items` | `question`, `items[]` (in correct order – shuffle before showing) | array of original indices in the player's order |
-| `match-pairs` | `question?`, `prompts[]`, `matches[]` (shuffle matches) | array: for each prompt the index of the chosen match |
+| `sort-items` | `question`, `items[]` (already shuffled) | array of indices of `items[]` in the player's order |
+| `match-pairs` | `question?`, `prompts[]`, `matches[]` (already shuffled) | array: for each prompt the index of the chosen match |
 | `flashcard` | `front`, `back` | no checking – let the player rate themselves |
 | `note` | `title?`, `content`, `hiddenContent?` | no checking – show with `ui.renderNote` |
 
-* `checkAnswer(item, answer)` returns `true`/`false` and applies the rules of the set (case, tolerance, alternative answers). Import it from the SDK.
-* Shuffle options only for display; always send **original indices** back.
-* Never show `correctIndex`, `correctAnswer` etc. before the reveal phase.
+* `checkAnswer(item, answer)` returns `true`/`false` and applies the rules of the set (case, tolerance, alternative answers). Import it from the SDK and call it in **actions** (on a player's device the item has no answer and `checkAnswer` throws).
+* Memizy already shuffles options, items and matches once per game (the same order on every device, so the board and the phones agree). Show them in the order you get them and send back **indices of these lists**. Do not read the answer from the order (for `sort-items` it is in `correctOrder`, only on the authority) – use `checkAnswer`.
+* The answer fields (`correctIndex`, `correctAnswer`, `correctAnswers`, `explanation`, the `back` of a flashcard…) exist on players' devices only after `ctx.reveal`. Show them only in the reveal phase and only when `!item.answerHidden`.
 
 ---
 
@@ -328,6 +331,7 @@ function startQuestion(state, ctx) {
 
 function reveal(state, ctx) {
   state.phase = 'reveal';
+  ctx.reveal(state.questions[state.round]); // the players' devices get the answer now
   ctx.cancel('question');
   ctx.after(4000, 'next', { round: state.round });
 }
@@ -390,7 +394,8 @@ defineGame({
 
     const seconds = Math.ceil(ui.timeLeft(state.deadline) / 1000);
     const mine = ui.self ? state.answers[ui.self.id] : null;
-    const isCorrect = (o) => checkAnswer(item, o.answer);
+    // On players' devices the answer arrives with ctx.reveal (until then answerHidden is true).
+    const isCorrect = (o) => !item.answerHidden && checkAnswer(item, o.answer);
 
     return `<div class="screen ${board ? 'board' : ''}">
       <div>Otázka ${state.round + 1} / ${state.questions.length}
@@ -422,6 +427,7 @@ defineGame({
 - [ ] `types` in the manifest match the item types the game handles.
 - [ ] `hostAs` contains `"presenter"` only if `render` handles `ui.view === 'board'`.
 - [ ] Every action checks `state.phase`, the payload, and duplicates (`state.answers[ctx.playerId]`).
+- [ ] Answers are checked in actions; the reveal phase calls `ctx.reveal(itemId)` and `render` shows answers only when `!item.answerHidden`.
 - [ ] No `Math.random()`, `Date.now()`, `fetch`, `localStorage`, `WebSocket` in game logic.
 - [ ] Timers use `ctx.after` + a deadline in the state; `render` shows `ui.timeLeft(deadline)`.
 - [ ] `ctx.recordAnswer` for every answered question, `ctx.end({ scores })` at the end.

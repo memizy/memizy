@@ -5,8 +5,12 @@
  * Answer formats (also listed in the AI guide):
  *  mcq-single: option index · mcq-multi: array of indices · true-false: boolean
  *  short-answer: text · numeric-input / slider: number (or numeric text)
- *  math-input: LaTeX text · sort-items: original indices in the player's order
+ *  math-input: LaTeX text · sort-items: indices of `items` in the player's order
  *  match-pairs: for each prompt the index of the chosen match
+ *
+ * Indices refer to the lists as the plugin gets them. The host shuffles them once
+ * per session (SPEC 4.4); for sort-items, match-pairs and timeline the right
+ * order is then in `correctOrder` / `correctMatches` (otherwise the listed order).
  *  match-complex: array of [left, right] pairs · matrix: array of [row, column]
  *  fill-in-blanks: { token: text } · fill-in-select: { token: option index }
  *  categorize: { entryId: category index } · timeline: event ids in order
@@ -22,6 +26,9 @@ import type { Hotspot2D, OQSEAnyItem } from '@memizy/oqse';
 
 export function checkAnswer(item: OQSEAnyItem, answer: unknown): boolean {
   if (!item || typeof item !== 'object') throw new Error('checkAnswer: missing item');
+  if ((item as { answerHidden?: boolean }).answerHidden) {
+    throw new Error(`checkAnswer: this device has item "${item.id}" without its answer. Check answers in actions (they run on the authority), or show them after ctx.reveal().`);
+  }
 
   switch (item.type) {
     case 'mcq-single':
@@ -65,12 +72,14 @@ export function checkAnswer(item: OQSEAnyItem, answer: unknown): boolean {
 
     case 'sort-items': {
       const order = intArray(answer);
-      return order !== null && order.length === item.items.length && order.every((value, i) => value === i);
+      const target = (item as { correctOrder?: number[] }).correctOrder ?? item.items.map((_, i) => i);
+      return order !== null && order.length === item.items.length && order.every((value, i) => value === target[i]);
     }
 
     case 'match-pairs': {
       const mapping = intArray(answer);
-      return mapping !== null && mapping.length === item.prompts.length && mapping.every((value, i) => value === i);
+      const target = (item as { correctMatches?: number[] }).correctMatches ?? item.prompts.map((_, i) => i);
+      return mapping !== null && mapping.length === item.prompts.length && mapping.every((value, i) => value === target[i]);
     }
 
     case 'match-complex': {
@@ -110,7 +119,8 @@ export function checkAnswer(item: OQSEAnyItem, answer: unknown): boolean {
 
     case 'timeline': {
       if (!Array.isArray(answer) || answer.length !== item.events.length) return false;
-      return item.events.every((event, i) => answer[i] === event.id);
+      const target = (item as { correctOrder?: string[] }).correctOrder ?? item.events.map((event) => event.id);
+      return target.every((id, i) => answer[i] === id);
     }
 
     case 'pin-on-image': {

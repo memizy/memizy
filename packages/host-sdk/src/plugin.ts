@@ -5,6 +5,7 @@
 
 import {
   isProtocolSupported,
+  prepareDisplaySet,
   readPluginManifestFromHtml,
   type PluginManifest,
   type PluginRuntime,
@@ -38,7 +39,10 @@ export async function loadPluginFromUrl(url: string, fetchImpl: typeof fetch = f
 }
 
 export interface PreparedSet {
+  /** The items the plugin plays, in display order with answers (the authority; solo). */
   set: { meta: OQSEMeta; items: OQSEAnyItem[] };
+  /** The same items without answers (other instances in multiplayer, the relay bundle). */
+  publicSet: { meta: OQSEMeta; items: OQSEAnyItem[] };
   compatibility: CompatibilityReport;
   /** Items left out because the plugin does not declare their type. */
   skippedItems: number;
@@ -47,14 +51,17 @@ export interface PreparedSet {
 /**
  * Keeps only the item types the plugin declares and reports the OQSEM
  * handshake (`checkCompatibility`). The set should already be loaded with
- * `loadOQSEFile`.
+ * `loadOQSEFile`. With a `seed` (normally the session id) the options, pairs
+ * and orders are shuffled once for the session (SPEC 4.4).
  */
-export function prepareSetForPlugin(file: OQSEFile, manifest: PluginManifest): PreparedSet {
+export function prepareSetForPlugin(file: OQSEFile, manifest: PluginManifest, options: { seed?: string } = {}): PreparedSet {
   const types = manifest.capabilities.types;
   const all = !types || types.includes('*');
   const items = all ? file.items : file.items.filter((item) => (types as string[]).includes(item.type));
+  const display = prepareDisplaySet({ meta: file.meta, items }, options.seed);
   return {
-    set: { meta: file.meta, items },
+    set: display.set,
+    publicSet: display.publicSet,
     compatibility: checkCompatibility(file, manifest),
     skippedItems: file.items.length - items.length,
   };

@@ -297,6 +297,43 @@ describe('host-only actions (ctx.fromHost)', () => {
   });
 });
 
+describe('hidden answers (ctx.reveal)', () => {
+  it('followers get items without answers until the authority reveals them', async () => {
+    const def: GameDefinition<{ n: number }> = {
+      initialState: () => ({ n: 0 }),
+      actions: {
+        all(state, _p, ctx) { state.n += 1; ctx.reveal('q1'); },
+        mine(state, _p, ctx) { state.n += 1; ctx.reveal(['q2'], { to: ctx.playerId! }); },
+      },
+      render: () => '',
+    };
+    const session = new FakeSession(def);
+    session.start();
+    await tick();
+    expect(session.get('board').item('q1')).toHaveProperty('correctIndex', 1);
+    expect(session.get('anna').item('q1')).toMatchObject({ answerHidden: true });
+    expect(session.get('anna').item('q1')).not.toHaveProperty('correctIndex');
+    session.get('anna').dispatch('mine', null);
+    await tick();
+    expect(session.get('anna').item('q2')).toHaveProperty('correctAnswer', true);
+    expect(session.get('ben').item('q2')).not.toHaveProperty('correctAnswer');
+    session.get('ben').dispatch('all', null);
+    await tick();
+    expect(session.get('anna').item('q1')).toHaveProperty('correctIndex', 1);
+    expect(session.get('ben').item('q1')).toHaveProperty('correctIndex', 1);
+    // A reloaded device and a resumed authority send the reveals again.
+    session.open('ben');
+    await tick();
+    expect(session.get('ben').item('q1')).toHaveProperty('correctIndex', 1);
+    expect(session.get('ben').item('q2')).not.toHaveProperty('correctAnswer');
+    await tick(600); // snapshot
+    session.open('board');
+    session.open('anna');
+    await tick();
+    expect(session.get('anna').item('q2')).toHaveProperty('correctAnswer', true);
+  });
+});
+
 describe('pending actions (ui.pending)', () => {
   it('marks an action as pending until the authority has processed it', async () => {
     const session = new FakeSession(quiz);

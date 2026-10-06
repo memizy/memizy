@@ -29,7 +29,9 @@ export type SyncMessage =
   | { t: 'sync' }
   /** `a`: the last action number the authority processed, per sender. */
   | { t: 'state'; v: number; s: unknown; a?: Record<string, number> }
-  | { t: 'patch'; b: number; v: number; p: Patches; a?: Record<string, number> };
+  | { t: 'patch'; b: number; v: number; p: Patches; a?: Record<string, number> }
+  /** Full items (with answers) the authority revealed to this device (`ctx.reveal`). */
+  | { t: 'reveal'; items: OQSEAnyItem[] };
 
 /** An action of this device the authority has not confirmed yet (`ui.pending`). */
 export interface PendingAction {
@@ -58,13 +60,16 @@ export interface GameSnapshot {
   timers: TimerEntry[];
   players: string[];
   ended: boolean;
+  /** Revealed item ids: to everyone, and per player. */
+  revealed?: { all: string[]; to: Record<string, string[]> };
 }
 
 type Effect =
   | { type: 'after'; timer: TimerEntry }
   | { type: 'cancel'; key: string }
   | { type: 'record'; itemId: string; isCorrect: boolean; options: RecordAnswerOptions; playerId: string | null }
-  | { type: 'end'; result: { scores?: Record<string, number>; summary?: string } };
+  | { type: 'end'; result: { scores?: Record<string, number>; summary?: string } }
+  | { type: 'reveal'; itemIds: string[]; to: string[] | null };
 
 export interface RuntimeOptions {
   /** Batching interval for state updates (≤ ~20 per second). */
@@ -117,6 +122,9 @@ export class GameRuntime<S = unknown> {
   /** Authority: last processed action number per sender, not yet broadcast. */
   private acks: Record<string, number> = {};
   private acksDirty = false;
+  /** Authority: item ids revealed to everyone / to single players (sent again on a resync). */
+  private revealedAll = new Set<string>();
+  private revealedTo = new Map<string, Set<string>>();
 
   constructor(def: GameDefinition<S>, host: HostApi, init: InitPayload, options: RuntimeOptions = {}) {
     this.def = def;
@@ -186,6 +194,27 @@ export class GameRuntime<S = unknown> {
 
   item(id: string): OQSEAnyItem | undefined {
     return this.itemsById.get(id);
+  }
+
+  /** Items with their answers, received from the authority. */
+  private addItems(items: OQSEAnyItem[]): void {
+    const list = this.init.set.items as OQSEAnyItem[];
+    for (const item of items) {
+      if (!item || typeof item.id !== 'string' || !this.itemsById.has(item.id)) continue;
+      this.itemsById.set(item.id, item);
+      const index = list.findIndex((i) => i.id === item.id);
+      if (index !== -1) list[index] = item;
+    }
+    this.onChange();
+  }
+
+  /** Authority: sends the revealed items to devices that (re)load the state. */
+  private sendReveals(addresses: string[] | 'all'): void {
+    const items = (ids: Iterable<string>) => [...ids].map((id) => this.itemsById.get(id)).filter((i): i is OQSEAnyItem => !!i);
+    if (this.revealedAll.size) this.send(addresses, { t: 'reveal', items: items(this.revealedAll) });
+    for (const [playerId, ids] of this.revealedTo) {
+      if (addresses === 'all' || addresses.includes(playerId)) this.send([playerId], { t: 'reveal', items: items(ids) });
+    }
   }
 
   /** `PluginApi.setChanged` – the set was edited in the host (solo). */
@@ -263,6 +292,7 @@ export class GameRuntime<S = unknown> {
           this.scheduleFlush();
         }
       } else if (data.t === 'sync' && this.state !== undefined) {
+        this.sendReveals([message.from]);
         this.send([message.from], { t: 'state', v: this.version, s: this.state });
       }
       return;
@@ -271,7 +301,9 @@ export class GameRuntime<S = unknown> {
     // State comes only from the authority. The host stamps the sender, so another
     // player cannot send a fake state to everyone (send('all') is allowed in the protocol).
     if (message.from !== this.init.session.authority) return;
-    if (data.t === 'state') {
+    if (data.t === 'reveal' && Array.isArray(data.items)) {
+      this.addItems(data.items);
+    } else if (data.t === 'state') {
       this.state = data.s as S;
       this.version = data.v;
       this.confirmActions(data.a);
@@ -430,6 +462,11 @@ export class GameRuntime<S = unknown> {
       end: (result = {}) => {
         effects.push({ type: 'end', result: detach(result) });
       },
+      reveal: (itemIds, options = {}) => {
+        const ids = (Array.isArray(itemIds) ? itemIds : [itemIds]).filter((id) => typeof id === 'string' && this.itemsById.has(id));
+        const to = options.to === undefined ? null : (Array.isArray(options.to) ? options.to : [options.to]).filter((id) => typeof id === 'string');
+        if (ids.length) effects.push({ type: 'reveal', itemIds: ids, to });
+      },
     };
     return ctx;
   }
@@ -453,6 +490,9 @@ export class GameRuntime<S = unknown> {
           this.host.recordAnswer({ playerId, itemId: effect.itemId, isCorrect: effect.isCorrect, ...rest }).catch((e) => this.warn('recordAnswer', e));
           break;
         }
+        case 'reveal':
+          this.reveal(effect.itemIds, effect.to);
+          break;
         case 'end':
           this.ended = true;
           for (const key of [...this.timers.keys()]) this.clearTimer(key);
@@ -518,6 +558,7 @@ export class GameRuntime<S = unknown> {
         return;
       }
     }
+    if (message.t === 'state') this.sendReveals('all'); // e.g. after a resume: the answers shown so far
     this.pending = [];
     this.needFullState = false;
     this.sentVersion = this.version;
@@ -534,6 +575,24 @@ export class GameRuntime<S = unknown> {
     }, this.options.snapshotMs);
   }
 
+  /** `ctx.reveal`: sends the full items (with answers) to everyone or to some players. */
+  private reveal(itemIds: string[], to: string[] | null): void {
+    if (this.init.session.mode === 'solo') return; // the solo player already has them
+    const items = itemIds.map((id) => this.itemsById.get(id)!);
+    if (to === null) {
+      for (const id of itemIds) this.revealedAll.add(id);
+      this.send('all', { t: 'reveal', items });
+      return;
+    }
+    for (const playerId of to) {
+      const set = this.revealedTo.get(playerId) ?? new Set<string>();
+      for (const id of itemIds) set.add(id);
+      this.revealedTo.set(playerId, set);
+    }
+    if (to.length) this.send(to, { t: 'reveal', items });
+    this.scheduleSnapshot();
+  }
+
   snapshot(): GameSnapshot {
     return {
       format: 1,
@@ -544,6 +603,7 @@ export class GameRuntime<S = unknown> {
       timers: [...this.timers.values()].map(({ key, at, action, payload }) => ({ key, at, action, payload })),
       players: [...this.knownPlayers],
       ended: this.ended,
+      revealed: { all: [...this.revealedAll], to: Object.fromEntries([...this.revealedTo].map(([p, ids]) => [p, [...ids]])) },
     };
   }
 
@@ -554,6 +614,8 @@ export class GameRuntime<S = unknown> {
     this.timerSeq = snapshot.timerSeq;
     this.knownPlayers = new Set(snapshot.players);
     this.ended = snapshot.ended;
+    this.revealedAll = new Set(snapshot.revealed?.all ?? []);
+    this.revealedTo = new Map(Object.entries(snapshot.revealed?.to ?? {}).map(([p, ids]) => [p, new Set(ids)]));
     if (!this.ended) for (const timer of snapshot.timers) this.setTimer(timer);
     this.needFullState = true;
     this.scheduleFlush();

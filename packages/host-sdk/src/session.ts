@@ -63,6 +63,11 @@ export interface SessionConfig {
   userKeyFor?: (playerId: string) => string;
   config?: Partial<Theme>;
   sessionId?: string;
+  /**
+   * Seed of the display order of options, pairs… (SPEC 4.4; default: the session id).
+   * Pass the seed used for the relay bundle so all devices agree; `null` keeps the set's order.
+   */
+  shuffleSeed?: string | null;
   host?: { name: string; version: string };
   /** Max wait for all instances to be ready before the countdown (default 15 s). */
   readyTimeoutMs?: number;
@@ -187,7 +192,8 @@ export class LocalSession {
     if (resolved.errors.length > 0) throw new Error(`Invalid settings: ${resolved.errors.join('; ')}`);
     this.settings = resolved.values;
     // A plain copy: the set may be a framework proxy (Vue reactive) that structuredClone rejects.
-    this.prepared = prepareSetForPlugin(plainCopy(config.set), config.plugin.manifest);
+    const seed = config.shuffleSeed === null ? undefined : config.shuffleSeed ?? this.id;
+    this.prepared = prepareSetForPlugin(plainCopy(config.set), config.plugin.manifest, { seed });
     if (config.resume) {
       this.started = true;
       this.resumeStartPending = true;
@@ -589,7 +595,7 @@ export class LocalSession {
     instance.resumed = snapshot !== null;
     return {
       protocol,
-      host: this.options.host ?? { name: '@memizy/host-sdk', version: '1.0.0-rc.2' },
+      host: this.options.host ?? { name: '@memizy/host-sdk', version: '1.0.0-rc.3' },
       oqseVersion: '0.2',
       features: [],
       session: {
@@ -602,7 +608,8 @@ export class LocalSession {
         lateJoin: this.started && instance.view !== 'settings',
       },
       players: this.players,
-      set: structuredClone(this.prepared.set),
+      // Answers only for the authority (and solo); the others get the items without them.
+      set: structuredClone(this.mode === 'multiplayer' && instance.address !== this.authority ? this.prepared.publicSet : this.prepared.set),
       settings: { ...this.settings },
       config: this.config,
       clock: { offsetMs: 0 },
