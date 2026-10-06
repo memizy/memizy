@@ -1217,7 +1217,7 @@ const Scene = {
   ren: null, scene: null, cam: null, canvas: null, labels: null, raf: 0,
   own: null, enemy: null, ocean: null, oceanGeo: null, avatar: null,
   mates: {}, stations: [], decals: { own: {}, enemy: {} }, particles: [], projectiles: [], gulls: [], caps: [],
-  shake: 0, tex: null, avatarState: { targetX: 0, pending: null }, layout: null,
+  shake: 0, tex: null, avatarState: { targetX: 0, pending: null }, layout: null, targets: [], lastW: 0, lastH: 0, ownSide: 1,
 
   async init(team) {
     this.state = 'loading';
@@ -1338,6 +1338,10 @@ const Scene = {
       }
       const toUs = new THREE.Vector3().subVectors(this.own.position, this.enemy.position);
       this.enemy.rotation.y = Math.atan2(toUs.x, toUs.z);
+      // Which side of our hull faces the camera (it changes with the portrait / landscape layout).
+      this.own.updateMatrixWorld(true);
+      this.ownSide = this.own.worldToLocal(cam.position.clone()).z >= 0 ? 1 : -1;
+      for (const d of Object.values(this.decals.own)) d.position.z = 1.78 * this.ownSide;
       cam.fov = 52;
       cam.updateProjectionMatrix();
     };
@@ -1357,6 +1361,7 @@ const Scene = {
       const dt = Math.min((now - last) / 1000, 0.08);
       last = now;
       const t = now * 0.001;
+      this.syncSize();
       this.animate(t, dt, (wake += dt) > 0.35 && !(wake = 0));
       this.ren.render(this.scene, this.cam);
       if (!checked) {
@@ -1434,7 +1439,9 @@ const Scene = {
         seen.add(h.id);
         if (!this.decals[slot][h.id]) {
           const s = sprite(this.tex.scorch, (h.sev === 'crit' ? 2.6 : 1.9) * scale, 0.95);
-          s.position.set(h.x * 4.6, 1.15 + h.y * 0.95, 1.78); // above the waterline (waves cut them into half circles)
+          // above the waterline (waves cut them into half circles), on the side the camera sees
+          s.position.set(h.x * 4.6, 1.15 + h.y * 0.95, 1.78 * (slot === 'own' ? this.ownSide : 1));
+          if (slot === 'own') { s.material.depthTest = false; s.renderOrder = 10; }
           ship.add(s);
           this.decals[slot][h.id] = s;
         }
@@ -1492,7 +1499,18 @@ const Scene = {
     const state = G.state, me = G.me;
     if (!state || state.phase !== 'battle' || state.aiming[me]) return;
     if ((state.stunnedUntil[me] ?? 0) > G.ui.now()) return floatMsg(L.msgStunned, '#ef476f');
+    this.syncSize();
     const rect = this.canvas.getBoundingClientRect();
+    const inv = state.inventory[me];
+    // 1) The nearest label on screen (what the player sees), repairs first when holding planks.
+    const tx = e.clientX - rect.left, ty = e.clientY - rect.top;
+    const reach = Math.max(48, Math.min(rect.width, rect.height) * 0.11);
+    const near = (list) => list
+      .map((t) => ({ ...t, d: Math.hypot(t.x - tx, t.y - ty) }))
+      .filter((t) => t.d <= reach)
+      .sort((a, b) => a.d - b.d)[0];
+    const picked = (inv === 'plank' && near(this.targets.filter((t) => t.kind === 'repair'))) || near(this.targets.filter((t) => t.kind !== 'repair'));
+    if (picked) return this.tapTarget(picked, inv);
     const ray = new THREE.Raycaster();
     ray.setFromCamera({ x: ((e.clientX - rect.left) / rect.width) * 2 - 1, y: -((e.clientY - rect.top) / rect.height) * 2 + 1 }, this.cam);
     const decals = Object.entries(this.decals.own);
@@ -1504,8 +1522,8 @@ const Scene = {
         return this.walkTo(hit.object.position.x, () => game.act('repair', { hitId }));
       }
     }
+    // 2) Otherwise the 3D objects themselves.
     const station = ray.intersectObjects(this.stations)[0]?.object.userData;
-    const inv = state.inventory[me];
     if (station?.station === 'ammo') {
       if (inv === 'ball') return floatMsg(L.msgHaveBall, '#f0c96c');
       return this.walkTo(this.own.userData.ammoX, () => game.act('request_question', { crate: 'ammo' }));
@@ -1524,6 +1542,34 @@ const Scene = {
     if (ray.ray.intersectPlane(plane, target)) {
       const local = this.own.worldToLocal(target.clone());
       if (Math.abs(local.x) < 7.5 && Math.abs(local.z) < 5) this.walkTo(local.x, null);
+    }
+  },
+
+  /** A tapped label: the station, the cannons, or a breach to repair. */
+  tapTarget(t, inv) {
+    if (t.kind === 'repair') {
+      if (inv !== 'plank') return floatMsg(L.msgNeedPlank, '#f0c96c');
+      return this.walkTo(t.localX, () => game.act('repair', { hitId: t.hitId }));
+    }
+    if (t.kind === 'ammo') {
+      if (inv === 'ball') return floatMsg(L.msgHaveBall, '#f0c96c');
+      return this.walkTo(this.own.userData.ammoX, () => game.act('request_question', { crate: 'ammo' }));
+    }
+    if (t.kind === 'material') {
+      if (inv === 'plank') return floatMsg(L.msgHavePlank, '#f0c96c');
+      return this.walkTo(this.own.userData.materialX, () => game.act('request_question', { crate: 'material' }));
+    }
+    if (inv !== 'ball') return floatMsg(L.msgNeedBall, '#f0c96c');
+    return this.walkTo(this.own.userData.cannons[1].x, () => game.act('aim', { cannon: 1 }));
+  },
+
+  /** Keeps the renderer in step with the canvas (iOS Safari resizes the page as its toolbars move). */
+  syncSize() {
+    const w = this.canvas.clientWidth, h = this.canvas.clientHeight;
+    if (w && h && (w !== this.lastW || h !== this.lastH)) {
+      this.lastW = w;
+      this.lastH = h;
+      this.layout();
     }
   },
 
@@ -1602,6 +1648,7 @@ const Scene = {
 
   updateLabels() {
     const state = G.state, me = G.me;
+    this.targets = [];
     if (!state || state.phase !== 'battle' || this.aiming) { if (this.labels.innerHTML) this.labels.innerHTML = ''; return; }
     const rect = this.canvas.getBoundingClientRect();
     const inv = state.inventory[me] ?? null;
@@ -1612,11 +1659,14 @@ const Scene = {
       if (!p) continue;
       const cls = d.id === 'cannon' ? (inv === 'ball' ? ' ok' : ' dim') : d.id === 'ammo' ? (inv === 'ball' ? ' dim' : ' ok') : (inv === 'plank' ? ' dim' : ' ok');
       html += `<div class="slabel${cls}" style="left:${p.x}px;top:${p.y}px">${d.text}</div>`;
+      this.targets.push({ kind: d.id, x: p.x, y: p.y - 10 }); // the label sits above its point
     }
     if (inv === 'plank') {
-      for (const s of Object.values(this.decals.own)) {
+      for (const [hitId, s] of Object.entries(this.decals.own)) {
         const p = project(s.getWorldPosition(new THREE.Vector3()));
-        if (p) html += `<div class="slabel ok" style="left:${p.x}px;top:${p.y}px">${L.repair}</div>`;
+        if (!p) continue;
+        html += `<div class="slabel ok" style="left:${p.x}px;top:${p.y}px">${L.repair}</div>`;
+        this.targets.push({ kind: 'repair', x: p.x, y: p.y - 10, hitId, localX: s.position.x });
       }
     }
     if (this.labels.innerHTML !== html) this.labels.innerHTML = html;
