@@ -84,6 +84,13 @@ export async function importSetFile(file: File): Promise<LoadSetResult> {
   return result;
 }
 
+/** Parses and stores a set given as text (e.g. written by an AI chat). */
+export async function importSetText(text: string, name: string): Promise<LoadSetResult> {
+  const result = parseSetText(text, name, 'upload');
+  if (result.success) await idbSet(result.set.key, { source: 'upload', text, name }, store).catch(() => {});
+  return result;
+}
+
 /** Downloads, parses and stores a set from a URL (e.g. the open library on GitHub). */
 export async function importSetFromUrl(url: string): Promise<LoadSetResult> {
   let text: string;

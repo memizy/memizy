@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { ArrowUpTrayIcon, TrashIcon } from '@heroicons/vue/20/solid';
 import type { LoadedPlugin } from '@memizy/host-sdk';
+import AiSetMaker from '@/components/AiSetMaker.vue';
 import { BUILTIN_SETS, importSetFile, importSetFromUrl, loadStoredSets, removeStoredSet, type LoadSetResult, type StudySet } from '@/lib/sets';
 
 const props = defineProps<{ plugin: LoadedPlugin | null }>();
@@ -122,6 +123,7 @@ const groups = computed(() => [
       </label>
       <span class="text-xs text-text-gray">{{ t('lab.data.uploadHint') }}</span>
     </div>
+    <AiSetMaker :plugin="plugin" @saved="finish" />
     <form class="flex gap-2" @submit.prevent="onUrl">
       <input v-model="url" type="url" class="input" placeholder="https://…/set.oqse.json" />
       <button type="submit" class="btn-secondary shrink-0" :disabled="busy || !url">{{ t('common.load') }}</button>
