@@ -1,0 +1,1038 @@
+<!doctype html>
+<html lang="cs">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Babiš vs. Alzák: Válka týmů</title>
+  <script type="application/oqse-manifest+json">
+{
+  "version": "0.2",
+  "id": "https://memizy.com/plugins/babis-vs-alzak-teams",
+  "appName": "Babiš vs. Alzák: Válka týmů",
+  "pluginVersion": "2.0.0",
+  "description": "Parodická týmová kvízová bitva: kampaň o peníze, obchod s nesmysly a souboj odpovědí.",
+  "locales": ["cs"],
+  "capabilities": {
+    "actions": ["render"],
+    "types": ["mcq-single", "true-false"],
+    "features": ["markdown", "latex"]
+  },
+  "appSpecific": {
+    "memizy": {
+      "protocol": "1.0",
+      "modes": {
+        "solo": {},
+        "multiplayer": {
+          "players": { "min": 1, "max": 40, "recommended": 12 },
+          "hostAs": ["presenter", "player"],
+          "lateJoin": true
+        }
+      },
+      "settings": [
+        { "id": "questionTime", "type": "number", "label": { "cs": "Čas na otázku (s)", "en": "Time per question (s)" }, "default": 16, "min": 6, "max": 45 },
+        { "id": "questionCount", "type": "number", "label": { "cs": "Otázek v kampani (o peníze)", "en": "Campaign questions (money)" }, "default": 4, "min": 2, "max": 8 },
+        { "id": "battleRounds", "type": "number", "label": { "cs": "Bojových kol", "en": "Battle rounds" }, "description": { "cs": "V polovině bitvy se otevře druhý obchod.", "en": "A second shop opens halfway through." }, "default": 8, "min": 4, "max": 14 },
+        { "id": "soundEnabled", "type": "boolean", "label": { "cs": "Hlášky nahlas (čte je tabule)", "en": "Quotes out loud (on the board)" }, "default": true }
+      ]
+    }
+  }
+}
+</script>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --bg2: #121a33;
+      --card: #172142;
+      --line: #2a3766;
+      --text: #f4f6ff;
+      --muted: #9aa6cf;
+      --babis: #38bdf8;
+      --babis-deep: #075985;
+      --alzak: #4ade80;
+      --alzak-deep: #166534;
+      --gold: #fbbf24;
+      --red: #f43f5e;
+      --green: #22c55e;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: radial-gradient(ellipse at top, #1b2650 0%, var(--bg) 60%) fixed; color: var(--text); touch-action: manipulation; }
+    #app { min-height: 100vh; }
+    .screen { max-width: 1000px; margin: 0 auto; padding: 12px; display: flex; flex-direction: column; gap: 12px; }
+    .board .screen { max-width: 1400px; font-size: 1.25rem; padding: 20px; gap: 18px; }
+    button { font: inherit; font-weight: 800; color: inherit; cursor: pointer; border: 0; touch-action: manipulation; }
+    button:disabled { cursor: default; }
+    .muted { color: var(--muted); }
+
+    /* ---------- stage: both characters, HP, timer, speech bubbles ---------- */
+    .stage { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: end; background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01)); border: 1px solid var(--line); border-radius: 20px; padding: 10px 12px 12px; position: relative; }
+    .side { display: flex; align-items: flex-end; gap: 10px; min-width: 0; }
+    .side.alzak { flex-direction: row-reverse; text-align: right; }
+    .side .who { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+    .side .name { font-weight: 900; letter-spacing: 0.5px; font-size: 0.85em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .name .short { display: none; }
+    @media (max-width: 560px) { .name .long { display: none; } .name .short { display: inline; } }
+    .babis .name { color: var(--babis); }
+    .alzak .name { color: var(--alzak); }
+    .avatar { flex: none; width: 64px; height: 64px; }
+    .board .avatar { width: 110px; height: 110px; }
+    .avatar svg { width: 100%; height: 100%; overflow: visible; }
+    .hp { height: 16px; border-radius: 9px; background: #0a0f1f; border: 1px solid var(--line); overflow: hidden; position: relative; }
+    .board .hp { height: 24px; }
+    .hp i { position: absolute; inset: 0 auto 0 0; transition: width 0.6s ease; }
+    .babis .hp i { background: linear-gradient(90deg, var(--babis-deep), var(--babis)); }
+    .alzak .hp i { left: auto; right: 0; background: linear-gradient(270deg, var(--alzak-deep), var(--alzak)); }
+    .hp b { position: absolute; inset: 0; display: grid; place-items: center; font-size: 11px; text-shadow: 0 1px 2px #000; }
+    .board .hp b { font-size: 15px; }
+    .chips { display: flex; gap: 4px; flex-wrap: wrap; font-size: 0.72em; font-weight: 800; }
+    .alzak .chips { justify-content: flex-end; }
+    .chip { padding: 1px 7px; border-radius: 9px; background: rgba(255,255,255,0.08); border: 1px solid var(--line); white-space: nowrap; }
+    .mid { display: flex; flex-direction: column; align-items: center; gap: 4px; padding-bottom: 2px; }
+    .vs { font-weight: 1000; font-size: 1.3em; color: var(--gold); text-shadow: 0 0 12px rgba(251,191,36,0.5); }
+    .clock { font-weight: 900; font-variant-numeric: tabular-nums; font-size: 0.9em; color: var(--gold); }
+    .timebar { grid-column: 1 / -1; height: 5px; border-radius: 3px; background: rgba(255,255,255,0.08); overflow: hidden; }
+    .timebar i { display: block; height: 100%; background: linear-gradient(90deg, var(--gold), #f97316); transition: width 0.25s linear; }
+    .timebar.low i { background: var(--red); }
+    .bubbles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .bubble { position: relative; padding: 10px 14px; border-radius: 16px; font-weight: 800; line-height: 1.3; animation: pop 0.35s ease-out both; }
+    .board .bubble { font-size: 1.15em; padding: 14px 18px; }
+    .bubble.babis { background: #0c2a44; border: 2px solid var(--babis); grid-column: 1; }
+    .bubble.alzak { background: #0b3320; border: 2px solid var(--alzak); grid-column: 2; text-align: right; }
+    .bubble.second { animation-delay: 1.2s; }
+    .bubble::after { content: ''; position: absolute; top: -9px; width: 16px; height: 16px; transform: rotate(45deg); background: inherit; border-left: inherit; border-top: inherit; }
+    .bubble.babis::after { left: 26px; }
+    .bubble.alzak::after { right: 26px; }
+    .bubble small { display: block; font-size: 0.7em; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.5px; }
+    @keyframes pop { from { opacity: 0; transform: translateY(6px) scale(0.96); } to { opacity: 1; transform: none; } }
+    @keyframes bob { 50% { transform: translateY(-4px); } }
+    @keyframes shake { 25% { transform: translateX(-5px) rotate(-3deg); } 75% { transform: translateX(5px) rotate(3deg); } }
+    .bobbing { animation: bob 2.4s ease-in-out infinite; }
+    .shaking { animation: shake 0.3s ease-in-out 4; }
+    .dmg { position: absolute; top: 18px; z-index: 2; font-weight: 1000; font-size: 1.6em; color: var(--red); text-shadow: 0 2px 8px rgba(0,0,0,0.7); animation: rise 1.6s ease-out both; pointer-events: none; }
+    .dmg.heal { color: var(--green); }
+    .dmg.on-babis { left: 18%; }
+    .dmg.on-alzak { right: 18%; }
+    @keyframes rise { from { opacity: 0; transform: translateY(14px) scale(0.8); } 20% { opacity: 1; transform: scale(1.15); } to { opacity: 0; transform: translateY(-26px); } }
+
+    /* ---------- cards ---------- */
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 16px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.25); }
+    .board .card { padding: 24px; }
+    .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .tag { font-size: 0.8em; font-weight: 900; padding: 3px 10px; border-radius: 10px; background: rgba(251,191,36,0.15); color: var(--gold); text-transform: uppercase; letter-spacing: 0.5px; }
+    .tag.battle { background: rgba(244,63,94,0.15); color: #fda4af; }
+    .q { font-size: 1.3em; font-weight: 800; line-height: 1.35; }
+    .board .q { font-size: 1.9em; }
+    .opts { display: grid; grid-template-columns: 1fr; gap: 10px; }
+    @media (min-width: 620px) { .opts { grid-template-columns: 1fr 1fr; } }
+    .opt { display: flex; align-items: center; gap: 12px; min-height: 58px; padding: 12px 14px; border-radius: 14px; text-align: left; color: #fff; font-size: 1.05em; box-shadow: inset 0 -4px 0 rgba(0,0,0,0.25); transition: transform 0.1s, filter 0.2s, opacity 0.2s; }
+    .board .opt { min-height: 84px; font-size: 1.35em; }
+    .opt:not(:disabled):active { transform: translateY(2px); }
+    .opt .key { flex: none; width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; background: rgba(0,0,0,0.25); font-weight: 1000; }
+    .opt .lbl { flex: 1; min-width: 0; }
+    .opt .cnt { flex: none; font-weight: 1000; background: rgba(0,0,0,0.3); border-radius: 9px; padding: 2px 9px; }
+    .c0 { background: #e11d48; } .c1 { background: #2563eb; } .c2 { background: #d97706; } .c3 { background: #16a34a; } .c4 { background: #7c3aed; } .c5 { background: #0891b2; }
+    .opt.yes { background: #16a34a; } .opt.no { background: #e11d48; }
+    .opt.mine { outline: 4px solid #fff; outline-offset: 2px; }
+    .opt.dim { opacity: 0.35; filter: grayscale(0.6); }
+    .opt.right { outline: 4px solid var(--gold); outline-offset: 2px; filter: brightness(1.1); }
+    .result { text-align: center; font-weight: 900; font-size: 1.15em; padding: 10px; border-radius: 14px; }
+    .result.good { background: rgba(34,197,94,0.15); color: #86efac; }
+    .result.bad { background: rgba(244,63,94,0.15); color: #fda4af; }
+    .result.wait { background: rgba(251,191,36,0.12); color: var(--gold); }
+
+    /* ---------- team select ---------- */
+    .pick { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .team-card { border-radius: 20px; padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; border: 2px solid transparent; }
+    .team-card.babis { background: linear-gradient(180deg, #0c2a44, #0a1a30); border-color: var(--babis); }
+    .team-card.alzak { background: linear-gradient(180deg, #0b3320, #08200f); border-color: var(--alzak); }
+    .team-card h2 { margin: 0; font-size: 1.3em; }
+    .team-card .avatar { width: 96px; height: 96px; }
+    .board .team-card .avatar { width: 150px; height: 150px; }
+    .join { width: 100%; padding: 14px; border-radius: 14px; font-size: 1.05em; color: #fff; }
+    .join.babis { background: linear-gradient(135deg, #0284c7, #075985); }
+    .join.alzak { background: linear-gradient(135deg, #22c55e, #166534); }
+    .join:disabled { opacity: 0.6; }
+    .pills { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; }
+    .pill { padding: 3px 9px; border-radius: 10px; background: rgba(255,255,255,0.08); font-size: 0.8em; font-weight: 800; }
+    .pill.me { background: var(--gold); color: #1a1205; }
+
+    /* ---------- shop ---------- */
+    .shop { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
+    @media (max-width: 560px) {
+      .shop { grid-template-columns: 1fr 1fr; gap: 8px; }
+      .ware { padding: 9px; gap: 4px; }
+      .ware .ico { font-size: 1.5em; }
+      .ware .nm { font-size: 0.9em; }
+      .ware .ds { font-size: 0.75em; }
+      .ware .ft { flex-direction: column; align-items: stretch; }
+      .buy { padding: 7px; font-size: 0.85em; }
+    }
+    .board .shop { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+    .ware { background: var(--bg2); border: 1px solid var(--line); border-radius: 16px; padding: 12px; display: flex; flex-direction: column; gap: 6px; }
+    .ware.owned { border-color: var(--gold); background: rgba(251,191,36,0.08); }
+    .ware .top { display: flex; align-items: center; gap: 10px; }
+    .ware .ico { font-size: 2em; line-height: 1; }
+    .ware .nm { font-weight: 900; line-height: 1.2; }
+    .ware .ds { font-size: 0.85em; color: var(--muted); flex: 1; }
+    .ware .ft { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+    .price { font-weight: 1000; color: var(--gold); }
+    .price s { color: var(--muted); font-weight: 700; margin-right: 4px; }
+    .kind { font-size: 0.7em; font-weight: 900; padding: 2px 7px; border-radius: 8px; text-transform: uppercase; }
+    .kind.team { background: rgba(56,189,248,0.15); color: var(--babis); }
+    .kind.self { background: rgba(251,191,36,0.15); color: var(--gold); }
+    .kind.foe { background: rgba(244,63,94,0.15); color: #fda4af; }
+    .buy { padding: 8px 12px; border-radius: 10px; background: linear-gradient(135deg, #f59e0b, #b45309); color: #fff; }
+    .buy:disabled { background: #334; color: var(--muted); }
+    .done { padding: 12px 18px; border-radius: 14px; background: #334; color: #fff; }
+    .done.on { background: linear-gradient(135deg, #22c55e, #166534); }
+    .log { display: flex; flex-direction: column; gap: 4px; max-height: 220px; overflow: auto; font-size: 0.85em; }
+
+    /* ---------- misc ---------- */
+    .big { text-align: center; padding: 24px 12px; }
+    .big h1 { margin: 0 0 6px; font-size: 2em; color: var(--gold); }
+    .board .big h1 { font-size: 3em; }
+    .skip { padding: 6px 12px; border-radius: 10px; background: rgba(255,255,255,0.1); font-size: 0.85em; }
+    .rank { display: flex; flex-direction: column; gap: 6px; width: 100%; max-width: 620px; margin: 0 auto; }
+    .rank div { display: flex; justify-content: space-between; gap: 8px; padding: 9px 14px; border-radius: 12px; background: var(--bg2); font-weight: 800; }
+    .rank div.first { background: rgba(251,191,36,0.15); border: 1px solid var(--gold); }
+    .mvp { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  </style>
+</head>
+
+<body>
+  <div id="app"></div>
+
+  <script type="module">
+    import { defineGame, checkAnswer } from 'https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1/+esm';
+
+    /* ═════════════════════════════════════════════════════════
+       Content: teams, shop, quotes (parody — every quote at most once per game)
+       ═════════════════════════════════════════════════════════ */
+    const TEAMS = {
+      babis: { name: 'Tým Babiš', hero: 'Andrej Babiš', slogan: 'Koblihy, řepka a Čapí hnízdo!' },
+      alzak: { name: 'Tým Alzák', hero: 'Alzák', slogan: 'Sto tabletů týdně a masakr cen!' },
+    };
+    const other = (t) => (t === 'babis' ? 'alzak' : 'babis');
+
+    /**
+     * kind: team (helps your team), self (your own answers), foe (hurts the other team).
+     * Team effects are multiplied by the crew power, so a smaller team is not weaker.
+     */
+    const SHOP = [
+      { id: 'koblizek', icon: '🍩', name: 'Agrofert koblížek', cost: 220, kind: 'team', desc: 'Týmu doplní 35 HP. „Koblížek pro každého!“' },
+      { id: 'alzabox', icon: '📦', name: 'Pancéřovaný Alzabox', cost: 280, kind: 'team', desc: 'Štít 40 pro tým. Bez kódu z SMS se nikdo nedostane dovnitř.' },
+      { id: 'capi', icon: '🪺', name: 'Čapí hnízdo', cost: 400, kind: 'team', desc: 'Štít 65. „To není moje, na to nemůžou!“' },
+      { id: 'motyli', icon: '🦋', name: 'Motýle a včely', cost: 320, kind: 'team', desc: 'Týmu léčí 12 HP každé kolo, čtyři kola po sobě.' },
+      { id: 'tiskovka', icon: '🎤', name: 'Tisková konference', cost: 300, kind: 'team', desc: 'Příští kolo dá tvůj tým o 40 % větší ránu.' },
+      { id: 'tablety', icon: '📱', name: 'Sto tabletů týdně', cost: 420, kind: 'self', desc: 'Každý tvůj zásah +12 poškození až do konce hry.' },
+      { id: 'repka', icon: '🌻', name: 'Řepkové dělo', cost: 330, kind: 'self', desc: 'Každý tvůj zásah +8 poškození až do konce hry.' },
+      { id: 'zaruka', icon: '🧾', name: 'Prodloužená záruka', cost: 180, kind: 'self', desc: 'Dvě tvoje chyby v bitvě se počítají aspoň jako poloviční zásah.' },
+      { id: 'magnet', icon: '🧲', name: 'Slevový magnet', cost: 200, kind: 'self', desc: 'Každá tvoje správná odpověď v bitvě přinese +80 Kč navíc.' },
+      { id: 'kupon', icon: '🎟️', name: 'Kupón na Black Friday', cost: 120, kind: 'self', desc: 'V příštím obchodě máš všechno o 30 % levnější.', firstShopOnly: true },
+      { id: 'reportaz', icon: '📺', name: 'Reportáž v televizi', cost: 300, kind: 'foe', desc: 'Soupeř dá v příštím kole o 30 % slabší ránu.' },
+      { id: 'ucelovka', icon: '🗞️', name: 'Účelovka', cost: 260, kind: 'foe', desc: 'Rozbije soupeři celý štít. „To je kampaň!“' },
+    ];
+    const shopItem = (id) => SHOP.find((s) => s.id === id);
+
+    const QUOTES = {
+      babis: {
+        intro: [
+          'Čau lidi! Pojďte ke mně, u mě se maká a ne kecá!',
+          'Já jsem do toho nechtěl jít, ale když vidím ten zelený e-shop, tak musím!',
+          'Kdo se přidá k Týmu Babiš, dostane koblížek. Možná dva!',
+          'My jsme tým, který makal, zatímco ostatní tweetovali!',
+        ],
+        good: [
+          'Vidíte to? Výsledky! Ne jako ti druzí!',
+          'Tak to je přesně ono. Rychle, efektivně, jako firma!',
+          'Výborně! Tohle si dám do kampaně!',
+          'Konečně někdo, kdo se učil, a ne jenom kecal v televizi!',
+          'To je úspěch, jaký tahle republika neviděla!',
+          'Takhle se odpovídá! Dám vám medaili. Vlastně koblížek.',
+          'Perfektní! Já jsem to věděl taky, jenom jsem to nechtěl říct.',
+          'Vidíte, že to jde? Stačí makat od rána do večera!',
+        ],
+        bad: [
+          'Sorry jako, ale tohle je totální účelovka!',
+          'To je kampaň! Někdo vám poslal špatné odpovědi!',
+          'Já jsem tu otázku nikdy neviděl a nic jsem nepodepsal!',
+          'To není moje chyba, to je chyba těch předchozích vlád!',
+          'Kdo vás to učil? To se musí prověřit!',
+          'Takhle by to ve firmě nefungovalo, to vám řeknu!',
+          'To je naprostý nesmysl, ale my to dotáhneme!',
+          'Vy jste mi slíbili, že budete makat!',
+        ],
+        attack: [
+          'Tady máte koblížek přímo na kasu!',
+          'Řepkové dělo, pal!',
+          'Tak tohle je audit, přátelé!',
+          'Motýli útočí! A včely taky!',
+          'To je za všechny ty slevové kódy!',
+          'Jedna faktura, druhá faktura, a máte to!',
+          'Takhle se dělá politika: rychle a natvrdo!',
+          'My postavíme dálnici přímo přes váš sklad!',
+          'Tohle je odpověď na váš Black Friday!',
+          'Kontrola z finančáku! Bum!',
+          'Já vám ukážu, co je to efektivita!',
+          'Tohle jste nečekali, co? Já taky ne!',
+        ],
+        hit: [
+          'Au! To je útok na demokracii!',
+          'Já na vás podám trestní oznámení!',
+          'Tohle je hybridní válka proti mně!',
+          'To bolelo víc než Čapí hnízdo!',
+          'Kdo vám dal právo do mě takhle střílet?',
+          'To mi poslal Kalousek, určitě!',
+          'Moje koblihy! Vy jste zničili koblihy!',
+          'To je spiknutí e-shopů a novinářů!',
+          'Já to vydržím, já vydržím všechno!',
+          'Tohle si zapamatuju, to vám slibuju!',
+          'To je nefér, já jsem zrovna makal!',
+          'Au! Ale nikdy neodstoupím!',
+        ],
+        tie: [
+          'Plichta? To je jako koaliční vyjednávání!',
+          'Nikdo nevyhrál, tak to aspoň nikdo nemůže zdanit!',
+          'Remíza. Ale morálně jsme vyhráli my!',
+        ],
+        shop: [
+          'Nakupujte! Ale fakturujte to přes moji firmu!',
+          'Kdo odpovídal rychle, ten má na koblihy!',
+          'Neplýtvejte! Každou korunu jsem si vydřel!',
+        ],
+        win: [
+          'Vyhráli jsme! Všem rozdávám koblížky!',
+          'To je historické vítězství! Jako vždycky!',
+          'Makali jsme a vyhráli! Tak to má být!',
+        ],
+        lose: [
+          'Já jsem to nevzdal, to oni podváděli!',
+          'Prohráli jsme, ale jen o kousek. Moje čísla říkají něco jiného!',
+          'To byla kampaň. Příště to bude jinak!',
+        ],
+      },
+      alzak: {
+        intro: [
+          'Ahoj, hejblátko! Přidej se ke mně a doručím ti vítězství do půlnoci!',
+          'Tým Alzák! Nakupuj rychle, než bude vyprodáno!',
+          'Zelená síla! Žádné koblihy, jen čisté gigabajty!',
+          'Mám pro tebe akci: jedna výhra za cenu dvou!',
+        ],
+        good: [
+          'Máááš to! Doručeno do Alzaboxu!',
+          'Bleskové doručení správné odpovědi!',
+          'Tohle je masakr cen! Teda masakr soupeře!',
+          'Skladník hlásí: všechno správně zabaleno!',
+          'Zelená karta schválena, hejblátko!',
+          'Takhle rychle jsem nedoručil ani ty tablety!',
+          'Odpověď je skladem a je tvoje!',
+          'Výborně! Dávám ti prodlouženou záruku na chytrost!',
+        ],
+        bad: [
+          'Reklamace! Tahle odpověď přišla rozbitá!',
+          'Chyba lávky, hejblátko!',
+          'Tohle v katalogu nemáme!',
+          'Zboží poškozeno při přepravě. Teda při přemýšlení.',
+          'Sleva vypršela a odpověď s ní!',
+          'Ale no tak! I kurýr na koloběžce by to věděl!',
+          'Vracíme peníze? Ne, tentokrát ne!',
+          'Košík prázdný, body taky!',
+        ],
+        attack: [
+          'Paleta tabletů letí přímo na tebe!',
+          'Expresní doručení rány!',
+          'Masakr cen! Masakr HP!',
+          'Bzzzt! Alzabox se otvírá a v něm je rána!',
+          'Kup si záruku, budeš ji potřebovat!',
+          'Tohle je doručení do vlastních rukou!',
+          'Zelená síla útočí!',
+          'Black Friday na tvoje HP!',
+          'Gigabajty rozbíjí koblihy!',
+          'Akce jedna plus jedna: dvě rány za cenu jedné!',
+          'Skladník hází krabice!',
+          'Tohle ti doručím ještě dnes!',
+        ],
+        hit: [
+          'Au! Kdo po mně hází koblihy?',
+          'Zásilka poškozena!',
+          'Tohle nebylo v obchodních podmínkách!',
+          'Moje anténky! Ne!',
+          'Alzabox hlásí poruchu!',
+          'Bzzzt, au, au!',
+          'Tohle reklamuju!',
+          'Kód z SMS nefunguje! Pomoc!',
+          'Sklad hoří! Teda skoro.',
+          'To bolí víc než doprava zdarma nad tisíc!',
+          'Řepka v mém skladu? Fuj!',
+          'To byla nečekaná zásilka!',
+        ],
+        tie: [
+          'Plichta! Vracím peníze oběma stranám!',
+          'Nerozhodně. To je jako vyprodáno na obou skladech!',
+          'Remíza? Dám si na to slevu!',
+        ],
+        shop: [
+          'Megastore otevřen! Nakupuj, hejblátko!',
+          'Dnes všechno skladem! Teda skoro všechno!',
+          'Rychlé prsty nakupují první!',
+        ],
+        win: [
+          'Vítězství doručeno! Sto tabletů pro všechny!',
+          'Zelená síla vyhrává! Masakr cen!',
+          'Vyhráli jsme a doprava je zdarma!',
+        ],
+        lose: [
+          'Prohra? To musí být chyba v systému!',
+          'Reklamuju výsledek!',
+          'Příště doručím rychleji, slibuju!',
+        ],
+      },
+    };
+
+    /* ═════════════════════════════════════════════════════════
+       Rules helpers (run on the authority)
+       ═════════════════════════════════════════════════════════ */
+    const REVEAL_MS = 4000;
+    const RESOLVE_MS = 4500;
+    const SHOP_MS = 30000;
+    const TEAM_MS = 20000;
+    const BASE_DMG = 30;
+    const HP_PER_SAILOR = 170;
+    /** Everyone gets this at each shop, so even a slow start can buy something. */
+    const SUBSIDY = 200;
+
+    const qMs = (ctx) => Math.min(45, Math.max(6, Number(ctx.settings.questionTime) || 16)) * 1000;
+    const connected = (ctx) => ctx.players.filter((p) => p.connected);
+    const members = (state, ctx, team) => connected(ctx).filter((p) => state.teams[p.id] === team);
+    /** Players a team counts as (the computer plays for as many as the other team has). */
+    const teamSize = (state, ctx, team) => (state.ai === team ? Math.max(1, members(state, ctx, other(team)).length) : members(state, ctx, team).length);
+    /** A smaller team counts more (one player against three hits like three). */
+    function powerOf(state, ctx, team) {
+      if (state.ai === team) return 1;
+      const own = teamSize(state, ctx, team), opp = teamSize(state, ctx, other(team));
+      return own > 0 && opp > own ? opp / own : 1;
+    }
+
+    /** An unused quote of a category (null when all were said: no quote repeats in a game). */
+    function quote(state, ctx, who, cat) {
+      const pool = QUOTES[who][cat] ?? [];
+      const free = pool.map((_, i) => i).filter((i) => !state.used.includes(`${who}.${cat}.${i}`));
+      if (!free.length) return null;
+      const i = free[Math.floor(ctx.random() * free.length)];
+      state.used.push(`${who}.${cat}.${i}`);
+      return pool[i];
+    }
+    function say(state, lines) {
+      state.dialogue = { id: (state.dialogue?.id ?? 0) + 1, lines: lines.filter((l) => l.text) };
+    }
+
+    function schedule(state, ctx, ms) {
+      state.timerKey += 1;
+      state.phaseStart = ctx.now;
+      state.deadline = ctx.now + ms;
+      ctx.after(ms, 'timeUp', { timerKey: state.timerKey }, { key: 'timer' });
+    }
+
+    function hullFor(state, ctx) {
+      return Math.max(HP_PER_SAILOR, HP_PER_SAILOR * Math.max(teamSize(state, ctx, 'babis'), teamSize(state, ctx, 'alzak')));
+    }
+    /** Both teams get the same HP (from the bigger team); keeps the percentage when it changes. */
+    function rescale(state, ctx) {
+      const max = hullFor(state, ctx);
+      for (const t of ['babis', 'alzak']) {
+        state.hp[t] = Math.round((state.hp[t] / state.maxHp[t]) * max);
+        state.maxHp[t] = max;
+      }
+    }
+
+    function ensurePlayer(state, id) {
+      state.coins[id] ??= 60;
+      state.perks[id] ??= { dmg: 0, warranty: 0, magnet: 0, coupon: false };
+      state.bought[id] ??= [];
+      state.streak[id] ??= 0;
+      state.dealt[id] ??= 0;
+      state.correct[id] ??= 0;
+    }
+
+    function correctValue(item) {
+      return item.type === 'true-false' ? item.correctAnswer : item.correctIndex;
+    }
+
+    /* ---- phases ---- */
+    function startTeamSelect(state, ctx) {
+      state.phase = 'team_select';
+      say(state, [{ who: 'babis', text: quote(state, ctx, 'babis', 'intro') }, { who: 'alzak', text: quote(state, ctx, 'alzak', 'intro') }]);
+      schedule(state, ctx, TEAM_MS);
+    }
+
+    function startCampaign(state, ctx) {
+      let b = members(state, ctx, 'babis').length, a = members(state, ctx, 'alzak').length;
+      for (const p of ctx.players) {
+        if (state.teams[p.id]) continue;
+        state.teams[p.id] = b <= a ? 'babis' : 'alzak';
+        if (state.teams[p.id] === 'babis') b++; else a++;
+      }
+      // Everyone in one team: the computer plays the other one.
+      state.ai = !members(state, ctx, 'babis').length ? 'babis' : !members(state, ctx, 'alzak').length ? 'alzak' : null;
+      const hp = hullFor(state, ctx);
+      state.hp = { babis: hp, alzak: hp };
+      state.maxHp = { babis: hp, alzak: hp };
+      say(state, []);
+      startQuestion(state, ctx, 'quiz');
+    }
+
+    function startQuestion(state, ctx, stage) {
+      state.phase = 'question';
+      state.stage = stage;
+      state.answers = {};
+      state.reveal = null;
+      state.lastRound = null;
+      // No quote here: the question speaks for itself (quotes only react to what happened).
+      schedule(state, ctx, qMs(ctx));
+    }
+
+    function currentItemId(state) {
+      return state.stage === 'quiz' ? state.quizIds[state.quizRound] : state.battleIds[state.battleRound % state.battleIds.length];
+    }
+
+    /** Correctness and speed (1 = instant, 0 = at the deadline) of a player's answer. */
+    function judge(state, ctx, pid, item) {
+      const a = state.answers[pid];
+      if (!a) return { answered: false, correct: false, speed: 0 };
+      const speed = Math.max(0, Math.min(1, 1 - (a.at - state.phaseStart) / qMs(ctx)));
+      return { answered: true, correct: checkAnswer(item, a.answer), speed };
+    }
+
+    function revealQuiz(state, ctx) {
+      const itemId = currentItemId(state);
+      const item = ctx.item(itemId);
+      state.phase = 'reveal';
+      state.reveal = { correct: item ? correctValue(item) : null, results: {} };
+      const rate = { babis: [0, 0], alzak: [0, 0] };
+      for (const p of connected(ctx)) {
+        const team = state.teams[p.id];
+        if (!team || !item) continue;
+        const j = judge(state, ctx, p.id, item);
+        let earned = 0;
+        if (j.correct) earned = Math.round(100 + 400 * Math.pow(j.speed, 1.3));
+        else if (j.answered) earned = -Math.min(40, state.coins[p.id]);
+        state.coins[p.id] += earned;
+        if (j.correct) state.correct[p.id] += 1;
+        state.reveal.results[p.id] = { correct: j.correct, answered: j.answered, earned };
+        rate[team][0] += j.correct ? 1 : 0;
+        rate[team][1] += 1;
+        if (j.answered) ctx.recordAnswer(itemId, j.correct, { playerId: p.id });
+      }
+      // One reaction: the team that did better brags, or the worse one complains.
+      const share = (t) => (rate[t][1] ? rate[t][0] / rate[t][1] : state.ai === t ? 0.6 : 0);
+      const better = share('babis') >= share('alzak') ? 'babis' : 'alzak';
+      const who = ctx.random() < 0.5 ? better : other(better);
+      const good = who === better ? share(who) > 0 : share(who) >= 0.5;
+      say(state, [{ who, text: quote(state, ctx, who, good ? 'good' : 'bad') }]);
+      schedule(state, ctx, REVEAL_MS);
+    }
+
+    function startShop(state, ctx) {
+      state.phase = 'shop';
+      state.shopIdx += 1;
+      state.shopDone = {};
+      for (const id of Object.keys(state.bought)) state.bought[id] = [];
+      state.shopLog = [];
+      for (const p of connected(ctx)) if (state.teams[p.id]) state.coins[p.id] += SUBSIDY;
+      // The computer buys too (about what a team would).
+      if (state.ai) {
+        const n = teamSize(state, ctx, state.ai);
+        state.shield[state.ai] += Math.round(30 * n);
+        state.hp[state.ai] = Math.min(state.maxHp[state.ai], state.hp[state.ai] + Math.round(20 * n));
+        state.shopLog.push({ who: 'ai', item: 'alzabox' });
+      }
+      const first = ctx.random() < 0.5 ? 'babis' : 'alzak';
+      say(state, [{ who: first, text: quote(state, ctx, first, 'shop') }]);
+      schedule(state, ctx, SHOP_MS);
+    }
+
+    function price(state, pid, item) {
+      return state.perks[pid]?.coupon ? Math.round(item.cost * 0.7) : item.cost;
+    }
+
+    function resolveBattle(state, ctx) {
+      const itemId = currentItemId(state);
+      const item = ctx.item(itemId);
+      state.phase = 'resolve';
+      state.reveal = { correct: item ? correctValue(item) : null, results: {} };
+      const out = { babis: { dmg: 0, hits: 0, of: 0 }, alzak: { dmg: 0, hits: 0, of: 0 } };
+
+      for (const team of ['babis', 'alzak']) {
+        if (state.ai === team) {
+          // The computer: as many "players" as the other team, about 60–70 % right.
+          const n = teamSize(state, ctx, team);
+          const acc = Math.min(0.72, 0.58 + 0.015 * state.battleRound);
+          for (let i = 0; i < n; i++) {
+            out[team].of += 1;
+            if (ctx.random() < acc) { out[team].hits += 1; out[team].dmg += BASE_DMG * (0.85 + ctx.random() * 0.4); }
+          }
+          continue;
+        }
+        let raw = 0;
+        for (const p of members(state, ctx, team)) {
+          const perks = state.perks[p.id];
+          const j = item ? judge(state, ctx, p.id, item) : { answered: false, correct: false, speed: 0 };
+          out[team].of += 1;
+          let dmg = 0;
+          if (j.correct) {
+            state.streak[p.id] += 1;
+            dmg = BASE_DMG * (0.75 + 0.5 * j.speed) + perks.dmg;
+            if (state.streak[p.id] >= 3) dmg *= 1.3; // combo
+            out[team].hits += 1;
+            state.correct[p.id] += 1;
+            state.coins[p.id] += 50 + (perks.magnet ? 80 : 0);
+          } else {
+            state.streak[p.id] = 0;
+            if (j.answered && perks.warranty > 0) { perks.warranty -= 1; dmg = (BASE_DMG + perks.dmg) * 0.5; }
+          }
+          dmg = Math.round(dmg * powerOf(state, ctx, team));
+          state.dealt[p.id] += dmg;
+          raw += dmg;
+          state.reveal.results[p.id] = { correct: j.correct, answered: j.answered, dmg, combo: j.correct && state.streak[p.id] >= 3 };
+          if (j.answered && item) ctx.recordAnswer(itemId, j.correct, { playerId: p.id });
+        }
+        out[team].dmg = raw;
+      }
+
+      for (const team of ['babis', 'alzak']) {
+        let dmg = out[team].dmg * (state.boost[team] ? 1.4 : 1) * (state.weak[team] ? 0.7 : 1);
+        dmg = Math.round(dmg);
+        out[team].dmg = dmg;
+        const foe = other(team);
+        const absorbed = Math.min(state.shield[foe], dmg);
+        state.shield[foe] -= absorbed;
+        state.hp[foe] = Math.max(0, state.hp[foe] - (dmg - absorbed));
+        out[team].absorbed = absorbed;
+      }
+      for (const team of ['babis', 'alzak']) {
+        const r = state.regen[team];
+        if (r.rounds > 0 && state.hp[team] > 0) { state.hp[team] = Math.min(state.maxHp[team], state.hp[team] + r.amount); r.rounds -= 1; out[team].healed = r.amount; }
+        state.boost[team] = false;
+        state.weak[team] = false;
+      }
+      state.lastRound = out;
+
+      // Reactions: the stronger side attacks, the other one complains.
+      const b = out.babis.dmg, a = out.alzak.dmg;
+      if (b === a) {
+        const who = ctx.random() < 0.5 ? 'babis' : 'alzak';
+        say(state, [{ who, text: quote(state, ctx, who, 'tie') }]);
+      } else {
+        const att = b > a ? 'babis' : 'alzak';
+        say(state, [{ who: att, text: quote(state, ctx, att, 'attack') }, { who: other(att), text: quote(state, ctx, other(att), 'hit') }]);
+      }
+      schedule(state, ctx, RESOLVE_MS);
+    }
+
+    function finish(state, ctx) {
+      state.phase = 'end';
+      ctx.cancel('timer');
+      state.deadline = 0;
+      const pb = state.hp.babis / state.maxHp.babis, pa = state.hp.alzak / state.maxHp.alzak;
+      state.winner = pb === pa ? 'draw' : pb > pa ? 'babis' : 'alzak';
+      if (state.winner === 'draw') say(state, [{ who: 'babis', text: quote(state, ctx, 'babis', 'tie') }, { who: 'alzak', text: quote(state, ctx, 'alzak', 'tie') }]);
+      else say(state, [{ who: state.winner, text: quote(state, ctx, state.winner, 'win') }, { who: other(state.winner), text: quote(state, ctx, other(state.winner), 'lose') }]);
+      const scores = {};
+      for (const p of ctx.players) {
+        ensurePlayer(state, p.id);
+        const won = state.teams[p.id] === state.winner;
+        scores[p.id] = state.correct[p.id] * 100 + state.dealt[p.id] * 3 + (won ? 500 : state.winner === 'draw' ? 250 : 0);
+      }
+      state.scores = scores;
+      ctx.end({ scores });
+    }
+
+    /** Moves the game on (the timer, or the host's skip button). */
+    function advance(state, ctx) {
+      const half = Math.ceil(state.totalBattle / 2);
+      switch (state.phase) {
+        case 'team_select': return startCampaign(state, ctx);
+        case 'question': return state.stage === 'quiz' ? revealQuiz(state, ctx) : resolveBattle(state, ctx);
+        case 'reveal':
+          if (state.quizRound + 1 < state.quizIds.length) { state.quizRound += 1; return startQuestion(state, ctx, 'quiz'); }
+          return startShop(state, ctx);
+        case 'shop':
+          if (state.shopIdx === 1) {
+            state.phase = 'battle_intro';
+            say(state, []);
+            return schedule(state, ctx, 3500);
+          }
+          return startQuestion(state, ctx, 'battle');
+        case 'battle_intro': return startQuestion(state, ctx, 'battle');
+        case 'resolve':
+          if (state.hp.babis <= 0 || state.hp.alzak <= 0 || state.battleRound + 1 >= state.totalBattle) return finish(state, ctx);
+          state.battleRound += 1;
+          if (state.battleRound === half && state.shopIdx === 1) return startShop(state, ctx);
+          return startQuestion(state, ctx, 'battle');
+      }
+    }
+
+    /* ═════════════════════════════════════════════════════════
+       Voice (only one device speaks: the board, the solo player or the host)
+       ═════════════════════════════════════════════════════════ */
+    function speak(lines) {
+      if (!('speechSynthesis' in window)) return;
+      try {
+        window.speechSynthesis.cancel(); // never lag behind the game
+        const voices = window.speechSynthesis.getVoices();
+        const cs = voices.find((v) => v.lang?.toLowerCase().startsWith('cs')) ?? voices.find((v) => v.lang?.toLowerCase().startsWith('sk'));
+        for (const l of lines) {
+          const u = new SpeechSynthesisUtterance(l.text);
+          u.lang = 'cs-CZ';
+          if (cs) u.voice = cs;
+          u.rate = l.who === 'babis' ? 1.15 : 1.3;
+          u.pitch = l.who === 'babis' ? 0.85 : 1.8;
+          window.speechSynthesis.speak(u);
+        }
+      } catch { /* no voice: the bubbles are enough */ }
+    }
+
+    /* ═════════════════════════════════════════════════════════
+       Drawing
+       ═════════════════════════════════════════════════════════ */
+    function babisSvg(cls = 'bobbing') {
+      return `<svg viewBox="0 0 100 100" class="${cls}" aria-hidden="true">
+        <path d="M16 98 L32 68 L68 68 L84 98 Z" fill="#0b4a75" stroke="#062c48" stroke-width="2"/>
+        <polygon points="43,68 50,84 57,68" fill="#fff"/><polygon points="47,73 53,73 55,99 45,99" fill="#dc2626"/>
+        <ellipse cx="50" cy="45" rx="26" ry="26" fill="#f8d39a" stroke="#c8925a" stroke-width="2"/>
+        <path d="M24 40 Q26 20 50 18 Q74 20 76 40 Q66 27 50 28 Q34 27 24 40 Z" fill="#cbd5e1" stroke="#94a3b8" stroke-width="2"/>
+        <rect x="32" y="38" width="15" height="10" rx="3" fill="rgba(255,255,255,0.3)" stroke="#0f172a" stroke-width="2.5"/>
+        <rect x="53" y="38" width="15" height="10" rx="3" fill="rgba(255,255,255,0.3)" stroke="#0f172a" stroke-width="2.5"/>
+        <line x1="47" y1="43" x2="53" y2="43" stroke="#0f172a" stroke-width="2.5"/>
+        <circle cx="40" cy="43" r="2.2" fill="#0f172a"/><circle cx="60" cy="43" r="2.2" fill="#0f172a"/>
+        <path d="M39 58 Q50 53 61 58" stroke="#7c2d12" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <circle cx="84" cy="80" r="10" fill="#d97706" stroke="#92400e" stroke-width="2"/><circle cx="84" cy="80" r="3.5" fill="#fde68a"/>
+      </svg>`;
+    }
+    function alzakSvg(cls = 'bobbing') {
+      return `<svg viewBox="0 0 100 100" class="${cls}" aria-hidden="true">
+        <path d="M30 32 Q16 12 12 22 Q9 32 26 38" fill="#22c55e" stroke="#15803d" stroke-width="2.5"/><circle cx="12" cy="22" r="5" fill="#fbbf24"/>
+        <path d="M70 32 Q84 12 88 22 Q91 32 74 38" fill="#22c55e" stroke="#15803d" stroke-width="2.5"/><circle cx="88" cy="22" r="5" fill="#fbbf24"/>
+        <ellipse cx="50" cy="58" rx="36" ry="33" fill="#22c55e" stroke="#15803d" stroke-width="3"/>
+        <ellipse cx="38" cy="50" rx="10" ry="13" fill="#fff"/><circle cx="40" cy="51" r="5" fill="#111"/><circle cx="42" cy="48" r="2" fill="#fff"/>
+        <ellipse cx="62" cy="50" rx="10" ry="13" fill="#fff"/><circle cx="60" cy="51" r="5" fill="#111"/><circle cx="62" cy="48" r="2" fill="#fff"/>
+        <path d="M37 69 Q50 84 63 69 Z" fill="#9f1239" stroke="#15803d" stroke-width="1.5"/><rect x="47" y="69" width="6" height="5" rx="1" fill="#fff"/>
+      </svg>`;
+    }
+
+    function teamLabel(state, team) {
+      return state.ai === team ? `${TEAMS[team].name} (počítač)` : TEAMS[team].name;
+    }
+
+    function stage(state, ui) {
+      const hit = state.phase === 'resolve' && state.lastRound;
+      const side = (team) => {
+        const pct = Math.max(0, Math.min(100, (state.hp[team] / state.maxHp[team]) * 100));
+        const n = state.ai === team ? '🤖' : `👥 ${ui.players.filter((p) => p.connected && state.teams[p.id] === team).length}`;
+        const shaking = hit && state.lastRound[other(team)].dmg > 0;
+        return `<div class="side ${team}">
+          <div class="avatar">${team === 'babis' ? babisSvg(shaking ? 'shaking' : 'bobbing') : alzakSvg(shaking ? 'shaking' : 'bobbing')}</div>
+          <div class="who">
+            <div class="name"><span class="long">${teamLabel(state, team)}</span><span class="short">${team === 'babis' ? 'Babiš' : 'Alzák'}${state.ai === team ? ' 🤖' : ''}</span></div>
+            <div class="hp"><i style="width:${pct}%"></i><b>${state.hp[team]} / ${state.maxHp[team]}</b></div>
+            <div class="chips"><span class="chip">${n}</span>${state.shield[team] > 0 ? `<span class="chip">🛡️ ${state.shield[team]}</span>` : ''}${state.regen[team].rounds > 0 ? `<span class="chip">🦋 ${state.regen[team].rounds}×</span>` : ''}${state.boost[team] ? '<span class="chip">🎤 +40 %</span>' : ''}${state.weak[team] ? '<span class="chip">📺 −30 %</span>' : ''}</div>
+          </div>
+        </div>`;
+      };
+      const left = Math.max(0, state.deadline - ui.now());
+      const total = Math.max(1, state.deadline - state.phaseStart);
+      const timed = state.deadline > 0 && state.phase !== 'end';
+      const pops = hit ? ['babis', 'alzak'].map((t) => {
+        const dmg = state.lastRound[other(t)].dmg - (state.lastRound[other(t)].absorbed ?? 0);
+        return dmg > 0 ? `<div class="dmg on-${t}" data-key="d${t}${state.battleRound}">−${dmg}</div>` : '';
+      }).join('') : '';
+      return `<div class="stage">
+        ${side('babis')}
+        <div class="mid"><div class="vs">VS</div>${timed ? `<div class="clock">${Math.ceil(left / 1000)} s</div>` : ''}</div>
+        ${side('alzak')}
+        ${timed ? `<div class="timebar ${left < 4000 ? 'low' : ''}"><i style="width:${(left / total) * 100}%"></i></div>` : ''}
+        ${pops}
+      </div>`;
+    }
+
+    function bubbles(state, ui) {
+      const lines = state.dialogue?.lines ?? [];
+      if (!lines.length) return '';
+      return `<div class="bubbles" data-key="dlg${state.dialogue.id}">${lines.map((l, i) => `<div class="bubble ${l.who}${i ? ' second' : ''}"><small>${TEAMS[l.who].hero}</small>${ui.escape(l.text)}</div>`).join('')}</div>`;
+    }
+
+    function skipButton(state, ui) {
+      const host = ui.mode !== 'solo' && (ui.view === 'board' || ui.self?.isHost);
+      return host && state.phase !== 'end' ? `<button class="skip" data-act="next">Přeskočit ⏩</button>` : '';
+    }
+
+    function renderTeamSelect(state, ui) {
+      const me = ui.self?.id;
+      const myTeam = me ? state.teams[me] : null;
+      const card = (team) => {
+        const list = ui.players.filter((p) => state.teams[p.id] === team);
+        return `<div class="team-card ${team}">
+          <div class="avatar">${team === 'babis' ? babisSvg() : alzakSvg()}</div>
+          <h2>${TEAMS[team].name}</h2>
+          <div class="muted">${TEAMS[team].slogan}</div>
+          ${ui.self ? `<button class="join ${team}" data-act="chooseTeam" data-payload='{"team":"${team}"}' ${myTeam === team ? 'disabled' : ''}>${myTeam === team ? 'Jsi tady ✔' : 'Přidat se'}</button>` : ''}
+          <div class="pills">${list.map((p) => `<span class="pill${p.id === me ? ' me' : ''}">${ui.escape(p.name)}</span>`).join('') || '<span class="muted">zatím nikdo</span>'}</div>
+        </div>`;
+      };
+      return `<div class="card big">
+        <h1>Vyber si tým</h1>
+        <div class="muted">Kampaň o peníze → obchod → bitva odpovědí. Menší tým má silnější rány, takže je to fér. Když jsou všichni v jednom týmu, druhý hraje počítač.</div>
+      </div>
+      <div class="pick">${card('babis')}${card('alzak')}</div>`;
+    }
+
+    function renderQuestion(state, ui) {
+      const itemId = state.stage === 'quiz' ? state.quizIds[state.quizRound] : state.battleIds[state.battleRound % state.battleIds.length];
+      const item = ui.item(itemId);
+      if (!item) return '<div class="card">Načítám otázku…</div>';
+      const me = ui.self?.id;
+      const mine = me ? state.answers[me] : null;
+      const sent = ui.pending.find((a) => a.name === 'answer')?.payload;
+      const chosen = mine ? mine.answer : sent?.answer;
+      const revealed = state.phase === 'reveal' || state.phase === 'resolve';
+      const correct = state.reveal?.correct;
+      const counts = new Map();
+      if (revealed || ui.view === 'board') for (const a of Object.values(state.answers)) counts.set(JSON.stringify(a.answer), (counts.get(JSON.stringify(a.answer)) ?? 0) + 1);
+      const options = item.type === 'true-false'
+        ? [{ value: true, label: 'Pravda', cls: 'yes', key: '✓' }, { value: false, label: 'Nepravda', cls: 'no', key: '✗' }]
+        : (item.options ?? []).map((o, i) => ({ value: i, label: ui.text(o, { inline: true, item }), cls: `c${i % 6}`, key: 'ABCDEF'[i] ?? i + 1 }));
+      const players = ui.players.filter((p) => p.connected && state.teams[p.id]);
+      const answered = Object.keys(state.answers).length;
+      const battle = state.stage === 'battle';
+
+      const optHtml = options.map((o) => {
+        let cls = `opt ${o.cls}`;
+        if (chosen !== undefined && chosen === o.value) cls += ' mine';
+        if (revealed) cls += o.value === correct ? ' right' : ' dim';
+        const n = counts.get(JSON.stringify(o.value));
+        const disabled = !ui.self || chosen !== undefined || revealed || !state.teams[me] ? 'disabled' : '';
+        return `<button class="${cls}" ${disabled} data-act="answer" data-payload='${JSON.stringify({ answer: o.value, round: state.timerKey })}'>
+          <span class="key">${o.key}</span><span class="lbl">${o.label}</span>${revealed && n ? `<span class="cnt">${n}</span>` : ''}
+        </button>`;
+      }).join('');
+
+      let result = '';
+      const r = me ? state.reveal?.results?.[me] : null;
+      if (revealed && r) {
+        if (battle) result = r.correct ? `<div class="result good">🔥 Zásah za ${r.dmg}!${r.combo ? ' Kombo ×1,3!' : ''}</div>` : r.dmg > 0 ? `<div class="result wait">🧾 Záruka zachránila aspoň ${r.dmg}.</div>` : `<div class="result bad">❌ ${r.answered ? 'Vedle.' : 'Nestihl jsi to.'}</div>`;
+        else result = r.correct ? `<div class="result good">💰 Správně! +${r.earned} Kč</div>` : `<div class="result bad">❌ ${r.answered ? `Špatně${r.earned ? `, ${r.earned} Kč` : ''}.` : 'Nestihl jsi to.'}</div>`;
+      } else if (!revealed && chosen !== undefined && ui.self) {
+        result = `<div class="result wait">${mine ? 'Odpověď je uložená. Čekáme na ostatní…' : 'Odesílám…'}</div>`;
+      }
+      if (revealed && ui.view === 'board' && battle && state.lastRound) {
+        const l = state.lastRound;
+        result = `<div class="row"><div class="result good" style="flex:1">${TEAMS.babis.name}: ${l.babis.hits}/${l.babis.of} zásahů · ${l.babis.dmg} poškození</div><div class="result good" style="flex:1">${TEAMS.alzak.name}: ${l.alzak.hits}/${l.alzak.of} zásahů · ${l.alzak.dmg} poškození</div></div>`;
+      }
+
+      return `<div class="card">
+        <div class="row">
+          <span class="tag ${battle ? 'battle' : ''}">${battle ? `⚔️ Bitva ${state.battleRound + 1} / ${state.totalBattle}` : `💰 Kampaň ${state.quizRound + 1} / ${state.quizIds.length}`}</span>
+          <span class="muted">Odpovědělo ${answered} / ${players.length} ${skipButton(state, ui)}</span>
+        </div>
+        <div class="q">${ui.text(item.question ?? '', { item })}</div>
+        <div class="opts">${optHtml}</div>
+        ${result}
+      </div>`;
+    }
+
+    function renderShop(state, ui) {
+      const me = ui.self?.id;
+      const coins = me ? state.coins[me] ?? 0 : 0;
+      const bought = me ? state.bought[me] ?? [] : [];
+      const done = me ? state.shopDone[me] : false;
+      const wares = SHOP.filter((s) => !(s.firstShopOnly && state.shopIdx > 1)).map((s) => {
+        const owned = bought.includes(s.id);
+        const cost = me ? price(state, me, s) : s.cost;
+        const can = ui.self && state.teams[me] && !owned && !done && coins >= cost && !ui.isPending('buy');
+        const buyers = ui.view === 'board' ? state.shopLog.filter((l) => l.item === s.id && l.who !== 'ai').length : 0;
+        return `<div class="ware${owned ? ' owned' : ''}">
+          <div class="top"><span class="ico">${s.icon}</span><div><div class="nm">${s.name}</div><span class="kind ${s.kind}">${s.kind === 'team' ? 'pro tým' : s.kind === 'self' ? 'pro tebe' : 'na soupeře'}</span></div></div>
+          <div class="ds">${s.desc}</div>
+          <div class="ft">
+            <span class="price">${cost !== s.cost ? `<s>${s.cost}</s>` : ''}${cost} Kč</span>
+            ${ui.self ? `<button class="buy" ${can ? '' : 'disabled'} data-act="buy" data-payload='{"item":"${s.id}"}'>${owned ? 'Máš ✔' : coins < cost ? 'Málo peněz' : 'Koupit'}</button>` : `<span class="muted">${buyers ? `koupeno ${buyers}×` : ''}</span>`}
+          </div>
+        </div>`;
+      }).join('');
+      const log = state.shopLog.slice(-12).reverse().map((l) => {
+        const s = shopItem(l.item);
+        const name = l.who === 'ai' ? 'Počítač' : ui.escape(ui.players.find((p) => p.id === l.who)?.name ?? '?');
+        return `<div>${s?.icon ?? '🛒'} <b>${name}</b> koupil ${l.who === 'ai' ? 'zásoby pro svůj tým' : s?.name ?? ''}</div>`;
+      }).join('');
+      const readyCount = Object.keys(state.shopDone).length;
+      const players = ui.players.filter((p) => p.connected && state.teams[p.id]).length;
+      return `<div class="card">
+        <div class="row">
+          <span class="tag">🛒 ${state.shopIdx === 1 ? 'Obchod před bitvou' : 'Obchod v půlce bitvy'} · dotace +${SUBSIDY} Kč pro každého</span>
+          <span class="muted">Hotovo ${readyCount} / ${players} ${skipButton(state, ui)}</span>
+        </div>
+        ${ui.self ? `<div class="row"><b style="font-size:1.3em;color:var(--gold)">💰 ${coins} Kč</b><button class="done${done ? ' on' : ''}" data-act="shopDone" ${done ? 'disabled' : ''}>${done ? 'Připraven ✔' : 'Hotovo, jdeme bojovat'}</button></div>` : ''}
+        <div class="shop">${wares}</div>
+        ${ui.view === 'board' && log ? `<div class="log">${log}</div>` : ''}
+      </div>`;
+    }
+
+    function renderEnd(state, ui) {
+      const w = state.winner;
+      const ranking = [...ui.players].filter((p) => state.teams[p.id]).sort((a, b) => (state.scores[b.id] ?? 0) - (state.scores[a.id] ?? 0));
+      const mvp = (team) => ranking.filter((p) => state.teams[p.id] === team).sort((a, b) => (state.dealt[b.id] ?? 0) - (state.dealt[a.id] ?? 0))[0];
+      return `<div class="card big">
+        <h1>${w === 'draw' ? '🤝 Remíza!' : w === 'babis' ? `👑 Vítězí ${teamLabel(state, 'babis')}!` : `🎉 Vítězí ${teamLabel(state, 'alzak')}!`}</h1>
+        <div class="mvp">${['babis', 'alzak'].map((t) => {
+          const p = mvp(t);
+          return `<div class="result ${t === w ? 'good' : 'wait'}">${TEAMS[t].name}<br>${p ? `⭐ ${ui.escape(p.name)} · ${state.dealt[p.id]} poškození` : state.ai === t ? '🤖 počítač' : '—'}</div>`;
+        }).join('')}</div>
+        <div class="rank">${ranking.map((p, i) => `<div class="${i === 0 ? 'first' : ''}"><span>${i === 0 ? '🏆 ' : `${i + 1}. `}${ui.escape(p.name)} <span class="muted">· ${state.teams[p.id] === 'babis' ? 'Babiš' : 'Alzák'}</span></span><span>${state.scores[p.id] ?? 0} b.</span></div>`).join('')}</div>
+      </div>`;
+    }
+
+    /* ═════════════════════════════════════════════════════════
+       The game
+       ═════════════════════════════════════════════════════════ */
+    defineGame({
+      root: document.getElementById('app'),
+      tickMs: 250,
+
+      initialState(ctx) {
+        const usable = ctx.items.filter((it) => it.type === 'mcq-single' || it.type === 'true-false');
+        const pool = ctx.shuffle(usable.length ? usable : ctx.items).map((it) => it.id);
+        const quizCount = Math.min(Math.max(2, Number(ctx.settings.questionCount) || 4), Math.max(1, pool.length));
+        const totalBattle = Math.min(14, Math.max(4, Number(ctx.settings.battleRounds) || 8));
+        const quizIds = pool.slice(0, quizCount);
+        let battleIds = pool.slice(quizCount);
+        if (!battleIds.length) battleIds = [...quizIds];
+        const state = {
+          phase: 'team_select', stage: 'quiz', teams: {}, ai: null,
+          hp: { babis: HP_PER_SAILOR, alzak: HP_PER_SAILOR }, maxHp: { babis: HP_PER_SAILOR, alzak: HP_PER_SAILOR },
+          shield: { babis: 0, alzak: 0 }, regen: { babis: { amount: 0, rounds: 0 }, alzak: { amount: 0, rounds: 0 } },
+          boost: { babis: false, alzak: false }, weak: { babis: false, alzak: false },
+          quizIds, battleIds, quizRound: 0, battleRound: 0, totalBattle,
+          deadline: 0, phaseStart: 0, timerKey: 0,
+          answers: {}, reveal: null, lastRound: null,
+          coins: {}, perks: {}, bought: {}, streak: {}, dealt: {}, correct: {},
+          shopIdx: 0, shopDone: {}, shopLog: [],
+          dialogue: { id: 0, lines: [] }, used: [], winner: null, scores: {},
+        };
+        for (const p of ctx.players) { state.teams[p.id] = null; ensurePlayer(state, p.id); }
+        startTeamSelect(state, ctx);
+        return state;
+      },
+
+      playerJoined(state, player, ctx) {
+        ensurePlayer(state, player.id);
+        if (state.phase === 'team_select' || state.teams[player.id]) return;
+        // Late joiners: the smaller human team (never the computer's).
+        const choices = ['babis', 'alzak'].filter((t) => t !== state.ai);
+        choices.sort((x, y) => members(state, ctx, x).length - members(state, ctx, y).length);
+        state.teams[player.id] = choices[0];
+        rescale(state, ctx);
+      },
+
+      actions: {
+        chooseTeam(state, payload, ctx) {
+          if (state.phase !== 'team_select' || !ctx.playerId) return;
+          if (payload?.team !== 'babis' && payload?.team !== 'alzak') return;
+          state.teams[ctx.playerId] = payload.team;
+          if (connected(ctx).every((p) => state.teams[p.id])) {
+            if (ctx.players.length === 1) startCampaign(state, ctx);
+            else { ctx.cancel('timer'); schedule(state, ctx, 2500); } // a moment to see the teams
+          }
+        },
+
+        answer(state, payload, ctx) {
+          const pid = ctx.playerId;
+          if (state.phase !== 'question' || !pid || !state.teams[pid] || state.answers[pid]) return;
+          if (payload?.round !== state.timerKey) return; // a late tap from the previous question
+          const item = ctx.item(currentItemId(state));
+          if (!item) return;
+          const answer = payload?.answer;
+          if (item.type === 'true-false' ? typeof answer !== 'boolean' : !Number.isInteger(answer) || answer < 0 || answer >= (item.options?.length ?? 0)) return;
+          // Only the answer and its time; correctness is judged at the reveal (nothing to peek at).
+          state.answers[pid] = { answer, at: ctx.now };
+          const waiting = connected(ctx).filter((p) => state.teams[p.id] && !state.answers[p.id]);
+          if (!waiting.length) advance(state, ctx);
+        },
+
+        buy(state, payload, ctx) {
+          const pid = ctx.playerId;
+          if (state.phase !== 'shop' || !pid || !state.teams[pid] || state.shopDone[pid]) return;
+          const s = shopItem(payload?.item);
+          if (!s || state.bought[pid].includes(s.id) || (s.firstShopOnly && state.shopIdx > 1)) return;
+          const cost = price(state, pid, s);
+          if (state.coins[pid] < cost) return;
+          state.coins[pid] -= cost;
+          state.bought[pid].push(s.id);
+          state.shopLog.push({ who: pid, item: s.id });
+          const team = state.teams[pid], foe = other(team), power = powerOf(state, ctx, team), perks = state.perks[pid];
+          switch (s.id) {
+            case 'koblizek': state.hp[team] = Math.min(state.maxHp[team], state.hp[team] + Math.round(35 * power)); break;
+            case 'alzabox': state.shield[team] += Math.round(40 * power); break;
+            case 'capi': state.shield[team] += Math.round(65 * power); break;
+            case 'motyli': state.regen[team] = { amount: (state.regen[team].rounds ? state.regen[team].amount : 0) + Math.round(12 * power), rounds: 4 }; break;
+            case 'tiskovka': state.boost[team] = true; break;
+            case 'tablety': perks.dmg += 12; break;
+            case 'repka': perks.dmg += 8; break;
+            case 'zaruka': perks.warranty += 2; break;
+            case 'magnet': perks.magnet += 1; break;
+            case 'reportaz': state.weak[foe] = true; break;
+            case 'ucelovka': state.shield[foe] = 0; break;
+          }
+          if (s.id === 'kupon') perks.couponNext = true;
+        },
+
+        shopDone(state, _p, ctx) {
+          const pid = ctx.playerId;
+          if (state.phase !== 'shop' || !pid || !state.teams[pid]) return;
+          state.shopDone[pid] = true;
+          if (connected(ctx).filter((p) => state.teams[p.id]).every((p) => state.shopDone[p.id])) {
+            // The coupon works in the next shop only.
+            for (const perks of Object.values(state.perks)) { perks.coupon = !!perks.couponNext; perks.couponNext = false; }
+            advance(state, ctx);
+          }
+        },
+
+        timeUp(state, payload, ctx) {
+          if (payload?.timerKey !== state.timerKey) return;
+          if (state.phase === 'shop') for (const perks of Object.values(state.perks)) { perks.coupon = !!perks.couponNext; perks.couponNext = false; }
+          advance(state, ctx);
+        },
+
+        next(state, _p, ctx) {
+          if (!ctx.fromHost || state.phase === 'end') return;
+          ctx.cancel('timer');
+          if (state.phase === 'shop') for (const perks of Object.values(state.perks)) { perks.coupon = !!perks.couponNext; perks.couponNext = false; }
+          advance(state, ctx);
+        },
+      },
+
+      afterRender(state, ui) {
+        // One device speaks (the board, a solo player, or the host playing along); never every phone at once.
+        const speaker = ui.view === 'board' || ui.mode === 'solo' || (ui.hostAs === 'player' && ui.self?.isHost);
+        const id = state.dialogue?.id ?? 0;
+        if (ui.local.spoken === undefined) { ui.local.spoken = id; return; } // nothing old after a reload
+        if (!speaker || ui.settings.soundEnabled === false || id === ui.local.spoken) return;
+        ui.local.spoken = id;
+        if (state.dialogue.lines.length) speak(state.dialogue.lines);
+      },
+
+      render(state, ui) {
+        document.body.classList.toggle('board', ui.view === 'board');
+        let body = '';
+        if (state.phase === 'team_select') body = renderTeamSelect(state, ui);
+        else if (state.phase === 'shop') body = renderShop(state, ui);
+        else if (state.phase === 'end') body = renderEnd(state, ui);
+        else if (state.phase === 'battle_intro') body = `<div class="card big"><h1>⚔️ Bitva začíná!</h1><div class="muted">Každá správná odpověď je rána do soupeře. Čím rychleji, tím silněji. Tři zásahy po sobě = kombo.</div><div style="margin-top:10px">${skipButton(state, ui)}</div></div>`;
+        else body = renderQuestion(state, ui);
+        return `<div class="screen">${stage(state, ui)}${bubbles(state, ui)}${body}</div>`;
+      },
+    });
+  </script>
+</body>
+
+</html>
