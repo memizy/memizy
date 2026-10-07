@@ -72,8 +72,12 @@
 
 html,
 body {
-  /* No double-tap zoom (iOS Safari zooms the page around a game frame on quick taps). */
+  /* No zoom (games are made for fingers): no double-tap or pinch zoom, no text inflation.
+     Safari's pinch gestures are stopped in main.ts. */
   touch-action: manipulation;
+  touch-action: pan-x pan-y;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
   background-color: var(--color-off-white);
   color: var(--color-text-dark);
   font-family: var(--font-sans);
@@ -81,4 +85,13 @@ body {
 
 button:hover {
   cursor: pointer;
+}
+
+/* iOS zooms into text fields with a font under 16 px (and does not zoom back). */
+@media (pointer: coarse) {
+  input,
+  textarea,
+  select {
+    font-size: max(16px, 1em);
+  }
 }

@@ -68,7 +68,7 @@ export function createPluginFrame(html: string, title: string, hostApi: HostApi,
   const iframe = doc.createElement('iframe');
   iframe.setAttribute('sandbox', PLUGIN_SANDBOX);
   iframe.setAttribute('title', title);
-  iframe.style.cssText = 'width:100%;height:100%;border:0;display:block;touch-action:manipulation;';
+  iframe.style.cssText = 'width:100%;height:100%;border:0;display:block;touch-action:manipulation;touch-action:pan-x pan-y;';
   const parsed = readPluginManifestFromHtml(html);
   const runtime = parsed.success ? parsed.runtime : null;
   const allow = pluginAllowAttribute(runtime);
