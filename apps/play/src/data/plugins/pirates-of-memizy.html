@@ -747,16 +747,16 @@ const rules = {
       state.aiming[pid] = { seq, start: ctx.now, seed: ctx.random() * 100, cannon: clamp(Number(cannon) || 0, 0, 2) };
       ctx.after(AIM_MS + 1500, 'aimTimeout', { pid, seq });
     },
-    fire(state, { t } = {}, ctx) {
+    fire(state, _payload, ctx) {
       if (!crewMember(state, ctx)) return;
       const pid = ctx.playerId;
       const aim = state.aiming[pid];
       if (!state.aimMode) return playerFire(state, ctx, pid, null);
       if (!aim) return; // with aiming on, every shot (3D or 2D) goes through the aiming
       // The authority computes the hit from the moment of the tap (not trusting a sent accuracy).
-      // The device's tap time may be up to 400 ms old (the trip over the network), never more:
-      // otherwise a player could pick the perfect moment afterwards.
-      const when = clamp(Number.isFinite(Number(t)) ? clamp(Number(t), ctx.now - 400, ctx.now) : ctx.now, aim.start, aim.start + AIM_MS);
+      // ctx.actedAt is the tap time, at most 400 ms before the arrival (the SDK limits it):
+      // a player cannot pick the perfect moment afterwards.
+      const when = clamp(ctx.actedAt, aim.start, aim.start + AIM_MS);
       playerFire(state, ctx, pid, accuracyAt(aim.seed, when - aim.start));
     },
     repair(state, { hitId } = {}, ctx) {
@@ -912,7 +912,7 @@ function renderTeamSelect(state, ui) {
         <div class="team-flag">${TEAMS[t].flag}</div><div class="team-name">${teamName(t)}</div>
         <div class="team-count">${L.sailors(state.teams[t].length)}</div>
         <div class="team-roster">${chipList(state.teams[t], ui, me)}</div>
-        <button class="join-btn" data-act="join_team" data-payload='${JSON.stringify({ team: t })}' ${mine === t ? 'disabled' : ''}>${t === 'red' ? L.joinRed : L.joinBlack}</button>
+        <button class="join-btn" data-act="join_team" data-payload=${{ team: t }} ${mine === t ? 'disabled' : ''}>${t === 'red' ? L.joinRed : L.joinBlack}</button>
       </div>`)}
     </div></section>`;
 }
@@ -977,7 +977,7 @@ function renderQuiz(state, ui, me) {
       <div class="quiz-tag"><span>${tag}</span><span>${Math.ceil(left / 1000)} s</span></div>
       <div class="quiz-timer"><div style="width:${frac * 100}%;background:${frac > 0.5 ? 'var(--gold)' : frac > 0.25 ? '#e8974a' : 'var(--danger)'}"></div></div>
       <div class="quiz-q">${ui.text(item.question ?? '', { item })}</div>
-      ${ui.question(item, { action: 'submit_answer', payload: { seq: pending.seq }, showQuestion: false, chosen: ui.pending.find((a) => a.name === 'submit_answer' && Number(a.payload?.seq) === pending.seq)?.payload?.answer })}
+      ${ui.question(item, { action: 'submit_answer', payload: { seq: pending.seq }, showQuestion: false })}
       ${ui.isPending('submit_answer') ? ui.html`<div class="sent">${L.sent}</div>` : ''}
     </div></div>`;
   }
@@ -1026,7 +1026,7 @@ function renderDeck2d(state, ui, me) {
   const breaches = state.hits[team] ?? [];
   const busy = !!state.pending[me] || local.walking || !!state.aiming[me];
   const shaking = local.shake2d && local.shake2d.until > performance.now();
-  const go = (to, hitId) => JSON.stringify(hitId ? { to, hitId } : { to });
+  const go = (to, hitId) => (hitId ? { to, hitId } : { to });
   return ui.html`<div class="deck2d" data-key="deck2d">
     <div class="ships2d">
       <span class="ship2d own${shaking ? ' shake' : ''}">${TEAMS[team].flag}<br>⛵</span>
@@ -1040,14 +1040,14 @@ function renderDeck2d(state, ui, me) {
       <span class="deck-spot" style="left:${DECK_X.material}%">🪵</span>
       <span class="sailor" data-key="sailor" style="left:${local.sailor2d ?? 50}%">${local.walking ? '🏃' : '🧍'}${inv === 'ball' ? '⚫' : inv === 'plank' ? '🟫' : ''}</span>
     </div>
-    <button class="station${inv !== 'ball' ? ' ok' : ''}" data-local="go2d" data-payload='${go('ammo')}' ${inv === 'ball' || busy ? 'disabled' : ''}>
+    <button class="station${inv !== 'ball' ? ' ok' : ''}" data-local="go2d" data-payload=${go('ammo')} ${inv === 'ball' || busy ? 'disabled' : ''}>
       <span class="ico">🧨</span><span>${L.magazine.replace('🧨 ', '')}<small>${L.magazineSub}</small></span></button>
-    <button class="station${inv !== 'plank' ? ' ok' : ''}" data-local="go2d" data-payload='${go('material')}' ${inv === 'plank' || busy ? 'disabled' : ''}>
+    <button class="station${inv !== 'plank' ? ' ok' : ''}" data-local="go2d" data-payload=${go('material')} ${inv === 'plank' || busy ? 'disabled' : ''}>
       <span class="ico">🪵</span><span>${L.carpenter.replace('🪵 ', '')}<small>${L.carpenterSub}</small></span></button>
-    <button class="station${inv === 'ball' ? ' ok' : ''}" data-local="go2d" data-payload='${go('cannon')}' ${inv !== 'ball' || busy ? 'disabled' : ''}>
+    <button class="station${inv === 'ball' ? ' ok' : ''}" data-local="go2d" data-payload=${go('cannon')} ${inv !== 'ball' || busy ? 'disabled' : ''}>
       <span class="ico">💣</span><span>${L.fire.replace('💣 ', '')}<small>${L.fireSub}</small></span></button>
     <div class="muted" style="text-align:left">${L.breaches}</div>
-    <div class="breaches">${breaches.length ? breaches.map((h, i) => ui.html`<button class="breach" data-local="go2d" data-payload='${go('hull', h.id)}' ${inv !== 'plank' || busy ? 'disabled' : ''}>${L.repair} #${i + 1}${h.sev === 'crit' ? ' 🔥' : ''} <small>(${h.left ?? 100})</small></button>`) : ui.html`<span class="muted">${L.noBreaches}</span>`}</div>
+    <div class="breaches">${breaches.length ? breaches.map((h, i) => ui.html`<button class="breach" data-local="go2d" data-payload=${go('hull', h.id)} ${inv !== 'plank' || busy ? 'disabled' : ''}>${L.repair} #${i + 1}${h.sev === 'crit' ? ' 🔥' : ''} <small>(${h.left ?? 100})</small></button>`) : ui.html`<span class="muted">${L.noBreaches}</span>`}</div>
   </div>`;
 }
 
@@ -1238,6 +1238,8 @@ const Scene = {
     if (!host || view.ui?.local.mode2d) { this.state = null; return; }
     host.replaceChildren();
     const s3 = createScene3d(THREE, host, {
+      fov: 52,
+      far: 400,
       onFallback: use2d,
       onFrame: (dt, t) => this.frame(dt, t),
       onResize: () => this.layout?.(),
@@ -1288,7 +1290,7 @@ const Scene = {
     const sky = new THREE.Mesh(new THREE.SphereGeometry(330, 24, 12), skyMat);
     sky.renderOrder = -1;
     scene.add(sky);
-    this.cam = s3.camera = new THREE.PerspectiveCamera(52, 1, 0.1, 400);
+    this.cam = s3.camera;
     scene.add(new THREE.HemisphereLight(0xfff4dd, 0x1d4a5e, 0.95));
     const sun = new THREE.DirectionalLight(0xffe9c0, 1.5);
     sun.position.set(-30, 40, 25);
@@ -1872,7 +1874,7 @@ const localActions = {
 document.addEventListener('pointerdown', (e) => {
   if (!e.target.closest?.('[data-fire]')) return;
   e.preventDefault();
-  game.act('fire', { t: view.ui?.now });
+  game.act('fire'); // the SDK sends the tap time (ctx.actedAt)
   if (Scene.ready) Scene.muzzle(view.state?.aiming?.[view.me]?.cannon ?? 1); // the flash right away
 });
 

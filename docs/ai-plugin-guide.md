@@ -453,7 +453,6 @@ function nextQuestion(state, ctx) {
 
 defineGame({
   root: document.getElementById('app'),
-  tickMs: 250,
 
   initialState(ctx) {
     const ids = ctx.shuffle(ctx.items).slice(0, ctx.settings.questionCount).map((item) => item.id);
@@ -480,13 +479,14 @@ defineGame({
 
   actions: {
     answer(state, payload, ctx) {
-      if (!ctx.playerId || state.answers[ctx.playerId] || payload?.answer === undefined) return;
-      const item = ctx.item(state.questions[state.round]);
+      const itemId = state.questions[state.round];
+      if (!ctx.playerId || state.answers[ctx.playerId] || payload?.itemId !== itemId || payload.answer === undefined) return;
+      const item = ctx.item(itemId);
       const correct = checkAnswer(item, payload.answer);
       state.answers[ctx.playerId] = { answer: payload.answer, correct };
       if (correct) {
         const total = ctx.settings.questionTime * 1000;
-        const left = Math.max(0, state.phaseEndsAt - ctx.now);
+        const left = Math.max(0, state.phaseEndsAt - ctx.actedAt); // the tap time: fair on a slow network
         state.scores[ctx.playerId] = (state.scores[ctx.playerId] ?? 0) + 500 + Math.round(500 * left / total);
       }
       ctx.recordAnswer(item.id, correct, { answer: payload.answer });
@@ -521,7 +521,6 @@ defineGame({
 
     const item = ui.item(state.questions[state.round]);
     const mine = ui.self ? state.answers[ui.self.id] : null;
-    const sent = ui.pending.find((a) => a.name === 'answer')?.payload?.answer;
     const seconds = Math.ceil(ui.timeLeft() / 1000);
 
     return ui.html`<div class="screen ${board ? 'board' : ''}">
@@ -530,7 +529,7 @@ defineGame({
         ${state.phase === 'question' ? ui.html`<span class="timer">${seconds}</span>` : ''}
       </div>
       ${ui.question(item, {
-        chosen: mine?.answer ?? sent,
+        chosen: mine?.answer,               // a sent answer is shown by the SDK itself
         reveal: state.phase === 'reveal',
         disabled: !ui.self,
       })}

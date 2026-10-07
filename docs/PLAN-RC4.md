@@ -220,12 +220,16 @@ výchozí `ui.local`, zvuky, upozornění Labu na `render` bez `ui.html`.
 
 ## 2. Hry na finální API (hned po kroku 1, jinak padají)
 
-- [ ] **Babiš:** bez `round` (pozdní akce řeší SDK), `ctx.actedAt` pro rychlost, `ctx.hide` bez
+- [x] **Babiš:** bez `round` (pozdní akce řeší SDK), `ctx.actedAt` pro rychlost, `ctx.hide` bez
       vlastní evidence, barvy přes `data-option` / `--mz-q-index` místo `:nth-child`,
       `ui.now`. Hlášky upravuje vlastník – před úpravou je commitnout zvlášť.
-- [ ] **Piráti:** `localActions`, `ui.now`, `near` / `far` místo výměny kamery, `ctx.actedAt`
+- [x] **Piráti:** `localActions`, `ui.now`, `near` / `far` místo výměny kamery, `ctx.actedAt`
       místo vlastního času klepnutí (pokud sedí na míření), bez vlastního `seq`.
-- [ ] Příklad v návodu a jeho test (`guideExample`).
+- [x] Příklad v návodu a jeho test (`guideExample`).
+- Odchylky: Babiš barví dlaždice dál přes `:nth-child` (paletu podle `--mz-q-index` CSS
+  neumí vybrat; pořadí možností v `.mz-q-options` je proto součást kontraktu). Piráti si
+  nechali vlastní `seq` otázky (stejná otázka se hráči může opakovat a hry bez fází
+  pozdní akce SDK nehlídá).
 
 ## 3. OQSE 1.0 a host-sdk
 

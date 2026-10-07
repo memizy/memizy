@@ -35,6 +35,12 @@ function currentItem(state: any): string {
   return state.stage === 'quiz' ? state.quizIds[state.quizRound] : state.battleIds[state.battleRound % state.battleIds.length];
 }
 
+/** What ui.question sends: the item id and the answer, from the screen of phase `seen` (default: the current one). */
+function answer(session: FakeSession<any>, player: string, value: unknown, seen?: number, itemId?: string) {
+  const s = session.get('board')?.state ?? session.get(player).state;
+  session.get(player).dispatch('answer', { itemId: itemId ?? currentItem(s), answer: value }, seen ?? s.phaseSeq);
+}
+
 describe('Babiš vs. Alzák rules', () => {
   it('a full multiplayer game: fair teams, shop, no repeated quote, an end', async () => {
     const session = new FakeSession<any>(definition(), { players: ['anna', 'ben', 'cyril'], items, settings: { questionTime: 10, questionCount: 3, battleRounds: 6 } });
@@ -58,7 +64,7 @@ describe('Babiš vs. Alzák rules', () => {
       if (s.phase === 'question') {
         const id = currentItem(s);
         // Everyone right: the lone Alzák player must hit like the two Babiš players together.
-        for (const p of ['anna', 'ben', 'cyril']) session.get(p).dispatch('answer', { answer: correctOf(id), round: s.phaseSeq });
+        for (const p of ['anna', 'ben', 'cyril']) answer(session, p, correctOf(id));
         await tick();
         if (s.stage === 'battle') {
           const r = board().lastRound;
@@ -93,7 +99,7 @@ describe('Babiš vs. Alzák rules', () => {
     await tick(2600);
     const s = session.get('board').state;
     expect(s.phase).toBe('question');
-    session.get('anna').dispatch('answer', { answer: correctOf(currentItem(s)), round: s.phaseSeq });
+    answer(session, 'anna', correctOf(currentItem(s)));
     await tick();
     expect(session.get('ben').state.answers.anna).toEqual({ answered: true });
     expect(session.get('anna').state.answers.anna.answer).toBe(correctOf(currentItem(s)));
@@ -114,7 +120,7 @@ describe('Babiš vs. Alzák rules', () => {
       return item.type === 'true-false' ? item.correctAnswer : item.correctId;
     };
     expect(answerOf('ben')).toBeUndefined(); // a public item during the question
-    for (const p of ['anna', 'ben']) session.get(p).dispatch('answer', { answer: correctOf(first), round: board().phaseSeq });
+    for (const p of ['anna', 'ben']) answer(session, p, correctOf(first));
     await tick();
     expect(board().phase).toBe('reveal');
     expect(answerOf('ben')).toBe(correctOf(first));
@@ -123,7 +129,7 @@ describe('Babiš vs. Alzák rules', () => {
     while (!(board().phase === 'question' && currentItem(board()) === first) && guard++ < 50) {
       const s = board();
       if (s.phase === 'question') {
-        for (const p of ['anna', 'ben']) session.get(p).dispatch('answer', { answer: correctOf(currentItem(s)), round: s.phaseSeq });
+        for (const p of ['anna', 'ben']) answer(session, p, correctOf(currentItem(s)));
         await tick();
       } else if (s.phase === 'shop') {
         for (const p of ['anna', 'ben']) session.get(p).dispatch('shopDone', null);
@@ -135,7 +141,27 @@ describe('Babiš vs. Alzák rules', () => {
     expect(session.errors).toEqual([]);
   });
 
-  it('ignores late taps, wrong rounds and invalid answers', async () => {
+  it('points for speed count the tap, not the arrival (fair on a slow network)', async () => {
+    const session = new FakeSession<any>(definition(), { players: ['anna', 'ben'], items, settings: { questionTime: 10 } });
+    session.start();
+    await tick();
+    session.get('anna').dispatch('chooseTeam', { team: 'babis' });
+    session.get('ben').dispatch('chooseTeam', { team: 'alzak' });
+    await tick(2600);
+    await tick(3000); // 3 s into the question (the speed is below the maximum)
+    const board = session.get('board');
+    const s = board.state;
+    const id = currentItem(s);
+    // Both answers arrive now; Ben tapped 300 ms earlier (his network is slow).
+    const send = (from: string, at: number) => board.receive({ from, data: { t: 'act', n: 'answer', p: { itemId: id, answer: correctOf(id) }, i: 1, ph: s.phaseSeq, at }, sentAt: Date.now() });
+    send('anna', board.now());
+    send('ben', board.now() - 300);
+    await tick(); // everyone answered: the reveal
+    const results = board.state.reveal.results;
+    expect(results.ben.earned).toBeGreaterThan(results.anna.earned);
+  });
+
+  it('ignores late taps (SDK), answers to another question and invalid answers', async () => {
     const session = new FakeSession<any>(definition(), { players: ['anna', 'ben'], items });
     session.start();
     await tick();
@@ -143,8 +169,9 @@ describe('Babiš vs. Alzák rules', () => {
     session.get('ben').dispatch('chooseTeam', { team: 'alzak' });
     await tick(2600);
     const s = session.get('board').state;
-    session.get('anna').dispatch('answer', { answer: 99, round: s.phaseSeq });
-    session.get('ben').dispatch('answer', { answer: correctOf(currentItem(s)), round: s.phaseSeq - 1 });
+    answer(session, 'anna', 99); // not an option
+    answer(session, 'ben', correctOf(currentItem(s)), s.phaseSeq - 1); // from the previous question's screen
+    answer(session, 'ben', correctOf(currentItem(s)), s.phaseSeq, 'm999'); // another question's id
     await tick();
     expect(session.get('board').state.answers).toEqual({});
   });
@@ -161,7 +188,7 @@ describe('Babiš vs. Alzák rules', () => {
     while (me().phase !== 'end' && guard++ < 100) {
       const s = me();
       if (s.phase === 'question') {
-        session.get('me').dispatch('answer', { answer: s.stage === 'battle' ? wrongOf(currentItem(s)) : correctOf(currentItem(s)), round: s.phaseSeq });
+        answer(session, 'me', s.stage === 'battle' ? wrongOf(currentItem(s)) : correctOf(currentItem(s)));
         await tick();
       } else if (s.phase === 'shop') {
         session.get('me').dispatch('shopDone', null);
@@ -182,11 +209,11 @@ describe('Babiš vs. Alzák rules', () => {
     await tick();
     expect(me().ai).toBe('alzak');
     // Answer question 1
-    session.get('me').dispatch('answer', { answer: correctOf(currentItem(me())), round: me().phaseSeq });
+    answer(session, 'me', correctOf(currentItem(me())));
     await tick();
     await tick(5000); // reveal 1 -> question 2
     // Answer question 2
-    session.get('me').dispatch('answer', { answer: correctOf(currentItem(me())), round: me().phaseSeq });
+    answer(session, 'me', correctOf(currentItem(me())));
     await tick();
     await tick(5000); // reveal 2 -> shop
     expect(me().phase).toBe('shop');
