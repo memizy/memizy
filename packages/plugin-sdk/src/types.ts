@@ -5,8 +5,9 @@
 import type { NoteItem, OQSEAnyItem, ProgressRecord } from '@memizy/oqse';
 import type { DataScope, HostAs, Player, PluginView, SessionMode } from '@memizy/protocol';
 import type { SafeHtml } from './render/html';
+import type { QuestionOptions } from './render/question';
 
-export type { SafeHtml };
+export type { SafeHtml, QuestionOptions };
 
 export type { Player, PluginView, SessionMode, HostAs, DataScope };
 
@@ -147,6 +148,14 @@ export interface GameUI {
   html(strings: TemplateStringsArray, ...values: unknown[]): SafeHtml;
   /** Marks HTML you wrote yourself as safe (never use it for text from players or sets). */
   raw(html: unknown): SafeHtml;
+  /**
+   * Ready-made answering controls for an item (any OQSE type with controls: choices,
+   * true/false, text, numbers, slider, sorting, timeline, pairs, categories, blanks,
+   * matrix, flashcard, note, pin on image). Calls `options.action` (default "answer")
+   * with `{ ...options.payload, answer }` in the `checkAnswer` format. Optional: games
+   * may draw their own controls. Style it with CSS variables (--mz-q-accent, …).
+   */
+  question(item: OQSEAnyItem, options?: QuestionOptions): SafeHtml;
   /** Safe HTML for Rich Content from the study set. */
   text(markdown: string | undefined | null, options?: { inline?: boolean; item?: OQSEAnyItem }): SafeHtml;
   /** Safe HTML of a whole note item. */

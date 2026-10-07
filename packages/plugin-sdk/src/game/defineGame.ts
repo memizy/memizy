@@ -24,6 +24,7 @@ import {
 import { resolveAsset, type MediaObject, type NoteItem, type OQSEAnyItem, type ProgressRecord } from '@memizy/oqse';
 import { GameRuntime } from './runtime';
 import { SafeHtml, html as safeHtml, raw as rawHtml } from '../render/html';
+import { applyQuestionEvent, renderQuestion, type QuestionEvent, type QuestionLocal } from '../render/question';
 import { autoConnector, type Connector, type HostConnection } from '../connection/connect';
 import { standaloneConnector } from '../standalone/standaloneHost';
 import { morph } from '../render/morph';
@@ -158,11 +159,43 @@ abstract class BaseController implements Controller {
     this.unbind = bindEvents(root, {
       act: (name, payload) => this.act(name, payload),
       setting: onSetting,
+      question: (event) => this.questionEvent(event as unknown as QuestionEvent & { op: QuestionEvent['op'] | 'clear' }),
       error: (message) => this.report('INVALID_PAYLOAD', message),
     });
   }
 
   abstract render(): RenderResult;
+
+  /** Device-local state of `ui.question` controls, per item. */
+  private readonly questions = new Map<string, QuestionLocal>();
+
+  private questionEvent(event: QuestionEvent | (Omit<QuestionEvent, 'op'> & { op: 'clear' })): void {
+    if (typeof event?.q !== 'string') return;
+    if (event.op === 'clear') this.questions.delete(event.q);
+    else {
+      const local = this.questions.get(event.q) ?? {};
+      applyQuestionEvent(local, event as QuestionEvent);
+      this.questions.set(event.q, local);
+    }
+    this.schedule();
+  }
+
+  protected question(item: OQSEAnyItem, options: Parameters<GameUI['question']>[1] = {}): SafeHtml {
+    if (!item || typeof item !== 'object') return rawHtml('');
+    let local = this.questions.get(item.id);
+    if (!local) this.questions.set(item.id, (local = {}));
+    return rawHtml(
+      renderQuestion(item, options ?? {}, {
+        text: (markdown, opts) => renderRichText(markdown, this.textContext(opts?.item ?? item), opts),
+        local,
+        locale: this.init.config.locale,
+        assetUrl: (key) => {
+          const media = findMedia(key, item, this.init) as { value?: unknown } | null | undefined;
+          return typeof media?.value === 'string' && /^https?:\/\//.test(media.value) ? media.value : null;
+        },
+      }),
+    );
+  }
   abstract act(name: string, payload: unknown): void;
   start(): void {}
   deliver(_message: Parameters<PluginApi['deliver']>[0]): void {}
@@ -250,6 +283,7 @@ abstract class BaseController implements Controller {
       renderNote: (note: NoteItem, options) => rawHtml(renderNoteHtml(note, this.textContext(note), options)),
       html: safeHtml,
       raw: rawHtml,
+      question: (item, options) => this.question(item, options),
       escape: escapeHtml,
     };
   }
