@@ -25,21 +25,23 @@ Mimo rozsah prezentace (ale s architekturou se pro ně počítá): standalone hr
 | D1 | **Jedno `@memizy/plugin-sdk`** pro singleplayer i multiplayer. Staré `multiplayer-sdk` se ruší. |
 | D2 | **Plugin nikdy nekomunikuje se serverem.** Veškerá komunikace jde přes `postMessage` (Penpal) do hostitelské aplikace. Hra, které nestačí JSON přes hostitele, musí být **standalone**. |
 | D3 | **Schopnosti pluginu se deklarují staticky v manifestu.** Lobby a registry je potřebují znát ještě před načtením iframu. SDK je za běhu jen čte. |
-| D4 | **Pohled (view) a autorita jsou oddělené pojmy.** Plugin nepíše síťovou logiku: definuje `reducer` a `render`. Kde reducer běží, rozhoduje SDK a platforma. |
+| D4 | **Pohled (view) a autorita jsou oddělené pojmy.** Plugin nepíše síťovou logiku: definuje `initialState`, `actions` a `render`. Kde akce běží, rozhoduje SDK a platforma. |
 | D5 | **Transport volí platforma, ne plugin:** relay (výchozí), P2P (později), authoritative (jen whitelist). |
 | D6 | **Authoritative režim je pouze pro oficiální pluginy a hry** (whitelist zakompilovaný v serveru, žádné dynamické načítání kódu). |
-| D7 | **Party režim nemá tabuli.** Host je hráč se stejnou obrazovkou jako ostatní (plus práva v lobby). |
+| D7 | **Host jako hráč (`hostAs: player`) nemá tabuli.** Host má stejnou obrazovku jako ostatní hráči (plus práva v lobby). |
 | D8 | **Kontrakt nese verze** (protokol, SDK, host, plugin, data). Vyjednávají se v handshaku. |
 | D9 | **Iframe sandbox bez `allow-same-origin`** (opaque origin), stejně jako v současném `multiplayer/`. `allowedOrigins: ['*']` je v tomto případě nutné a v pořádku, protože Penpal ověřuje `remoteWindow`. |
 | D10 | **Server zatím jako jeden Bun proces.** Formát PINu/roomId si nechává místo pro identifikátor shardu. |
 | D11 | **Server bez API klíčů.** Ochranu zajišťuje allowlist `Origin` (aplikace a lab) a limity. Klíče přijdou se standalone hrami. |
 | D12 | **Markdown je bezztrátová serializace celé sady poznámek** (jeden soubor = jedna sada, nadpisy = poznámky), ne náhrada JSONu. |
-| D13 | **OQSE: `math` → `latex`** s přechodným aliasem ve validátoru. |
+| D13 | **OQSE: `math` → `latex`** bez aliasu; vlastní sady převede skript, data v aplikaci migrace v aplikaci. |
 | D14 | **Kurzy nejsou součást jádra OQSE**, ale sesterská specifikace (později). |
 | D15 | **Open-source monorepo `engine`.** Registry a komunitní pluginy jsou v samostatných repech. Nasazení a secrets patří do closed `platform`. |
 | D16 | **Licence: MIT** pro všechno open-source včetně serveru (viz kap. 11). |
 | D17 | **Lab se vyvíjí v `engine/apps/plugin-lab`** nad open-source balíčky (`host-sdk`, `plugin-testkit`). Po integraci do hlavní aplikace se rozhodne, zda zůstane (veřejný nástroj pro autory pluginů), zredukuje se na minimální dev harness pro vývoj SDK, nebo se odstraní běžným commitem (bez přepisování historie). Viz kap. 9.1. |
 | D18 | **Lobby UX (PIN, QR, kopírování odkazu, generované jméno s možností přegenerovat) se přebírá ze současného `multiplayer/`.** Datová vrstva (Supabase, stores aplikace) se nahradí relay transportem z `host-sdk`. |
+| D19 | **Kontrakt plugin ↔ host je Memizy Plugin Protocol v1** (`packages/protocol/SPEC.md`); rozhodnutí a důvody v kap. 3. |
+| D20 | **Session běží v prohlížeči hostitele, server je jen relay místností.** Autorita je podle protokolu vždy na zařízení hostitele (tabule nebo hostův ovladač), takže server nemusí držet stav hry. Validace a limity zůstávají na jednom místě (`LocalSession`). Kap. 8. |
 
 ---
 
@@ -76,152 +78,72 @@ Sdílený balíček **`@memizy/protocol`** (typy + Zod schémata) obsahuje manif
 
 ---
 
-## 3. Herní režimy, pohledy a autorita
+## 3. Kontrakt plugin ↔ host: rozhodnutí a důvody
 
-### 3.1 Osy
+Normativní popis je v **`packages/protocol/SPEC.md`** (pojmy, manifest, průběh hry, metody, routování, limity, odložené věci) a API pro autory pluginů v **`docs/ai-plugin-guide.md`**. Obojí je anglicky a pojmy jsou definované jen tam (SPEC kap. 3). Tady je jen proč jsme se tak rozhodli.
 
-| Osa | Hodnoty | Kdo rozhoduje |
-|---|---|---|
-| Režim | `solo` · `multiplayer` | plugin deklaruje, uživatel volí |
-| Účast hosta (multiplayer) | `presenter` (učitel u tabule, nehraje) · `party` (host hraje, tabule není) | plugin deklaruje, lobby nabídne |
-| Autorita (kde běží reducer) | `host` · `server` | plugin deklaruje (`server` jen pro whitelist) |
-| Transport | `relay` · `p2p` · `authoritative` | platforma |
+| Rozhodnutí | Proč |
+|---|---|
+| **Dvě zmražené vrstvy:** protokol (host musí navždy umět pluginy 1.x) a veřejné API `@memizy/plugin-sdk@1` (pluginy ho načítají z CDN jako `@1`, takže opravy v 1.x dostanou automaticky). | Studentské pluginy z prezentace musí fungovat i v budoucích verzích. |
+| **Protokol je malý a obecný** (zprávy, snapshot, pokrok, assety, lifecycle); `defineGame` je jen v SDK nad ním. | Čím menší zmražený povrch, tím menší riziko, že ho budeme muset rozbít. |
+| **AI guide popisuje jen SDK API**, protokol AI nevidí. | Méně věcí k pochopení = méně chyb slabších modelů. |
+| **Režimy `solo` / `multiplayer`**, název `solo` (stejně jako pohled `solo`). | Krátké, jednoznačné, v kódu jeden název pro jednu věc. V UI může být „Hrát sám“. |
+| **`hostAs: presenter` / `player`**, plugin může podporovat obojí. | Učitel u projektoru vs. kamarádi, kde host hraje s nimi. |
+| **Pohledy se odvozují z manifestu**, nedeklarují se (SPEC 3.2). | Deklarace by si mohla odporovat s režimy. |
+| **`controller` = obrazovka jednoho hráče** na libovolném zařízení (telefon, tablet, PC). | Host jako hráč často sedí u PC. |
+| **Adresa `"server"` je rezervovaná**, akce musí být deterministické (`ctx.random`, `ctx.now`). | Později může authority běžet na serveru (authoritative režim) bez změny pluginů. |
+| **Lobby zůstává jako dřív:** host mění plugin a sadu, hráči se připojují a mění jména; plugin se hráčům stáhne až po Startu. Volitelně vlastní obrazovka nastavení (`settingsScreen: { size: compact \| large }`). | Osvědčilo se to; compact = panel v lobby, large = modál přes celou obrazovku. Schéma `settings` zůstává povinné, aby host mohl hodnoty validovat. |
+| **Načítání + odpočet + `start()`**: authority začne hru, až se plugin načte všem (nebo vyprší limit). | Časované hry by jinak začaly dřív, než se načtou pomalejší telefony. |
+| **`initialState` místo `setup`.** | „Setup“ sváděl k představě čekací fáze; je to jen funkce, která na startu vyrobí počáteční stav. |
+| **Výběry hráčů před hrou (tým, postava) = první fáze hry** v `defineGame`. | Hráči v lobby plugin ještě nemají; uvnitř hry to nepotřebuje nic v protokolu. Formální týmy v lobby = pozdější feature. |
+| **Pokrok i v multiplayeru:** `recordAnswer` (plugin nahlásí výsledek, bucket spočítá aplikace svým algoritmem a uloží do pokroku daného hráče na jeho zařízení) a `saveProgress` / v SDK `ui.setProgress` (přímý zápis bucketu pro vlastní pokrok, např. sebehodnocení). | Učení ve třídě je stejně cenné jako doma; algoritmus (Leitner/FSRS) patří aplikaci, ne pluginu. |
+| **Snapshot jen pro obnovu authority**; late join a reconnect hráčů jdou synchronizací s běžící authority. | Po F5 učitele by jinak zmizela celá hra; hráči stav dostanou od authority. |
+| **Assety předává host jako `Blob` přes `getAsset`**, nikdy jako `blob:` URL. | Iframe bez `allow-same-origin` nemůže načíst `blob:` URL hostitele. |
+| **Manifest = OQSEM (obsah) + `appSpecific.memizy` (runtime).** | Jeden data island; OQSE zůstává obecné, herní režimy jsou věc Memizy. |
+| **Solo bez obrazovky nastavení a bez odpočtu:** jedna instance, host předá hodnoty nastavení (výchozí nebo předvolené) a hned zavolá `start()`. Volby hráče (obtížnost, level) si hra řeší sama jako první fázi. Schéma `settings` platí v obou režimech, `settingsScreen` jen v lobby multiplayeru. | Solo hry mívají vlastní úvodní menu; formulář hostitele by byl dvojí. Schéma umožní předvolby z aplikace/kurzu („10 otázek, těžká“) a testy různých nastavení v Labu. |
+| **Data pluginu** (`saveData`, v SDK `ui.saved` / `ui.save`): JSON dokument na uživatele a plugin ve dvou rozsazích – `plugin` (napříč sadami) a `set` (pro tuto sadu); 256 KB na rozsah; jen vlastní hráč, tabule nemá. | Hry potřebují ukládat levely, mince, nejlepší skóre. `localStorage` v sandboxu nefunguje a ukládat to do sady by byl hack (sada je sdílený obsah). Pokrok učení (OQSEP) zůstává oddělený. |
+| **Limity jako minimální záruka** (host smí povolit víc, mohou jen růst): zpráva 64 KB, 30 zpráv/s, snapshot 1 MB, data 256 KB; SDK slučuje změny stavu do dávek (≤ ~20/s). Uvedené i v AI guidu. | Ochrana sítě ve třídě a serveru; dávkování zvládne i 40 hráčů odpovídajících ve stejné vteřině. |
+| **Výpadek authority:** host ostatním ukáže „Čekáme na hostitele…“ (`authorityChanged`), akce mezitím odmítne (`AUTHORITY_UNAVAILABLE`), po návratu authority (ze snapshotu) se všichni znovu synchronizují; když se nevrátí, host session ukončí. | Host, který hraje s ostatními, může ztratit Wi-Fi; hra se nesmí rozbít ani tiše ztrácet akce. |
+| **Úplný seznam chybových kódů** (`ProtocolError`), neznámé kódy = `INTERNAL_ERROR`. | Plugin, SDK i Lab potřebují poznat, co se stalo; nové kódy lze přidávat. |
+| **Zmrazení ve dvou krocích:** teď Release Candidate 1, finální 1.0 po akceptačním testu s AI (dny 15–16). | Některé mezery odhalí až implementace; studenti tvoří pluginy až na prezentaci. |
 
-### 3.2 Pohled × autorita
+**Převod starého manifestu** (`appSpecific.memizy.multiplayerSdk`):
 
-| Situace | Pohledy (views) | Kde běží reducer |
-|---|---|---|
-| Solo | `solo` | lokálně v pluginu |
-| Multiplayer – presenter | host: `board`, hráči: `controller` | v instanci `board` |
-| Multiplayer – party | všichni: `controller` | v instanci hosta (vypadá jako ostatní) |
-| Authoritative (whitelist) | podle hry | na serveru (stejný izomorfní reducer) |
+| Starý klíč | Nový |
+|---|---|
+| `apiVersion`, `minimumHostApiVersion` | `protocol` |
+| `players.min/max/recommended` | `modes.multiplayer.players` |
+| `supportsLateJoin` | `lateJoin` |
+| `supportsReconnect` | odpadá – funguje vždy (SDK) |
+| `supportsTeams` | později (feature `teams`) |
+| `requiresHostScreen: true` | `hostAs: ["presenter"]` |
+| `clientOrientation` | `display.orientation` |
+| `customSyncScreen` | odpadá – synchronizace je v SDK; vlastní čekací obrazovka `renderWaiting` |
+| `hasSettingsScreen` | `settingsScreen: { size }` |
+| `registry.isStandaloneFile` | věc záznamu v registry, ne protokolu |
 
-Autor pluginu řeší jen pohledy. Autoritu řídí SDK.
-
----
-
-## 4. Manifest (statická deklarace)
-
-Manifest je uložený v HTML jako data island `<script type="application/memizy-manifest+json">` a zrcadlí se do registry. Ilustrační tvar (finální podobu určí `@memizy/protocol`):
-
-```jsonc
-{
-  "manifestVersion": "1.0",
-  "id": "quiz-conquest",
-  "name": "Quiz Conquest",
-  "version": "1.2.0",
-  "protocol": { "min": "1.0" },          // minimální verze protokolu hostitele
-  "modes": {
-    "solo": { "bots": true },
-    "multiplayer": {
-      "players": { "min": 2, "max": 40 },
-      "hostParticipation": ["presenter", "party"],
-      "teams": false,
-      "lateJoin": true,
-      "reconnect": true,
-      "authority": "host"
-    }
-  },
-  "data": {
-    "itemTypes": ["mcq-single", "true-false"],  // může být i prázdné: plugin nemusí používat otázky
-    "requiresItems": true
-  },
-  "settings": [ /* schéma nastavení pro lobby */ ]
-}
-```
-
-Plugin může deklarovat jen `solo`, jen `multiplayer` nebo obojí. V multiplayeru může podporovat jen `presenter`, jen `party` nebo obojí.
+**Odložené věci a nápady** jsou v SPEC kap. 10 (týmy, skrývání odpovědí, předání hry jinému hráči, editace sady, hot-seat, authority na serveru).
 
 ---
 
-## 5. Kontrakt plugin ↔ host a verzování
+## 4. Co zbývá udělat (kontrakt v1)
 
-### 5.1 Co musí zůstat kompatibilní
+*(Kapitoly 5 a 6 byly sloučeny do kap. 3 a 4; číslování dalších kapitol zůstává kvůli odkazům.)*
 
-Plugin si SDK nese **zabudované v sobě**, takže starý plugin = staré SDK. Změny API uvnitř SDK proto staré pluginy nerozbijí. Navždy kompatibilní musí zůstat:
-
-1. **Protokol plugin-sdk ↔ host-sdk** (zprávy, jejich tvar, sémantika).
-2. **Schéma manifestu.**
-3. **Tvar dat předávaných pluginu** (kontext, hráči, OQSE položky).
-
-### 5.2 Verze v handshaku
-
-Plugin při `sysReady` pošle:
-
-```jsonc
-{
-  "protocolVersion": "1.0",       // verze kontraktu, kterou SDK mluví
-  "sdkVersion": "1.0.3",          // informativní (debug, telemetrie)
-  "plugin": { "id": "quiz-conquest", "version": "1.2.0" },
-  "manifestVersion": "1.0",
-  "features": ["defineGame", "patches"]   // volitelné schopnosti SDK
-}
-```
-
-Host odpoví:
-
-```jsonc
-{
-  "protocolVersion": "1.0",       // dohodnutá verze (stejný major, nižší z minor verzí)
-  "host": { "name": "memizy-app", "version": "3.4.0" },
-  "oqseVersion": "0.2",
-  "features": ["patches", "assetsUpload"],
-  "context": { /* režim, view, self, hráči, items, assets, settings … */ }
-}
-```
-
-Pravidla:
-- **Stejný major je podmínka.** Při neshodě host zobrazí srozumitelnou chybu („plugin vyžaduje novější Memizy“), nic tiše nespadne.
-- **Minor verze přidávají jen aditivní změny.** Nové volitelné zprávy a pole, neznámá pole se ignorují.
-- Novou schopnost smí strana použít jen tehdy, když ji druhá strana uvedla ve `features`.
-- `host-sdk` musí umět mluvit se **všemi verzemi 1.x**. Vznikne-li 2.0, host-sdk ponese adaptér pro 1.x.
-
-### 5.3 Zásady návrhu v1
-
-- **Malé API.** Každá metoda je závazek na roky. Do v1 jde jen to, co studenti potřebují.
-- Pokud se SDK načítá z CDN, URL se zamyká na major verzi (`…/plugin-sdk@1`).
-- **Akceptační test kontraktu:** pluginy vygenerované 3–5 různými AI modely (včetně slabších) pouze podle AI guidu.
-
----
-
-## 6. Plugin SDK
-
-### 6.1 Vysokoúrovňové API (doporučené, hlavně pro AI)
-
-```js
-import { defineGame } from '@memizy/plugin-sdk';
-
-defineGame({
-  manifest,                                        // nebo načtení z data islandu
-  setup: (ctx) => initialState,                    // ctx: items, players, settings, random
-  reducer: (state, action, { playerId, now, random }) => newState,  // čistá funkce
-  render: (state, { view, self, dispatch }) => { /* vykreslení */ },
-});
-```
-
-- Reducer je **čistý a deterministický**. Náhoda jde jen přes `random` (seedovaný) a čas jen přes `now`. Díky tomu funguje fuzz test, replay i budoucí authoritative běh na serveru.
-- `dispatch(action)` pošle akci k autoritě. Výsledný stav pak dostanou všichni.
-- Stejné komponenty UI lze použít ve více pohledech (např. karta otázky v `solo` i `controller`).
-
-### 6.2 Nízkoúrovňové API (únikový východ)
-
-Přímé `broadcastState` / `onPlayerAction` / `onState` / lifecycle eventy pro pluginy, kterým `defineGame` nevyhovuje.
-
-### 6.3 Standalone běh
-
-Když plugin běží mimo iframe (nebo handshake nedoběhne včas), SDK spustí mock hostitele s **validními OQSE daty** a umožní vyzkoušet deklarované režimy lokálně.
-
-### 6.4 K rozhodnutí při návrhu protokolu (dny 4–6)
-
-- **Časovače:** jak řešit limit 15 s na otázku, když je reducer čistý (např. `phase` s `deadline` + akce `tick` od autority).
-- **Soukromý stav hráče:** volitelná projekce `view(state, playerId)`. V relay režimu jde o „soft“ ochranu, což je pro výuku dostačující.
-- **Data pro ovladače:** dostávají všechny items, nebo jen to, co pošle autorita?
-- **Assety v multiplayeru:** URL vs. přenos.
-- **Týmy, late join a reconnect:** přesná sémantika.
-- **Nastavení (settings):** schéma v manifestu a jeho vykreslení v lobby.
-- **Manifest pluginu = OQSEM + runtime část Memizy.** Doporučení: jeden data island; OQSEM popisuje obsah (`types`, `features`, `assets`), runtime část Memizy (režimy, pohledy, hráči) je pod `appSpecific.memizy` a její schéma je v `@memizy/protocol`.
-- **Data předávaná pluginu:** host načítá sadu přes `loadOQSEFile` (tolerantně, neplatné položky přeskočí, neznámá pole zachová) a pluginu předává jen položky typů, které plugin deklaruje (výběr pluginů v lobby přes `checkCompatibility`).
-- **Assety:** host pluginu vždy předá načitatelné URL (relativní cesty z `.oqse` balíčku převede na `blob:`/`https:`); plugin hledá assety přes `resolveAsset` (položka, pak sada).
+1. ~~**Revize** `SPEC.md` + AI guide~~ → **Release Candidate 1** (2026-10-04). Finální 1.0 po akceptačním testu (bod 6); změny do té doby jen když implementace ukáže problém, zapisují se do changelogu ve `SPEC.md`.
+2. ✅ **`@memizy/protocol`** (hotovo, 1.0.0-rc.1): TypeScript typy a Zod schémata pro manifest, handshake, `InitPayload`, zprávy, `ProtocolError` a limity; validace manifestu z HTML data islandu (bez spuštění pluginu).
+3. ✅ **`@memizy/plugin-sdk`** (hotovo, 1.0.0-rc.1; 53 kB gzip i se závislostmi; testy včetně spuštění příkladu z AI guidu) – přepis:
+   - `defineGame`: `initialState`, `actions` s mutací draftu (mutative → patche), `playerJoined/Left`, časovače `ctx.after/cancel` uložené ve stavu, `ctx.recordAnswer`, `ctx.end`, deterministické `ctx.random/shuffle/now`;
+   - vykreslování: `render` vrací HTML, SDK ho morfuje do DOM (zachová focus a text v inputech), `data-act`, `data-payload`, formuláře, `data-setting`, `ui.local`, `ui.timeLeft` se synchronizovaným časem, `tickMs`;
+   - `renderWaiting`, `renderSettings`, `validateSettings`;
+   - text: `ui.text`, `ui.renderNote` (relativní nadpisy, `titleLevel`), `ui.escape`; **oprava chyby** v současném `TextManager.parseTokens` (klíč `"map "` s mezerou) – použít `OQSE_TAG_PATTERN` / `findAssetKeys` z `@memizy/oqse`;
+   - `checkAnswer` pro typy z guidu (kap. 7), `ui.progress`, `ui.setProgress`, `ui.saved` / `ui.save` (sloučení zápisů);
+   - dávkování změn stavu (≤ ~20/s), resync po `authorityChanged`;
+   - assety: `getAsset` → `Blob` → vlastní object URL;
+   - standalone režim (bez hostitele): solo s ukázkovými daty.
+4. ✅ **`@memizy/host-sdk`** (hotovo 1.0.0-rc.1 kromě relay transportu – ten přijde se serverem; `LocalSession` pro Lab a solo, `mountPlugin` s iframe + Penpal, integrační testy se skutečným plugin-sdk): Penpal most, handshake a vyjednání verzí, validace všech volání a limity, chybové kódy, lokální transport (solo, lab), relay transport, úložiště snapshotu a dat pluginu, lobby + bariéra načtení + odpočet (solo bez nich), overlay „Čekáme na hostitele…“ při výpadku authority, načítání sady přes `loadOQSEFile` a filtrování typů přes `checkCompatibility`.
+5. **Referenční pluginy:** quiz-conquest (solo + oba `hostAs`) a jeden solo plugin.
+6. **Akceptační test:** pluginy vygenerované 3–5 AI modely jen podle guidu.
 
 ---
 
@@ -237,17 +159,22 @@ Když plugin běží mimo iframe (nebo handshake nedoběhne včas), SDK spustí 
 
 ## 8. Multiplayer server
 
-- **Relay je výchozí a pro prezentaci jediný potřebný režim.** Server nepočítá herní logiku, přeposílá zprávy, drží poslední stav pro late join a ring buffer pro reconnect.
-- **Authoritative:** whitelist oficiálních her, reducery zakompilované v serveru, 60 Hz tick (později).
-- **P2P:** existující implementace s TURN fallbackem zůstává. Relay má ale oproti TURN výhodu, že rozumí místnosti (late join, reconnect se stavem), proto je výchozí.
-- **Content negotiation:** `?encoding=json` (pluginy přes hostitele) / `msgpack` (standalone).
-- **Ochrana (bez API klíčů):**
-  - allowlist `Origin` (aplikace, lab),
-  - limit velikosti zprávy,
-  - rate limit na spojení (token bucket),
-  - max. spojení a místností na IP,
-  - TTL místnosti a heartbeat.
-- **Provoz:** jeden Bun proces na Netcupu, Caddy (TLS) jako reverse proxy, systemd, logy. Nasazovací konfigurace a secrets jsou v closed `platform`.
+**Stav: relay hotový** (`services/multiplayer-server`, `host-sdk/src/relay`, wire protokol `protocol/src/relay.ts`).
+
+**Architektura (D20):**
+- Celá session (`LocalSession`: validace, limity, autorita, snapshoty, pokrok) běží v **prohlížeči hostitele**. Instance pluginu na telefonech hráčů jsou v ní připojené jako vzdálené endpointy (`RelayHost.endpointFor`), volání `HostApi`/`PluginApi` jdou přes relay.
+- **Server je hloupý relay místností:** PIN, tokeny hráčů (návrat po výpadku nebo reloadu jako stejný hráč), presence, přeposílání host ↔ hráč, vyhození, zavření místnosti. Herní stav nedrží.
+- **Plugin a sada se nahrají jednou přes HTTP** (`PUT /api/rooms/:pin/bundle`) a hráči si je stáhnou (`GET`), WebSocket nese jen zprávy hry. Hráčův klient doplní sadu do `InitPayload` sám.
+- **Hodiny:** hráčův klient opraví `clock.offsetMs` o rozdíl hodin vůči hostiteli (měřeno při `hello`).
+- **Reload hostitele:** snapshot autority a záznam hry (plugin, sada, hráči, nastavení) se ukládají do IndexedDB hostitele; po obnovení stránky se session obnoví se stejným ID (`LocalSession({ resume: true })`) a hra pokračuje (ztráta max. ~0,5 s). Výměnu zařízení hostitele by vyřešil až snapshot na serveru (později).
+
+**Ochrana (bez API klíčů):** allowlist `Origin` (HTTP i WebSocket), max. velikost rámce (2 MB) a bundlu (8 MB), rate limit na spojení (hráč 60/s, hostitel 3000/s), místnosti na IP za hodinu (štědře – škola sdílí jednu IP), max. 100 hráčů, místnost zaniká 10 min po odchodu hostitele, nejdéle po 6 h; WebSocket ping.
+
+**Později:** authoritative režim (whitelist oficiálních her), P2P, standalone hry s msgpack. Zatím zbytečné.
+
+**Provoz:** Netcup (Debian 13), Docker Compose: `relay` + `cloudflared` (Cloudflare Tunnel, TLS na Cloudflare). Do internetu není otevřený žádný port, SSH jen přes Tailscale (účet `agent` pro nasazování, lze zrušit). Play nejdřív samostatně na `play.memizy.com` (Cloudflare Pages), po odladění na `memizy.com/play`. Postup v `services/multiplayer-server/README.md`.
+
+**Infrastruktura později (po prezentaci):** Postgres (účty, pokrok) se zálohami; Zitadel self-host je možný (data v EU), ale přidává provoz nejcitlivější služby (aktualizace, vlastní DB, zálohy jen pro zápis do R2 a zkoušky obnovy) a jeho přihlašovací stránka musí být veřejná (přes tunel). Redis a víc relay procesů až při potřebě; místnosti se pak rozdělí podle prefixu PINu (D10).
 
 ---
 
@@ -310,15 +237,30 @@ Komponenty jsou dnes navázané na Supabase a stores aplikace (`useStudySetsStor
 ### 10.2 OQSE Markdown: jeden soubor = jedna sada poznámek (hotovo)
 Poznámky se píšou jako jeden Markdown dokument (`.oqse.md`), bez escapování Mermaidu a LaTeXu. Bezztrátově ekvivalentní s JSON sadou, která obsahuje jen `note` položky. Specifikace: kapitola „OQSE Markdown (Note Sets)“ v `oqse.md`; implementace `parseMarkdownSet` / `serializeMarkdownSet`.
 
-- **Frontmatter** = `oqse: "0.2"` + `meta` (ustálená konvence, Obsidian ho ukazuje jako Properties). Volitelně `noteHeadingLevel` (výchozí 2).
-- **Text před prvním nadpisem** = `meta.description`.
-- **Nadpis o úroveň výš** (`#`) = kapitola → `topic` následujících poznámek.
-- **Nadpis poznámky** (`##`) = `title`; pod ním volitelný komentář `<!-- oqse: {id: …, tags: […]} -->` (neviditelný v Obsidianu i na GitHubu) s ostatními poli.
-- **Callout `> [!hidden]-`** na konci poznámky = `hiddenContent`.
+```markdown
+---
+oqse: "0.2"
+language: cs
+---
+# Termodynamika                 ← název sady (meta.title)
+Úvod = popis sady.
+
+## Základní zákony              ← kapitola (topic)
+
+### První zákon                 ← poznámka (title)
+<!-- oqse: {id: …, tags: [fyzika]} -->
+Obsah…
+#### Odvození                   ← nadpis uvnitř poznámky (v JSONu ##)
+
+> [!hidden]-
+> Skrytý obsah.
+```
+
+- **Výchozí úroveň poznámek je 3** (konvence: jeden `#` = název dokumentu). Úrovně 2 a 1 jsou pro dokumenty bez názvu nebo s hlubokými nadpisy; serializace volí automaticky 3 → 2 → 1.
+- **Nadpisy v poznámce jsou relativní k poznámce:** v JSONu titulek = úroveň 1, obsah začíná `##`; v Markdownu se posunou o úroveň poznámky. Renderer má volbu `headingOffset` (`shiftHeadings`), aby si plugin nadpisy přizpůsobil layoutu.
 - **Chybějící `id`, `createdAt`, `updatedAt` parser vygeneruje** a nahlásí v `generated` → AI ani lidé nemusí vymýšlet UUID; aplikace je zapíše zpět.
-- Serializace volí úroveň nadpisů automaticky (když obsah poznámek používá `##`, poznámky budou `#` a `topic` se přesune do komentáře).
 - **Pokrok (buckety) se do souboru neukládá** (OQSEP / data Obsidian pluginu).
-- Ověřeno na vlastních sadách: 16 z 20 sad s poznámkami projde převodem tam a zpět beze změny (kromě koncových mezer, které formát ořezává). 4 sady (`ndbi046`, `nswi166`, každá 2×) mají v obsahu poznámek nadpis H1 a do Markdownu převést nejdou, dokud se nadpisy nesníží.
+- Ověřeno na vlastních sadách: 16 z 20 sad s poznámkami projde převodem tam a zpět beze změny na úrovni 3 (kromě koncových mezer, které formát ořezává). 4 sady (`ndbi046`, `nswi166`, každá 2×) mají v obsahu poznámky nadpis H1 → validace dává varování `NOTE_HEADING_LEVEL`, převod do Markdownu jde až po snížení nadpisů.
 
 ### 10.3 Lint obsahu
 Volitelná kontrola při importu: `mermaid.parse`, KaTeX s `throwOnError`. Ukáže, která poznámka je rozbitá, dřív než ji uživatel otevře.
@@ -415,8 +357,8 @@ Bez čeho se prezentace neobejde: kontrakt v1, lab s testy, relay server na Netc
   - `math-input`: odstranit `$` kolem `correctAnswer` a `alternativeAnswers`
   - Upravit `course-mff-informatika/bakalarske-statnice/Instrukce.md`: `math` → `latex`; dlouhodobě instrukce přepsat na Markdown poznámky (odpadne zdvojování zpětných lomítek).
   - Pozor: repo `course-standalone-sets/sets-mff-informatika` mělo při kontrole necommitnutou změnu.
+  - `ndbi046` a `nswi166` (v obou kurzech): nadpisy H1 uvnitř poznámek snížit na `##` a níž (nadpisy v poznámce jsou relativní, titulek = úroveň 1).
   - `set-ceska-historie-zabavne`: 3 poznámky obsahují `<h2>` bez deklarace `html` → přepsat na Markdown `##` (nebo deklarovat `html`). Nová validace je jinak přeskočí.
-  - vymyslet to s mapovánímm h1 na topic a dalšími věcmi na markdown než budu dělat ten obsidian plugin
 - **Import obecného Markdownu do poznámek** (`@memizy/oqse`): samostatná, ztrátová funkce (např. `importMarkdownAsNotes(md, { headingLevel })`), která rozdělí běžný Markdown podle nadpisů zvolené úrovně na note položky (nadpis → `title`, vygenerované `id`, případný callout `[!hidden]` → `hiddenContent`). Oddělená od striktní bezztrátové serializace.
 - Standalone hry: `game-client` (MessagePack), authoritative režim, API klíče a kvóty.
 - P2P přes nový transport v `host-sdk`.
