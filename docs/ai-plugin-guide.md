@@ -327,11 +327,47 @@ Restyle it with CSS variables on a parent: `--mz-q-accent`, `--mz-q-bg`, `--mz-q
 
 HTML is for text, buttons and menus. For a canvas or a 3D scene (e.g. Three.js):
 
+**Use `createScene3d`** from the SDK – it handles the hard parts on school devices (no WebGL, black screens, slow phones, iOS resizing, taps):
+
+```js
+import { defineGame, checkAnswer, createScene3d } from 'https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1/+esm';
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.min.js';
+
+let s3 = null;
+const game = defineGame({
+  // …
+  render: (state, ui) => ui.local.no3d
+    ? ui.html`<div class="deck2d">… a simple 2D view …</div>`
+    : ui.html`<div id="scene" data-keep></div><div class="hud">${state.score}</div>`,
+  afterRender(state, ui) {
+    if (ui.local.no3d) return;
+    if (!s3) {
+      s3 = createScene3d(THREE, document.getElementById('scene'), {
+        onFallback: (reason) => ui.setLocal({ no3d: reason }),   // switch to the 2D view
+        onFrame: (dt) => { /* animate */ },
+      });
+      if (!s3) return;
+      s3.camera.position.set(0, 4, 10);
+      // build the scene into s3.scene …
+      s3.canvas.addEventListener('pointerdown', (e) => {
+        const targets = [{ ...s3.project(cannon.position), id: 'cannon' }];   // labels on screen
+        const hit = s3.nearest(targets, e);                                    // the nearest within reach
+        if (hit) game.act('aim', { cannon: hit.id });
+      });
+      s3.start();
+    }
+    // update the scene from the state (positions, hits) here
+  },
+});
+```
+
+`createScene3d(THREE, element, { onFallback, onFrame, onResize, minFps })` returns `{ renderer, scene, camera, canvas, size, start, stop, syncSize, project, nearest, dispose }`, or `null` when 3D cannot run (then `onFallback` was called).
+
 * Put an empty element with **`data-keep`** into the HTML: `<div id="scene" data-keep></div>`. The SDK never touches what is inside it, so your canvas survives every render.
 * Create the scene once and update it in **`afterRender(state, ui)`**, which runs after every render (not every animation frame): move objects, start an explosion when `state.lastShot` changed. It must not change the state. Keep your own `requestAnimationFrame` loop for smooth movement.
 * Clicks inside the scene: call **`game.act('fire', { target: 2 })`** (the handle from `defineGame`) or `ui.act`. Device-only flags (2D/3D, camera mode) go to `ui.setLocal`.
 * The state holds what matters for the game (positions after a move, hits), not animation frames: one action per decision (limit 30 per second).
-* Not every device runs WebGL well: check that a WebGL context can be created, offer a 2D view (another `render` branch) when it fails or the frame rate stays low, and a button to switch. Lower the quality on phones (`setPixelRatio(Math.min(devicePixelRatio, 2))`, no or small shadows). On iOS the page resizes when the toolbars move: re-measure the canvas size before handling a tap.
+* Always have the 2D view (`createScene3d` calls `onFallback` when WebGL is missing, broken or too slow) and a button to switch. Keep shadows small or off on phones.
 * Load libraries as ES modules from `https://cdn.jsdelivr.net/npm/...` (e.g. `https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.min.js`).
 
 ---
