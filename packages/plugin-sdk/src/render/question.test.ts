@@ -4,6 +4,7 @@ import { startGame, type GameHandle } from '../game/defineGame';
 import { checkAnswer } from '../checkAnswer';
 import { LocalRouter, wait } from '../test/localRouter';
 import type { GameDefinition } from '../types';
+import { renderQuestion } from './question';
 
 const handles: GameHandle[] = [];
 afterEach(() => {
@@ -174,5 +175,29 @@ describe('ui.question', () => {
     await router.start();
     await wait(60);
     expect(root.querySelector('.mz-q-unsupported')).not.toBeNull();
+  });
+});
+
+describe('ui.question counts', () => {
+  const qc = { text: (s: string | null | undefined) => String(s ?? ''), local: {}, locale: 'cs' };
+  const html = (item: OQSEAnyItem, counts?: Record<string, number>) => {
+    const div = document.createElement('div');
+    div.innerHTML = renderQuestion(item, { counts, disabled: true }, qc);
+    return div;
+  };
+
+  it('shows how many players chose each option (missing keys are 0)', () => {
+    const item = { id: id(20), type: 'mcq-single', question: 'Q', options: ch('a', 'b', 'c'), correctId: 'a' } as OQSEAnyItem;
+    const div = html(item, { a: 5, c: 2, x: 9 });
+    expect([...div.querySelectorAll('.mz-q-count')].map((e) => e.textContent)).toEqual(['5', '0', '2']);
+    expect(div.querySelectorAll('.mz-q-count-0')).toHaveLength(1);
+    expect(html(item).querySelector('.mz-q-count')).toBeNull();
+  });
+
+  it('true-false uses the keys true / false; mcq-multi too; nonsense becomes 0', () => {
+    const tf = html({ id: id(21), type: 'true-false', question: 'Q', correctAnswer: true } as OQSEAnyItem, { true: 3, false: '<b>' as unknown as number });
+    expect([...tf.querySelectorAll('.mz-q-count')].map((e) => e.textContent)).toEqual(['3', '0']);
+    const multi = html({ id: id(22), type: 'mcq-multi', question: 'Q', options: ch('a', 'b'), correctIds: ['a'] } as OQSEAnyItem, { b: 1 });
+    expect([...multi.querySelectorAll('.mz-q-count')].map((e) => e.textContent)).toEqual(['0', '1']);
   });
 });

@@ -63,7 +63,7 @@ const quiz: Omit<GameDefinition<State>, 'root'> = {
     const answered = Object.keys(state.answers).length;
     if (ui.view === 'board') return `<h1>${ui.text(item.question, { inline: true })}</h1><p class="count">${answered}/${ui.players.length}</p>`;
     const mine = ui.self && ui.self.id in state.answers;
-    return `<p class="who">${ui.escape(ui.self?.name)}</p>${item.options
+    return `<p class="who">${ui.html`${ui.self?.name}`}</p>${item.options
       .map((o: { id: string; text: string }) => `<button data-act="answer" data-payload='${JSON.stringify({ answer: o.id })}' ${mine ? 'disabled' : ''}>${ui.text(o.text, { inline: true })}</button>`)
       .join('')}<p class="score">${state.scores[ui.self!.id] ?? 0}</p>`;
   },
@@ -94,6 +94,82 @@ describe('defineGame end to end', () => {
     await wait(150);
     expect(root.querySelector('.tab')!.textContent).toBe('map');
     expect(root.querySelector('.name')!.innerHTML).toBe('&lt;b&gt;x&lt;/b&gt;');
+  });
+
+  it('data-local runs a device-only handler and re-renders; unknown handlers are reported', async () => {
+    const router = new LocalRouter({ items, mode: 'solo' });
+    const seen: unknown[] = [];
+    const root = mount(router, 'me', {
+      initialState: () => ({ n: 0 }),
+      actions: { bump(state: { n: number }) { state.n += 1; } },
+      local: {
+        tab(local, payload, ui) {
+          local.tab = payload;
+          seen.push(ui.view);
+        },
+        broken() {
+          throw new Error('nope');
+        },
+      },
+      render: (state: { n: number }, ui) =>
+        ui.html`<p class="tab">${ui.local.tab ?? 'none'}</p><p class="n">${state.n}</p>
+          <button class="map" data-local="tab" data-payload='"map"'>Map</button>
+          <button class="off" data-local="tab" data-payload='"x"' disabled>Off</button>
+          <button class="bad" data-local="broken">Bad</button>
+          <button class="missing" data-local="nothing">?</button>`,
+    });
+    await handles[0].ready;
+    await router.start();
+    await wait();
+    (root.querySelector('.map') as HTMLButtonElement).click();
+    (root.querySelector('.off') as HTMLButtonElement).click();
+    await wait();
+    expect(root.querySelector('.tab')!.textContent).toBe('map');
+    expect(root.querySelector('.n')!.textContent).toBe('0'); // no action was sent
+    expect(seen).toEqual(['solo']);
+    (root.querySelector('.bad') as HTMLButtonElement).click();
+    (root.querySelector('.missing') as HTMLButtonElement).click();
+    await wait();
+    expect(router.errors).toEqual(['me LOCAL_FAILED: local.broken: nope', expect.stringMatching(/^me UNKNOWN_LOCAL: data-local="nothing"/)]);
+  });
+
+  it('re-renders timed phases without tickMs (countdowns) and stops when the phase has no deadline', async () => {
+    const router = new LocalRouter({ items, mode: 'solo' });
+    let renders = 0;
+    mount(router, 'me', {
+      initialState: (ctx) => {
+        ctx.goto('question');
+        return {};
+      },
+      actions: { stop(_state, _payload, ctx) { ctx.goto('done'); } },
+      phases: { question: { seconds: 30, actions: ['stop'] }, done: {} },
+      render: (_state, ui) => {
+        renders++;
+        return ui.html`<p>${Math.ceil(ui.timeLeft() / 1000)}</p>`;
+      },
+    });
+    await handles[0].ready;
+    await router.start();
+    await wait(100);
+    const before = renders;
+    await wait(700);
+    expect(renders - before).toBeGreaterThanOrEqual(2);
+    handles[0].act('stop');
+    await wait(100);
+    const after = renders;
+    await wait(600);
+    expect(renders).toBe(after);
+  });
+
+  it('ui has no escape any more (ui.html escapes)', async () => {
+    const router = new LocalRouter({ items, mode: 'solo' });
+    let keys: string[] = [];
+    mount(router, 'me', { initialState: () => ({}), actions: {}, render: (_s, ui) => { keys = Object.keys(ui); return ''; } });
+    await handles[0].ready;
+    await router.start();
+    await wait();
+    expect(keys).toContain('html');
+    expect(keys).not.toContain('escape');
   });
 
   it('runs a presenter game across board and controllers', async () => {
@@ -216,5 +292,7 @@ describe('defineGame end to end', () => {
     const router = new LocalRouter({ items, mode: 'solo' });
     const handle = startGame({ actions: {}, render: () => '' } as any, { connector: router.connector('me') });
     await expect(handle.ready).rejects.toThrow(/initialState must be a function/);
+    const bad = startGame({ initialState: () => ({}), actions: {}, render: () => '', local: { tab: 'map' } } as any, { connector: router.connector('me') });
+    await expect(bad.ready).rejects.toThrow(/local.tab must be a function/);
   });
 });

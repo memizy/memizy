@@ -28,6 +28,12 @@ export interface QuestionOptions {
   showQuestion?: boolean;
   /** Label of the submit button. */
   submitLabel?: string;
+  /**
+   * How many players chose each option (choice types: `mcq-single`, `mcq-multi`,
+   * `true-false`), shown as a badge on the option, e.g. on the board after the reveal.
+   * Keys are option IDs (`true` / `false` for true-false); a missing key counts as 0.
+   */
+  counts?: Record<string, number>;
 }
 
 /** What the SDK keeps on this device while the player assembles an answer. */
@@ -80,6 +86,12 @@ export function renderQuestion(item: OQSEAnyItem, options: QuestionOptions, qc: 
   const head = options.showQuestion === false ? '' : questionHead(it, qc);
   const wrap = (body: string, extra = '') => `<div class="mz-q mz-q-${escapeHtml(it.type)}${extra}" data-mzq-root="${escapeHtml(item.id)}">${head}${body}</div>`;
   const isChosen = (id: unknown) => options.chosen !== undefined && (Array.isArray(options.chosen) ? options.chosen.includes(id) : options.chosen === id);
+  const count = (id: unknown) => {
+    if (!options.counts || typeof options.counts !== 'object') return '';
+    const n = Number(options.counts[String(id)] ?? 0);
+    const value = Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+    return `<span class="mz-q-count${value === 0 ? ' mz-q-count-0' : ''}">${value}</span>`;
+  };
   const mark = (id: unknown, right: boolean) => `${isChosen(id) ? ' mz-q-chosen' : ''}${reveal ? (right ? ' mz-q-right' : isChosen(id) ? ' mz-q-wrong' : ' mz-q-dim') : ''}`;
   const textForm = (kind: 'text' | 'number' | 'textarea', attrs = '') => {
     const id = `mzq-${item.id}`;
@@ -93,16 +105,16 @@ export function renderQuestion(item: OQSEAnyItem, options: QuestionOptions, qc: 
 
   switch (it.type) {
     case 'mcq-single':
-      return wrap(`<div class="mz-q-options">${(it.options as Choice[]).map((o, i) => `<button type="button" class="mz-q-opt${mark(o.id, o.id === it.correctId)}" ${act(o.id)}><span class="mz-q-key">${'ABCDEFGHIJ'[i] ?? i + 1}</span><span class="mz-q-label">${inline(o.text)}</span></button>`).join('')}</div>`);
+      return wrap(`<div class="mz-q-options">${(it.options as Choice[]).map((o, i) => `<button type="button" class="mz-q-opt${mark(o.id, o.id === it.correctId)}" ${act(o.id)}><span class="mz-q-key">${'ABCDEFGHIJ'[i] ?? i + 1}</span><span class="mz-q-label">${inline(o.text)}</span>${count(o.id)}</button>`).join('')}</div>`);
 
     case 'true-false':
-      return wrap(`<div class="mz-q-options mz-q-two">${[true, false].map((v) => `<button type="button" class="mz-q-opt mz-q-${v ? 'yes' : 'no'}${mark(v, v === it.correctAnswer)}" ${act(v)}><span class="mz-q-label">${v ? t.truth : t.lie}</span></button>`).join('')}</div>`);
+      return wrap(`<div class="mz-q-options mz-q-two">${[true, false].map((v) => `<button type="button" class="mz-q-opt mz-q-${v ? 'yes' : 'no'}${mark(v, v === it.correctAnswer)}" ${act(v)}><span class="mz-q-label">${v ? t.truth : t.lie}</span>${count(v)}</button>`).join('')}</div>`);
 
     case 'mcq-multi': {
       const picked = locked && Array.isArray(options.chosen) ? (options.chosen as string[]) : local.picked ?? [];
       const right = new Set<string>(it.correctIds ?? []);
       return wrap(
-        `<div class="mz-q-options">${(it.options as Choice[]).map((o, i) => `<button type="button" class="mz-q-opt${picked.includes(o.id) ? ' mz-q-picked' : ''}${mark(o.id, right.has(o.id))}" ${mzq({ op: 'toggle', id: o.id })} aria-pressed="${picked.includes(o.id)}"><span class="mz-q-key">${'ABCDEFGHIJ'[i] ?? i + 1}</span><span class="mz-q-label">${inline(o.text)}</span></button>`).join('')}</div>` +
+        `<div class="mz-q-options">${(it.options as Choice[]).map((o, i) => `<button type="button" class="mz-q-opt${picked.includes(o.id) ? ' mz-q-picked' : ''}${mark(o.id, right.has(o.id))}" ${mzq({ op: 'toggle', id: o.id })} aria-pressed="${picked.includes(o.id)}"><span class="mz-q-key">${'ABCDEFGHIJ'[i] ?? i + 1}</span><span class="mz-q-label">${inline(o.text)}</span>${count(o.id)}</button>`).join('')}</div>` +
           submit(picked, picked.length > 0),
       );
     }

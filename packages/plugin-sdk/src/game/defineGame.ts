@@ -30,12 +30,16 @@ import { standaloneConnector } from '../standalone/standaloneHost';
 import { morph } from '../render/morph';
 import { bindEvents } from '../render/events';
 import { injectStyles } from '../render/styles';
+import { preventZoom } from '../render/noZoom';
 import { enhance } from '../text/enhance';
 import { escapeHtml, renderNoteHtml, renderRichText, type RichTextContext } from '../text/richText';
 import type { GameDefinition, GameUI, RenderResult, SavedData } from '../types';
 
 declare const __SDK_VERSION__: string;
 export const SDK_VERSION: string = typeof __SDK_VERSION__ !== 'undefined' ? __SDK_VERSION__ : '0.0.0-dev';
+
+/** How often the screen of a timed phase re-renders (its countdown). */
+const PHASE_TICK_MS = 250;
 
 export interface GameHandle {
   /** Resolves when the game is connected and the first screen is rendered. */
@@ -64,6 +68,7 @@ export function startGame<S>(definition: GameDefinition<S>, options: StartOption
   const doc = options.document ?? document;
   let controller: Controller | null = null;
   let destroyed = false;
+  let allowZoom: (() => void) | null = null;
 
   const pluginApi: PluginApi = {
     start: async () => controller?.start(),
@@ -80,6 +85,7 @@ export function startGame<S>(definition: GameDefinition<S>, options: StartOption
     validateDefinition(definition);
     const root = definition.root ?? doc.body;
     injectStyles(doc);
+    allowZoom = preventZoom(doc);
 
     const manifest = readManifest(doc);
     const handshake: Handshake = {
@@ -118,6 +124,7 @@ export function startGame<S>(definition: GameDefinition<S>, options: StartOption
     },
     destroy() {
       destroyed = true;
+      allowZoom?.();
       controller?.destroy();
     },
   };
@@ -158,6 +165,7 @@ abstract class BaseController implements Controller {
     this.root = root;
     this.unbind = bindEvents(root, {
       act: (name, payload) => this.act(name, payload),
+      local: (name, payload) => this.runLocal(name, payload),
       setting: onSetting,
       question: (event) => this.questionEvent(event as unknown as QuestionEvent & { op: QuestionEvent['op'] | 'clear' }),
       error: (message) => this.report('INVALID_PAYLOAD', message),
@@ -165,6 +173,25 @@ abstract class BaseController implements Controller {
   }
 
   abstract render(): RenderResult;
+  /** The game definition (for its `local` handlers). */
+  protected abstract readonly definition: GameDefinition<any>;
+  /** The `ui` of the current screen (given to `local` handlers). */
+  protected abstract currentUi(): GameUI;
+
+  /** A `data-local` click: runs the device-only handler, then re-renders. */
+  private runLocal(name: string, payload: unknown): void {
+    const handler = this.definition.local?.[name];
+    if (typeof handler !== 'function') {
+      this.report('UNKNOWN_LOCAL', `data-local="${name}" has no handler: add it to defineGame({ local: { ${name}(local, payload, ui) { … } } }).`);
+      return;
+    }
+    try {
+      handler(this.local, payload, this.currentUi());
+    } catch (error) {
+      this.report('LOCAL_FAILED', `local.${name}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    this.schedule();
+  }
 
   /** Device-local state of `ui.question` controls, per item. */
   private readonly questions = new Map<string, QuestionLocal>();
@@ -284,7 +311,6 @@ abstract class BaseController implements Controller {
       html: safeHtml,
       raw: rawHtml,
       question: (item, options) => this.question(item, options),
-      escape: escapeHtml,
     };
   }
 
@@ -296,6 +322,12 @@ abstract class BaseController implements Controller {
 
 class GameController<S> extends BaseController {
   private readonly def: GameDefinition<S>;
+  protected get definition(): GameDefinition<any> {
+    return this.def;
+  }
+  protected currentUi(): GameUI {
+    return this.ui();
+  }
   private readonly runtime: GameRuntime<S>;
   private readonly saved: SavedData;
   private readonly progress: Record<string, ProgressRecord>;
@@ -315,7 +347,18 @@ class GameController<S> extends BaseController {
       this.tick = setInterval(() => {
         if (this.runtime.state !== undefined) this.schedule();
       }, Math.max(16, def.tickMs));
+    } else if (def.phases) {
+      // Countdowns of timed phases (`ui.timeLeft()`) run without `tickMs`.
+      this.tick = setInterval(() => {
+        if (this.phaseRunning()) this.schedule();
+      }, PHASE_TICK_MS);
     }
+  }
+
+  /** Whether the current phase has a deadline that has not passed yet (and the game is not paused). */
+  private phaseRunning(): boolean {
+    const end = (this.runtime.state as { phaseEndsAt?: unknown } | undefined)?.phaseEndsAt;
+    return typeof end === 'number' && !this.runtime.paused && end > this.runtime.now() - PHASE_TICK_MS;
   }
 
   private get isBoard(): boolean {
@@ -482,6 +525,12 @@ class GameController<S> extends BaseController {
 /** View `settings`: the plugin's own settings screen in the multiplayer lobby. */
 class SettingsController extends BaseController {
   private readonly def: GameDefinition<any>;
+  protected get definition(): GameDefinition<any> {
+    return this.def;
+  }
+  protected currentUi(): GameUI {
+    return this.settingsUi();
+  }
   private readonly definitions: SettingDefinition[];
   private values: Record<string, unknown>;
 
@@ -571,6 +620,10 @@ function validateDefinition(def: GameDefinition<any>): void {
   else for (const [name, fn] of Object.entries(def.actions)) if (typeof fn !== 'function') problems.push(`actions.${name} must be a function`);
   if (typeof def.render !== 'function') problems.push('render must be a function returning HTML');
   if (def.afterRender !== undefined && typeof def.afterRender !== 'function') problems.push('afterRender must be a function (state, ui) => void');
+  if (def.local !== undefined) {
+    if (!def.local || typeof def.local !== 'object') problems.push('local must be an object of functions (local, payload, ui) => void');
+    else for (const [name, fn] of Object.entries(def.local)) if (typeof fn !== 'function') problems.push(`local.${name} must be a function (local, payload, ui) => void`);
+  }
   if (problems.length > 0) throw new Error(`defineGame: ${problems.join('; ')}`);
 }
 

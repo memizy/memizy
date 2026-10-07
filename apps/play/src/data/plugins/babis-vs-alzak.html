@@ -751,7 +751,7 @@
     function bubbles(state, ui) {
       const lines = state.dialogue?.lines ?? [];
       if (!lines.length) return '';
-      return `<div class="bubbles" data-key="dlg${state.dialogue.id}">${lines.map((l, i) => `<div class="bubble ${l.who}${i ? ' second' : ''}"><small>${TEAMS[l.who].hero}</small>${ui.escape(l.text)}</div>`).join('')}</div>`;
+      return `<div class="bubbles" data-key="dlg${state.dialogue.id}">${lines.map((l, i) => `<div class="bubble ${l.who}${i ? ' second' : ''}"><small>${TEAMS[l.who].hero}</small>${ui.html`${l.text}`}</div>`).join('')}</div>`;
     }
 
     function skipButton(state, ui) {
@@ -769,7 +769,7 @@
           <h2>${TEAMS[team].name}</h2>
           <div class="muted">${TEAMS[team].slogan}</div>
           ${ui.self ? `<button class="join ${team}" data-act="chooseTeam" data-payload='{"team":"${team}"}' ${myTeam === team ? 'disabled' : ''}>${myTeam === team ? 'Jsi tady ✔' : 'Přidat se'}</button>` : ''}
-          <div class="pills">${list.map((p) => `<span class="pill${p.id === me ? ' me' : ''}">${ui.escape(p.name)}</span>`).join('') || '<span class="muted">zatím nikdo</span>'}</div>
+          <div class="pills">${list.map((p) => `<span class="pill${p.id === me ? ' me' : ''}">${ui.html`${p.name}`}</span>`).join('') || '<span class="muted">zatím nikdo</span>'}</div>
         </div>`;
       };
       return `<div class="card big">
@@ -854,7 +854,7 @@
       }).join('');
       const log = state.shopLog.slice(-12).reverse().map((l) => {
         const s = shopItem(l.item);
-        const name = l.who === 'ai' ? 'Počítač' : ui.escape(ui.players.find((p) => p.id === l.who)?.name ?? '?');
+        const name = l.who === 'ai' ? 'Počítač' : ui.html`${ui.players.find((p) => p.id === l.who)?.name ?? '?'}`;
         return `<div>${s?.icon ?? '🛒'} <b>${name}</b> koupil ${l.who === 'ai' ? 'zásoby pro svůj tým' : s?.name ?? ''}</div>`;
       }).join('');
       const readyCount = Object.keys(state.shopDone).length;
@@ -878,9 +878,9 @@
         <h1>${w === 'draw' ? '🤝 Remíza!' : w === 'babis' ? `👑 Vítězí ${teamLabel(state, 'babis')}!` : `🎉 Vítězí ${teamLabel(state, 'alzak')}!`}</h1>
         <div class="mvp">${['babis', 'alzak'].map((t) => {
           const p = mvp(t);
-          return `<div class="result ${t === w ? 'good' : 'wait'}">${TEAMS[t].name}<br>${p ? `⭐ ${ui.escape(p.name)} · ${state.dealt[p.id]} poškození` : state.ai === t ? '🤖 počítač' : '—'}</div>`;
+          return `<div class="result ${t === w ? 'good' : 'wait'}">${TEAMS[t].name}<br>${p ? `⭐ ${ui.html`${p.name}`} · ${state.dealt[p.id]} poškození` : state.ai === t ? '🤖 počítač' : '—'}</div>`;
         }).join('')}</div>
-        <div class="rank">${ranking.map((p, i) => `<div class="${i === 0 ? 'first' : ''}"><span>${i === 0 ? '🏆 ' : `${i + 1}. `}${ui.escape(p.name)} <span class="muted">· ${state.teams[p.id] === 'babis' ? 'Babiš' : 'Alzák'}</span></span><span>${state.scores[p.id] ?? 0} b.</span></div>`).join('')}</div>
+        <div class="rank">${ranking.map((p, i) => `<div class="${i === 0 ? 'first' : ''}"><span>${i === 0 ? '🏆 ' : `${i + 1}. `}${ui.html`${p.name}`} <span class="muted">· ${state.teams[p.id] === 'babis' ? 'Babiš' : 'Alzák'}</span></span><span>${state.scores[p.id] ?? 0} b.</span></div>`).join('')}</div>
       </div>`;
     }
 

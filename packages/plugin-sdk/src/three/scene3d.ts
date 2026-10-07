@@ -3,22 +3,35 @@
  * classroom, learned with Pirates of Memizy. The game passes its own Three.js (any
  * recent version), so the SDK does not depend on it.
  *
- * - WebGL missing, a context that cannot start, a black frame (broken drivers) or a
- *   lost context → `onFallback(reason)`: switch to a 2D view.
- * - Low frame rate → lower quality first, then `onFallback`.
+ * - 3D that cannot run (no WebGL, a context that cannot start or is lost) →
+ *   `onFallback(reason, { kind })`: switch to a 2D view. A game without a 2D view (no
+ *   `onFallback`) gets a short message in the element instead.
+ * - A black frame (broken drivers) or a low frame rate → `onFallback` too, but **at most
+ *   once per page**: when the player switches back to 3D, the next scene stays 3D (it
+ *   only lowers the quality). Games without `onFallback` always stay 3D.
  * - The canvas follows its element (also when iOS toolbars resize the page).
  * - `nearest(targets, event)`: taps pick the nearest label on screen (what the
  *   player sees), not a tiny 3D mesh behind it.
  */
 
+/**
+ * Why the scene switched to 2D: `unsupported` (no library or WebGL, the context cannot
+ * start), `lost` (the graphics card dropped the context), `black` (it renders nothing),
+ * `slow` (too few frames per second even at low quality).
+ */
+export type Scene3dFallbackKind = 'unsupported' | 'lost' | 'black' | 'slow';
+
 export interface Scene3dOptions {
-  /** Called once when 3D cannot be used here; show a 2D view instead. */
-  onFallback?(reason: string): void;
+  /**
+   * Show the 2D view instead (once per scene). Tell the player why and that the 3D
+   * button brings 3D back. Without it the game has no 2D view and stays 3D.
+   */
+  onFallback?(reason: string, info: { kind: Scene3dFallbackKind }): void;
   /** Called after every frame with the seconds since the last one. */
   onFrame?(dt: number, time: number): void;
   /** Called when the size changes (width, height in CSS pixels). */
   onResize?(width: number, height: number): void;
-  /** Frames per second below which the game falls back to 2D (default 12). */
+  /** Frames per second below which the game falls back to 2D (default 12; only the first automatic switch). */
   minFps?: number;
   /** Maximal device pixel ratio (default 2; phones get at most 1.5). */
   maxPixelRatio?: number;
@@ -77,6 +90,24 @@ export function nearestTarget<T extends ScreenTarget>(targets: readonly T[], x: 
   return best;
 }
 
+/** Whether a scene already switched to 2D on its own (black or slow): then the player chose 3D again. */
+let switchedOnce = false;
+
+/** For tests: forget the automatic switch of this page. */
+export function resetScene3dChecks(): void {
+  switchedOnce = false;
+}
+
+/** The message in a game without a 2D view when 3D cannot run here. */
+function showNo3d(element: HTMLElement, reason: string): void {
+  const doc = element.ownerDocument;
+  const box = doc.createElement('div');
+  box.className = 'mz-no3d';
+  const cs = (doc.documentElement.lang || '').toLowerCase().startsWith('cs');
+  box.textContent = cs ? `Toto zařízení neumí zobrazit 3D (${reason}).` : `This device cannot show 3D (${reason}).`;
+  element.appendChild(box);
+}
+
 /** True when the rendered frame is (almost) completely black: a broken GPU driver. */
 function looksBlack(renderer: any): boolean {
   try {
@@ -103,19 +134,24 @@ function looksBlack(renderer: any): boolean {
 export function createScene3d(THREE: any, element: HTMLElement, options: Scene3dOptions = {}): Scene3d | null {
   let fellBack = false;
   let api: Scene3d | null = null;
-  const fallback = (reason: string) => {
+  const has2d = typeof options.onFallback === 'function';
+  // Black and slow scenes switch to 2D only the first time (and only with a 2D view).
+  const autoChecks = has2d && !switchedOnce;
+  const fallback = (reason: string, kind: Scene3dFallbackKind) => {
     if (fellBack) return;
     fellBack = true;
     api?.dispose();
-    options.onFallback?.(reason);
+    if (kind === 'black' || kind === 'slow') switchedOnce = true;
+    if (has2d) options.onFallback!(reason, { kind });
+    else showNo3d(element, reason);
   };
   const doc = element.ownerDocument;
   if (!THREE?.WebGLRenderer) {
-    fallback('the 3D library is not loaded');
+    fallback('the 3D library is not loaded', 'unsupported');
     return null;
   }
   if (!webglAvailable(doc)) {
-    fallback('WebGL is not available');
+    fallback('WebGL is not available', 'unsupported');
     return null;
   }
   const phone = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
@@ -123,7 +159,7 @@ export function createScene3d(THREE: any, element: HTMLElement, options: Scene3d
   try {
     renderer = new THREE.WebGLRenderer({ antialias: !phone, powerPreference: 'high-performance', preserveDrawingBuffer: false });
   } catch {
-    fallback('the 3D scene could not start');
+    fallback('the 3D scene could not start', 'unsupported');
     return null;
   }
   const maxRatio = Math.min(options.maxPixelRatio ?? 2, phone ? 1.5 : 2);
@@ -139,7 +175,7 @@ export function createScene3d(THREE: any, element: HTMLElement, options: Scene3d
   let disposed = false;
   canvas.addEventListener('webglcontextlost', (e) => {
     e.preventDefault();
-    fallback('the graphics card lost the 3D context');
+    fallback('the graphics card lost the 3D context', 'lost');
   });
 
   const self: Scene3d = {
@@ -189,7 +225,7 @@ export function createScene3d(THREE: any, element: HTMLElement, options: Scene3d
         renderer.render(scene, self.camera);
         if (!checkedBlack) {
           checkedBlack = true;
-          if (looksBlack(renderer)) return fallback('the 3D scene renders black on this device');
+          if (autoChecks && looksBlack(renderer)) return fallback('the 3D scene renders black on this device', 'black');
         }
         frames++;
         if (now - checkStart > 4000) {
@@ -200,8 +236,8 @@ export function createScene3d(THREE: any, element: HTMLElement, options: Scene3d
             lowQuality = true;
             renderer.setPixelRatio(1);
             size.width = 0; // re-apply the size with the new ratio
-          } else if (fps < (options.minFps ?? 12) && lowQuality) {
-            fallback(`the 3D scene is too slow here (${Math.round(fps)} fps)`);
+          } else if (autoChecks && lowQuality && fps < (options.minFps ?? 12)) {
+            fallback(`the 3D scene is too slow here (${Math.round(fps)} fps)`, 'slow');
           }
         }
       };

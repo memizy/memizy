@@ -107,7 +107,8 @@ export interface GameUI {
   /**
    * Changes `ui.local` and re-renders: device-only UI state (a selected tab, a 2D/3D
    * switch, an animation flag) without a global variable. `ui.setLocal({ tab: 'map' })`
-   * or `ui.setLocal((local) => { local.count += 1; })`.
+   * or `ui.setLocal((local) => { local.count += 1; })`. From HTML use `data-local`
+   * with a handler in `defineGame({ local })`.
    */
   setLocal(update: Record<string, unknown> | ((local: Record<string, any>) => void)): void;
   /** Call an action (normally use `data-act`). */
@@ -160,8 +161,6 @@ export interface GameUI {
   text(markdown: string | undefined | null, options?: { inline?: boolean; item?: OQSEAnyItem }): SafeHtml;
   /** Safe HTML of a whole note item. */
   renderNote(note: NoteItem, options?: { titleLevel?: number }): SafeHtml;
-  /** Escape plain text for HTML (not needed inside `ui.html`). */
-  escape(text: unknown): string;
   /** Save data between games (`'plugin'`: across sets, `'set'`: this set). */
   save(scope: DataScope, value: unknown): void;
   /** Set this player's learning progress directly (bucket 0–4). */
@@ -170,6 +169,12 @@ export interface GameUI {
 
 export type RenderResult = string | SafeHtml | void | undefined | null;
 
+/**
+ * A device-only click handler (`<button data-local="tab" data-payload='"map"'>`): changes
+ * `local` (= `ui.local`), then the screen re-renders. Nothing is sent to other devices.
+ */
+export type LocalHandler = (local: Record<string, any>, payload: any, ui: GameUI) => void;
+
 export interface GameDefinition<S = any> {
   /** Where to render. Default: `document.body`. */
   root?: HTMLElement;
@@ -177,6 +182,12 @@ export interface GameDefinition<S = any> {
   tickMs?: number;
   initialState(ctx: GameContext): S;
   actions: Record<string, ActionHandler<S>>;
+  /**
+   * Device-only handlers for `data-local` clicks (tabs, a 2D/3D switch, an open menu):
+   * `local: { tab(local, payload) { local.tab = payload; } }`. They change `ui.local`
+   * and re-render this screen; game rules and anything others should see go to `actions`.
+   */
+  local?: Record<string, LocalHandler>;
   playerJoined?(state: S, player: Player, ctx: GameContext): void | S;
   playerLeft?(state: S, player: Player, ctx: GameContext): void | S;
   render(state: S, ui: GameUI): RenderResult;

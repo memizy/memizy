@@ -2,11 +2,14 @@
  * Event delegation for the HTML returned by render functions:
  *  - `<button data-act="answer" data-payload='{"answer":2}'>` → action `answer` with `{ answer: 2 }`
  *  - `<form data-act="submitText">` → action `submitText` with the form fields, then the form is reset
+ *  - `<button data-local="tab" data-payload='"map"'>` → device-only handler `local.tab` with `"map"`
  *  - `<input data-setting="questionTime">` → setting change (settings screen)
  */
 
 export interface EventHandlers {
   act(name: string, payload: unknown): void;
+  /** A `data-local` click (device-only handler). */
+  local?(name: string, payload: unknown): void;
   setting?(id: string, value: string | number | boolean): void;
   /** A click / change inside `ui.question` controls (`data-mzq`), or `clear` after its answer was sent. */
   question?(event: Record<string, unknown>): void;
@@ -50,25 +53,35 @@ export function bindEvents(root: HTMLElement, handlers: EventHandlers): () => vo
       } else questionEvent(q);
       return;
     }
-    const el = target?.closest?.('[data-act]');
+    const el = target?.closest?.('[data-act],[data-local]');
     if (!el || !root.contains(el) || el.tagName === 'FORM') return;
     if ((el as HTMLButtonElement).disabled || el.getAttribute('aria-disabled') === 'true') return;
     event.preventDefault();
+    if (el.hasAttribute('data-local')) {
+      const payload = readPayload(el, el.getAttribute('data-local')!);
+      if (payload !== INVALID) handlers.local?.(el.getAttribute('data-local')!, payload);
+      return;
+    }
     dispatch(el);
+  };
+
+  const INVALID = Symbol('invalid');
+  /** The JSON of `data-payload` (null without it). */
+  const readPayload = (el: Element, name: string): unknown => {
+    const raw = el.getAttribute('data-payload');
+    if (raw === null || raw === '') return null;
+    try {
+      return JSON.parse(raw);
+    } catch {
+      handlers.error(`data-payload of "${name}" is not valid JSON: ${raw}`);
+      return INVALID;
+    }
   };
 
   /** Runs the action of a `data-act` element (also the submit button of a question form). */
   const dispatch = (el: Element) => {
-    const raw = el.getAttribute('data-payload');
-    let payload: unknown = null;
-    if (raw !== null && raw !== '') {
-      try {
-        payload = JSON.parse(raw);
-      } catch {
-        handlers.error(`data-payload of "${el.getAttribute('data-act')}" is not valid JSON: ${raw}`);
-        return;
-      }
-    }
+    let payload = readPayload(el, el.getAttribute('data-act')!);
+    if (payload === INVALID) return;
     if (el.hasAttribute('data-answer-from')) {
       const answer = typedAnswer(el);
       if (answer === '' || answer === null) return; // nothing typed yet

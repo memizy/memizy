@@ -1,5 +1,8 @@
 /** Minimal styles for SDK-generated elements (only `mz-*` classes). */
 const CSS = `
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+:where(html,html *){touch-action:manipulation;touch-action:pan-x pan-y}
+@media (pointer:coarse){input,textarea,select{font-size:max(16px,1em)!important}}
 .mz-waiting{display:grid;place-items:center;min-height:60vh;font:1.25rem system-ui,sans-serif;opacity:.75;text-align:center;padding:16px}
 .mz-error{margin:16px;padding:12px 16px;border-radius:8px;background:#fdecea;color:#611a15;font:14px/1.4 system-ui,sans-serif;white-space:pre-wrap}
 .mz-math-display{display:block;margin:.75em 0;text-align:center;overflow-x:auto}
@@ -14,7 +17,7 @@ const CSS = `
 .mz-note-hidden>summary{cursor:pointer;font-weight:600}
 .mz-standalone-banner{position:fixed;left:0;right:0;bottom:0;padding:6px 12px;font:12px system-ui,sans-serif;background:#1d2b53;color:#fff;opacity:.9;z-index:2147483647;text-align:center}
 .mz-standalone-result{position:fixed;left:50%;top:16px;transform:translateX(-50%);padding:10px 16px;border-radius:8px;font:600 15px system-ui,sans-serif;background:#2e7d32;color:#fff;z-index:2147483647}
-.mz-q{--mz-q-accent:#ff7a29;--mz-q-bg:rgba(127,127,127,.08);--mz-q-fg:inherit;--mz-q-border:rgba(127,127,127,.35);--mz-q-radius:12px;--mz-q-gap:10px;--mz-q-right:#16a34a;--mz-q-wrong:#e11d48;display:flex;flex-direction:column;gap:var(--mz-q-gap);font:inherit;color:var(--mz-q-fg)}
+.mz-q{--mz-q-accent:#ff7a29;--mz-q-bg:rgba(127,127,127,.08);--mz-q-fg:inherit;--mz-q-border:rgba(127,127,127,.35);--mz-q-radius:12px;--mz-q-gap:10px;--mz-q-right:#16a34a;--mz-q-wrong:#e11d48;--mz-q-count-bg:var(--mz-q-border);display:flex;flex-direction:column;gap:var(--mz-q-gap);font:inherit;color:var(--mz-q-fg)}
 .mz-q-question{font-weight:700;font-size:1.15em;line-height:1.35}
 .mz-q-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:var(--mz-q-gap)}
 .mz-q-two{grid-template-columns:1fr 1fr}.mz-q-three{grid-template-columns:repeat(3,1fr)}
@@ -22,6 +25,7 @@ const CSS = `
 .mz-q-opt{display:flex;align-items:center;gap:10px;min-height:52px;padding:10px 14px;text-align:left;font-weight:600}
 .mz-q-key{flex:none;width:28px;height:28px;border-radius:8px;display:grid;place-items:center;background:var(--mz-q-border);font-weight:800}
 .mz-q-label{flex:1;min-width:0}
+.mz-q-count{flex:none;min-width:2em;padding:2px 8px;border-radius:999px;background:var(--mz-q-count-bg,var(--mz-q-border));font-weight:800;text-align:center}
 .mz-q-opt:not(:disabled):hover,.mz-q-cell:not(:disabled):hover{border-color:var(--mz-q-accent)}
 .mz-q-picked,.mz-q-chosen{border-color:var(--mz-q-accent);box-shadow:0 0 0 2px var(--mz-q-accent) inset}
 .mz-q-right{border-color:var(--mz-q-right);background:color-mix(in srgb,var(--mz-q-right) 22%,transparent)}
@@ -49,6 +53,7 @@ textarea.mz-q-input{flex-basis:100%;resize:vertical}
 .mz-q-pinboard{cursor:crosshair}.mz-q-noimage{padding:40px;border:2px dashed var(--mz-q-border);border-radius:var(--mz-q-radius)}
 .mz-q-pin{position:absolute;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;background:var(--mz-q-accent);border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.5);pointer-events:none}
 .mz-q-front,.mz-q-back{padding:16px;border-radius:var(--mz-q-radius);background:var(--mz-q-bg);border:2px solid var(--mz-q-border)}
+.mz-no3d{display:grid;place-items:center;height:100%;min-height:120px;padding:16px;text-align:center;font:600 1.05rem/1.4 system-ui,sans-serif;opacity:.8}
 .mz-q-given{font-weight:700}.mz-q-unit{opacity:.7}.mz-q-unsupported{opacity:.7;font-style:italic}
 `;
 

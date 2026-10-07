@@ -196,7 +196,7 @@ phases: {
 | `ui.progress` | Learning progress of this player `{ [itemId]: { bucket: 0-4, … } }` (empty on the board). |
 | `ui.saved` / `ui.save(scope, value)` | Data saved between games for this player (section 5.3). |
 | `ui.setProgress(itemId, { bucket })` | Set this player's progress directly (self-rating). Prefer `ctx.recordAnswer` when an answer can be checked. |
-| `ui.escape(text)`, `ui.raw(html)` | Escape text by hand / mark your own HTML as safe (rarely needed with `ui.html`). |
+| `ui.raw(html)` | Mark HTML you wrote yourself as safe (rarely needed: `ui.html` escapes everything else). |
 | `ui.locale` | Language of the app, e.g. `'cs'`. |
 
 ---
