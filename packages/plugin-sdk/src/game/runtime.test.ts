@@ -297,6 +297,82 @@ describe('host-only actions (ctx.fromHost)', () => {
   });
 });
 
+describe('phases', () => {
+  interface S { phase?: string; phaseEndsAt?: number | null; phaseSeq?: number; round: number; answers: Record<string, string>; log: string[] }
+  const def: GameDefinition<S> = {
+    initialState(ctx) {
+      ctx.goto('question');
+      return { round: 0, answers: {}, log: [] };
+    },
+    phases: {
+      question: {
+        seconds: 10,
+        actions: ['answer'],
+        onEnter(state) { state.answers = {}; state.log.push(`question ${state.round}`); },
+        onTimeout: 'reveal',
+      },
+      reveal: {
+        seconds: 3,
+        onEnter(state) { state.log.push('reveal'); },
+        onTimeout(state, ctx) {
+          state.round += 1;
+          ctx.goto(state.round < 2 ? 'question' : 'end');
+        },
+      },
+      end: { onEnter(state) { state.log.push('end'); } },
+    },
+    actions: {
+      answer(state, payload, ctx) {
+        if (!ctx.playerId || state.answers[ctx.playerId]) return;
+        state.answers[ctx.playerId] = String(payload?.answer);
+        if (Object.keys(state.answers).length === ctx.players.length) ctx.goto('reveal');
+      },
+      skip(_state, _payload, ctx) {
+        if (ctx.fromHost) ctx.goto('reveal'); // in no phase list: always allowed
+      },
+    },
+    render: () => '',
+  };
+
+  it('runs the life cycle: deadlines, timeouts, allowed actions, early end', async () => {
+    const session = new FakeSession(def);
+    session.start();
+    await tick();
+    const board = () => session.get('board').state!;
+    expect(board()).toMatchObject({ phase: 'question', phaseSeq: 1, log: ['question 0'] });
+    expect(board().phaseEndsAt! - session.get('board').now()).toBeGreaterThan(9000);
+    session.get('anna').dispatch('answer', { answer: 'a' });
+    session.get('ben').dispatch('answer', { answer: 'b' });
+    await tick();
+    expect(board().phase).toBe('reveal'); // everyone answered: early end
+    session.get('anna').dispatch('answer', { answer: 'late' });
+    await tick();
+    expect(board().answers.anna).toBe('a'); // not allowed in "reveal"
+    await tick(3000);
+    expect(board()).toMatchObject({ phase: 'question', round: 1, answers: {} });
+    await tick(10_000); // nobody answers: the question times out
+    expect(board().phase).toBe('reveal');
+    await tick(3000);
+    expect(board().phase).toBe('end');
+    expect(board().phaseEndsAt).toBeNull();
+    expect(board().log).toEqual(['question 0', 'reveal', 'question 1', 'reveal', 'end']);
+    expect(session.errors).toEqual([]);
+  });
+
+  it('an old phase timer does nothing after the phase changed; teacher actions work in any phase', async () => {
+    const session = new FakeSession(def);
+    session.start();
+    await tick();
+    session.get('board').dispatch('skip', null);
+    await tick();
+    expect(session.get('board').state!.phase).toBe('reveal');
+    await tick(3000);
+    expect(session.get('board').state!).toMatchObject({ phase: 'question', round: 1 });
+    await tick(7500); // the first question's 10 s timer would have fired here
+    expect(session.get('board').state!.phase).toBe('question');
+  });
+});
+
 describe('pause (RC4)', () => {
   it('stops game time and timers, ignores actions, and continues afterwards', async () => {
     const def: GameDefinition<{ fired: number; acted: number; deadline: number }> = {

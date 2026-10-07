@@ -78,6 +78,24 @@ function mount(router: LocalRouter, address: string, def: Omit<GameDefinition<an
 }
 
 describe('defineGame end to end', () => {
+  it('ui.setLocal re-renders with device-only state; ui.html escapes', async () => {
+    const router = new LocalRouter({ items });
+    const root = mount(router, 'anna', {
+      initialState: () => ({ n: 0 }),
+      actions: {},
+      render: (_state, ui) => ui.html`<p class="tab">${ui.local.tab ?? 'none'}</p><p class="name">${'<b>x</b>'}</p>`,
+      afterRender(_state, ui) {
+        if (!ui.local.done) ui.setLocal({ done: true, tab: 'map' });
+      },
+    });
+    mount(router, 'board', { initialState: () => ({ n: 0 }), actions: {}, render: () => '' });
+    await Promise.all(handles.map((h) => h.ready));
+    await router.start();
+    await wait(150);
+    expect(root.querySelector('.tab')!.textContent).toBe('map');
+    expect(root.querySelector('.name')!.innerHTML).toBe('&lt;b&gt;x&lt;/b&gt;');
+  });
+
   it('runs a presenter game across board and controllers', async () => {
     const router = new LocalRouter({ items });
     const board = mount(router, 'board');

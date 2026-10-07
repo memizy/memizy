@@ -42,6 +42,10 @@ export interface PendingAction {
   sentAt: number;
 }
 
+/** Internal timer action and key of the phase deadline. */
+const PHASE_TIMEOUT = '$phaseTimeout';
+const PHASE_TIMER = '$phase';
+
 /** Pending actions are forgotten after this time (lost message, authority away). */
 const PENDING_TIMEOUT_MS = 5000;
 
@@ -72,7 +76,8 @@ type Effect =
   | { type: 'record'; itemId: string; item?: OQSEAnyItem; isCorrect: boolean; options: RecordAnswerOptions; playerId: string | null }
   | { type: 'end'; result: { scores?: Record<string, number>; summary?: string } }
   | { type: 'reveal'; itemIds: string[]; to: string[] | null }
-  | { type: 'hide'; itemIds: string[]; to: string[] | null };
+  | { type: 'hide'; itemIds: string[]; to: string[] | null }
+  | { type: 'goto'; phase: string };
 
 export interface RuntimeOptions {
   /** Batching interval for state updates (≤ ~20 per second). */
@@ -405,7 +410,12 @@ export class GameRuntime<S = unknown> {
     return this.players.some((p) => p.id === self) ? self : null;
   }
 
-  private runAction(name: string, payload: unknown, playerId: string | null, fromHost: boolean): void {
+  private runAction(name: string, payload: unknown, playerId: string | null, fromHost: boolean, fromTimer = false): void {
+    if (name === PHASE_TIMEOUT) {
+      if (fromTimer) this.phaseTimeout(payload);
+      return;
+    }
+    if (!fromTimer && !this.phaseAllows(name)) return; // e.g. a late "answer" after the question ended
     const handler = Object.prototype.hasOwnProperty.call(this.def.actions, name) ? this.def.actions[name] : undefined;
     if (!handler) {
       this.reportError('UNKNOWN_ACTION', `Action "${name}" is not defined in actions.`);
@@ -517,6 +527,10 @@ export class GameRuntime<S = unknown> {
         const to = options.to === undefined ? null : (Array.isArray(options.to) ? options.to : [options.to]).filter((id) => typeof id === 'string');
         if (ids.length) effects.push({ type: 'reveal', itemIds: ids, to });
       },
+      goto: (phase) => {
+        if (!this.def.phases || !Object.prototype.hasOwnProperty.call(this.def.phases, phase)) throw new Error(`ctx.goto: unknown phase "${phase}"`);
+        effects.push({ type: 'goto', phase });
+      },
       hide: (itemIds, options = {}) => {
         const ids = (Array.isArray(itemIds) ? itemIds : [itemIds]).filter((id) => typeof id === 'string' && this.itemsById.has(id));
         const to = options.to === undefined ? null : (Array.isArray(options.to) ? options.to : [options.to]).filter((id) => typeof id === 'string');
@@ -553,6 +567,9 @@ export class GameRuntime<S = unknown> {
         case 'hide':
           this.hide(effect.itemIds, effect.to);
           break;
+        case 'goto':
+          this.enterPhase(effect.phase);
+          break;
         case 'end':
           this.ended = true;
           for (const key of [...this.timers.keys()]) this.clearTimer(key);
@@ -585,7 +602,7 @@ export class GameRuntime<S = unknown> {
     const timer = this.timers.get(key);
     if (!timer || this.ended || this.paused) return;
     this.timers.delete(key);
-    this.runAction(timer.action, timer.payload, null, true);
+    this.runAction(timer.action, timer.payload, null, true, true);
   }
 
   // ==========================================================================
@@ -651,6 +668,72 @@ export class GameRuntime<S = unknown> {
     }
     if (to.length) this.send(to, { t: 'reveal', items });
     this.scheduleSnapshot();
+  }
+
+  // ==========================================================================
+  // Phases (optional `phases` of the game definition)
+  // ==========================================================================
+
+  private phaseDepth = 0;
+
+  /** Whether the current phase allows the action (only actions listed in some phase are restricted). */
+  private phaseAllows(name: string): boolean {
+    const phases = this.def.phases;
+    if (!phases || this.state === undefined) return true;
+    const listed = Object.values(phases).some((p) => p.actions?.includes(name));
+    if (!listed) return true;
+    const current = (this.state as { phase?: unknown }).phase;
+    return typeof current === 'string' && (phases[current]?.actions ?? []).includes(name);
+  }
+
+  private enterPhase(name: string): void {
+    const def = this.def.phases?.[name];
+    if (!def) return;
+    if (this.phaseDepth > 20) {
+      this.reportError('PHASE_LOOP', `ctx.goto("${name}") keeps entering phases from onEnter; stopped.`);
+      return;
+    }
+    this.phaseDepth += 1;
+    try {
+      this.run(
+        (draft, ctx) => {
+          const state = draft as Record<string, unknown>;
+          state.phase = name;
+          state.phaseSeq = (typeof state.phaseSeq === 'number' ? state.phaseSeq : 0) + 1;
+          const seconds = typeof def.seconds === 'function' ? def.seconds(draft, ctx) : def.seconds;
+          if (typeof seconds === 'number' && Number.isFinite(seconds) && seconds > 0) {
+            state.phaseEndsAt = ctx.now + seconds * 1000;
+            ctx.after(seconds * 1000, PHASE_TIMEOUT, { seq: state.phaseSeq }, { key: PHASE_TIMER });
+          } else {
+            state.phaseEndsAt = null;
+            ctx.cancel(PHASE_TIMER);
+          }
+          def.onEnter?.(draft, ctx);
+        },
+        null,
+        true,
+        `phase "${name}"`,
+      );
+    } finally {
+      this.phaseDepth -= 1;
+    }
+  }
+
+  private phaseTimeout(payload: unknown): void {
+    const seq = (payload as { seq?: unknown } | null)?.seq;
+    this.run(
+      (draft, ctx) => {
+        const state = draft as Record<string, unknown>;
+        if (state.phaseSeq !== seq || typeof state.phase !== 'string') return; // the phase changed meanwhile
+        const onTimeout = this.def.phases?.[state.phase]?.onTimeout;
+        if (typeof onTimeout === 'string') ctx.goto(onTimeout);
+        else if (typeof onTimeout === 'function') onTimeout(draft, ctx);
+        else state.phaseEndsAt = null;
+      },
+      null,
+      true,
+      'phase timeout',
+    );
   }
 
   /** `ctx.hide`: takes reveals back (for everyone, or for some players). */

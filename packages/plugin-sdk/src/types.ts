@@ -38,6 +38,11 @@ export interface GameContext {
   after(ms: number, action: string, payload?: unknown, options?: { key?: string }): void;
   /** Cancel a timer by its key. */
   cancel(key: string): void;
+  /**
+   * Move to another phase (games with `phases`). Takes effect right after this action:
+   * `state.phase`, `state.phaseEndsAt` and the phase timer are set, then `onEnter` runs.
+   */
+  goto(phase: string): void;
   /** Take back `reveal` (e.g. before the same item is asked again): the devices get the item without answers. */
   hide(itemIds: string | string[], options?: { to?: string | string[] }): void;
   /**
@@ -96,8 +101,14 @@ export interface GameUI {
   readonly progress: Readonly<Record<string, ProgressRecord>>;
   /** Data saved between games for this player. */
   readonly saved: SavedData;
-  /** Per-screen scratch object (not shared, not saved). */
+  /** Per-screen scratch object (not shared, not saved). Changing it directly does not re-render. */
   readonly local: Record<string, any>;
+  /**
+   * Changes `ui.local` and re-renders: device-only UI state (a selected tab, a 2D/3D
+   * switch, an animation flag) without a global variable. `ui.setLocal({ tab: 'map' })`
+   * or `ui.setLocal((local) => { local.count += 1; })`.
+   */
+  setLocal(update: Record<string, unknown> | ((local: Record<string, any>) => void)): void;
   /** Call an action (normally use `data-act`). */
   act(name: string, payload?: unknown): void;
   /**
@@ -107,8 +118,10 @@ export interface GameUI {
   readonly pending: readonly { name: string; payload: unknown; sentAt: number }[];
   /** `true` while an action (of this name, or any) of this device waits for the authority. */
   isPending(name?: string): boolean;
-  /** Milliseconds until `deadline` on the session clock (≥ 0). */
-  timeLeft(deadline: number): number;
+  /** Milliseconds until `deadline` (≥ 0); without an argument until the end of the current phase. */
+  timeLeft(deadline?: number): number;
+  /** The current phase (games with `phases`), else `null`. */
+  readonly phase: string | null;
   /** Current session clock in ms. */
   now(): number;
   /**
@@ -169,4 +182,23 @@ export interface GameDefinition<S = any> {
   renderWaiting?(ui: GameUI): RenderResult;
   renderSettings?(settings: Record<string, unknown>, ui: GameUI): RenderResult;
   validateSettings?(settings: Record<string, unknown>): string | void | null | undefined;
+  /**
+   * Optional phases of the game (a clear life cycle): enter one with `ctx.goto(name)`.
+   * The SDK keeps `state.phase`, `state.phaseEndsAt` (deadline or null) and
+   * `state.phaseSeq`, ends the phase after `seconds` with `onTimeout`, and ignores
+   * actions that are listed in other phases but not in this one (actions that no phase
+   * lists are always allowed, e.g. a teacher's "next").
+   */
+  phases?: Record<string, PhaseDefinition<S>>;
+}
+
+export interface PhaseDefinition<S = any> {
+  /** Length of the phase (a number or computed when entering); none = no time limit. */
+  seconds?: number | ((state: S, ctx: GameContext) => number);
+  /** Actions allowed in this phase (only those listed in some phase are restricted). */
+  actions?: string[];
+  /** Runs when the phase starts (after `state.phase` is set). */
+  onEnter?(state: S, ctx: GameContext): void;
+  /** When the time is up: the next phase, or a function (that may call `ctx.goto`). */
+  onTimeout?: string | ((state: S, ctx: GameContext) => void);
 }

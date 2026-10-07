@@ -231,7 +231,7 @@ abstract class BaseController implements Controller {
     };
   }
 
-  protected baseUi(): Omit<GameUI, 'view' | 'self' | 'isAuthority' | 'act' | 'pending' | 'isPending' | 'timeLeft' | 'now' | 'paused' | 'service' | 'services' | 'item' | 'items' | 'save' | 'setProgress' | 'progress' | 'saved'> {
+  protected baseUi(): Omit<GameUI, 'view' | 'self' | 'isAuthority' | 'act' | 'pending' | 'isPending' | 'timeLeft' | 'now' | 'phase' | 'paused' | 'service' | 'services' | 'item' | 'items' | 'save' | 'setProgress' | 'progress' | 'saved'> {
     const init = this.init;
     return {
       mode: init.session.mode,
@@ -241,6 +241,11 @@ abstract class BaseController implements Controller {
       locale: init.config.locale,
       theme: init.config.theme,
       local: this.local,
+      setLocal: (update) => {
+        if (typeof update === 'function') update(this.local);
+        else if (update && typeof update === 'object') Object.assign(this.local, update);
+        this.schedule();
+      },
       text: (markdown, options) => rawHtml(renderRichText(markdown, this.textContext((options as { item?: OQSEAnyItem } | undefined)?.item), options)),
       renderNote: (note: NoteItem, options) => rawHtml(renderNoteHtml(note, this.textContext(note), options)),
       html: safeHtml,
@@ -318,8 +323,12 @@ class GameController<S> extends BaseController {
       act: (name, payload) => runtime.dispatch(name, payload),
       pending: runtime.waitingActions,
       isPending: (name) => runtime.waitingActions.some((a) => name === undefined || a.name === name),
-      timeLeft: (deadline) => Math.max(0, (typeof deadline === 'number' ? deadline : 0) - runtime.now()),
+      timeLeft: (deadline) => {
+        const end = typeof deadline === 'number' ? deadline : (runtime.state as { phaseEndsAt?: unknown } | undefined)?.phaseEndsAt;
+        return Math.max(0, (typeof end === 'number' ? end : 0) - runtime.now());
+      },
       now: () => runtime.now(),
+      phase: this.def.phases ? (((runtime.state as { phase?: unknown } | undefined)?.phase as string | undefined) ?? null) : null,
       paused: runtime.paused,
       services: this.init.services ?? [],
       service: (name, payload) => this.callService(name, payload),
@@ -453,7 +462,8 @@ class SettingsController extends BaseController {
       act: () => this.report('NOT_ALLOWED_IN_VIEW', 'Actions are not available on the settings screen.'),
       pending: [],
       isPending: () => false,
-      timeLeft: (deadline) => Math.max(0, deadline - (Date.now() + this.init.clock.offsetMs)),
+      timeLeft: (deadline) => Math.max(0, (deadline ?? 0) - (Date.now() + this.init.clock.offsetMs)),
+      phase: null,
       now: () => Date.now() + this.init.clock.offsetMs,
       paused: false,
       services: [],
