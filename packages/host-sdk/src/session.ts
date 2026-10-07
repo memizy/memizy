@@ -676,7 +676,7 @@ export class LocalSession {
     instance.resumed = snapshot !== null;
     return {
       protocol,
-      host: this.options.host ?? { name: '@memizy/host-sdk', version: '1.0.0-rc.3' },
+      host: this.options.host ?? { name: '@memizy/host-sdk', version: '1.0.0-rc.4' },
       oqseVersion: '0.3',
       features: [],
       session: {

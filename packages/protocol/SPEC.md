@@ -1,6 +1,6 @@
 # Memizy Plugin Protocol v1
 
-> Status: **Release Candidate 3** (2026-10-06) · Final `1.0` after the acceptance test with AI-generated plugins (planned 2026-10-19/20).
+> Status: **Release Candidate 4** (2026-10-07) · Final `1.0` after the acceptance test with AI-generated plugins (planned 2026-10-19/20).
 >
 > RC rules: the design does not change unless the implementation or the acceptance test proves that something does not work. Every change until `1.0` is recorded in the changelog at the end.
 
@@ -79,6 +79,9 @@ The OQSEM part describes **content** (item types, assets, features) and is used 
 | `settings` | SettingDefinition[] | No | Settings of the game (see below). Default `[]`. They define types, defaults and limits; the host validates every value against them. Used in both modes (section 3.3). |
 | `settingsScreen` | `{ size }` | No | Multiplayer lobby only. Present = the plugin renders its own settings screen (view `settings`) on the host's device; absent = the host generates a form from `settings`. `size: "compact"` – a panel next to the player list (the user may expand it to full screen); `size: "large"` – opened as a full-screen dialog from a "Game settings" button. |
 | `display.orientation` | `"any"` \| `"portrait"` \| `"landscape"` | No | Preferred orientation of player screens. Default `"any"`. |
+| `permissions.network` | string[] | No | RC4. Origins the plugin talks to with `fetch` / WebSocket, as `"https://host[:port]"` or `"wss://host[:port]"` (no path; max 20). Shown to users and enforced (section 8.4). |
+| `permissions.devices` | (`"camera"` \| `"microphone"` \| `"geolocation"` \| `"serial"` \| `"bluetooth"`)[] | No | RC4. Devices the plugin uses; the host grants only these (section 8.4). |
+| `services` | string[] | No | RC4. Memizy services the plugin calls (section 5.3), e.g. `"chess.puzzles"`: lowercase segments joined by dots. A host that does not offer one can still run the plugin; the call then fails with `SERVICE_UNAVAILABLE`. |
 
 **SettingDefinition:** `{ id, type, label, default, description?, modes?, ...typeSpecific }`
 
@@ -176,7 +179,7 @@ interface Handshake {
 interface InitPayload {
   protocol: string;                     // negotiated version: same MAJOR, MIN of the MINORs
   host: { name: string; version: string };
-  oqseVersion: string;                  // "0.2"
+  oqseVersion: string;                  // "0.3"
   features: string[];                   // host features, see 8.3
 
   session: {
@@ -196,13 +199,22 @@ interface InitPayload {
   };
   settings: Record<string, unknown>;    // current values for every declared setting (defaults applied)
   config: { locale: string; theme: 'light' | 'dark' };
-  clock: { offsetMs: number };          // add to Date.now() to get the session clock
+  clock: SessionClock;                  // session clock and pauses (below)
+  services?: string[];                  // RC4: services declared by the plugin AND offered by this host
   progress: Record<string, ProgressRecord>;  // learning progress of `self` (empty for board/settings)
   data: { plugin: unknown; set: unknown };   // plugin data of `self` (null when nothing saved; null for board/settings)
   snapshot: unknown | null;             // last saved snapshot, only for the authority (resume)
 }
 
 type Address = string;                  // player ID, "board"; "server" is reserved
+
+interface SessionClock {
+  offsetMs: number;                     // Date.now() + offsetMs = session time
+  pausedMs?: number;                    // RC4: total of finished pauses
+  pausedAt?: number | null;             // RC4: session time when the current pause began (null = running)
+}
+// Game time = (pausedAt ?? session time) - pausedMs. The SDK uses game time for ctx.now,
+// timers and countdowns, so a pause stops them everywhere and nothing jumps afterwards.
 
 interface Player {
   id: string;
@@ -252,6 +264,7 @@ All methods return Promises and reject with a `ProtocolError` (section 8.2). Met
 | `resize(request: { height: number \| 'auto' }): void` | Requests a different iframe height (embedded layouts). |
 | `reportError(error: { code: string; message: string; context?: object }): void` | Non-fatal error for logs and the Lab test report. |
 | `exit(): void` | The user wants to leave (e.g. a "Close" button inside the plugin). |
+| `service(name: string, payload: unknown): unknown` | RC4. Calls a Memizy service (section 5.3). Rejects with `SERVICE_UNAVAILABLE` unless the plugin declares it and `InitPayload.services` lists it. |
 
 ```ts
 interface AnswerRecord {
@@ -262,6 +275,8 @@ interface AnswerRecord {
   timeSpentMs?: number;
   hintsUsed?: number;
   isSkipped?: boolean;
+  answer?: unknown;           // RC4: what the player answered (checkAnswer format, choice IDs; max 4 KB)
+  item?: { id: string; type: string; [key: string]: unknown };  // RC4: required for an item that is not in the set
 }
 
 interface SessionResult {
@@ -277,6 +292,12 @@ Two ways to write it:
 * **`recordAnswer`** – the plugin reports what happened ("player X answered item Y correctly"). The host decides the new bucket and review date with its own algorithm. This is what most plugins use, in solo and in multiplayer.
 * **`saveProgress`** – the plugin writes records of its own player directly (e.g., self-rating sets bucket 3). Only for `self`, never for other players.
 
+RC4 additions to `recordAnswer`:
+
+* `answer` – what the player answered, in the `checkAnswer` format of the item type (OQSE 0.3 choice IDs, text, numbers). Teachers see which wrong answers were chosen; because answers use IDs, the statistics survive edits of the set.
+* **Generated items** (from a service or a generator in the plugin) are not in the set. The plugin attaches the item (`item`, at least `id` and `type`; answer fields may be left out; max 32 KB). The host counts such answers in statistics (per `skills` and `tags`) but not in the repetition schedule, because the item never comes back.
+* Progress for teachers is aggregated per OQSE `skills` (and their parents, `chess.tactics` for `chess.tactics.fork`), which come from the content, never from the plugin. A game's own model of the player (rating, level, unlocked chapters) belongs to plugin data (section 5.2).
+
 ### 5.2 Plugin data
 
 Game progress that only the plugin understands (unlocked levels, coins, best scores, a chosen avatar) MUST NOT be stored in the set (`customData`, `appSpecific`) – the set is shared content, not the state of a player. Plugins store it as **plugin data** instead:
@@ -287,6 +308,16 @@ Game progress that only the plugin understands (unlocked levels, coins, best sco
 * Each value is one JSON document, replaced as a whole by `saveData(scope, value)`. The current values are in `InitPayload.data`; `null` means nothing has been saved yet.
 * Only the player's own instance (`solo`, `controller`) reads and writes it; the board and the settings view have none. In multiplayer every controller stores the data of its own player on its own device.
 * The host stores it locally and MAY synchronize or back it up with the user's account. It does not interpret it. Users can in principle edit their own data; plugins must not treat it as tamper-proof.
+
+### 5.3 Services
+
+Services are what a set cannot contain: computations and data on Memizy's side, e.g. an AI chat, text-to-speech, a translation, a leaderboard across classes, or "a chess puzzle for my level" from a database. **Content stays in sets**; services are for everything that must be computed or fetched at play time.
+
+* The plugin lists the services it uses in the manifest (`services`). The host offers some services; `InitPayload.services` lists those both sides have. The SDK exposes `ui.service(name, payload)`.
+* Requests and results are JSON. Requests are at most 64 KB, results at most 256 KB; a host accepts at least 30 calls per minute and instance (`RATE_LIMITED` beyond).
+* The host calls the service on behalf of the player (it knows the account, the class and the limits). The plugin never holds keys and the data does not leave Memizy, so no `permissions.network` is needed for services.
+* Service names and their request/result schemas are not part of this protocol: they are listed in the Memizy service registry. A new service needs no protocol change.
+* A service that returns study items returns OQSE items (e.g. `chess-puzzle`), so plugins render and check them like items of a set, and record answers to them as generated items (section 5.1).
 
 ---
 
@@ -333,7 +364,7 @@ If the authority instance loses its connection or is being recreated (e.g., the 
 | `authorityChanged(status: { connected: boolean }): void` | The authority became unreachable / reachable again (section 6.1). Not called on the authority itself. |
 | `setChanged(set: { meta, items }): void` | The set was edited in the host while the plugin runs (solo only). |
 | `configChanged(config: { locale, theme }): void` | Locale or theme changed. |
-| `clockChanged(clock: { offsetMs }): void` | Clock synchronization updated. |
+| `clockChanged(clock: SessionClock): void` | Clock synchronization updated, or (RC4) the host paused / resumed the game. While `pausedAt` is set the SDK stops game time and timers, ignores actions and covers the game with a "paused" curtain. |
 | `sessionEnded(reason: 'finished' \| 'host_left' \| 'kicked' \| 'closed' \| 'error'): void` | The host is closing this instance. |
 
 ---
@@ -353,6 +384,9 @@ The values are **guaranteed minimums**: a host MUST accept at least this much an
 | `saveData` size per scope | 256 KB | `DATA_TOO_LARGE` |
 | `saveData` rate | 1 per second per scope (the host keeps the latest) | coalesced, no error |
 | `hello` deadline | 10 s after iframe load | the host shows an error |
+| `recordAnswer` answer / generated item | 4 KB / 32 KB | `DATA_TOO_LARGE` |
+| `service` request / result | 64 KB / 256 KB | `MESSAGE_TOO_LARGE` |
+| `service` rate per instance | 30 calls/min | `RATE_LIMITED` |
 
 ### 8.2 Errors
 
@@ -377,6 +411,7 @@ interface ProtocolError {
 | `ASSET_NOT_FOUND` | `getAsset` with an unknown key. |
 | `SESSION_ENDED` | A call after `sessionEnded`. |
 | `INTERNAL_ERROR` | A host-side failure; the plugin may retry. |
+| `SERVICE_UNAVAILABLE` | RC4. The service is not declared by the plugin or not offered by this host. |
 
 New codes may be added in minor versions; plugins MUST treat unknown codes like `INTERNAL_ERROR`.
 
@@ -390,6 +425,8 @@ New codes may be added in minor versions; plugins MUST treat unknown codes like 
 * The host validates every incoming call against the schemas in `@memizy/protocol` and the limits above.
 * The host never passes credentials, user e-mail or other private data. `Player.name` is the display name chosen for the session.
 * Answers are known only to the authority (section 4.4). Everything else a plugin puts in the game state or in messages is visible to every instance: do not put secrets there.
+* **Network (RC4).** The host puts a Content Security Policy into the plugin document (`pluginContentPolicy` in `@memizy/protocol`): scripts only inline, from the library CDNs (`cdn.jsdelivr.net`, `unpkg.com`, `cdnjs.cloudflare.com`, `esm.sh`) and from the host; `fetch`, WebSocket and similar only to these and to the origins in `permissions.network`. Images and media may come from any `https:` URL (sets link them), so the policy blocks data channels but not every possible leak; hosts show the declared origins to users ("this game talks to lichess.org").
+* **Devices (RC4).** The iframe `allow` attribute grants only `permissions.devices`; the browser still asks the user.
 
 ---
 
@@ -407,14 +444,33 @@ Allowed in `1.x`: new optional fields, new methods guarded by a feature, new set
 
 ---
 
-## 10. Open Questions and Future Ideas
+## 10. Decisions and Planned Extensions
 
-1. **Teams** – postponed (`teams` feature).
-2. ~~Answer redaction for controllers~~ – done in RC3 (section 4.4).
-3. **Host migration** when the authority's device disappears for good – v1 only resumes the same authority from the snapshot.
-4. **Editing the set from a plugin** – postponed (`edit-set` feature).
-5. **Hot-seat** (several players sharing one device, e.g. taking turns at one computer) – an idea to consider; v1 assumes one player per instance.
-6. **Server authority** (authoritative mode for whitelisted official games) – the address `"server"` is reserved for it.
+What was decided and why, and what is **reserved** (name and intent fixed, not implemented yet, so that later work does not collide).
+
+**Decided**
+
+1. **Graded tests and assignments are not plugins.** Whoever runs the rules can change them, and in a homework a plugin runs on the student's device. Graded work lives in the platform, which checks answers on the server (the public items of section 4.4 make that possible). Plugins are for learning through play and for practice, where cheating only hurts the cheater.
+2. **Content is sets, computation is services.** Sets hold what can be prepared in advance; services (section 5.3) compute or fetch at play time. Memizy services go through `service()`; third parties through `permissions.network`.
+3. **Shared data of a class is a service**, not a new data scope: every write is a request the server can validate (a plugin on a student's device is not trusted).
+4. **"Always new" exercises come from generators** that return ordinary OQSE items (in the plugin with `ctx.random()`, or as a service with a database or AI behind it). Everything else – rendering, `checkAnswer`, recording – works the same; answers are recorded as generated items.
+5. **Progress for teachers** = `recordAnswer` + OQSE `skills` from the content (hierarchical IDs from a shared vocabulary); a game's own model of the player stays in plugin data.
+6. **Choices have IDs** (OQSE 0.3): answers and statistics survive edits of a set; the host shuffles freely.
+7. **`playerView`** (per-player views of the state) is an optional SDK feature, not a protocol requirement: games without secrets need nothing.
+
+**Reserved**
+
+| Name | Intent |
+| :--- | :--- |
+| Address `"server"` | Server authority: official games run their rules on a server (graded homework, larger games). The display order and public items of section 4.4 already work the same there. |
+| Item field `generated: { by, seed }` | Where a generated item comes from (service or generator) and how to recreate it. |
+| Host method `uploadAsset` | Files created by players (drawings, photos) stored by the host and referenced like set assets. |
+| Feature `edit-set` | Tools that create or change a set from inside a plugin. |
+| `Player.active` | Whether the player's app is in the foreground (for supervised tests in the platform). |
+| Plugin data summary | A short, human-readable summary of a game's own progress (e.g. "Elo 1450") that hosts may show to teachers. |
+| Feature `teams` | Teams managed by the host (today every game handles teams itself). |
+| Hot-seat | Several players sharing one device; v1 assumes one player per instance. |
+| Host migration | Moving the authority to another device when its device is gone for good; v1 resumes the same authority from the snapshot. |
 
 ---
 
@@ -422,4 +478,5 @@ Allowed in `1.x`: new optional fields, new methods guarded by a feature, new set
 
 * **RC1 (2026-10-04):** first release candidate.
 * **RC2 (2026-10-06):** `SettingDefinition.modes`; the host may show solo settings before the start (section 3.3). Additive: RC1 plugins and hosts keep working.
+* **RC4 (2026-10-07):** OQSE 0.3 sets (choices with IDs; the RC3 `correctOrder` / `correctMatches` display fields are gone because answers refer to IDs); `recordAnswer.answer` and generated items (5.1); services (5.3, `service`, `InitPayload.services`, `SERVICE_UNAVAILABLE`); pauses (`SessionClock`); `permissions` with a Content Security Policy and device grants (8.4); decisions and reservations (section 10). Additive for the protocol except the OQSE version: plugins must read choices (`option.text`, `option.id`).
 * **RC3 (2026-10-06):** display order and public items (section 4.4). Not fully additive: a plugin that read answers on a player's device in multiplayer must now reveal them first (`ctx.reveal` in the SDK). Answers by index refer to the delivered lists; `checkAnswer` handles `correctOrder` / `correctMatches`, so plugins that shuffled locally and sent the indices of the delivered lists keep working.

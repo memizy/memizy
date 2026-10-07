@@ -1,6 +1,6 @@
 # Memizy Plugin Guide for AI Assistants
 
-> Status: **Release Candidate 3** (2026-10-06) – describes `@memizy/plugin-sdk@1` (being implemented).
+> Status: **Release Candidate 4** (2026-10-07) – describes `@memizy/plugin-sdk@1` (being implemented).
 > Paste this whole document into your AI assistant together with your idea for a game.
 
 You are writing a **Memizy plugin**: a learning game in **one HTML file**. Memizy (the host app) gives the game a study set (questions, notes) and runs it alone (**solo**) or with a whole class (**multiplayer**). You write only the game rules and the screens. The SDK handles connection, synchronization between devices, reconnecting, timers, rendering of formatted text and saving learning progress.
@@ -12,7 +12,7 @@ You are writing a **Memizy plugin**: a learning game in **one HTML file**. Memiz
 1. Produce **one complete `index.html`** file. No build step, no other files. If you edit files directly (an IDE or coding agent), write it into `index.html`; otherwise give the whole file in **one** code block (```html), never in parts.
 2. Include the **manifest** `<script type="application/oqse-manifest+json">` (section 3).
 3. Import the SDK exactly like this: `import { defineGame, checkAnswer } from 'https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1/+esm';`
-4. Call `defineGame({...})` **once**. Do not use `fetch`, `WebSocket`, `localStorage`, `IndexedDB` or other network/storage APIs – they are blocked in Memizy. To remember things between games (levels, best score) use `ui.save` (section 5.3).
+4. Call `defineGame({...})` **once**. Do not use `localStorage` or `IndexedDB` (blocked) – to remember things between games use `ui.save` (section 5.3). Network requests (`fetch`, `WebSocket`) work only to origins declared in the manifest `permissions.network` (section 3); for AI and other Memizy services use `ui.service` instead (section 5.4).
 5. **All game state lives in the state object** and changes **only inside `actions`**. `render` only reads the state and draws the screen.
 6. Inside actions, **mutate `state` directly** (e.g. `state.scores[id] = 10`). Do not return a new object.
 7. Never use `Math.random()` or `Date.now()` inside `initialState`/`actions`. Use `ctx.random()`, `ctx.shuffle()`, `ctx.now`.
@@ -71,6 +71,8 @@ Declare what the game supports. Adjust `id`, `appName`, `types` and `modes`.
   * **Multiplayer:** the teacher sets them in the lobby; the app generates a form automatically.
   * **Solo:** the app may show a simple form before the start (no settings screen of your game). If the player should choose something during the game (a level, a character), make it the **first phase of your game**.
   * A setting only for one mode: `"modes": ["solo"]` or `"modes": ["multiplayer"]` (e.g. the strength of a computer opponent only in solo). Without `modes` it applies to both.
+* Optional: `"permissions": { "network": ["https://lichess.org"], "devices": ["microphone"] }` – the only places the game may connect to and the devices it uses (`camera`, `microphone`, `geolocation`, `serial`, `bluetooth`). Users see them; everything else is blocked. Load libraries only from `https://cdn.jsdelivr.net` (also `unpkg.com`, `cdnjs.cloudflare.com`, `esm.sh`) – those need no permission.
+* Optional: `"services": ["chess.puzzles"]` – Memizy services the game calls with `ui.service` (section 5.4).
 * Optional, multiplayer only: `"settingsScreen": { "size": "compact" }` (a panel in the lobby) or `{ "size": "large" }` (a full-screen dialog): the game draws its own settings screen with `renderSettings` (section 4.1), e.g. to preview the chosen map. The `settings` list is still required – it defines types, defaults and limits.
 
 ---
@@ -140,7 +142,7 @@ validateSettings(settings) {
 | `ctx.random()` / `ctx.shuffle(array)` | Random number 0–1 / shuffled copy of an array. |
 | `ctx.after(ms, action, payload?, { key }?)` | Run `action` later. A timer with the same `key` replaces the previous one. |
 | `ctx.cancel(key)` | Cancel a timer. |
-| `ctx.recordAnswer(itemId, isCorrect, { playerId?, confidence? }?)` | Save learning progress (default player: `ctx.playerId`). Call it for every answered question. |
+| `ctx.recordAnswer(itemId, isCorrect, { playerId?, answer? }?)` | Save learning progress (default player: `ctx.playerId`). Call it for every answered question and pass `answer` (what the player chose, e.g. the option id) – teachers see it. For a question that is not in the set (from a service or your own generator) pass the item itself instead of its id. |
 | `ctx.end({ scores })` | The game is over. `scores` = `{ [playerId]: points }`. |
 | `ctx.reveal(itemId \| itemIds, { to? }?)` | Show the answer (and `explanation`) of items on the players' devices: to everyone, or `{ to: playerId }` / `{ to: [ids] }`. Call it in the reveal phase or after a player's answer (e.g. a review of a wrong answer). Nothing happens in solo (the player already has them). |
 
@@ -152,7 +154,9 @@ validateSettings(settings) {
 | `ui.self` | This player (`null` on the board). |
 | `ui.players`, `ui.settings`, `ui.mode`, `ui.hostAs` | Same as in `ctx`. |
 | `ui.items`, `ui.item(id)` | The items to show. On the board/host and in solo with answers; on players' devices in multiplayer **without** them (`answerHidden: true`) until `ctx.reveal`. |
-| `ui.timeLeft(deadline)` | Milliseconds until `deadline` (≥ 0), synchronized across devices. |
+| `ui.timeLeft(deadline)` | Milliseconds until `deadline` (≥ 0), synchronized across devices. It stops while the teacher has paused the game. |
+| `ui.paused` | `true` while the teacher has paused the game. The app covers the game, stops timers and ignores actions – you do not need to do anything. |
+| `ui.service(name, payload)`, `ui.services` | Call a Memizy service declared in the manifest (section 5.4) / the services available here. |
 | `ui.text(markdown, { inline, item }?)` | Safe HTML for text from the set (Markdown, LaTeX, images). Use `inline: true` inside buttons; pass `item` so images of that item are found. |
 | `ui.renderNote(note, { titleLevel }?)` | Safe HTML of a whole `note` item. |
 | `ui.local` | An object for this screen only (e.g. the currently selected option). Not shared, not saved. |
@@ -222,6 +226,27 @@ if (state.score > best) ui.save('set', { ...ui.saved.set, level: state.level + 1
 * Saved data belongs to **this player on this device** – the board has none. In multiplayer each player saves their own.
 * Use it only for game progress. Learning results go through `ctx.recordAnswer` (or `ui.setProgress`), never through `ui.save`.
 * Never store game progress in the study set.
+
+---
+
+### 5.4 Memizy Services
+
+A service is something a study set cannot contain: an AI answer, speech, a fresh exercise from a database ("a chess puzzle for my level"). Declare it in the manifest `services` and call it with `ui.service`. The call is asynchronous, so do it in an event handler or `afterRender` (never in an action), then pass the result to the game with an action:
+
+```js
+afterRender(state, ui) {
+  if (ui.isAuthority && state.phase === 'next' && !ui.local.loading) {
+    ui.local.loading = true;
+    ui.service('chess.puzzles', { rating: 1400 })
+      .then((puzzle) => ui.act('puzzleLoaded', { puzzle }))   // an OQSE chess-puzzle item
+      .catch(() => ui.act('puzzleLoaded', { puzzle: null }))   // not available here: use the set
+      .finally(() => (ui.local.loading = false));
+  }
+},
+```
+
+* Services return JSON; a service that returns questions returns OQSE items, so you show and check them like items of the set and record them with `ctx.recordAnswer(item, isCorrect)`.
+* A service may be unavailable (an older app, the Plugin Lab): `ui.service` then rejects with `SERVICE_UNAVAILABLE`. Always have a fallback.
 
 ---
 

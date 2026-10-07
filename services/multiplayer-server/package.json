@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@memizy/protocol": "^1.0.0-rc.3"
+    "@memizy/protocol": "^1.0.0-rc.4"
   },
   "devDependencies": {
     "@types/bun": "^1.3.0",

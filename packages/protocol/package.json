@@ -1,6 +1,6 @@
 {
   "name": "@memizy/protocol",
-  "version": "1.0.0-rc.3",
+  "version": "1.0.0-rc.4",
   "description": "Memizy Plugin Protocol: types, Zod schemas and helpers shared by @memizy/plugin-sdk and @memizy/host-sdk.",
   "type": "module",
   "main": "./dist/index.cjs",
