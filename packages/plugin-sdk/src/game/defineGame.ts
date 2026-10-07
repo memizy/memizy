@@ -296,11 +296,22 @@ class GameController<S> extends BaseController {
     if (this.runtime.state === undefined) {
       return this.def.renderWaiting ? this.def.renderWaiting(ui) : defaultWaiting(this.init.config.locale);
     }
-    return this.def.render(this.runtime.state, ui);
+    this.lastView = this.visibleState();
+    if (this.lastView === undefined) return '';
+    return this.def.render(this.lastView as S, ui);
+  }
+
+  private lastView: unknown;
+
+  /** What this device may see: the full state, or on the authority its own view (`playerView`). */
+  private visibleState(): unknown {
+    if (!this.def.playerView || !this.runtime.isAuthority) return this.runtime.state;
+    const self = this.init.session.self;
+    return this.runtime.viewFor(this.init.session.view === 'board' ? null : self);
   }
 
   protected override afterRender(): void {
-    if (this.def.afterRender && this.runtime.state !== undefined && this.lastUi) this.def.afterRender(this.runtime.state, this.lastUi);
+    if (this.def.afterRender && this.lastView !== undefined && this.lastUi) this.def.afterRender(this.lastView as S, this.lastUi);
   }
 
   act(name: string, payload: unknown): void {

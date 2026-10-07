@@ -114,13 +114,13 @@ export class RateLimiter {
     this.last = now();
   }
 
-  /** Takes one token. Returns `false` when the limit is exceeded. */
-  tryTake(): boolean {
+  /** Takes `cost` tokens (default one). Returns `false` when the limit is exceeded. */
+  tryTake(cost = 1): boolean {
     const t = this.now();
     this.tokens = Math.min(this.burst, this.tokens + ((t - this.last) / 1000) * this.rate);
     this.last = t;
-    if (this.tokens < 1) return false;
-    this.tokens -= 1;
+    if (this.tokens < cost) return false;
+    this.tokens -= cost;
     return true;
   }
 }

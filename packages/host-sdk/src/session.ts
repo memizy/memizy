@@ -518,7 +518,9 @@ export class LocalSession {
           const [message] = parseHostCall('send', args);
           requireView('send', instance.view !== 'settings');
           const bytes = assertJsonWithin(message.data, LIMITS.messageBytes, 'MESSAGE_TOO_LARGE', 'message');
-          if (!instance.limiter.tryTake()) throw new ProtocolError('RATE_LIMITED', `More than ${LIMITS.messagesPerSecond} messages per second.`);
+          // The authority talks to everyone (per-player views): its limit is per other instance.
+          const cost = instance.address === this.authority ? 1 / Math.max(1, this.instances.size - 1) : 1;
+          if (!instance.limiter.tryTake(cost)) throw new ProtocolError('RATE_LIMITED', `More than ${LIMITS.messagesPerSecond} messages per second.`);
           if (!instance.connected) return; // the device is offline: the message is lost
           if (message.to === 'authority') {
             const authority = this.instances.get(this.authority);

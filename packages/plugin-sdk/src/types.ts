@@ -190,6 +190,14 @@ export interface GameDefinition<S = any> {
    * lists are always allowed, e.g. a teacher's "next").
    */
   phases?: Record<string, PhaseDefinition<S>>;
+  /**
+   * Optional: what one player may see of the state (`playerId` = null for the board).
+   * Use it when the state holds secrets: other players' answers before the reveal,
+   * cards in a hand, hidden units. Each device then receives only its view, and every
+   * `render` (also on the board and the host) gets the view instead of the full state.
+   * Must be a pure function of the state; return a new object, do not change `state`.
+   */
+  playerView?(state: S, playerId: string | null): any;
 }
 
 export interface PhaseDefinition<S = any> {

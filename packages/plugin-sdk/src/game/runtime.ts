@@ -20,6 +20,7 @@ import {
 } from '@memizy/protocol';
 import type { OQSEAnyItem } from '@memizy/oqse';
 import type { GameContext, GameDefinition, RecordAnswerOptions } from '../types';
+import { diffJson } from './diff';
 import { SeededRandom, seedFromString } from './random';
 
 /** Messages exchanged between SDK instances (inside protocol `send` / `deliver`). */
@@ -41,6 +42,9 @@ export interface PendingAction {
   payload: unknown;
   sentAt: number;
 }
+
+/** Minimum time between two state broadcasts. */
+const MIN_FLUSH_INTERVAL_MS = 40;
 
 /** Internal timer action and key of the phase deadline. */
 const PHASE_TIMEOUT = '$phaseTimeout';
@@ -136,6 +140,8 @@ export class GameRuntime<S = unknown> {
   /** Authority: item ids revealed to everyone / to single players (sent again on a resync). */
   private revealedAll = new Set<string>();
   private revealedTo = new Map<string, Set<string>>();
+  /** Authority with `playerView`: the last view (and version) sent to each address. */
+  private sentViews = new Map<string, { view: unknown; version: number }>();
   /** Followers: the public copies of revealed items (to go back on `hide`). */
   private publicCopies = new Map<string, OQSEAnyItem>();
 
@@ -341,7 +347,10 @@ export class GameRuntime<S = unknown> {
         }
       } else if (data.t === 'sync' && this.state !== undefined) {
         this.sendReveals([message.from]);
-        this.send([message.from], { t: 'state', v: this.version, s: this.state });
+        const view = this.def.playerView ? this.viewFor(message.from) : this.state;
+        if (view === undefined) return;
+        if (this.def.playerView) this.sentViews.set(message.from, { view, version: this.version });
+        this.send([message.from], { t: 'state', v: this.version, s: view });
       }
       return;
     }
@@ -615,17 +624,26 @@ export class GameRuntime<S = unknown> {
     this.onChange();
   }
 
+  private lastFlush = 0;
+
+  /** Soon after a change, but at most ~25 times per second (the message rate limit is 30). */
   private scheduleFlush(): void {
     if (this.init.session.mode === 'solo' || this.flushHandle !== undefined) return;
+    const delay = Math.max(this.options.flushMs, MIN_FLUSH_INTERVAL_MS - (Date.now() - this.lastFlush));
     this.flushHandle = setTimeout(() => {
       this.flushHandle = undefined;
+      this.lastFlush = Date.now();
       this.flush();
-    }, this.options.flushMs);
+    }, delay);
   }
 
   /** Sends the accumulated changes to all other instances. */
   flush(): void {
     if (this.state === undefined || (this.version === this.sentVersion && !this.acksDirty)) return;
+    if (this.def.playerView) {
+      this.flushViews();
+      return;
+    }
     const acks = this.acksDirty ? { a: this.acks } : {};
     let message: SyncMessage = { t: 'patch', b: this.sentVersion, v: this.version, p: this.pending, ...acks };
     if (this.needFullState || jsonByteSize(message) > LIMITS.messageBytes - 1024) {
@@ -642,6 +660,69 @@ export class GameRuntime<S = unknown> {
     this.acks = {};
     this.acksDirty = false;
     this.send('all', message);
+  }
+
+  // ==========================================================================
+  // Per-player views (`playerView`)
+  // ==========================================================================
+
+  /** The view of the state for an address (player id, or the board). Undefined on error. */
+  viewFor(address: string | null): unknown {
+    if (this.state === undefined || !this.def.playerView) return this.state;
+    const playerId = address !== null && this.players.some((p) => p.id === address) ? address : null;
+    try {
+      const view = this.def.playerView(structuredClone(this.state), playerId);
+      const problem = view !== null && typeof view === 'object' ? findNonJson(view, 'view') : 'playerView must return an object';
+      if (problem) {
+        this.reportError('INVALID_VIEW', `playerView returned an invalid view: ${problem}`);
+        return undefined;
+      }
+      return view;
+    } catch (e) {
+      this.reportError('VIEW_FAILED', `playerView threw: ${errorText(e)}`);
+      return undefined;
+    }
+  }
+
+  /** Addresses of the other instances that receive state (players and the board). */
+  private recipients(): string[] {
+    const self = this.init.session.self;
+    const list = this.players.map((p) => p.id);
+    if (this.init.session.hostAs === 'presenter') list.push(BOARD_ADDRESS);
+    return list.filter((a) => a !== self);
+  }
+
+  /** Sends every device the changes of its own view. */
+  private flushViews(): void {
+    const full = this.needFullState;
+    if (full) this.sendReveals('all');
+    for (const address of this.recipients()) {
+      const view = this.viewFor(address);
+      if (view === undefined) continue;
+      const sent = full ? undefined : this.sentViews.get(address);
+      const ack = this.acks[address];
+      const a = this.acksDirty && ack !== undefined ? { a: { [address]: ack } } : {};
+      let message: SyncMessage;
+      if (sent) {
+        const patches = diffJson(sent.view, view);
+        if (patches.length === 0 && !a.a) continue;
+        message = { t: 'patch', b: sent.version, v: this.version, p: patches, ...a };
+        if (jsonByteSize(message) > LIMITS.messageBytes - 1024) message = { t: 'state', v: this.version, s: view, ...a };
+      } else {
+        message = { t: 'state', v: this.version, s: view, ...a };
+      }
+      if (message.t === 'state' && jsonByteSize(message) > LIMITS.messageBytes - 1024) {
+        this.reportError('STATE_TOO_LARGE', `The view of the game state is larger than ${LIMITS.messageBytes} bytes; keep it small.`);
+        continue;
+      }
+      this.sentViews.set(address, { view, version: this.version });
+      this.send([address], message);
+    }
+    this.pending = [];
+    this.needFullState = false;
+    this.sentVersion = this.version;
+    this.acks = {};
+    this.acksDirty = false;
   }
 
   private scheduleSnapshot(): void {

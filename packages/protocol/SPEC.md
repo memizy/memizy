@@ -378,7 +378,7 @@ The values are **guaranteed minimums**: a host MUST accept at least this much an
 | Limit | Guaranteed minimum | When exceeded |
 | :--- | :--- | :--- |
 | `send` message size (serialized JSON) | 64 KB | `MESSAGE_TOO_LARGE` |
-| `send` rate per instance | 30 messages/s (burst 60) | `RATE_LIMITED` |
+| `send` rate per instance | 30 messages/s (burst 60); the authority: 30 messages/s **per other instance** (RC4: it sends each device its own view) | `RATE_LIMITED` |
 | `saveSnapshot` size | 1 MB | `SNAPSHOT_TOO_LARGE` |
 | `saveSnapshot` rate | 2 per second (the host keeps the latest) | coalesced, no error |
 | `saveData` size per scope | 256 KB | `DATA_TOO_LARGE` |

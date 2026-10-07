@@ -373,6 +373,60 @@ describe('phases', () => {
   });
 });
 
+describe('playerView', () => {
+  interface S { revealed: boolean; answers: Record<string, string>; scores: Record<string, number> }
+  const def: GameDefinition<S> = {
+    initialState: () => ({ revealed: false, answers: {}, scores: {} }),
+    actions: {
+      answer(state, payload, ctx) {
+        if (!ctx.playerId) return;
+        state.answers[ctx.playerId] = String(payload.answer);
+        state.scores[ctx.playerId] = (state.scores[ctx.playerId] ?? 0) + 1;
+      },
+      reveal(state) { state.revealed = true; },
+    },
+    // Before the reveal everyone sees only their own answer (and who answered).
+    playerView: (state, playerId) =>
+      state.revealed
+        ? state
+        : { ...state, answers: Object.fromEntries(Object.entries(state.answers).map(([id, a]) => [id, id === playerId ? a : '?'])) },
+    render: () => '',
+  };
+
+  it('each device gets its own view; the board the public one', async () => {
+    const session = new FakeSession(def);
+    session.start();
+    await tick();
+    session.get('anna').dispatch('answer', { answer: 'Praha' });
+    session.get('ben').dispatch('answer', { answer: 'Brno' });
+    await tick();
+    expect(session.get('anna').state!.answers).toEqual({ anna: 'Praha', ben: '?' });
+    expect(session.get('ben').state!.answers).toEqual({ anna: '?', ben: 'Brno' });
+    expect(session.get('anna').state!.scores).toEqual({ anna: 1, ben: 1 });
+    expect(session.get('board').viewFor(null)).toMatchObject({ answers: { anna: '?', ben: '?' } });
+    // No message to Anna ever contained Ben's answer.
+    expect(JSON.stringify(session.sent.filter((m) => Array.isArray(m.to) && m.to.includes('anna')))).not.toContain('Brno');
+    session.get('board').dispatch('reveal', null);
+    await tick();
+    expect(session.get('anna').state!.answers).toEqual({ anna: 'Praha', ben: 'Brno' });
+    // A reloaded device gets its view, not the full state.
+    session.get('board').dispatch('answer', { answer: 'x' }); // the board is not a player: ignored
+    session.open('ben');
+    await tick();
+    expect(session.get('ben').state!.answers).toEqual({ anna: 'Praha', ben: 'Brno' });
+  });
+
+  it('acknowledges actions per device', async () => {
+    const session = new FakeSession(def);
+    session.start();
+    await tick();
+    session.get('anna').dispatch('answer', { answer: 'Praha' });
+    expect(session.get('anna').waitingActions).toHaveLength(1);
+    await tick();
+    expect(session.get('anna').waitingActions).toHaveLength(0);
+  });
+});
+
 describe('pause (RC4)', () => {
   it('stops game time and timers, ignores actions, and continues afterwards', async () => {
     const def: GameDefinition<{ fired: number; acted: number; deadline: number }> = {
