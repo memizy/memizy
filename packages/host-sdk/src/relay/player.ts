@@ -215,7 +215,7 @@ export class RelayPlayer {
           }
           const init = value as InitPayload;
           this.hostConfig = init.config;
-          value = { ...init, set: structuredClone(this.bundle.data.set), clock: { offsetMs: init.clock.offsetMs + this.skewMs }, config: this.localConfig(init.config) };
+          value = { ...init, set: structuredClone(this.bundle.data.set), clock: { ...init.clock, offsetMs: init.clock.offsetMs + this.skewMs }, config: this.localConfig(init.config) };
         } else if (isSerializedBlob(value)) {
           value = jsonToBlob(value);
         }
@@ -235,7 +235,7 @@ export class RelayPlayer {
         }
         if (msg.method === 'clockChanged') {
           const clock = args[0] as { offsetMs: number };
-          args = [{ offsetMs: clock.offsetMs + this.skewMs }];
+          args = [{ ...clock, offsetMs: clock.offsetMs + this.skewMs }]; // pause fields are session time
         }
         try {
           const fn = this.plugin[msg.method as keyof PluginApi] as (...a: unknown[]) => Promise<unknown>;

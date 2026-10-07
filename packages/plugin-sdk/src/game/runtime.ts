@@ -106,6 +106,9 @@ export class GameRuntime<S = unknown> {
   private readonly reportError: (code: string, message: string) => void;
   private readonly itemsById: Map<string, OQSEAnyItem>;
   private clockOffset: number;
+  /** Pauses (SPEC: game time = session time without the paused time). */
+  private pausedMs: number;
+  private pausedAt: number | null;
   private rng: SeededRandom;
   private timers = new Map<string, TimerEntry & { handle?: ReturnType<typeof setTimeout> }>();
   private timerSeq = 0;
@@ -133,6 +136,8 @@ export class GameRuntime<S = unknown> {
     this.isAuthority = init.session.authority === init.session.self;
     this.players = init.players;
     this.clockOffset = init.clock.offsetMs;
+    this.pausedMs = init.clock.pausedMs ?? 0;
+    this.pausedAt = init.clock.pausedAt ?? null;
     this.rng = new SeededRandom(seedFromString(init.session.id));
     this.itemsById = new Map(init.set.items.map((item) => [item.id, item]));
     this.options = { flushMs: options.flushMs ?? 16, snapshotMs: options.snapshotMs ?? 500 };
@@ -182,13 +187,30 @@ export class GameRuntime<S = unknown> {
     this.afterChange();
   }
 
-  /** Session clock in ms. */
+  /** Game time in ms: the session clock without paused time (stands still while paused). */
   now(): number {
-    return Date.now() + this.clockOffset;
+    return (this.pausedAt ?? Date.now() + this.clockOffset) - this.pausedMs;
   }
 
-  setClockOffset(offsetMs: number): void {
-    this.clockOffset = offsetMs;
+  /** Whether the host has paused the game. */
+  get paused(): boolean {
+    return this.pausedAt !== null;
+  }
+
+  /** `PluginApi.clockChanged`: a corrected clock, or a pause / resume. */
+  setClock(clock: { offsetMs: number; pausedMs?: number; pausedAt?: number | null }): void {
+    const wasPaused = this.paused;
+    this.clockOffset = clock.offsetMs;
+    this.pausedMs = clock.pausedMs ?? 0;
+    this.pausedAt = clock.pausedAt ?? null;
+    if (this.paused !== wasPaused) {
+      // Stop the timers while paused; on resume they continue where they were (game time).
+      for (const timer of [...this.timers.values()]) {
+        clearTimeout(timer.handle);
+        if (this.paused) timer.handle = undefined;
+        else this.setTimer({ key: timer.key, at: timer.at, action: timer.action, payload: timer.payload });
+      }
+    }
     this.onChange();
   }
 
@@ -263,7 +285,7 @@ export class GameRuntime<S = unknown> {
 
   /** `ui.act` – run locally on the authority, otherwise send to it. */
   dispatch(name: string, payload: unknown): void {
-    if (this.ended || typeof name !== 'string') return;
+    if (this.ended || typeof name !== 'string' || this.paused) return; // nothing happens while paused
     if (this.isAuthority) {
       this.runAction(name, payload, this.selfPlayerId(), true); // the authority is the board, the host or the solo player
     } else if (this.authorityConnected) {
@@ -284,7 +306,8 @@ export class GameRuntime<S = unknown> {
       if (data.t === 'act' && typeof data.n === 'string') {
         if (this.ended) return;
         const player = this.players.find((p) => p.id === message.from);
-        this.runAction(data.n, data.p, player ? player.id : null, message.from === BOARD_ADDRESS || player?.isHost === true);
+        // While paused, actions are ignored (still confirmed, so ui.pending clears).
+        if (!this.paused) this.runAction(data.n, data.p, player ? player.id : null, message.from === BOARD_ADDRESS || player?.isHost === true);
         if (typeof data.i === 'number') {
           // Confirm it even when the rules ignored it (no state change), so ui.pending clears.
           this.acks[message.from] = data.i;
@@ -516,7 +539,7 @@ export class GameRuntime<S = unknown> {
   private setTimer(timer: TimerEntry): void {
     this.clearTimer(timer.key);
     const delay = Math.max(0, timer.at - this.now());
-    const handle = setTimeout(() => this.fireTimer(timer.key), delay);
+    const handle = this.paused ? undefined : setTimeout(() => this.fireTimer(timer.key), delay);
     this.timers.set(timer.key, { ...timer, handle });
   }
 
@@ -530,7 +553,7 @@ export class GameRuntime<S = unknown> {
 
   private fireTimer(key: string): void {
     const timer = this.timers.get(key);
-    if (!timer || this.ended) return;
+    if (!timer || this.ended || this.paused) return;
     this.timers.delete(key);
     this.runAction(timer.action, timer.payload, null, true);
   }

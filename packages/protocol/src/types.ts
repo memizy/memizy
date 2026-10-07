@@ -80,14 +80,26 @@ export interface InitPayload {
   /** Values for every declared setting (defaults applied). */
   settings: Record<string, unknown>;
   config: Theme;
-  /** Add to `Date.now()` to get the session clock. */
-  clock: { offsetMs: number };
+  /** The session clock and its pauses (see {@link SessionClock}). */
+  clock: SessionClock;
   /** Learning progress of `self` (empty for board/settings). */
   progress: Record<string, ProgressRecord>;
   /** Plugin data of `self` (`null` values for board/settings). */
   data: PluginData;
   /** Last saved snapshot, only for the authority (resume). */
   snapshot: unknown | null;
+}
+
+/**
+ * The session clock. `Date.now() + offsetMs` is the session time. RC4 adds pauses: the
+ * game time is `(pausedAt ?? sessionTime) - pausedMs` – it stands still while the host
+ * has paused the game (`pausedAt` = session time of the pause) and continues afterwards
+ * without the paused time (`pausedMs` = total of finished pauses).
+ */
+export interface SessionClock {
+  offsetMs: number;
+  pausedMs?: number;
+  pausedAt?: number | null;
 }
 
 // ============================================================================
@@ -184,7 +196,8 @@ export interface PluginApi {
   authorityChanged(status: { connected: boolean }): Promise<void>;
   setChanged(set: { meta: OQSEMeta; items: OQSEAnyItem[] }): Promise<void>;
   configChanged(config: Theme): Promise<void>;
-  clockChanged(clock: { offsetMs: number }): Promise<void>;
+  /** The clock was corrected, or the game was paused / resumed (RC4). */
+  clockChanged(clock: SessionClock): Promise<void>;
   sessionEnded(reason: SessionEndReason): Promise<void>;
 }
 

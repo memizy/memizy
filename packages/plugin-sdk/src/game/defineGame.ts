@@ -17,6 +17,7 @@ import {
   type InitPayload,
   type PluginApi,
   type PluginRuntime,
+  type SessionClock,
   type SettingDefinition,
 } from '@memizy/protocol';
 import { resolveAsset, type MediaObject, type NoteItem, type OQSEAnyItem, type ProgressRecord } from '@memizy/oqse';
@@ -68,7 +69,7 @@ export function startGame<S>(definition: GameDefinition<S>, options: StartOption
     authorityChanged: async (status) => controller?.authorityChanged(status.connected),
     setChanged: async (set) => controller?.setChanged(set),
     configChanged: async (config) => controller?.configChanged(config),
-    clockChanged: async (clock) => controller?.clockChanged(clock.offsetMs),
+    clockChanged: async (clock) => controller?.clockChanged(clock),
     sessionEnded: async () => controller?.destroy(),
   };
 
@@ -132,7 +133,7 @@ interface Controller {
   authorityChanged(connected: boolean): void;
   setChanged(set: InitPayload['set']): void;
   configChanged(config: InitPayload['config']): void;
-  clockChanged(offsetMs: number): void;
+  clockChanged(clock: SessionClock): void;
   destroy(): void;
 }
 
@@ -164,7 +165,7 @@ abstract class BaseController implements Controller {
   start(): void {}
   deliver(_message: Parameters<PluginApi['deliver']>[0]): void {}
   authorityChanged(_connected: boolean): void {}
-  clockChanged(_offsetMs: number): void {}
+  clockChanged(_clock: SessionClock): void {}
   setChanged(_set: InitPayload['set']): void {}
 
   playersChanged(players: InitPayload['players']): void {
@@ -227,7 +228,7 @@ abstract class BaseController implements Controller {
     };
   }
 
-  protected baseUi(): Omit<GameUI, 'view' | 'self' | 'isAuthority' | 'act' | 'pending' | 'isPending' | 'timeLeft' | 'now' | 'item' | 'items' | 'save' | 'setProgress' | 'progress' | 'saved'> {
+  protected baseUi(): Omit<GameUI, 'view' | 'self' | 'isAuthority' | 'act' | 'pending' | 'isPending' | 'timeLeft' | 'now' | 'paused' | 'item' | 'items' | 'save' | 'setProgress' | 'progress' | 'saved'> {
     const init = this.init;
     return {
       mode: init.session.mode,
@@ -265,6 +266,7 @@ class GameController<S> extends BaseController {
     this.runtime = new GameRuntime<S>(def, connection.host, connection.init);
     this.runtime.onChange = () => this.schedule();
     this.runtime.boot();
+    this.showPaused(); // joined (or reloaded) during a pause
     if (def.tickMs && def.tickMs > 0) {
       this.tick = setInterval(() => {
         if (this.runtime.state !== undefined) this.schedule();
@@ -313,6 +315,7 @@ class GameController<S> extends BaseController {
       isPending: (name) => runtime.waitingActions.some((a) => name === undefined || a.name === name),
       timeLeft: (deadline) => Math.max(0, (typeof deadline === 'number' ? deadline : 0) - runtime.now()),
       now: () => runtime.now(),
+      paused: runtime.paused,
       save: (scope, value) => this.save(scope, value),
       setProgress: (itemId, progress) => this.setProgress(itemId, progress),
     };
@@ -375,8 +378,27 @@ class GameController<S> extends BaseController {
     this.runtime.replaceSet(set);
   }
 
-  clockChanged(offsetMs: number): void {
-    this.runtime.setClockOffset(offsetMs);
+  clockChanged(clock: SessionClock): void {
+    this.runtime.setClock(clock);
+    this.showPaused();
+  }
+
+  /** While the host has paused the game, a curtain covers it (no taps, the time stands still). */
+  private showPaused(): void {
+    const doc = this.root.ownerDocument;
+    let curtain = doc.querySelector<HTMLElement>('.mz-paused');
+    if (!this.runtime.paused) {
+      curtain?.remove();
+      return;
+    }
+    if (curtain) return;
+    curtain = doc.createElement('div');
+    curtain.className = 'mz-paused';
+    curtain.setAttribute('role', 'status');
+    curtain.style.cssText =
+      'position:fixed;inset:0;z-index:2147483646;display:grid;place-items:center;background:rgba(10,14,28,.72);color:#fff;font:700 clamp(1.4rem,5vw,2.6rem) system-ui,sans-serif;text-align:center;padding:16px;backdrop-filter:blur(2px);';
+    curtain.textContent = this.init.config.locale.startsWith('cs') ? '⏸ Hra je pozastavená' : '⏸ The game is paused';
+    doc.body.appendChild(curtain);
   }
 
   destroy(): void {
@@ -417,6 +439,7 @@ class SettingsController extends BaseController {
       isPending: () => false,
       timeLeft: (deadline) => Math.max(0, deadline - (Date.now() + this.init.clock.offsetMs)),
       now: () => Date.now() + this.init.clock.offsetMs,
+      paused: false,
       save: () => this.report('NOT_ALLOWED_IN_VIEW', 'ui.save is not available on the settings screen.'),
       setProgress: () => this.report('NOT_ALLOWED_IN_VIEW', 'ui.setProgress is not available on the settings screen.'),
     };

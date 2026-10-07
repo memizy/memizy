@@ -38,6 +38,8 @@ export interface HostGameRecord {
   players: { id: string; name: string; isHost: boolean }[];
   /** Seed of the display order (the uploaded set was shuffled with it). */
   shuffleSeed?: string;
+  /** Pauses so far (game time without them), so timers stay right after a reload. */
+  clock?: { pausedMs: number; pausedAt: number | null };
 }
 
 /** Games older than this are not resumed. */

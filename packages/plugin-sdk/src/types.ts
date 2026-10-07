@@ -106,6 +106,11 @@ export interface GameUI {
   timeLeft(deadline: number): number;
   /** Current session clock in ms. */
   now(): number;
+  /**
+   * Whether the host has paused the game (RC4). The SDK covers the game with a "paused"
+   * curtain, stops `ui.now()` / timers and ignores actions; show it in the game if you like.
+   */
+  readonly paused: boolean;
   /** Safe HTML for Rich Content from the study set. */
   text(markdown: string | undefined | null, options?: { inline?: boolean }): string;
   /** Safe HTML of a whole note item. */

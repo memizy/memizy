@@ -164,6 +164,8 @@ export default {
     serverDown: 'Multiplayer server není dostupný ({url}). Běží?',
     retry: 'Zkusit znovu',
     endGame: 'Ukončit hru',
+    pause: 'Pauza',
+    resume: 'Pokračovat',
     backToLobby: 'Zpět do lobby',
     ended: 'Hra skončila',
     confirmEnd: 'Opravdu ukončit sezení? Všichni hráči budou odpojeni.',

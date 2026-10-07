@@ -166,6 +166,8 @@ const en: typeof cs = {
     serverDown: 'The multiplayer server is not reachable ({url}). Is it running?',
     retry: 'Try again',
     endGame: 'End the game',
+    pause: 'Pause',
+    resume: 'Resume',
     backToLobby: 'Back to the lobby',
     ended: 'Game over',
     confirmEnd: 'End the session? All players will be disconnected.',

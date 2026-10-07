@@ -297,6 +297,46 @@ describe('host-only actions (ctx.fromHost)', () => {
   });
 });
 
+describe('pause (RC4)', () => {
+  it('stops game time and timers, ignores actions, and continues afterwards', async () => {
+    const def: GameDefinition<{ fired: number; acted: number; deadline: number }> = {
+      initialState: (ctx) => {
+        ctx.after(1000, 'ring', null, { key: 'bell' });
+        return { fired: 0, acted: 0, deadline: ctx.now + 1000 };
+      },
+      actions: {
+        ring(state) { state.fired += 1; },
+        act(state) { state.acted += 1; },
+      },
+      render: () => '',
+    };
+    const session = new FakeSession(def);
+    session.start();
+    await tick(300);
+    const board = session.get('board');
+    const pausedAt = Date.now();
+    for (const runtime of session.runtimes.values()) runtime.setClock({ offsetMs: 0, pausedMs: 0, pausedAt });
+    const frozen = board.now();
+    await tick(5000);
+    expect(board.now()).toBe(frozen); // the game time stands still
+    expect(board.state!.fired).toBe(0);
+    session.get('anna').dispatch('act', null); // a player's tap: dropped on the device
+    board.dispatch('act', null); // even the board's
+    await tick();
+    expect(board.state!.acted).toBe(0);
+    // Resume: 5 s of pause do not count.
+    for (const runtime of session.runtimes.values()) runtime.setClock({ offsetMs: 0, pausedMs: Date.now() - pausedAt, pausedAt: null });
+    expect(board.now()).toBe(frozen);
+    await tick(600);
+    expect(board.state!.fired).toBe(0);
+    await tick(200);
+    expect(board.state!.fired).toBe(1);
+    session.get('anna').dispatch('act', null);
+    await tick();
+    expect(board.state!.acted).toBe(1);
+  });
+});
+
 describe('recordAnswer', () => {
   it('sends the answer given and attaches generated items', async () => {
     const generated = { id: 'gen-1', type: 'true-false', question: '2 + 2 = 4', correctAnswer: true, skills: ['math.addition'] };

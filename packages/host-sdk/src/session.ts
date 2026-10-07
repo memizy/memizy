@@ -32,6 +32,7 @@ import {
   type SessionEndReason,
   type SessionResult,
   type Theme,
+  type SessionClock,
 } from '@memizy/protocol';
 import { resolveAsset, type OQSEFile, type ProgressRecord } from '@memizy/oqse';
 import { leitner, type LearningAlgorithm } from './learning';
@@ -79,6 +80,8 @@ export interface SessionConfig {
    * last snapshot; without a snapshot the game starts again right away.
    */
   resume?: boolean;
+  /** When resuming: the pauses so far (from the `paused` events), so timers stay right. */
+  clock?: { pausedMs?: number; pausedAt?: number | null };
 }
 
 export type SessionEvent =
@@ -98,6 +101,8 @@ export type SessionEvent =
   | { type: 'rejected'; address: string; method: string; code: string; message: string }
   | { type: 'pluginError'; address: string; code: string; message: string; context?: Record<string, unknown> }
   | { type: 'resize'; address: string; height: number | 'auto' }
+  /** The host paused or resumed the game (store `clock` to resume a reloaded host). */
+  | { type: 'paused'; paused: boolean; clock: { pausedMs: number; pausedAt: number | null } }
   | { type: 'exit'; address: string };
 
 /** Creates the plugin side of an instance for a given host API (iframe + Penpal, or a direct connection in tests). */
@@ -145,6 +150,8 @@ export class LocalSession {
   config: Theme;
   started = false;
   ended = false;
+  /** Pauses of the game (game time = session time without them). */
+  private pauseState: { pausedMs: number; pausedAt: number | null } = { pausedMs: 0, pausedAt: null };
 
   private readonly options: SessionConfig;
   private readonly storage: HostStorage;
@@ -202,6 +209,7 @@ export class LocalSession {
       this.started = true;
       this.resumeStartPending = true;
     }
+    if (config.clock) this.pauseState = { pausedMs: config.clock.pausedMs ?? 0, pausedAt: config.clock.pausedAt ?? null };
   }
 
   // ==========================================================================
@@ -383,6 +391,36 @@ export class LocalSession {
     }
     if (address === this.authority) this.setAuthorityConnected(connected);
     else if (connected && instance) void this.callPlugin(address, (p) => p.authorityChanged({ connected: true })); // makes the SDK re-synchronize
+  }
+
+  /** Whether the game is paused (the clock stands still on every device). */
+  get paused(): boolean {
+    return this.pauseState.pausedAt !== null;
+  }
+
+  /** The session clock as sent to the instances (host time; the relay adds each device's skew). */
+  get clock(): SessionClock {
+    return { offsetMs: 0, ...this.pauseState };
+  }
+
+  /** Pauses the game: timers and countdowns stop, players cannot act (the SDK shows "Paused"). */
+  pause(): void {
+    if (!this.started || this.ended || this.paused) return;
+    this.pauseState = { ...this.pauseState, pausedAt: Date.now() };
+    this.broadcastClock();
+  }
+
+  /** Continues a paused game. */
+  resume(): void {
+    if (!this.paused) return;
+    this.pauseState = { pausedMs: this.pauseState.pausedMs + Math.max(0, Date.now() - this.pauseState.pausedAt!), pausedAt: null };
+    this.broadcastClock();
+  }
+
+  private broadcastClock(): void {
+    const clock = this.clock;
+    for (const address of this.instances.keys()) void this.callPlugin(address, (p) => p.clockChanged(clock));
+    this.emit({ type: 'paused', paused: this.paused, clock: { ...this.pauseState } });
   }
 
   setConfig(config: Partial<Theme>): void {
@@ -626,7 +664,7 @@ export class LocalSession {
       set: structuredClone(this.mode === 'multiplayer' && instance.address !== this.authority ? this.prepared.publicSet : this.prepared.set),
       settings: { ...this.settings },
       config: this.config,
-      clock: { offsetMs: 0 },
+      clock: this.clock,
       progress: userKey ? await this.storage.loadProgress(userKey, setId) : {},
       data: userKey
         ? {

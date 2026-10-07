@@ -319,6 +319,40 @@ describe('multiplayer', () => {
   });
 });
 
+describe('pause (RC4)', () => {
+  it('the host pauses and resumes every device; the SDK covers the game meanwhile', async () => {
+    const { session, events } = newSession();
+    const board = play(session, 'board');
+    const anna = play(session, 'anna');
+    play(session, 'ben');
+    await Promise.all(games.map((g) => g.ready));
+    session.pause(); // before the start: nothing to pause
+    expect(session.paused).toBe(false);
+    await session.start();
+    await wait(100);
+    session.pause();
+    await wait(100);
+    expect(session.paused).toBe(true);
+    expect(document.querySelectorAll('.mz-paused').length).toBeGreaterThan(0);
+    (anna.root.querySelector('button') as HTMLButtonElement).click();
+    await wait(150);
+    expect(board.root.querySelector('.answered')!.textContent).toBe('0');
+    session.resume();
+    await wait(100);
+    expect(document.querySelectorAll('.mz-paused').length).toBe(0);
+    (anna.root.querySelector('button') as HTMLButtonElement).click();
+    await wait(150);
+    expect(board.root.querySelector('.answered')!.textContent).toBe('1');
+    const paused = events.filter((e) => e.type === 'paused') as Extract<SessionEvent, { type: 'paused' }>[];
+    expect(paused.map((e) => e.paused)).toEqual([true, false]);
+    expect(paused[1].clock.pausedAt).toBeNull();
+    expect(paused[1].clock.pausedMs).toBeGreaterThan(50);
+    // A reloaded host passes the stored clock on.
+    const resumed = newSession({ resume: true, clock: { pausedMs: 1234, pausedAt: null } }).session;
+    expect(resumed.clock).toEqual({ offsetMs: 0, pausedMs: 1234, pausedAt: null });
+  });
+});
+
 describe('protocol enforcement', () => {
   it('rejects invalid, oversized, unauthorized and late calls', async () => {
     const { session, events } = newSession();

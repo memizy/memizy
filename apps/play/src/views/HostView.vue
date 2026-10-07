@@ -11,6 +11,8 @@ import {
   PuzzlePieceIcon,
   RocketLaunchIcon,
   StopIcon,
+  PauseIcon,
+  PlayIcon,
   UserGroupIcon,
 } from '@heroicons/vue/20/solid';
 import {
@@ -321,7 +323,22 @@ async function start(): Promise<void> {
  * Creates the game session and connects the room to it. The authority's snapshots
  * and a record of the game go to IndexedDB, so a reload of this page resumes it.
  */
-function launch(p: LoadedPlugin, file: OQSEFile, roster: { id: string; name: string; isHost: boolean }[], sessionId: string, resume: boolean): LocalSession {
+const paused = ref(false);
+
+function togglePause(): void {
+  if (!game.value) return;
+  if (game.value.paused) game.value.resume();
+  else game.value.pause();
+}
+
+function launch(
+  p: LoadedPlugin,
+  file: OQSEFile,
+  roster: { id: string; name: string; isHost: boolean }[],
+  sessionId: string,
+  resume: boolean,
+  clock?: { pausedMs: number; pausedAt: number | null },
+): LocalSession {
   const r = room.value!;
   const session = new LocalSession({
     plugin: p,
@@ -335,7 +352,9 @@ function launch(p: LoadedPlugin, file: OQSEFile, roster: { id: string; name: str
     shuffleSeed: gameSeed.value,
     storage: new PersistentSnapshotStorage(),
     resume,
+    clock,
   });
+  paused.value = session.paused;
   const pluginHtml = pluginRaw.value!;
   const record = () =>
     saveHostGame(r.pin, {
@@ -347,6 +366,7 @@ function launch(p: LoadedPlugin, file: OQSEFile, roster: { id: string; name: str
       hostName: hostName.value,
       settings: settings.value,
       players: session.players.map(({ id, name, isHost }) => ({ id, name, isHost })),
+      clock: { pausedMs: session.clock.pausedMs ?? 0, pausedAt: session.clock.pausedAt ?? null },
     });
   void record();
   countdown.value = null;
@@ -359,6 +379,10 @@ function launch(p: LoadedPlugin, file: OQSEFile, roster: { id: string; name: str
       phase.value = 'running';
     }
     else if (e.type === 'players') void record();
+    else if (e.type === 'paused') {
+      paused.value = e.paused;
+      void record();
+    }
     else if (e.type === 'ended') {
       phase.value = 'ended';
       void clearHostGame(r.pin);
@@ -396,7 +420,7 @@ async function restoreGame(): Promise<void> {
     await ensureUploaded();
     lobbySession.value?.end('closed').catch(() => {});
     lobbySession.value = null;
-    launch(loaded.plugin, set.file, record.players, record.sessionId, true);
+    launch(loaded.plugin, set.file, record.players, record.sessionId, true, record.clock);
     r.setState({ phase: 'running' });
     phase.value = 'running';
   } catch (error) {
@@ -489,6 +513,9 @@ const statusClass = computed(() =>
         <span class="ml-auto flex gap-2">
           <button v-if="hostAs === 'presenter'" type="button" class="btn-ghost" :title="t('host.fullscreen')" @click="fullscreen">
             <ArrowsPointingOutIcon class="size-4" />
+          </button>
+          <button v-if="phase === 'running'" type="button" class="btn-secondary" @click="togglePause">
+            <component :is="paused ? PlayIcon : PauseIcon" class="size-4" /> {{ paused ? t('host.resume') : t('host.pause') }}
           </button>
           <button v-if="phase === 'ended'" type="button" class="btn-primary" @click="backToLobby">{{ t('host.backToLobby') }}</button>
           <button v-else type="button" class="btn-danger" @click="endGame"><StopIcon class="size-4" /> {{ t('host.endGame') }}</button>
