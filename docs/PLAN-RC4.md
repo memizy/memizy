@@ -184,33 +184,33 @@ styl) a **zprávy mezi instancemi SDK** (tabule a telefony můžou mít různé 
 
 ## 1. SDK – poslední změny API před 1.0
 
-- [ ] **Pozdní akce:** každá akce nese číslo fáze (`phaseSeq`), kterou hráč viděl. Ve hrách
+- [x] **Pozdní akce:** každá akce nese číslo fáze (`phaseSeq`), kterou hráč viděl. Ve hrách
       s fázemi autorita zahodí **každou** akci z obrazovky jiné fáze (i dvojklik učitele na
       „Přeskočit“); akce z časovačů a háčků ne. Zahozená akce se potvrdí (`ui.pending` se
       vyčistí). Hry pak nepotřebují ruční `round` / `seq`.
-- [ ] **`ctx.actedAt`:** čas klepnutí (společné hodiny), SDK ho omezí na nejvýš 400 ms před
+- [x] **`ctx.actedAt`:** čas klepnutí (společné hodiny), SDK ho omezí na nejvýš 400 ms před
       příchodem a ne do budoucnosti. Body za rychlost bez znevýhodnění pomalé sítě.
-- [ ] **`ui.question` – odeslaná odpověď:** dokud čeká její akce, ukáže ji jako zvolenou a
+- [x] **`ui.question` – odeslaná odpověď:** dokud čeká její akce, ukáže ji jako zvolenou a
       zamkne ovládání (dvojí odeslání nejde). `chosen` zůstává pro potvrzené odpovědi.
-- [ ] **`ui.question` – `itemId`** v payloadu akce (ne v uložené odpovědi `recordAnswer.answer`).
-- [ ] **`ui.question` – stabilní háčky pro styl:** `data-option="<id>"` a `--mz-q-index` na
+- [x] **`ui.question` – `itemId`** v payloadu akce (ne v uložené odpovědi `recordAnswer.answer`).
+- [x] **`ui.question` – stabilní háčky pro styl:** `data-option="<id>"` a `--mz-q-index` na
       možnostech, `data-type` na kořeni; seznam stabilních tříd a proměnných v návodu,
       ostatní jsou vnitřní.
-- [ ] **Varování:** `ui.question({ reveal: true })` u otázky bez odpovědi → „zavolej ctx.reveal“
+- [x] **Varování:** `ui.question({ reveal: true })` u otázky bez odpovědi → „zavolej ctx.reveal“
       (konzole, tedy i Lab).
-- [ ] **`ctx.hide`** u neodhalené otázky nic neposílá (hra ho může volat na začátku každé otázky).
-- [ ] **`localActions`** místo `local: {}` (paralela k `actions`, nesplete se s `ui.local`);
+- [x] **`ctx.hide`** u neodhalené otázky nic neposílá (hra ho může volat na začátku každé otázky).
+- [x] **`localActions`** místo `local: {}` (paralela k `actions`, nesplete se s `ui.local`);
       signatura `(local, payload, ui)`.
-- [ ] **`createScene3d`:** volby `near` / `far` kamery.
-- [ ] **`ui.now` jako vlastnost** (getter, vždy aktuální čas i mimo render) jako `ctx.now`;
+- [x] **`createScene3d`:** volby `near` / `far` kamery.
+- [x] **`ui.now` jako vlastnost** (getter, vždy aktuální čas i mimo render) jako `ctx.now`;
       všude (hra, nastavení, solo).
-- [ ] **`ctx.goto` platí hned:** `state.phase`, `phaseSeq`, `phaseEndsAt` se nastaví v tu chvíli
+- [x] **`ctx.goto` platí hned:** `state.phase`, `phaseSeq`, `phaseEndsAt` se nastaví v tu chvíli
       a `onEnter` proběhne na místě (jako systém, ne jako hráč).
-- [ ] **`ui.html` a objekty:** objekt v atributu (`data-payload=${{ item: s.id }}`) se převede
+- [x] **`ui.html` a objekty:** objekt v atributu (`data-payload=${{ item: s.id }}`) se převede
       na bezpečný JSON v uvozovkách (dnes `[object Object]`); starý zápis funguje dál.
-- [ ] **Kompatibilita mezi verzemi SDK:** nové části zpráv jen jako volitelná pole (starší
+- [x] **Kompatibilita mezi verzemi SDK:** nové části zpráv jen jako volitelná pole (starší
       autorita je ignoruje, novější bez nich použije dnešní chování); zapsat jako pravidlo.
-- [ ] **Rezervovaná pole stavu** `phase`, `phaseSeq`, `phaseEndsAt` zapsat do návodu.
+- [x] **Rezervovaná pole stavu** `phase`, `phaseSeq`, `phaseEndsAt` zapsat do návodu.
 
 Vědomě **ne**: `game.state` / `game.ui` na objektu z `defineGame` (AI by měnila stav mimo
 akce); `onTimeout(state, payload, ctx)` (platí pravidlo „ctx poslední“); `recordAnswer`
