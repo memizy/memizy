@@ -31,7 +31,9 @@ export type SyncMessage =
   | { t: 'state'; v: number; s: unknown; a?: Record<string, number> }
   | { t: 'patch'; b: number; v: number; p: Patches; a?: Record<string, number> }
   /** Full items (with answers) the authority revealed to this device (`ctx.reveal`). */
-  | { t: 'reveal'; items: OQSEAnyItem[] };
+  | { t: 'reveal'; items: OQSEAnyItem[] }
+  /** The authority took a reveal back (`ctx.hide`): back to the public items. */
+  | { t: 'hide'; ids: string[] };
 
 /** An action of this device the authority has not confirmed yet (`ui.pending`). */
 export interface PendingAction {
@@ -69,7 +71,8 @@ type Effect =
   | { type: 'cancel'; key: string }
   | { type: 'record'; itemId: string; item?: OQSEAnyItem; isCorrect: boolean; options: RecordAnswerOptions; playerId: string | null }
   | { type: 'end'; result: { scores?: Record<string, number>; summary?: string } }
-  | { type: 'reveal'; itemIds: string[]; to: string[] | null };
+  | { type: 'reveal'; itemIds: string[]; to: string[] | null }
+  | { type: 'hide'; itemIds: string[]; to: string[] | null };
 
 export interface RuntimeOptions {
   /** Batching interval for state updates (≤ ~20 per second). */
@@ -128,6 +131,8 @@ export class GameRuntime<S = unknown> {
   /** Authority: item ids revealed to everyone / to single players (sent again on a resync). */
   private revealedAll = new Set<string>();
   private revealedTo = new Map<string, Set<string>>();
+  /** Followers: the public copies of revealed items (to go back on `hide`). */
+  private publicCopies = new Map<string, OQSEAnyItem>();
 
   constructor(def: GameDefinition<S>, host: HostApi, init: InitPayload, options: RuntimeOptions = {}) {
     this.def = def;
@@ -223,9 +228,24 @@ export class GameRuntime<S = unknown> {
     const list = this.init.set.items as OQSEAnyItem[];
     for (const item of items) {
       if (!item || typeof item.id !== 'string' || !this.itemsById.has(item.id)) continue;
+      if (!this.publicCopies.has(item.id)) this.publicCopies.set(item.id, this.itemsById.get(item.id)!);
       this.itemsById.set(item.id, item);
       const index = list.findIndex((i) => i.id === item.id);
       if (index !== -1) list[index] = item;
+    }
+    this.onChange();
+  }
+
+  /** Followers: back to the public copies (answers hidden again). */
+  private hideItems(ids: string[]): void {
+    const list = this.init.set.items as OQSEAnyItem[];
+    for (const id of ids) {
+      const copy = this.publicCopies.get(id);
+      if (!copy) continue;
+      this.publicCopies.delete(id);
+      this.itemsById.set(id, copy);
+      const index = list.findIndex((i) => i.id === id);
+      if (index !== -1) list[index] = copy;
     }
     this.onChange();
   }
@@ -326,6 +346,8 @@ export class GameRuntime<S = unknown> {
     if (message.from !== this.init.session.authority) return;
     if (data.t === 'reveal' && Array.isArray(data.items)) {
       this.addItems(data.items);
+    } else if (data.t === 'hide' && Array.isArray(data.ids)) {
+      this.hideItems(data.ids);
     } else if (data.t === 'state') {
       this.state = data.s as S;
       this.version = data.v;
@@ -495,6 +517,11 @@ export class GameRuntime<S = unknown> {
         const to = options.to === undefined ? null : (Array.isArray(options.to) ? options.to : [options.to]).filter((id) => typeof id === 'string');
         if (ids.length) effects.push({ type: 'reveal', itemIds: ids, to });
       },
+      hide: (itemIds, options = {}) => {
+        const ids = (Array.isArray(itemIds) ? itemIds : [itemIds]).filter((id) => typeof id === 'string' && this.itemsById.has(id));
+        const to = options.to === undefined ? null : (Array.isArray(options.to) ? options.to : [options.to]).filter((id) => typeof id === 'string');
+        if (ids.length) effects.push({ type: 'hide', itemIds: ids, to });
+      },
     };
     return ctx;
   }
@@ -522,6 +549,9 @@ export class GameRuntime<S = unknown> {
         }
         case 'reveal':
           this.reveal(effect.itemIds, effect.to);
+          break;
+        case 'hide':
+          this.hide(effect.itemIds, effect.to);
           break;
         case 'end':
           this.ended = true;
@@ -620,6 +650,18 @@ export class GameRuntime<S = unknown> {
       this.revealedTo.set(playerId, set);
     }
     if (to.length) this.send(to, { t: 'reveal', items });
+    this.scheduleSnapshot();
+  }
+
+  /** `ctx.hide`: takes reveals back (for everyone, or for some players). */
+  private hide(itemIds: string[], to: string[] | null): void {
+    if (this.init.session.mode === 'solo') return;
+    const targets = to ?? [...new Set([...this.revealedTo.keys()])];
+    for (const id of itemIds) {
+      if (to === null) this.revealedAll.delete(id);
+      for (const playerId of targets) this.revealedTo.get(playerId)?.delete(id);
+    }
+    this.send(to === null ? 'all' : to, { t: 'hide', ids: itemIds });
     this.scheduleSnapshot();
   }
 

@@ -4,6 +4,9 @@
 
 import type { NoteItem, OQSEAnyItem, ProgressRecord } from '@memizy/oqse';
 import type { DataScope, HostAs, Player, PluginView, SessionMode } from '@memizy/protocol';
+import type { SafeHtml } from './render/html';
+
+export type { SafeHtml };
 
 export type { Player, PluginView, SessionMode, HostAs, DataScope };
 
@@ -35,6 +38,8 @@ export interface GameContext {
   after(ms: number, action: string, payload?: unknown, options?: { key?: string }): void;
   /** Cancel a timer by its key. */
   cancel(key: string): void;
+  /** Take back `reveal` (e.g. before the same item is asked again): the devices get the item without answers. */
+  hide(itemIds: string | string[], options?: { to?: string | string[] }): void;
   /**
    * Save a learning result (default player: `ctx.playerId`). Pass the item itself instead of
    * its id for a generated item (e.g. from a service): it is attached automatically.
@@ -120,11 +125,20 @@ export interface GameUI {
   service(name: string, payload?: unknown): Promise<unknown>;
   /** Services available here (declared by the plugin and offered by the host). */
   readonly services: readonly string[];
+  /**
+   * HTML template that escapes every value except safe HTML (`ui.html`, `ui.text`,
+   * `ui.renderNote`, `ui.question`, `ui.raw`); arrays are joined, `null` / `false` are
+   * left out. Use it for every `render`:
+   * ``ui.html`<button data-act="answer" data-payload='${JSON.stringify({ answer: o.id })}'>${ui.text(o.text, { inline: true })}</button>` ``
+   */
+  html(strings: TemplateStringsArray, ...values: unknown[]): SafeHtml;
+  /** Marks HTML you wrote yourself as safe (never use it for text from players or sets). */
+  raw(html: unknown): SafeHtml;
   /** Safe HTML for Rich Content from the study set. */
-  text(markdown: string | undefined | null, options?: { inline?: boolean }): string;
+  text(markdown: string | undefined | null, options?: { inline?: boolean; item?: OQSEAnyItem }): SafeHtml;
   /** Safe HTML of a whole note item. */
-  renderNote(note: NoteItem, options?: { titleLevel?: number }): string;
-  /** Escape plain text for HTML. */
+  renderNote(note: NoteItem, options?: { titleLevel?: number }): SafeHtml;
+  /** Escape plain text for HTML (not needed inside `ui.html`). */
   escape(text: unknown): string;
   /** Save data between games (`'plugin'`: across sets, `'set'`: this set). */
   save(scope: DataScope, value: unknown): void;
@@ -132,7 +146,7 @@ export interface GameUI {
   setProgress(itemId: string, progress: { bucket: 0 | 1 | 2 | 3 | 4; nextReviewAt?: string }): void;
 }
 
-export type RenderResult = string | void | undefined | null;
+export type RenderResult = string | SafeHtml | void | undefined | null;
 
 export interface GameDefinition<S = any> {
   /** Where to render. Default: `document.body`. */

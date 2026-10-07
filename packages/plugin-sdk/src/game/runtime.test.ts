@@ -371,6 +371,7 @@ describe('hidden answers (ctx.reveal)', () => {
       actions: {
         all(state, _p, ctx) { state.n += 1; ctx.reveal('q1'); },
         mine(state, _p, ctx) { state.n += 1; ctx.reveal(['q2'], { to: ctx.playerId! }); },
+        hideAll(state, _p, ctx) { state.n += 1; ctx.hide(['q1', 'q2']); },
       },
       render: () => '',
     };
@@ -398,6 +399,15 @@ describe('hidden answers (ctx.reveal)', () => {
     session.open('anna');
     await tick();
     expect(session.get('anna').item('q2')).toHaveProperty('correctAnswer', true);
+    // ctx.hide takes it back (e.g. the same question comes again).
+    session.get('board').dispatch('hideAll', null);
+    await tick();
+    expect(session.get('anna').item('q1')).toMatchObject({ answerHidden: true });
+    expect(session.get('anna').item('q2')).not.toHaveProperty('correctAnswer');
+    expect(session.get('ben').item('q1')).not.toHaveProperty('correctId');
+    session.open('anna');
+    await tick();
+    expect(session.get('anna').item('q2')).not.toHaveProperty('correctAnswer');
   });
 });
 

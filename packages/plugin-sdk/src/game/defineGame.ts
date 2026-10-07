@@ -23,6 +23,7 @@ import {
 } from '@memizy/protocol';
 import { resolveAsset, type MediaObject, type NoteItem, type OQSEAnyItem, type ProgressRecord } from '@memizy/oqse';
 import { GameRuntime } from './runtime';
+import { SafeHtml, html as safeHtml, raw as rawHtml } from '../render/html';
 import { autoConnector, type Connector, type HostConnection } from '../connection/connect';
 import { standaloneConnector } from '../standalone/standaloneHost';
 import { morph } from '../render/morph';
@@ -200,6 +201,7 @@ abstract class BaseController implements Controller {
       this.report('RENDER_FAILED', message);
       html = `<div class="mz-error">Render error: ${escapeHtml(message)}</div>`;
     }
+    if (html instanceof SafeHtml) html = html.toString();
     if (typeof html === 'string') morph(this.root, html);
     void enhance(this.root, this.init.config.theme);
     try {
@@ -239,8 +241,10 @@ abstract class BaseController implements Controller {
       locale: init.config.locale,
       theme: init.config.theme,
       local: this.local,
-      text: (markdown, options) => renderRichText(markdown, this.textContext((options as { item?: OQSEAnyItem } | undefined)?.item), options),
-      renderNote: (note: NoteItem, options) => renderNoteHtml(note, this.textContext(note), options),
+      text: (markdown, options) => rawHtml(renderRichText(markdown, this.textContext((options as { item?: OQSEAnyItem } | undefined)?.item), options)),
+      renderNote: (note: NoteItem, options) => rawHtml(renderNoteHtml(note, this.textContext(note), options)),
+      html: safeHtml,
+      raw: rawHtml,
       escape: escapeHtml,
     };
   }
