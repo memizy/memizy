@@ -18,8 +18,7 @@ its library (see "Using the engine from the platform").
   editing, GDPR); no modal after a correct answer (a short toast instead); a review screen
   after a wrong answer is liked; fairness model "a lone player counts as the whole crew"
   (a smaller team's hits, repairs and shop items are multiplied by `bigger / own`).
-- The contract must stay backward compatible; it is **Release Candidate 3** and freezes
-  as 1.0 after the workshop (2026-10-22). Change it only additively, record every change
+- The contract is **Release Candidate 4** (frozen for the workshop, 2026-10-22; 1.0 after it). Change it only additively, record every change
   in the SPEC changelog and in the AI guide.
 
 ## Layout
@@ -71,10 +70,15 @@ After changing a package, rebuild it (`bun run build:packages`) before testing t
   authority shows answers with `ctx.reveal(itemId, { to? })`. `checkAnswer` runs in
   actions and understands `correctOrder` / `correctMatches`. Upload `prepared.publicSet`
   to the relay, never the full set.
-- Other RC2/RC3 features: setting `modes` (`settingsForMode`), solo settings form before
-  the start, `ui.pending` / `ui.isPending` (acknowledged actions), `afterRender`,
-  `data-keep` (morph keeps the element, e.g. a WebGL canvas), `data-key` for keyed
-  children, snapshots for resuming the authority, `ctx.fromHost` for teacher controls.
+- OQSE 0.3: choices `{ id, text }`, answers by ID, `skills`; 0.2 files are refused
+  (`scripts/migrate-oqse-0.3.ts` converts them once).
+- RC4 protocol: `recordAnswer.answer` and generated items, pauses (`SessionClock`),
+  `permissions` (CSP + device grants), `service()` + `InitPayload.services`; SPEC §10
+  lists decisions and reserved names – read it before extending the contract.
+- SDK: `phases` + `ctx.goto`, `ui.html` (escaping templates), `ui.question` (ready-made
+  controls), `playerView`, `ui.setLocal`, `ctx.reveal` / `ctx.hide`, `ui.service`,
+  `createScene3d` (3D helper), plus older `ui.pending`, `afterRender`, `data-keep`,
+  `data-key`, snapshots, `ctx.fromHost`. The Lab tests include a "naughty player".
 
 ## Testing tips
 

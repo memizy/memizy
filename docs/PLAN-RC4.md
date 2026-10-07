@@ -55,35 +55,46 @@ konci. Hotové body se odškrtávají; rozhodnutí se zároveň přepisují do `
 
 ## 2. SDK (přidává, nic nerozbíjí)
 
-- [ ] **Fáze hry** (volitelné): `phases: { name: { seconds, actions, onEnter, onTimeout } }`,
+- [x] **Fáze hry** (volitelné): `phases: { name: { seconds, actions, onEnter, onTimeout } }`,
       `ctx.goto(name)`. SDK zahodí akce, které do fáze nepatří, drží odpočet (`ui.timeLeft()`
       bez parametru) a nahradí ruční `timerKey`. Modely jsou na jasný životní cyklus zvyklé.
-- [ ] **`ui.html`** – šablona, která sama escapuje (výstup `ui.text` / `ui.question` se
+- [x] **`ui.html`** – šablona, která sama escapuje (výstup `ui.text` / `ui.question` se
       neescapuje). Návod i příklad celé přepsat na ni (dva způsoby vedle sebe by AI mátly).
-- [ ] **`ui.question(item, { action, … })`** – nabídka, ne povinnost: hotové ovládání všech
+- [x] **`ui.question(item, { action, … })`** – nabídka, ne povinnost: hotové ovládání všech
       běžných typů (mcq, multi, pravda/nepravda, krátká odpověď, číslo, řazení, dvojice,
       doplňování, kartička se sebehodnocením). Řazení a dvojice klepáním (mobil), vzhled přes
       CSS proměnné, správný formát odpovědi vždy.
-- [ ] **`ui.setLocal`** – místní stav zařízení, jehož změna překreslí obrazovku (odpadne
+- [x] **`ui.setLocal`** – místní stav zařízení, jehož změna překreslí obrazovku (odpadne
       globální `G` v Pirátech).
-- [ ] **`playerView(state, playerId)`** – **volitelné**. Autorita posílá každému hráči jen jeho
+- [x] **`playerView(state, playerId)`** – **volitelné**. Autorita posílá každému hráči jen jeho
       výřez stavu (tabuli `playerId = null`). Návod: „když stav obsahuje něco, co ostatní nemají
       vidět, použij playerView“; příklad (kvíz) ho použije.
-- [ ] **`ctx.hide(itemIds)`** – vrátí odkrytí (otázka, která se ve hře zopakuje).
-- [ ] **3D doplněk** `@memizy/plugin-sdk/three` (samostatný, Three.js mu hra předá:
+- [x] **`ctx.hide(itemIds)`** – vrátí odkrytí (otázka, která se ve hře zopakuje).
+- [x] **3D doplněk** `@memizy/plugin-sdk/three` (samostatný, Three.js mu hra předá:
       `createScene3d(THREE, root, …)`): kontrola WebGL, ztráta kontextu a černá obrazovka,
       FPS a přepnutí na 2D, velikost plátna na iOS, kvalita na mobilech, klepání podle
       nejbližšího popisku. Jako poslední – kdyby nestačil čas, může až po workshopu.
 
 ## 3. Lab, hry, návod
 
-- [ ] Lab test **„zlobivý hráč“**: skrytý hráč posílá odpovědi dvakrát, pozdě, s nesmyslnými
+- [x] Lab test **„zlobivý hráč“**: skrytý hráč posílá odpovědi dvakrát, pozdě, s nesmyslnými
       daty a v jiném kole; test ohlásí změnu stavu nebo pád (a jde zkopírovat pro AI).
-- [ ] Lab ukáže **oprávnění a služby** hry.
-- [ ] Převést **Piráty** (ID možností, `ui.question`, `ui.setLocal`, 3D doplněk, `ctx.hide`,
+- [x] Lab ukáže **oprávnění a služby** hry.
+- [x] Převést **Piráty** (ID možností, `ui.question`, `ui.setLocal`, 3D doplněk, `ctx.hide`,
       omezení času klepnutí při míření na rozumný rozsah), **Babiše** (ID možností, fáze,
       `ui.html`, `ui.question`, `playerView` – odpovědi spolužáků skryté) a **příklad v návodu**.
-- [ ] Nový návod pro AI podle RC4; doplnit `CLAUDE.md`.
+- [x] Nový návod pro AI podle RC4; doplnit `CLAUDE.md`.
+
+### Poznámky k provedení (2026-10-07)
+
+- 3D doplněk je funkce `createScene3d` přímo v SDK (Three.js předává hra), ne samostatný balíček –
+  jeden import pro studenty, jádro na Three.js nezávisí.
+- Piráti: `ui.question`, `ctx.hide`, omezení času klepnutí – hotovo. Jejich vlastní 3D scéna zůstala
+  (už má stejné kontroly jako `createScene3d`); převod na pomocníka a na `ui.setLocal` místo
+  globálního `G` je možný úklid na později.
+- Babiš: fáze a `playerView` – hotovo. Vlastní dlaždice odpovědí (barvy po možnostech) a šablony
+  zůstaly; `ui.question` by mu vzal vzhled. Jména escapuje `ui.escape`.
+- Zlobivý hráč je v `apps/play/src/lib/chaosPlayer.ts` (testuje SDK hry; akce hledá v HTML).
 
 ## 4. Podvádění – stav po RC4
 
