@@ -8,6 +8,7 @@
 
 import type { OQSEFile } from '@memizy/oqse';
 import { LocalSession, SETTINGS_ADDRESS, mountPlugin, prepareSetForPlugin, type LoadedPlugin, type MountedPlugin, type SessionConfig, type SessionEvent } from '@memizy/host-sdk';
+import { actionNames, runChaosPlayer } from './chaosPlayer';
 
 export type LabTestStatus = 'pass' | 'warn' | 'fail' | 'skip';
 
@@ -197,6 +198,53 @@ export async function runLabTests(options: LabTestOptions): Promise<LabTestResul
             const reloadProblems = problems(run, before);
             if (!resumed) reloadProblems.push('After a reload of the host screen the game did not resume.');
             out.push(result(`${id}-reload`, `${label}: the game survives a reload of the host screen.`, reloadProblems));
+            return out;
+          } finally {
+            await close(run);
+          }
+        },
+      });
+    }
+
+    // The naughty player: nonsense payloads, double taps and teacher actions from a player.
+    if (actionNames(options.plugin.html).length > 0) {
+      scenarios.push({
+        id: 'chaos',
+        label: 'Naughty player',
+        run: async () => {
+          const hostAs = multi.hostAs[0];
+          const roster = [
+            { id: 'p1', name: 'Anna', isHost: hostAs === 'player' },
+            { id: 'chaos', name: 'Naughty Nick', isHost: false },
+          ];
+          const addresses = [...(hostAs === 'presenter' ? ['board'] : []), 'p1'];
+          const run = await open(options, { mode: 'multiplayer', hostAs, players: roster }, addresses);
+          try {
+            const ready = await waitFor(readyCheck(run, addresses), READY_TIMEOUT_MS);
+            if (!ready) return [result('chaos', 'Naughty player: the game did not connect.', [], 'skip')];
+            const started = run.session.start();
+            const report = await runChaosPlayer(run.session, 'chaos', options.plugin.html, () => problems(run));
+            await started.catch(() => {});
+            const out: LabTestResult[] = [];
+            out.push(
+              report.crashes.length
+                ? result('chaos-crash', 'Naughty player: invalid payloads crash actions.', [
+                    ...report.crashes,
+                    'Check the payload at the start of every action (type, range, existing ids) and return if it is invalid.',
+                  ])
+                : result('chaos-crash', `Naughty player: ${report.actions.length} actions survive invalid payloads and double taps.`, []),
+            );
+            if (report.teacher.length) {
+              out.push(result('chaos-teacher', 'Naughty player: a player can run teacher actions.', [...report.teacher, 'Start teacher-only actions with: if (!ctx.fromHost) return;']));
+            }
+            if (report.changed.length) {
+              out.push(
+                result('chaos-changed', 'Naughty player: invalid payloads change the game state.', [
+                  ...report.changed,
+                  'Is that intended? Validate payloads (and the phase, and duplicates) before changing the state.',
+                ], 'warn'),
+              );
+            }
             return out;
           } finally {
             await close(run);

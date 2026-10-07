@@ -112,6 +112,9 @@ const pluginSummary = computed(() => {
     modes: modes.join(', ') + (players ? ` (${players.min}–${players.max})` : ''),
     types: (p.manifest.capabilities.types as string[] | undefined)?.join(', ') ?? '–',
     settings: p.runtime.settings.map((s) => s.id).join(', ') || '–',
+    network: p.runtime.permissions.network.map((o) => o.replace(/^(https|wss):\/\//, '')).join(', '),
+    devices: p.runtime.permissions.devices.map((d) => t(`lab.code.device.${d}`)).join(', '),
+    services: p.runtime.services.join(', '),
   };
 });
 
@@ -204,6 +207,18 @@ const statusColor = { pass: 'text-emerald-600', warn: 'text-amber-600', fail: 't
             <dd class="break-words">{{ pluginSummary.types }}</dd>
             <dt class="text-text-gray">{{ t('lab.code.settings') }}</dt>
             <dd>{{ pluginSummary.settings }}</dd>
+            <template v-if="pluginSummary.network">
+              <dt class="text-text-gray">{{ t('lab.code.network') }}</dt>
+              <dd class="break-words">{{ pluginSummary.network }}</dd>
+            </template>
+            <template v-if="pluginSummary.devices">
+              <dt class="text-text-gray">{{ t('lab.code.devices') }}</dt>
+              <dd>{{ pluginSummary.devices }}</dd>
+            </template>
+            <template v-if="pluginSummary.services">
+              <dt class="text-text-gray">{{ t('lab.code.services') }}</dt>
+              <dd>{{ pluginSummary.services }} <span class="text-text-gray">– {{ t('lab.code.servicesHere') }}</span></dd>
+            </template>
           </dl>
         </div>
         <div v-else-if="pluginErrors.length" class="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700">

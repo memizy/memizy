@@ -608,6 +608,10 @@ const statusClass = computed(() =>
             <div v-if="plugin && multi" class="mt-3 rounded-xl bg-slate-50 p-3 text-xs">
               <div class="font-semibold">{{ plugin.manifest.appName }} <span class="font-normal text-text-gray">{{ plugin.manifest.pluginVersion }}</span></div>
               <div class="mt-1 font-mono text-[11px] text-text-gray">{{ (plugin.manifest.capabilities.types as string[] | undefined)?.join(' · ') }}</div>
+              <div v-if="plugin.runtime.permissions.network.length || plugin.runtime.permissions.devices.length" class="mt-1 text-amber-700">
+                <template v-if="plugin.runtime.permissions.network.length">🌐 {{ t('host.talksTo', { origins: plugin.runtime.permissions.network.map((o) => o.replace(/^(https|wss):\/\//, '')).join(', ') }) }}</template>
+                <template v-if="plugin.runtime.permissions.devices.length"> 🎙️ {{ t('host.usesDevices', { devices: plugin.runtime.permissions.devices.map((d) => t(`lab.code.device.${d}`)).join(', ') }) }}</template>
+              </div>
               <div v-if="unsupported.length === (plugin.manifest.capabilities.types as string[] | undefined)?.length" class="mt-1 text-accent-orange-dark">
                 {{ t('host.noItems', { types: unsupported.join(', ') }) }}
               </div>
