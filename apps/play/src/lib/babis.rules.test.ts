@@ -58,7 +58,7 @@ describe('Babiš vs. Alzák rules', () => {
       if (s.phase === 'question') {
         const id = currentItem(s);
         // Everyone right: the lone Alzák player must hit like the two Babiš players together.
-        for (const p of ['anna', 'ben', 'cyril']) session.get(p).dispatch('answer', { answer: correctOf(id), round: s.timerKey });
+        for (const p of ['anna', 'ben', 'cyril']) session.get(p).dispatch('answer', { answer: correctOf(id), round: s.phaseSeq });
         await tick();
         if (s.stage === 'battle') {
           const r = board().lastRound;
@@ -84,6 +84,21 @@ describe('Babiš vs. Alzák rules', () => {
     expect(board().coins.anna).toBeGreaterThan(0);
   });
 
+  it('nobody sees the answers of others before the reveal (playerView)', async () => {
+    const session = new FakeSession<any>(definition(), { players: ['anna', 'ben'], items });
+    session.start();
+    await tick();
+    session.get('anna').dispatch('chooseTeam', { team: 'babis' });
+    session.get('ben').dispatch('chooseTeam', { team: 'alzak' });
+    await tick(2600);
+    const s = session.get('board').state;
+    expect(s.phase).toBe('question');
+    session.get('anna').dispatch('answer', { answer: correctOf(currentItem(s)), round: s.phaseSeq });
+    await tick();
+    expect(session.get('ben').state.answers.anna).toEqual({ answered: true });
+    expect(session.get('anna').state.answers.anna.answer).toBe(correctOf(currentItem(s)));
+  });
+
   it('ignores late taps, wrong rounds and invalid answers', async () => {
     const session = new FakeSession<any>(definition(), { players: ['anna', 'ben'], items });
     session.start();
@@ -92,8 +107,8 @@ describe('Babiš vs. Alzák rules', () => {
     session.get('ben').dispatch('chooseTeam', { team: 'alzak' });
     await tick(2600);
     const s = session.get('board').state;
-    session.get('anna').dispatch('answer', { answer: 99, round: s.timerKey });
-    session.get('ben').dispatch('answer', { answer: correctOf(currentItem(s)), round: s.timerKey - 1 });
+    session.get('anna').dispatch('answer', { answer: 99, round: s.phaseSeq });
+    session.get('ben').dispatch('answer', { answer: correctOf(currentItem(s)), round: s.phaseSeq - 1 });
     await tick();
     expect(session.get('board').state.answers).toEqual({});
   });
@@ -110,7 +125,7 @@ describe('Babiš vs. Alzák rules', () => {
     while (me().phase !== 'end' && guard++ < 100) {
       const s = me();
       if (s.phase === 'question') {
-        session.get('me').dispatch('answer', { answer: s.stage === 'battle' ? wrongOf(currentItem(s)) : correctOf(currentItem(s)), round: s.timerKey });
+        session.get('me').dispatch('answer', { answer: s.stage === 'battle' ? wrongOf(currentItem(s)) : correctOf(currentItem(s)), round: s.phaseSeq });
         await tick();
       } else if (s.phase === 'shop') {
         session.get('me').dispatch('shopDone', null);

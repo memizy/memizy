@@ -427,11 +427,9 @@
       state.dialogue = { id: (state.dialogue?.id ?? 0) + 1, lines: lines.filter((l) => l.text) };
     }
 
-    function schedule(state, ctx, ms) {
-      state.timerKey += 1;
-      state.phaseStart = ctx.now;
-      state.deadline = ctx.now + ms;
-      ctx.after(ms, 'timeUp', { timerKey: state.timerKey }, { key: 'timer' });
+    /** The coupon bought in the first shop works in the next one only. */
+    function useCoupons(state) {
+      for (const perks of Object.values(state.perks)) { perks.coupon = !!perks.couponNext; perks.couponNext = false; }
     }
 
     function hullFor(state, ctx) {
@@ -460,10 +458,9 @@
     }
 
     /* ---- phases ---- */
-    function startTeamSelect(state, ctx) {
-      state.phase = 'team_select';
-      say(state, [{ who: 'babis', text: quote(state, ctx, 'babis', 'intro') }, { who: 'alzak', text: quote(state, ctx, 'alzak', 'intro') }]);
-      schedule(state, ctx, TEAM_MS);
+    /** Remembers when the phase started (the timer bar, the speed of answers). */
+    function started(state, ctx) {
+      state.phaseStart = ctx.now;
     }
 
     function startCampaign(state, ctx) {
@@ -483,13 +480,12 @@
     }
 
     function startQuestion(state, ctx, stage) {
-      state.phase = 'question';
       state.stage = stage;
       state.answers = {};
       state.reveal = null;
       state.lastRound = null;
       // No quote here: the question speaks for itself (quotes only react to what happened).
-      schedule(state, ctx, qMs(ctx));
+      ctx.goto('question');
     }
 
     function currentItemId(state) {
@@ -507,7 +503,6 @@
     function revealQuiz(state, ctx) {
       const itemId = currentItemId(state);
       const item = ctx.item(itemId);
-      state.phase = 'reveal';
       state.reveal = { correct: item ? correctValue(item) : null, results: {} };
       const rate = { babis: [0, 0], alzak: [0, 0] };
       for (const p of connected(ctx)) {
@@ -530,11 +525,10 @@
       const who = ctx.random() < 0.5 ? better : other(better);
       const good = who === better ? share(who) > 0 : share(who) >= 0.5;
       say(state, [{ who, text: quote(state, ctx, who, good ? 'good' : 'bad') }]);
-      schedule(state, ctx, REVEAL_MS);
+      ctx.goto('reveal');
     }
 
     function startShop(state, ctx) {
-      state.phase = 'shop';
       state.shopIdx += 1;
       state.shopDone = {};
       for (const id of Object.keys(state.bought)) state.bought[id] = [];
@@ -549,7 +543,7 @@
       }
       const first = ctx.random() < 0.5 ? 'babis' : 'alzak';
       say(state, [{ who: first, text: quote(state, ctx, first, 'shop') }]);
-      schedule(state, ctx, SHOP_MS);
+      ctx.goto('shop');
     }
 
     function price(state, pid, item) {
@@ -559,7 +553,6 @@
     function resolveBattle(state, ctx) {
       const itemId = currentItemId(state);
       const item = ctx.item(itemId);
-      state.phase = 'resolve';
       state.reveal = { correct: item ? correctValue(item) : null, results: {} };
       const out = { babis: { dmg: 0, hits: 0, of: 0 }, alzak: { dmg: 0, hits: 0, of: 0 } };
 
@@ -627,13 +620,11 @@
         const att = b > a ? 'babis' : 'alzak';
         say(state, [{ who: att, text: quote(state, ctx, att, 'attack') }, { who: other(att), text: quote(state, ctx, other(att), 'hit') }]);
       }
-      schedule(state, ctx, RESOLVE_MS);
+      ctx.goto('resolve');
     }
 
     function finish(state, ctx) {
-      state.phase = 'end';
-      ctx.cancel('timer');
-      state.deadline = 0;
+      ctx.goto('end');
       const pb = state.hp.babis / state.maxHp.babis, pa = state.hp.alzak / state.maxHp.alzak;
       state.winner = pb === pa ? 'draw' : pb > pa ? 'babis' : 'alzak';
       if (state.winner === 'draw') say(state, [{ who: 'babis', text: quote(state, ctx, 'babis', 'tie') }, { who: 'alzak', text: quote(state, ctx, 'alzak', 'tie') }]);
@@ -648,20 +639,21 @@
       ctx.end({ scores });
     }
 
-    /** Moves the game on (the timer, or the host's skip button). */
+    /** Moves the game on (the end of a phase, or the host's skip button). */
     function advance(state, ctx) {
       const half = Math.ceil(state.totalBattle / 2);
       switch (state.phase) {
-        case 'team_select': return startCampaign(state, ctx);
+        case 'team_select':
+        case 'teams_ready': return startCampaign(state, ctx);
         case 'question': return state.stage === 'quiz' ? revealQuiz(state, ctx) : resolveBattle(state, ctx);
         case 'reveal':
           if (state.quizRound + 1 < state.quizIds.length) { state.quizRound += 1; return startQuestion(state, ctx, 'quiz'); }
           return startShop(state, ctx);
         case 'shop':
+          useCoupons(state);
           if (state.shopIdx === 1) {
-            state.phase = 'battle_intro';
             say(state, []);
-            return schedule(state, ctx, 3500);
+            return ctx.goto('battle_intro');
           }
           return startQuestion(state, ctx, 'battle');
         case 'battle_intro': return startQuestion(state, ctx, 'battle');
@@ -740,9 +732,9 @@
           </div>
         </div>`;
       };
-      const left = Math.max(0, state.deadline - ui.now());
-      const total = Math.max(1, state.deadline - state.phaseStart);
-      const timed = state.deadline > 0 && state.phase !== 'end';
+      const left = ui.timeLeft();
+      const total = Math.max(1, (state.phaseEndsAt ?? 0) - state.phaseStart);
+      const timed = typeof state.phaseEndsAt === 'number' && state.phase !== 'end';
       const pops = hit ? ['babis', 'alzak'].map((t) => {
         const dmg = state.lastRound[other(t)].dmg - (state.lastRound[other(t)].absorbed ?? 0);
         return dmg > 0 ? `<div class="dmg on-${t}" data-key="d${t}${state.battleRound}">−${dmg}</div>` : '';
@@ -812,7 +804,7 @@
         if (revealed) cls += o.value === correct ? ' right' : ' dim';
         const n = counts.get(JSON.stringify(o.value));
         const disabled = !ui.self || chosen !== undefined || revealed || !state.teams[me] ? 'disabled' : '';
-        return `<button class="${cls}" ${disabled} data-act="answer" data-payload='${JSON.stringify({ answer: o.value, round: state.timerKey })}'>
+        return `<button class="${cls}" ${disabled} data-act="answer" data-payload='${JSON.stringify({ answer: o.value, round: state.phaseSeq })}'>
           <span class="key">${o.key}</span><span class="lbl">${o.label}</span>${revealed && n ? `<span class="cnt">${n}</span>` : ''}
         </button>`;
       }).join('');
@@ -908,20 +900,49 @@
         let battleIds = pool.slice(quizCount);
         if (!battleIds.length) battleIds = [...quizIds];
         const state = {
-          phase: 'team_select', stage: 'quiz', teams: {}, ai: null,
+          stage: 'quiz', teams: {}, ai: null,
           hp: { babis: HP_PER_SAILOR, alzak: HP_PER_SAILOR }, maxHp: { babis: HP_PER_SAILOR, alzak: HP_PER_SAILOR },
           shield: { babis: 0, alzak: 0 }, regen: { babis: { amount: 0, rounds: 0 }, alzak: { amount: 0, rounds: 0 } },
           boost: { babis: false, alzak: false }, weak: { babis: false, alzak: false },
           quizIds, battleIds, quizRound: 0, battleRound: 0, totalBattle,
-          deadline: 0, phaseStart: 0, timerKey: 0,
+          phaseStart: 0,
           answers: {}, reveal: null, lastRound: null,
           coins: {}, perks: {}, bought: {}, streak: {}, dealt: {}, correct: {},
           shopIdx: 0, shopDone: {}, shopLog: [],
           dialogue: { id: 0, lines: [] }, used: [], winner: null, scores: {},
         };
         for (const p of ctx.players) { state.teams[p.id] = null; ensurePlayer(state, p.id); }
-        startTeamSelect(state, ctx);
+        ctx.goto('team_select');
         return state;
+      },
+
+      // The life cycle of the game; the SDK runs the time limits and ignores actions
+      // that do not belong to the phase (late taps, shopping during a question…).
+      phases: {
+        team_select: {
+          seconds: TEAM_MS / 1000,
+          actions: ['chooseTeam'],
+          onEnter(state, ctx) {
+            state.phaseStart = ctx.now;
+            say(state, [{ who: 'babis', text: quote(state, ctx, 'babis', 'intro') }, { who: 'alzak', text: quote(state, ctx, 'alzak', 'intro') }]);
+          },
+          onTimeout: advance,
+        },
+        teams_ready: { seconds: 2.5, actions: ['chooseTeam'], onEnter: started, onTimeout: advance }, // a moment to see the teams
+        question: { seconds: (_s, ctx) => qMs(ctx) / 1000, actions: ['answer'], onEnter: started, onTimeout: advance },
+        reveal: { seconds: REVEAL_MS / 1000, onEnter: started, onTimeout: advance },
+        shop: { seconds: SHOP_MS / 1000, actions: ['buy', 'shopDone'], onEnter: started, onTimeout: advance },
+        battle_intro: { seconds: 3.5, onEnter: started, onTimeout: advance },
+        resolve: { seconds: RESOLVE_MS / 1000, onEnter: started, onTimeout: advance },
+        end: {},
+      },
+
+      // Before the reveal nobody sees what the others answered.
+      playerView(state, playerId) {
+        if (state.phase !== 'question') return state;
+        const answers = {};
+        for (const [id, a] of Object.entries(state.answers)) answers[id] = id === playerId ? a : { answered: true };
+        return { ...state, answers };
       },
 
       playerJoined(state, player, ctx) {
@@ -936,19 +957,19 @@
 
       actions: {
         chooseTeam(state, payload, ctx) {
-          if (state.phase !== 'team_select' || !ctx.playerId) return;
+          if (!ctx.playerId) return;
           if (payload?.team !== 'babis' && payload?.team !== 'alzak') return;
           state.teams[ctx.playerId] = payload.team;
-          if (connected(ctx).every((p) => state.teams[p.id])) {
+          if (state.phase === 'team_select' && connected(ctx).every((p) => state.teams[p.id])) {
             if (ctx.players.length === 1) startCampaign(state, ctx);
-            else { ctx.cancel('timer'); schedule(state, ctx, 2500); } // a moment to see the teams
+            else ctx.goto('teams_ready');
           }
         },
 
         answer(state, payload, ctx) {
           const pid = ctx.playerId;
-          if (state.phase !== 'question' || !pid || !state.teams[pid] || state.answers[pid]) return;
-          if (payload?.round !== state.timerKey) return; // a late tap from the previous question
+          if (!pid || !state.teams[pid] || state.answers[pid]) return;
+          if (payload?.round !== state.phaseSeq) return; // a late tap from the previous question
           const item = ctx.item(currentItemId(state));
           if (!item) return;
           const answer = payload?.answer;
@@ -961,7 +982,7 @@
 
         buy(state, payload, ctx) {
           const pid = ctx.playerId;
-          if (state.phase !== 'shop' || !pid || !state.teams[pid] || state.shopDone[pid]) return;
+          if (!pid || !state.teams[pid] || state.shopDone[pid]) return;
           const s = shopItem(payload?.item);
           if (!s || state.bought[pid].includes(s.id) || (s.firstShopOnly && state.shopIdx > 1)) return;
           const cost = price(state, pid, s);
@@ -988,25 +1009,14 @@
 
         shopDone(state, _p, ctx) {
           const pid = ctx.playerId;
-          if (state.phase !== 'shop' || !pid || !state.teams[pid]) return;
+          if (!pid || !state.teams[pid]) return;
           state.shopDone[pid] = true;
-          if (connected(ctx).filter((p) => state.teams[p.id]).every((p) => state.shopDone[p.id])) {
-            // The coupon works in the next shop only.
-            for (const perks of Object.values(state.perks)) { perks.coupon = !!perks.couponNext; perks.couponNext = false; }
-            advance(state, ctx);
-          }
+          if (connected(ctx).filter((p) => state.teams[p.id]).every((p) => state.shopDone[p.id])) advance(state, ctx);
         },
 
-        timeUp(state, payload, ctx) {
-          if (payload?.timerKey !== state.timerKey) return;
-          if (state.phase === 'shop') for (const perks of Object.values(state.perks)) { perks.coupon = !!perks.couponNext; perks.couponNext = false; }
-          advance(state, ctx);
-        },
-
+        // The teacher's skip button (any phase, so it is in no phase's list).
         next(state, _p, ctx) {
           if (!ctx.fromHost || state.phase === 'end') return;
-          ctx.cancel('timer');
-          if (state.phase === 'shop') for (const perks of Object.values(state.perks)) { perks.coupon = !!perks.couponNext; perks.couponNext = false; }
           advance(state, ctx);
         },
       },
