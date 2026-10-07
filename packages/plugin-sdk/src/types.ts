@@ -35,8 +35,12 @@ export interface GameContext {
   after(ms: number, action: string, payload?: unknown, options?: { key?: string }): void;
   /** Cancel a timer by its key. */
   cancel(key: string): void;
-  /** Save a learning result (default player: `ctx.playerId`). */
-  recordAnswer(itemId: string, isCorrect: boolean, options?: RecordAnswerOptions): void;
+  /**
+   * Save a learning result (default player: `ctx.playerId`). Pass the item itself instead of
+   * its id for a generated item (e.g. from a service): it is attached automatically.
+   * `options.answer` = what the player answered (shown to teachers).
+   */
+  recordAnswer(item: string | OQSEAnyItem, isCorrect: boolean, options?: RecordAnswerOptions): void;
   /** End the game. */
   end(result?: { scores?: Record<string, number>; summary?: string }): void;
   /**
@@ -53,6 +57,8 @@ export interface RecordAnswerOptions {
   timeSpentMs?: number;
   hintsUsed?: number;
   isSkipped?: boolean;
+  /** What the player answered (the `checkAnswer` format). */
+  answer?: unknown;
 }
 
 export type ActionHandler<S> = (state: S, payload: any, ctx: GameContext) => void | S;

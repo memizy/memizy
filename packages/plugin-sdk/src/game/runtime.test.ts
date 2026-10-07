@@ -297,6 +297,33 @@ describe('host-only actions (ctx.fromHost)', () => {
   });
 });
 
+describe('recordAnswer', () => {
+  it('sends the answer given and attaches generated items', async () => {
+    const generated = { id: 'gen-1', type: 'true-false', question: '2 + 2 = 4', correctAnswer: true, skills: ['math.addition'] };
+    const def: GameDefinition<{ n: number }> = {
+      initialState: () => ({ n: 0 }),
+      actions: {
+        set(state, payload, ctx) { state.n += 1; ctx.recordAnswer('q1', payload.answer === 'b', { answer: payload.answer }); },
+        gen(state, _p, ctx) { state.n += 1; ctx.recordAnswer(generated as any, true, { answer: true }); },
+        known(state, _p, ctx) { state.n += 1; ctx.recordAnswer(ctx.item('q2')!, false); },
+      },
+      render: () => '',
+    };
+    const session = new FakeSession(def);
+    session.start();
+    await tick();
+    session.get('anna').dispatch('set', { answer: 'b' });
+    session.get('anna').dispatch('gen', null);
+    session.get('anna').dispatch('known', null);
+    await tick();
+    expect(session.records).toEqual([
+      { playerId: 'anna', itemId: 'q1', isCorrect: true, answer: 'b' },
+      { playerId: 'anna', itemId: 'gen-1', isCorrect: true, answer: true, item: generated },
+      { playerId: 'anna', itemId: 'q2', isCorrect: false }, // an item of the set is not attached
+    ]);
+  });
+});
+
 describe('hidden answers (ctx.reveal)', () => {
   it('followers get items without answers until the authority reveals them', async () => {
     const def: GameDefinition<{ n: number }> = {

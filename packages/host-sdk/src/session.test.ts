@@ -38,7 +38,7 @@ const setFile = loadOQSEFile({
   version: '0.3',
   meta: { id: id(0), language: 'cs', title: 'Set', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
   items: [
-    { id: id(1), type: 'mcq-single', question: 'A?', options: [{ id: 'x', text: 'x' }, { id: 'y', text: 'y' }], correctId: 'y' },
+    { id: id(1), type: 'mcq-single', question: 'A?', options: [{ id: 'x', text: 'x' }, { id: 'y', text: 'y' }], correctId: 'y', skills: ['geo.capitals'], tags: ['eu'] },
     { id: id(2), type: 'mcq-single', question: 'B?', options: [{ id: 'x', text: 'x' }, { id: 'y', text: 'y' }], correctId: 'x' },
     { id: id(3), type: 'note', content: 'not for this plugin' },
   ],
@@ -337,6 +337,22 @@ describe('protocol enforcement', () => {
 
     await session.end();
     await expect(anna.send({ to: 'all', data: 1 })).rejects.toThrow(/\[SESSION_ENDED\]/);
+  });
+
+  it('records the answer given, skills, and generated items (statistics only)', async () => {
+    const { session, events } = newSession();
+    const anna = await bare(session, 'anna');
+    await anna.recordAnswer({ itemId: id(1), isCorrect: false, answer: 'x' });
+    const generated = { id: 'lichess-00AbC', type: 'chess-puzzle', question: 'Mat 2', fen: '8/8/8/8/8/8/8/K6k w - - 0 1', skills: ['chess.tactics.fork'], elo: 1450 };
+    await anna.recordAnswer({ itemId: generated.id, isCorrect: true, answer: ['Qh5'], item: generated });
+    await expect(anna.recordAnswer({ itemId: 'nope', isCorrect: true })).rejects.toThrow(/attach the item/);
+    await expect(anna.recordAnswer({ itemId: 'other', isCorrect: true, item: generated })).rejects.toThrow(/item.id must equal itemId/);
+    await expect(anna.recordAnswer({ itemId: id(1), isCorrect: true, answer: 'x'.repeat(5000) })).rejects.toThrow(/\[DATA_TOO_LARGE\]/);
+    const answers = events.filter((e) => e.type === 'answer') as Extract<SessionEvent, { type: 'answer' }>[];
+    expect(answers).toHaveLength(2);
+    expect(answers[0]).toMatchObject({ playerId: 'anna', generated: false, skills: ['geo.capitals'], tags: ['eu'], answer: { answer: 'x' } });
+    expect(answers[0].record).not.toBeNull();
+    expect(answers[1]).toMatchObject({ generated: true, record: null, skills: ['chess.tactics.fork'], answer: { answer: ['Qh5'] } });
   });
 
   it('rate-limits messages', async () => {

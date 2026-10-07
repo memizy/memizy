@@ -86,7 +86,11 @@ export type SessionEvent =
   | { type: 'countdown'; secondsLeft: number }
   | { type: 'started' }
   | { type: 'settings'; values: Record<string, unknown>; valid: boolean; message?: string }
-  | { type: 'answer'; playerId: string; record: ProgressRecord; answer: AnswerRecord }
+  /**
+   * A recorded answer. `record` is the updated learning progress (null for a generated item,
+   * which is not repeated); `skills` / `tags` come from the item (for statistics).
+   */
+  | { type: 'answer'; playerId: string; record: ProgressRecord | null; answer: AnswerRecord; generated: boolean; skills: string[]; tags: string[] }
   | { type: 'ended'; result: SessionResult }
   | { type: 'players'; players: Player[] }
   | { type: 'authority'; connected: boolean }
@@ -494,13 +498,23 @@ export class LocalSession {
           if (!playerId) throw new ProtocolError('INVALID_ARGUMENT', 'recordAnswer needs a playerId on the board.');
           if (playerId !== self) requireAuthority('recordAnswer for another player');
           if (!this.players.some((p) => p.id === playerId)) throw new ProtocolError('INVALID_ARGUMENT', `Unknown player "${playerId}".`);
-          if (!this.prepared.set.items.some((i) => i.id === answer.itemId)) throw new ProtocolError('INVALID_ARGUMENT', `Unknown item "${answer.itemId}".`);
+          if (answer.answer !== undefined) assertJsonWithin(answer.answer, LIMITS.answerBytes, 'DATA_TOO_LARGE', 'answer');
+          const known = this.prepared.set.items.find((i) => i.id === answer.itemId);
+          const listOf = (value: unknown) => (Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : []);
+          if (!known) {
+            // A generated item (service, plugin generator): statistics only, no repetition.
+            if (!answer.item) throw new ProtocolError('INVALID_ARGUMENT', `Unknown item "${answer.itemId}" (attach the item for a generated one).`);
+            assertJsonWithin(answer.item, LIMITS.generatedItemBytes, 'DATA_TOO_LARGE', 'item');
+            this.emit({ type: 'answer', playerId, record: null, answer, generated: true, skills: listOf(answer.item.skills), tags: listOf(answer.item.tags) });
+            return;
+          }
           const userKey = this.userKey(playerId);
           const setId = this.prepared.set.meta.id;
           const progress = await this.storage.loadProgress(userKey, setId);
-          const record = this.algorithm.apply(progress[answer.itemId], answer, new Date());
+          const { item: _attached, ...stored } = answer;
+          const record = this.algorithm.apply(progress[answer.itemId], stored, new Date());
           await this.storage.saveProgress(userKey, setId, { [answer.itemId]: record });
-          this.emit({ type: 'answer', playerId, record, answer });
+          this.emit({ type: 'answer', playerId, record, answer: stored, generated: false, skills: listOf(known.skills), tags: listOf(known.tags) });
         }),
 
       saveProgress: (...args) =>

@@ -32,7 +32,9 @@ export const AnswerRecordSchema = z.looseObject({
   timeSpentMs: z.number().int().nonnegative().optional(),
   hintsUsed: z.number().int().nonnegative().optional(),
   isSkipped: z.boolean().optional(),
-});
+  answer: z.unknown().optional(),
+  item: z.looseObject({ id: ShortText(128), type: ShortText(64) }).optional(),
+}).refine((r) => !r.item || r.item.id === r.itemId, { message: 'item.id must equal itemId', path: ['item', 'id'] });
 
 export const ProgressRecordsSchema = z.record(ShortText(128), ProgressRecordSchema);
 

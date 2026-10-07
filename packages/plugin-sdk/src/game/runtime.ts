@@ -67,7 +67,7 @@ export interface GameSnapshot {
 type Effect =
   | { type: 'after'; timer: TimerEntry }
   | { type: 'cancel'; key: string }
-  | { type: 'record'; itemId: string; isCorrect: boolean; options: RecordAnswerOptions; playerId: string | null }
+  | { type: 'record'; itemId: string; item?: OQSEAnyItem; isCorrect: boolean; options: RecordAnswerOptions; playerId: string | null }
   | { type: 'end'; result: { scores?: Record<string, number>; summary?: string } }
   | { type: 'reveal'; itemIds: string[]; to: string[] | null };
 
@@ -456,8 +456,13 @@ export class GameRuntime<S = unknown> {
       cancel: (key) => {
         effects.push({ type: 'cancel', key });
       },
-      recordAnswer: (itemId, isCorrect, options = {}) => {
-        effects.push({ type: 'record', itemId, isCorrect, options: detach(options), playerId });
+      recordAnswer: (itemOrId, isCorrect, options = {}) => {
+        const given = typeof itemOrId === 'string' ? null : (detach(itemOrId) as OQSEAnyItem);
+        const itemId = typeof itemOrId === 'string' ? itemOrId : given?.id;
+        if (typeof itemId !== 'string') throw new Error('ctx.recordAnswer: pass an item id or an item');
+        // Items of the set are known to the host; a generated one travels with the answer.
+        const item = given && !this.itemsById.has(itemId) ? given : undefined;
+        effects.push({ type: 'record', itemId, item, isCorrect, options: detach(options), playerId });
       },
       end: (result = {}) => {
         effects.push({ type: 'end', result: detach(result) });
@@ -487,7 +492,9 @@ export class GameRuntime<S = unknown> {
             break;
           }
           const { playerId: _ignored, ...rest } = effect.options;
-          this.host.recordAnswer({ playerId, itemId: effect.itemId, isCorrect: effect.isCorrect, ...rest }).catch((e) => this.warn('recordAnswer', e));
+          this.host
+            .recordAnswer({ playerId, itemId: effect.itemId, isCorrect: effect.isCorrect, ...rest, ...(effect.item ? { item: effect.item as never } : {}) })
+            .catch((e) => this.warn('recordAnswer', e));
           break;
         }
         case 'reveal':

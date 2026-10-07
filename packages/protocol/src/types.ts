@@ -103,6 +103,17 @@ export interface AnswerRecord {
   timeSpentMs?: number;
   hintsUsed?: number;
   isSkipped?: boolean;
+  /**
+   * RC4: what the player answered, in the `checkAnswer` format of the item type
+   * (choice IDs, text, numbers…). Lets teachers see which wrong answers were chosen.
+   */
+  answer?: unknown;
+  /**
+   * RC4: the item itself, required when `itemId` is not in the set (a generated item, e.g.
+   * from a service). It needs at least `id` (= `itemId`) and `type`; the answer fields may
+   * be left out. Such answers count for statistics (`skills`, `tags`), not for repetition.
+   */
+  item?: { id: string; type: string; [key: string]: unknown };
 }
 
 export interface SessionResult {

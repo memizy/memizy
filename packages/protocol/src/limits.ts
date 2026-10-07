@@ -24,6 +24,10 @@ export const LIMITS = {
   dataWritesPerSecond: 1,
   /** Max time between the iframe load and `hello`. */
   helloTimeoutMs: 10_000,
+  /** Max serialized size of the player's answer in `recordAnswer`. */
+  answerBytes: 4 * 1024,
+  /** Max serialized size of a generated item attached to `recordAnswer`. */
+  generatedItemBytes: 32 * 1024,
 } as const;
 
 export type Limits = { [K in keyof typeof LIMITS]: number };
