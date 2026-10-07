@@ -150,7 +150,7 @@ phases: {
 },
 ```
 
-* The SDK keeps **`state.phase`**, **`state.phaseEndsAt`** (the deadline, or `null`) and `state.phaseSeq` – do not set them yourself. `ui.phase` is the current phase, **`ui.timeLeft()`** (without an argument) the milliseconds until the end of the phase.
+* The SDK keeps **`state.phase`**, **`state.phaseEndsAt`** (the deadline, or `null`) and `state.phaseSeq` – reserved names: do not set them yourself (`playerView` gets them copied). `ctx.goto` takes effect at once (the rest of the action sees the new phase), and actions sent from the screen of an older phase are ignored (late answers, double clicks). `ui.phase` is the current phase, **`ui.timeLeft()`** (without an argument) the milliseconds until the end of the phase.
 * An action listed in some phase's `actions` is **ignored in every other phase** (late answers, taps during the reveal). Actions that no phase lists are always allowed – e.g. a teacher's "next" (protect it with `ctx.fromHost`, section 5.2).
 * `ctx.goto` takes effect right **after** the current action or hook. Ending a phase early (everyone answered) is just `ctx.goto('reveal')`.
 * Time limits use the game clock: when the teacher pauses the game, the phase waits too.

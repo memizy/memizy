@@ -65,8 +65,13 @@ export class LocalRouter {
         snapshot: null,
       };
       const route = (target: string, data: unknown) => {
-        const plugin = this.plugins.get(target);
-        if (plugin) setTimeout(() => void plugin.deliver({ from: address, data: structuredClone(data), sentAt: Date.now() }), 0);
+        const deliver = () => {
+          const plugin = this.plugins.get(target);
+          if (plugin) setTimeout(() => void plugin.deliver({ from: address, data: structuredClone(data), sentAt: Date.now() }), 0);
+        };
+        const held = this.held.get(target);
+        if (held) held.push(deliver);
+        else deliver();
       };
       const host: HostApi = {
         hello: async () => init,
@@ -89,6 +94,19 @@ export class LocalRouter {
       };
       return { host, init, standalone: false, destroy: () => this.plugins.delete(address) };
     };
+  }
+
+  /** Messages for held addresses wait (a slow network) until `release`. */
+  private readonly held = new Map<string, (() => void)[]>();
+
+  hold(address: string): void {
+    if (!this.held.has(address)) this.held.set(address, []);
+  }
+
+  release(address: string): void {
+    const queue = this.held.get(address) ?? [];
+    this.held.delete(address);
+    queue.forEach((deliver) => deliver());
   }
 
   /** Countdown finished: start the game on the authority. */

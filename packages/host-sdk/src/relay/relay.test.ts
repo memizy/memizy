@@ -51,7 +51,7 @@ const race: Omit<GameDefinition<State>, 'root'> = {
   render: (state, ui) =>
     ui.view === 'board'
       ? `<p class="total">${Object.values(state.scores).reduce((a, b) => a + b, 0)}</p>`
-      : `<h1 class="q">${ui.html`${ui.items[0]?.type === 'mcq-single' ? (ui.items[0] as any).question : '?'}`}</h1><p class="hidden">${(ui.items[0] as any)?.answerHidden ? 'yes' : 'no'}</p><button data-act="answer">go</button><p class="score">${state.scores[ui.self!.id] ?? 0}</p><p class="clock">${Math.abs(ui.now() - Date.now()) < 5000 ? 'ok' : 'skewed'}</p><p class="loc">${ui.locale}</p>`,
+      : `<h1 class="q">${ui.html`${ui.items[0]?.type === 'mcq-single' ? (ui.items[0] as any).question : '?'}`}</h1><p class="hidden">${(ui.items[0] as any)?.answerHidden ? 'yes' : 'no'}</p><button data-act="answer">go</button><p class="score">${state.scores[ui.self!.id] ?? 0}</p><p class="clock">${Math.abs(ui.now - Date.now()) < 5000 ? 'ok' : 'skewed'}</p><p class="loc">${ui.locale}</p>`,
 };
 
 const games: GameHandle[] = [];

@@ -23,10 +23,21 @@ import type { GameContext, GameDefinition, RecordAnswerOptions } from '../types'
 import { diffJson } from './diff';
 import { SeededRandom, seedFromString } from './random';
 
-/** Messages exchanged between SDK instances (inside protocol `send` / `deliver`). */
+/**
+ * Messages exchanged between SDK instances (inside protocol `send` / `deliver`).
+ *
+ * Compatibility (1.x): the devices of one game may run different 1.x versions of the SDK
+ * (a cached CDN copy, a page loaded before a release). So a receiver ignores message types
+ * and fields it does not know, and new parts of a message are optional fields: an older
+ * SDK ignores them, a newer one keeps the old behaviour when they are missing.
+ */
 export type SyncMessage =
-  /** An action of a player; `i` numbers the actions of the sender (for `ui.pending`). */
-  | { t: 'act'; n: string; p: unknown; i?: number }
+  /**
+   * An action of a player; `i` numbers the actions of the sender (for `ui.pending`),
+   * `ph` = the `phaseSeq` the player saw (late actions are dropped), `at` = the game time
+   * of the tap (`ctx.actedAt`).
+   */
+  | { t: 'act'; n: string; p: unknown; i?: number; ph?: number; at?: number }
   | { t: 'sync' }
   /** `a`: the last action number the authority processed, per sender. */
   | { t: 'state'; v: number; s: unknown; a?: Record<string, number> }
@@ -52,6 +63,12 @@ const PHASE_TIMER = '$phase';
 
 /** Pending actions are forgotten after this time (lost message, authority away). */
 const PENDING_TIMEOUT_MS = 5000;
+
+/** `ctx.actedAt` is at most this much older than the arrival (a player cannot claim an earlier tap). */
+const MAX_TAP_DELAY_MS = 400;
+
+/** Fields of the state that the SDK writes in games with phases (reserved). */
+const PHASE_FIELDS = ['phase', 'phaseSeq', 'phaseEndsAt'] as const;
 
 interface TimerEntry {
   key: string;
@@ -99,6 +116,14 @@ export interface RuntimeOptions {
  */
 function detach<T>(value: T): T {
   return value === undefined ? value : (JSON.parse(JSON.stringify(value)) as T);
+}
+
+/** What a context needs from the running action: its draft (for `ctx.goto`) and its tap time. */
+interface ContextScope<S> {
+  draft?: () => S | undefined;
+  /** Phases entered in this run (they restart when the handler returns a new state). */
+  entered?: string[];
+  actedAt?: number;
 }
 
 export class GameRuntime<S = unknown> {
@@ -314,15 +339,20 @@ export class GameRuntime<S = unknown> {
   // Actions
   // ==========================================================================
 
-  /** `ui.act` – run locally on the authority, otherwise send to it. */
-  dispatch(name: string, payload: unknown): void {
+  /**
+   * `ui.act` – run locally on the authority, otherwise send to it. `seenPhaseSeq` = the
+   * `phaseSeq` of the screen the player acted on (an action from an older phase is dropped).
+   */
+  dispatch(name: string, payload: unknown, seenPhaseSeq?: number): void {
     if (this.ended || typeof name !== 'string' || this.paused) return; // nothing happens while paused
     if (this.isAuthority) {
+      if (this.isLate(seenPhaseSeq)) return; // e.g. a double click on "next"
       this.runAction(name, payload, this.selfPlayerId(), true); // the authority is the board, the host or the solo player
     } else if (this.authorityConnected) {
       const id = ++this.actionSeq;
       this.pendingActions.push({ id, name, payload: payload ?? null, sentAt: Date.now() });
-      this.sendToAuthority({ t: 'act', n: name, p: payload ?? null, i: id });
+      const ph = typeof seenPhaseSeq === 'number' ? { ph: seenPhaseSeq } : {};
+      this.sendToAuthority({ t: 'act', n: name, p: payload ?? null, i: id, ...ph, at: this.now() });
       this.expirePending();
       this.onChange(); // show "sent" right away
     }
@@ -337,8 +367,11 @@ export class GameRuntime<S = unknown> {
       if (data.t === 'act' && typeof data.n === 'string') {
         if (this.ended) return;
         const player = this.players.find((p) => p.id === message.from);
-        // While paused, actions are ignored (still confirmed, so ui.pending clears).
-        if (!this.paused) this.runAction(data.n, data.p, player ? player.id : null, message.from === BOARD_ADDRESS || player?.isHost === true);
+        // While paused, and from the screen of an older phase, actions are ignored (still
+        // confirmed, so ui.pending clears).
+        if (!this.paused && !this.isLate(data.ph)) {
+          this.runAction(data.n, data.p, player ? player.id : null, message.from === BOARD_ADDRESS || player?.isHost === true, false, this.tapTime(data.at));
+        }
         if (typeof data.i === 'number') {
           // Confirm it even when the rules ignored it (no state change), so ui.pending clears.
           this.acks[message.from] = data.i;
@@ -419,7 +452,21 @@ export class GameRuntime<S = unknown> {
     return this.players.some((p) => p.id === self) ? self : null;
   }
 
-  private runAction(name: string, payload: unknown, playerId: string | null, fromHost: boolean, fromTimer = false): void {
+  /** Whether an action comes from the screen of an older phase (games with phases). */
+  private isLate(seenPhaseSeq: unknown): boolean {
+    if (!this.def.phases || typeof seenPhaseSeq !== 'number' || this.state === undefined) return false;
+    const current = (this.state as { phaseSeq?: unknown }).phaseSeq;
+    return typeof current === 'number' && current !== seenPhaseSeq;
+  }
+
+  /** `ctx.actedAt` of a received action: its tap time, at most MAX_TAP_DELAY_MS before now. */
+  private tapTime(at: unknown): number {
+    const now = this.now();
+    if (typeof at !== 'number' || !Number.isFinite(at)) return now;
+    return Math.min(now, Math.max(now - MAX_TAP_DELAY_MS, at));
+  }
+
+  private runAction(name: string, payload: unknown, playerId: string | null, fromHost: boolean, fromTimer = false, actedAt?: number): void {
     if (name === PHASE_TIMEOUT) {
       if (fromTimer) this.phaseTimeout(payload);
       return;
@@ -430,23 +477,25 @@ export class GameRuntime<S = unknown> {
       this.reportError('UNKNOWN_ACTION', `Action "${name}" is not defined in actions.`);
       return;
     }
-    this.run((draft, ctx) => handler(draft, payload, ctx), playerId, fromHost, name);
+    this.run((draft, ctx) => handler(draft, payload, ctx), playerId, fromHost, name, actedAt);
   }
 
   /** Runs a state change on the authority with a mutable draft. */
-  private run(recipe: (draft: S, ctx: GameContext) => void | S, playerId: string | null, fromHost: boolean, label: string): void {
+  private run(recipe: (draft: S, ctx: GameContext) => void | S, playerId: string | null, fromHost: boolean, label: string, actedAt?: number): void {
     if (this.state === undefined) return;
     const effects: Effect[] = [];
-    const ctx = this.context(playerId, fromHost, effects);
-    let returned: unknown;
     let draftRef: unknown;
+    let usedDraft: unknown;
+    const entered: string[] = [];
+    const ctx = this.context(playerId, fromHost, effects, { draft: () => draftRef as S | undefined, entered, actedAt });
+    let returned: unknown;
     let next: S;
     let patches: Patches;
     try {
       [next, patches] = create(
         this.state as object,
         (draft) => {
-          draftRef = draft;
+          draftRef = usedDraft = draft;
           returned = recipe(draft as S, ctx);
         },
         { enablePatches: true },
@@ -454,14 +503,21 @@ export class GameRuntime<S = unknown> {
     } catch (e) {
       this.reportError('ACTION_FAILED', `${label} threw: ${errorText(e)}`);
       return;
+    } finally {
+      draftRef = undefined; // the action has ended (like other ctx calls, a later ctx.goto does nothing)
     }
 
-    if (returned !== undefined && returned !== draftRef) {
+    if (returned !== undefined && returned !== usedDraft) {
       // The handler returned a new state instead of mutating the draft.
       const problem = returned !== null && typeof returned === 'object' ? findNonJson(returned, 'state') : 'state must be an object';
       if (problem) {
         this.reportError('INVALID_STATE', `${label} returned an invalid state: ${problem}`);
         return;
+      }
+      if (entered.length) {
+        // The phase it entered stays (its fields), but what onEnter changed on the draft is lost.
+        for (const key of PHASE_FIELDS) (returned as Record<string, unknown>)[key] = (next as Record<string, unknown>)[key];
+        this.reportError('PHASE_WITH_NEW_STATE', `${label} called ctx.goto and returned a new state: change the state (draft) instead of returning one, or onEnter changes are lost.`);
       }
       this.state = returned as S;
       this.needFullState = true;
@@ -491,7 +547,7 @@ export class GameRuntime<S = unknown> {
     this.afterChange();
   }
 
-  private context(playerId: string | null, fromHost: boolean, effects: Effect[]): GameContext {
+  private context(playerId: string | null, fromHost: boolean, effects: Effect[], scope: ContextScope<S> = {}): GameContext {
     const now = this.now();
     const init = this.init;
     const rng = this.rng;
@@ -507,6 +563,7 @@ export class GameRuntime<S = unknown> {
       mode: init.session.mode,
       hostAs: init.session.hostAs,
       now,
+      actedAt: scope.actedAt ?? now,
       random: () => rng.next(),
       shuffle: (array) => rng.shuffle(array),
       after: (ms, action, payload, options) => {
@@ -538,7 +595,10 @@ export class GameRuntime<S = unknown> {
       },
       goto: (phase) => {
         if (!this.def.phases || !Object.prototype.hasOwnProperty.call(this.def.phases, phase)) throw new Error(`ctx.goto: unknown phase "${phase}"`);
-        effects.push({ type: 'goto', phase });
+        const draft = scope.draft?.();
+        // In initialState (no state yet) the phase starts right after it returns.
+        if (draft === undefined) effects.push({ type: 'goto', phase });
+        else this.startPhase(draft, phase, effects, scope);
       },
       hide: (itemIds, options = {}) => {
         const ids = (Array.isArray(itemIds) ? itemIds : [itemIds]).filter((id) => typeof id === 'string' && this.itemsById.has(id));
@@ -547,6 +607,42 @@ export class GameRuntime<S = unknown> {
       },
     };
     return ctx;
+  }
+
+  /**
+   * `ctx.goto` inside an action or hook: the phase starts now, on the same draft (the rest
+   * of the action already sees `state.phase`); `onEnter` runs right away as the system.
+   */
+  private startPhase(draft: S, name: string, effects: Effect[], scope: ContextScope<S>): void {
+    const def = this.def.phases![name];
+    if (this.phaseDepth > 20) {
+      this.reportError('PHASE_LOOP', `ctx.goto("${name}") keeps entering phases from onEnter; stopped.`);
+      return;
+    }
+    this.phaseDepth += 1;
+    try {
+      const system = this.context(null, true, effects, { ...scope, actedAt: undefined });
+      this.setPhaseFields(draft, name, def, system);
+      scope.entered?.push(name);
+      def.onEnter?.(draft, system);
+    } finally {
+      this.phaseDepth -= 1;
+    }
+  }
+
+  /** Sets `phase`, `phaseSeq`, `phaseEndsAt` and the phase timer. */
+  private setPhaseFields(draft: S, name: string, def: NonNullable<GameDefinition<S>['phases']>[string], ctx: GameContext): void {
+    const state = draft as Record<string, unknown>;
+    state.phase = name;
+    state.phaseSeq = (typeof state.phaseSeq === 'number' ? state.phaseSeq : 0) + 1;
+    const seconds = typeof def.seconds === 'function' ? def.seconds(draft, ctx) : def.seconds;
+    if (typeof seconds === 'number' && Number.isFinite(seconds) && seconds > 0) {
+      state.phaseEndsAt = ctx.now + seconds * 1000;
+      ctx.after(seconds * 1000, PHASE_TIMEOUT, { seq: state.phaseSeq }, { key: PHASE_TIMER });
+    } else {
+      state.phaseEndsAt = null;
+      ctx.cancel(PHASE_TIMER);
+    }
   }
 
   private applyEffects(effects: Effect[]): void {
@@ -677,6 +773,8 @@ export class GameRuntime<S = unknown> {
         this.reportError('INVALID_VIEW', `playerView returned an invalid view: ${problem}`);
         return undefined;
       }
+      // Every device needs the phase fields (ui.phase, ui.timeLeft(), late actions).
+      if (this.def.phases) for (const key of PHASE_FIELDS) if (key in (this.state as object)) (view as Record<string, unknown>)[key] = (this.state as Record<string, unknown>)[key];
       return view;
     } catch (e) {
       this.reportError('VIEW_FAILED', `playerView threw: ${errorText(e)}`);
@@ -778,17 +876,7 @@ export class GameRuntime<S = unknown> {
     try {
       this.run(
         (draft, ctx) => {
-          const state = draft as Record<string, unknown>;
-          state.phase = name;
-          state.phaseSeq = (typeof state.phaseSeq === 'number' ? state.phaseSeq : 0) + 1;
-          const seconds = typeof def.seconds === 'function' ? def.seconds(draft, ctx) : def.seconds;
-          if (typeof seconds === 'number' && Number.isFinite(seconds) && seconds > 0) {
-            state.phaseEndsAt = ctx.now + seconds * 1000;
-            ctx.after(seconds * 1000, PHASE_TIMEOUT, { seq: state.phaseSeq }, { key: PHASE_TIMER });
-          } else {
-            state.phaseEndsAt = null;
-            ctx.cancel(PHASE_TIMER);
-          }
+          this.setPhaseFields(draft, name, def, ctx);
           def.onEnter?.(draft, ctx);
         },
         null,
@@ -820,6 +908,10 @@ export class GameRuntime<S = unknown> {
   /** `ctx.hide`: takes reveals back (for everyone, or for some players). */
   private hide(itemIds: string[], to: string[] | null): void {
     if (this.init.session.mode === 'solo') return;
+    // Nothing to take back for items that were not revealed (no message).
+    const revealedTo = (id: string, playerId: string) => this.revealedAll.has(id) || !!this.revealedTo.get(playerId)?.has(id);
+    itemIds = itemIds.filter((id) => (to === null ? this.revealedAll.has(id) || [...this.revealedTo.values()].some((set) => set.has(id)) : to.some((p) => revealedTo(id, p))));
+    if (!itemIds.length) return;
     const targets = to ?? [...new Set([...this.revealedTo.keys()])];
     for (const id of itemIds) {
       if (to === null) this.revealedAll.delete(id);

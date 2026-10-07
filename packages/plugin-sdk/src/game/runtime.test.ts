@@ -373,6 +373,109 @@ describe('phases', () => {
   });
 });
 
+describe('phases: immediate goto, late actions, tap time (1.0)', () => {
+  interface S { phase?: string; phaseSeq?: number; phaseEndsAt?: number | null; seen: string[]; who: (string | null)[]; taps: number[]; secret: string }
+  const def: GameDefinition<S> = {
+    initialState(ctx) {
+      ctx.goto('question'); // in initialState: right after it returns
+      return { seen: [], who: [], taps: [], secret: 'x' };
+    },
+    phases: {
+      question: { seconds: 10, actions: ['answer'] },
+      reveal: { seconds: 3, onEnter(state, ctx) { state.who.push(ctx.playerId); } },
+    },
+    actions: {
+      answer(state, _p, ctx) {
+        state.taps.push(ctx.now - ctx.actedAt);
+        ctx.goto('reveal');
+        state.seen.push(`${state.phase}#${state.phaseSeq}`); // already the new phase
+      },
+      next(state, _p, ctx) {
+        if (!ctx.fromHost) return;
+        ctx.goto(state.phase === 'question' ? 'reveal' : 'question');
+      },
+      replace(_state, _p, ctx) {
+        ctx.goto('reveal');
+        return { seen: [], who: [], taps: [], secret: 'new' }; // a new state instead of the draft
+      },
+    },
+    playerView: (state) => ({ secret: '?', seen: state.seen }) as unknown as S, // forgets the phase fields
+    render: () => '',
+  };
+
+  it('ctx.goto applies at once: the rest of the action sees the phase; onEnter runs as the system', async () => {
+    const session = new FakeSession(def);
+    session.start();
+    await tick();
+    const board = () => session.get('board').state!;
+    expect(board()).toMatchObject({ phase: 'question', phaseSeq: 1 });
+    session.get('anna').dispatch('answer', null, 1);
+    await tick();
+    expect(board().seen).toEqual(['reveal#2']);
+    expect(board().who).toEqual([null]);
+    expect(board().phaseEndsAt! - session.get('board').now()).toBeGreaterThan(2500);
+    await tick(3100); // the reveal timer ends the phase (no onTimeout: stays, without a deadline)
+    expect(board().phaseEndsAt).toBeNull();
+  });
+
+  it("drops actions from the screen of an older phase (also the authority's own double click), but confirms them", async () => {
+    const session = new FakeSession(def);
+    session.start();
+    await tick();
+    const board = () => session.get('board').state!;
+    session.get('board').dispatch('next', null, 1);
+    session.get('board').dispatch('next', null, 1); // the second click of a double click
+    await tick();
+    expect(board()).toMatchObject({ phase: 'reveal', phaseSeq: 2 });
+    session.get('board').dispatch('next', null, 2);
+    await tick();
+    expect(board()).toMatchObject({ phase: 'question', phaseSeq: 3 });
+    session.get('anna').dispatch('answer', null, 1); // sent from the first question's screen
+    await tick();
+    expect(board().phase).toBe('question');
+    expect(session.get('anna').waitingActions).toEqual([]); // confirmed anyway
+    session.get('anna').dispatch('answer', null); // an older SDK without the phase number: as before
+    await tick();
+    expect(board().phase).toBe('reveal');
+  });
+
+  it('playerView gets the phase fields copied; followers stamp their actions with them', async () => {
+    const session = new FakeSession(def);
+    session.start();
+    await tick();
+    expect(session.get('anna').state).toMatchObject({ secret: '?', phase: 'question', phaseSeq: 1 });
+    expect(typeof (session.get('anna').state as S).phaseEndsAt).toBe('number');
+  });
+
+  it('ctx.actedAt: the tap time, at most 400 ms before the arrival, never in the future', async () => {
+    const session = new FakeSession(def);
+    session.start();
+    await tick();
+    const board = session.get('board');
+    const act = (at: unknown) => board.receive({ from: 'anna', data: { t: 'act', n: 'answer', p: null, i: 1, at }, sentAt: Date.now() });
+    act(board.now() - 150);
+    expect(board.state!.taps).toEqual([150]);
+    session.get('board').dispatch('next', null);
+    await tick();
+    act(board.now() - 5000);
+    act(board.now() + 5000);
+    session.get('board').dispatch('next', null);
+    await tick();
+    act('nonsense');
+    expect(board.state!.taps).toEqual([150, 400, 0]);
+  });
+
+  it('a handler that calls ctx.goto and returns a new state keeps the phase and is told why onEnter changes are lost', async () => {
+    const session = new FakeSession(def);
+    session.start();
+    await tick();
+    session.get('board').dispatch('replace', null);
+    await tick();
+    expect(session.get('board').state).toMatchObject({ secret: 'new', phase: 'reveal', phaseSeq: 2 });
+    expect(session.errors.some((e) => e.startsWith('PHASE_WITH_NEW_STATE'))).toBe(true);
+  });
+});
+
 describe('playerView', () => {
   interface S { revealed: boolean; answers: Record<string, string>; scores: Record<string, number> }
   const def: GameDefinition<S> = {
@@ -538,6 +641,28 @@ describe('hidden answers (ctx.reveal)', () => {
     session.open('anna');
     await tick();
     expect(session.get('anna').item('q2')).not.toHaveProperty('correctAnswer');
+  });
+
+  it('ctx.hide sends nothing for items that were not revealed (a game may call it every question)', async () => {
+    const def: GameDefinition<{ n: number }> = {
+      initialState: () => ({ n: 0 }),
+      actions: {
+        hide(state, _p, ctx) { state.n += 1; ctx.hide(['q1', 'q2']); },
+        reveal(state, _p, ctx) { state.n += 1; ctx.reveal('q1', { to: 'anna' }); },
+      },
+      render: () => '',
+    };
+    const session = new FakeSession(def);
+    session.start();
+    await tick();
+    const hides = () => session.sent.filter((m) => m.data?.t === 'hide');
+    session.get('board').dispatch('hide', null);
+    await tick();
+    expect(hides()).toEqual([]);
+    session.get('board').dispatch('reveal', null);
+    session.get('board').dispatch('hide', null);
+    await tick();
+    expect(hides().map((m) => m.data.ids)).toEqual([['q1']]);
   });
 });
 

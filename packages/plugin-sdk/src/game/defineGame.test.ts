@@ -102,7 +102,7 @@ describe('defineGame end to end', () => {
     const root = mount(router, 'me', {
       initialState: () => ({ n: 0 }),
       actions: { bump(state: { n: number }) { state.n += 1; } },
-      local: {
+      localActions: {
         tab(local, payload, ui) {
           local.tab = payload;
           seen.push(ui.view);
@@ -130,7 +130,7 @@ describe('defineGame end to end', () => {
     (root.querySelector('.bad') as HTMLButtonElement).click();
     (root.querySelector('.missing') as HTMLButtonElement).click();
     await wait();
-    expect(router.errors).toEqual(['me LOCAL_FAILED: local.broken: nope', expect.stringMatching(/^me UNKNOWN_LOCAL: data-local="nothing"/)]);
+    expect(router.errors).toEqual(['me LOCAL_FAILED: localActions.broken: nope', expect.stringMatching(/^me UNKNOWN_LOCAL: data-local="nothing"/)]);
   });
 
   it('re-renders timed phases without tickMs (countdowns) and stops when the phase has no deadline', async () => {
@@ -159,6 +159,87 @@ describe('defineGame end to end', () => {
     const after = renders;
     await wait(600);
     expect(renders).toBe(after);
+  });
+
+  it('ui.now is a number like ctx.now, fresh on every read', async () => {
+    const router = new LocalRouter({ items, mode: 'solo' });
+    let ui: any;
+    mount(router, 'me', { initialState: () => ({}), actions: {}, render: (_s, u) => { ui = u; return ''; } });
+    await handles[0].ready;
+    await router.start();
+    await wait();
+    expect(typeof ui.now).toBe('number');
+    const first = ui.now;
+    await wait(30);
+    expect(ui.now).toBeGreaterThan(first);
+  });
+
+  it('ui.question: itemId in the payload, styling hooks, a sent answer shown as chosen until confirmed', async () => {
+    const router = new LocalRouter({ items });
+    const got: unknown[] = [];
+    const def: Omit<GameDefinition<{ answers: Record<string, string> }>, 'root'> = {
+      initialState: () => ({ answers: {} }),
+      actions: {
+        answer(state, payload, ctx) {
+          got.push(payload);
+          state.answers[ctx.playerId!] = payload.answer;
+        },
+      },
+      render: (state, ui) => ui.html`${ui.question(ui.item('q1')!, { payload: { round: 1 }, chosen: ui.self ? state.answers[ui.self.id] : undefined, disabled: !ui.self })}`,
+    };
+    mount(router, 'board', def);
+    const anna = mount(router, 'anna', def);
+    await Promise.all(handles.map((h) => h.ready));
+    await router.start();
+    await wait();
+    const root = anna.querySelector('.mz-q')!;
+    expect(root.getAttribute('data-type')).toBe('mcq-single');
+    const praha = anna.querySelector('[data-option="praha"]') as HTMLButtonElement;
+    expect(praha.style.getPropertyValue('--mz-q-index')).toBe('1');
+    router.hold('board'); // a slow network: the answer is on the way
+    praha.click();
+    await wait();
+    expect(praha.className).toContain('mz-q-chosen');
+    expect(praha.disabled).toBe(true);
+    router.release('board');
+    await wait(150);
+    expect(got).toEqual([{ itemId: 'q1', round: 1, answer: 'praha' }]);
+    expect((anna.querySelector('[data-option="praha"]') as HTMLElement).className).toContain('mz-q-chosen');
+    expect(router.errors).toEqual([]);
+  });
+
+  it('warns when ui.question reveals on a device without the answer (ctx.reveal missing)', async () => {
+    // What a player's device has in multiplayer before ctx.reveal: the item without its answer.
+    const router = new LocalRouter({ items: [{ id: 'q1', type: 'mcq-single', question: 'Q', options: [{ id: 'a', text: 'A' }], answerHidden: true } as unknown as OQSEAnyItem] });
+    const def: Omit<GameDefinition<{}>, 'root'> = { initialState: () => ({}), actions: {}, render: (_s, ui) => ui.question(ui.item('q1')!, { reveal: true, disabled: true }) };
+    mount(router, 'board', def);
+    mount(router, 'anna', def);
+    await Promise.all(handles.map((h) => h.ready));
+    await router.start();
+    await wait();
+    expect(router.errors).toContainEqual(expect.stringMatching(/^anna REVEAL_WITHOUT_ANSWER: .*ctx\.reveal/));
+  });
+
+  it('a double click on the board does not skip two phases', async () => {
+    const router = new LocalRouter({ items });
+    const def: Omit<GameDefinition<{ phase?: string; n: number }>, 'root'> = {
+      initialState: (ctx) => { ctx.goto('a'); return { n: 0 }; },
+      phases: { a: {}, b: {}, c: {} },
+      actions: { next(state, _p, ctx) { state.n += 1; ctx.goto(state.phase === 'a' ? 'b' : 'c'); } },
+      render: (state) => `<p class="phase">${state.phase}</p><button data-act="next">next</button>`,
+    };
+    const board = mount(router, 'board', def);
+    await handles[0].ready;
+    await router.start();
+    await wait();
+    const button = board.querySelector('button')!;
+    button.click();
+    button.click(); // before the screen re-renders
+    await wait();
+    expect(board.querySelector('.phase')!.textContent).toBe('b');
+    (board.querySelector('button') as HTMLButtonElement).click();
+    await wait();
+    expect(board.querySelector('.phase')!.textContent).toBe('c');
   });
 
   it('ui has no escape any more (ui.html escapes)', async () => {
@@ -292,7 +373,7 @@ describe('defineGame end to end', () => {
     const router = new LocalRouter({ items, mode: 'solo' });
     const handle = startGame({ actions: {}, render: () => '' } as any, { connector: router.connector('me') });
     await expect(handle.ready).rejects.toThrow(/initialState must be a function/);
-    const bad = startGame({ initialState: () => ({}), actions: {}, render: () => '', local: { tab: 'map' } } as any, { connector: router.connector('me') });
-    await expect(bad.ready).rejects.toThrow(/local.tab must be a function/);
+    const bad = startGame({ initialState: () => ({}), actions: {}, render: () => '', localActions: { tab: 'map' } } as any, { connector: router.connector('me') });
+    await expect(bad.ready).rejects.toThrow(/localActions.tab must be a function/);
   });
 });

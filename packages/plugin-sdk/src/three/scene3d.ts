@@ -37,6 +37,9 @@ export interface Scene3dOptions {
   maxPixelRatio?: number;
   /** Field of view of the default camera (default 50). */
   fov?: number;
+  /** Near and far clipping planes of the default camera (default 0.1 and 2000). */
+  near?: number;
+  far?: number;
 }
 
 export interface ScreenTarget {
@@ -168,7 +171,7 @@ export function createScene3d(THREE: any, element: HTMLElement, options: Scene3d
   canvas.style.cssText = 'display:block;width:100%;height:100%;touch-action:none;';
   element.appendChild(canvas);
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(options.fov ?? 50, 1, 0.1, 2000);
+  const camera = new THREE.PerspectiveCamera(options.fov ?? 50, 1, options.near ?? 0.1, options.far ?? 2000);
 
   const size = { width: 0, height: 0 };
   let raf = 0;

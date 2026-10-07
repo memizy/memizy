@@ -25,6 +25,14 @@ function fakeThree(options: { black?: boolean } = {}) {
   class PerspectiveCamera {
     isPerspectiveCamera = true;
     aspect = 1;
+    fov: number;
+    near: number;
+    far: number;
+    constructor(fov: number, _aspect: number, near: number, far: number) {
+      this.fov = fov;
+      this.near = near;
+      this.far = far;
+    }
     updateProjectionMatrix() {}
   }
   return { THREE: { WebGLRenderer, Scene: class {}, PerspectiveCamera }, ratios };
@@ -82,6 +90,12 @@ describe('createScene3d', () => {
     expect(createScene3d(fakeThree().THREE, el)).toBeNull();
     expect(el.querySelector('.mz-no3d')!.textContent).toContain('Toto zařízení neumí zobrazit 3D');
     document.documentElement.lang = '';
+  });
+
+  it('the camera takes fov, near and far', () => {
+    const scene = createScene3d(fakeThree().THREE, mount(), { fov: 52, near: 0.5, far: 400 })!;
+    expect(scene.camera).toMatchObject({ fov: 52, near: 0.5, far: 400 });
+    expect(createScene3d(fakeThree().THREE, mount())!.camera).toMatchObject({ fov: 50, near: 0.1, far: 2000 });
   });
 
   it('a black scene switches to 2D once; when the player returns to 3D it stays', () => {

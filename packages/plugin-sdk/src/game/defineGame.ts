@@ -180,15 +180,15 @@ abstract class BaseController implements Controller {
 
   /** A `data-local` click: runs the device-only handler, then re-renders. */
   private runLocal(name: string, payload: unknown): void {
-    const handler = this.definition.local?.[name];
+    const handler = this.definition.localActions?.[name];
     if (typeof handler !== 'function') {
-      this.report('UNKNOWN_LOCAL', `data-local="${name}" has no handler: add it to defineGame({ local: { ${name}(local, payload, ui) { … } } }).`);
+      this.report('UNKNOWN_LOCAL', `data-local="${name}" has no handler: add it to defineGame({ localActions: { ${name}(local, payload, ui) { … } } }).`);
       return;
     }
     try {
       handler(this.local, payload, this.currentUi());
     } catch (error) {
-      this.report('LOCAL_FAILED', `local.${name}: ${error instanceof Error ? error.message : String(error)}`);
+      this.report('LOCAL_FAILED', `localActions.${name}: ${error instanceof Error ? error.message : String(error)}`);
     }
     this.schedule();
   }
@@ -207,12 +207,26 @@ abstract class BaseController implements Controller {
     this.schedule();
   }
 
+  /** The answer to `itemId` this device has sent with `action` and the authority has not confirmed yet. */
+  protected sentAnswer(_action: string, _itemId: string): unknown {
+    return undefined;
+  }
+
   protected question(item: OQSEAnyItem, options: Parameters<GameUI['question']>[1] = {}): SafeHtml {
     if (!item || typeof item !== 'object') return rawHtml('');
     let local = this.questions.get(item.id);
     if (!local) this.questions.set(item.id, (local = {}));
+    const opts = { ...(options ?? {}) };
+    // While its answer is on the way, the question shows it as chosen and stays locked.
+    if (opts.chosen === undefined) {
+      const sent = this.sentAnswer(opts.action ?? 'answer', item.id);
+      if (sent !== undefined) opts.chosen = sent;
+    }
+    if (opts.reveal === true && (item as { answerHidden?: boolean }).answerHidden) {
+      this.report('REVEAL_WITHOUT_ANSWER', `ui.question(${item.id}, { reveal: true }): this device does not have the answer, so nothing is marked. Call ctx.reveal(itemId) in the action that shows the answer.`);
+    }
     return rawHtml(
-      renderQuestion(item, options ?? {}, {
+      renderQuestion(item, opts, {
         text: (markdown, opts) => renderRichText(markdown, this.textContext(opts?.item ?? item), opts),
         local,
         locale: this.init.config.locale,
@@ -392,7 +406,19 @@ class GameController<S> extends BaseController {
   }
 
   act(name: string, payload: unknown): void {
-    this.runtime.dispatch(name, payload);
+    this.runtime.dispatch(name, payload, this.seenPhaseSeq());
+  }
+
+  /** `phaseSeq` of the screen the player sees (actions from an older phase are dropped). */
+  private seenPhaseSeq(): number | undefined {
+    if (!this.def.phases) return undefined;
+    const seq = (this.lastView as { phaseSeq?: unknown } | undefined)?.phaseSeq;
+    return typeof seq === 'number' ? seq : undefined;
+  }
+
+  protected override sentAnswer(action: string, itemId: string): unknown {
+    const sent = this.runtime.waitingActions.find((a) => a.name === action && (a.payload as { itemId?: unknown } | null)?.itemId === itemId);
+    return (sent?.payload as { answer?: unknown } | undefined)?.answer;
   }
 
   ui(): GameUI {
@@ -408,14 +434,16 @@ class GameController<S> extends BaseController {
       item: (id) => runtime.item(id),
       progress: this.progress,
       saved: this.saved,
-      act: (name, payload) => runtime.dispatch(name, payload),
+      act: (name, payload) => this.act(name, payload),
       pending: runtime.waitingActions,
       isPending: (name) => runtime.waitingActions.some((a) => name === undefined || a.name === name),
       timeLeft: (deadline) => {
         const end = typeof deadline === 'number' ? deadline : (runtime.state as { phaseEndsAt?: unknown } | undefined)?.phaseEndsAt;
         return Math.max(0, (typeof end === 'number' ? end : 0) - runtime.now());
       },
-      now: () => runtime.now(),
+      get now() {
+        return runtime.now();
+      },
       phase: this.def.phases ? (((runtime.state as { phase?: unknown } | undefined)?.phase as string | undefined) ?? null) : null,
       paused: runtime.paused,
       services: this.init.services ?? [],
@@ -543,6 +571,7 @@ class SettingsController extends BaseController {
   }
 
   private settingsUi(): GameUI {
+    const offset = this.init.clock.offsetMs;
     return {
       ...this.baseUi(),
       settings: this.values,
@@ -558,7 +587,9 @@ class SettingsController extends BaseController {
       isPending: () => false,
       timeLeft: (deadline) => Math.max(0, (deadline ?? 0) - (Date.now() + this.init.clock.offsetMs)),
       phase: null,
-      now: () => Date.now() + this.init.clock.offsetMs,
+      get now() {
+        return Date.now() + offset;
+      },
       paused: false,
       services: [],
       service: () => Promise.reject(new ProtocolError('NOT_ALLOWED_IN_VIEW', 'Services are not available on the settings screen.')),
@@ -620,9 +651,10 @@ function validateDefinition(def: GameDefinition<any>): void {
   else for (const [name, fn] of Object.entries(def.actions)) if (typeof fn !== 'function') problems.push(`actions.${name} must be a function`);
   if (typeof def.render !== 'function') problems.push('render must be a function returning HTML');
   if (def.afterRender !== undefined && typeof def.afterRender !== 'function') problems.push('afterRender must be a function (state, ui) => void');
-  if (def.local !== undefined) {
-    if (!def.local || typeof def.local !== 'object') problems.push('local must be an object of functions (local, payload, ui) => void');
-    else for (const [name, fn] of Object.entries(def.local)) if (typeof fn !== 'function') problems.push(`local.${name} must be a function (local, payload, ui) => void`);
+  if ((def as { local?: unknown }).local !== undefined) problems.push('local was renamed to localActions');
+  if (def.localActions !== undefined) {
+    if (!def.localActions || typeof def.localActions !== 'object') problems.push('localActions must be an object of functions (local, payload, ui) => void');
+    else for (const [name, fn] of Object.entries(def.localActions)) if (typeof fn !== 'function') problems.push(`localActions.${name} must be a function (local, payload, ui) => void`);
   }
   if (problems.length > 0) throw new Error(`defineGame: ${problems.join('; ')}`);
 }

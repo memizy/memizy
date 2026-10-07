@@ -16,9 +16,12 @@ import { escapeHtml } from '../text/richText';
 export interface QuestionOptions {
   /** Action to call with the answer (default "answer"). */
   action?: string;
-  /** Extra fields of the action payload (e.g. `{ round: 3 }`). */
+  /** Extra fields of the action payload (it always has `itemId` and `answer`). */
   payload?: Record<string, unknown>;
-  /** The player's answer so far (e.g. from the state or `ui.pending`): marked as chosen and locks the controls. */
+  /**
+   * The player's answer (e.g. from the state): marked as chosen and locks the controls.
+   * Not needed while the answer is on the way: the SDK shows a sent answer by itself.
+   */
   chosen?: unknown;
   /** Show which answers are right (only when the item has its answer, see `ctx.reveal`). */
   reveal?: boolean;
@@ -79,12 +82,15 @@ export function renderQuestion(item: OQSEAnyItem, options: QuestionOptions, qc: 
   const reveal = options.reveal === true && !it.answerHidden;
   const local = qc.local;
   const inline = (s: unknown) => qc.text(String(s ?? ''), { inline: true, item });
-  const payload = (answer: unknown) => escapeHtml(JSON.stringify({ ...(options.payload ?? {}), answer }));
+  // The item id goes with every answer (the authority can check which question it answers).
+  const payload = (answer: unknown) => escapeHtml(JSON.stringify({ itemId: item.id, ...(options.payload ?? {}), answer }));
+  /** Stable styling hooks of a choice: `data-option` (its id) and `--mz-q-index` (its position). */
+  const hook = (id: unknown, index: number) => ` data-option="${escapeHtml(String(id))}" style="--mz-q-index:${index}"`;
   const act = (answer: unknown, enabled = true) => `data-act="${escapeHtml(action)}" data-payload="${payload(answer)}"${!enabled || locked ? ' disabled' : ''}`;
   const mzq = (event: Omit<QuestionEvent, 'q'>) => `data-mzq="${escapeHtml(JSON.stringify({ q: item.id, ...event }))}"${locked ? ' disabled' : ''}`;
   const submit = (answer: unknown, enabled: boolean) => `<button type="button" class="mz-q-submit" ${act(answer, enabled)}>${escapeHtml(options.submitLabel ?? t.submit)}</button>`;
   const head = options.showQuestion === false ? '' : questionHead(it, qc);
-  const wrap = (body: string, extra = '') => `<div class="mz-q mz-q-${escapeHtml(it.type)}${extra}" data-mzq-root="${escapeHtml(item.id)}">${head}${body}</div>`;
+  const wrap = (body: string, extra = '') => `<div class="mz-q mz-q-${escapeHtml(it.type)}${extra}" data-type="${escapeHtml(it.type)}" data-mzq-root="${escapeHtml(item.id)}">${head}${body}</div>`;
   const isChosen = (id: unknown) => options.chosen !== undefined && (Array.isArray(options.chosen) ? options.chosen.includes(id) : options.chosen === id);
   const count = (id: unknown) => {
     if (!options.counts || typeof options.counts !== 'object') return '';
@@ -105,16 +111,16 @@ export function renderQuestion(item: OQSEAnyItem, options: QuestionOptions, qc: 
 
   switch (it.type) {
     case 'mcq-single':
-      return wrap(`<div class="mz-q-options">${(it.options as Choice[]).map((o, i) => `<button type="button" class="mz-q-opt${mark(o.id, o.id === it.correctId)}" ${act(o.id)}><span class="mz-q-key">${'ABCDEFGHIJ'[i] ?? i + 1}</span><span class="mz-q-label">${inline(o.text)}</span>${count(o.id)}</button>`).join('')}</div>`);
+      return wrap(`<div class="mz-q-options">${(it.options as Choice[]).map((o, i) => `<button type="button" class="mz-q-opt${mark(o.id, o.id === it.correctId)}"${hook(o.id, i)} ${act(o.id)}><span class="mz-q-key">${'ABCDEFGHIJ'[i] ?? i + 1}</span><span class="mz-q-label">${inline(o.text)}</span>${count(o.id)}</button>`).join('')}</div>`);
 
     case 'true-false':
-      return wrap(`<div class="mz-q-options mz-q-two">${[true, false].map((v) => `<button type="button" class="mz-q-opt mz-q-${v ? 'yes' : 'no'}${mark(v, v === it.correctAnswer)}" ${act(v)}><span class="mz-q-label">${v ? t.truth : t.lie}</span>${count(v)}</button>`).join('')}</div>`);
+      return wrap(`<div class="mz-q-options mz-q-two">${[true, false].map((v, i) => `<button type="button" class="mz-q-opt mz-q-${v ? 'yes' : 'no'}${mark(v, v === it.correctAnswer)}"${hook(v, i)} ${act(v)}><span class="mz-q-label">${v ? t.truth : t.lie}</span>${count(v)}</button>`).join('')}</div>`);
 
     case 'mcq-multi': {
       const picked = locked && Array.isArray(options.chosen) ? (options.chosen as string[]) : local.picked ?? [];
       const right = new Set<string>(it.correctIds ?? []);
       return wrap(
-        `<div class="mz-q-options">${(it.options as Choice[]).map((o, i) => `<button type="button" class="mz-q-opt${picked.includes(o.id) ? ' mz-q-picked' : ''}${mark(o.id, right.has(o.id))}" ${mzq({ op: 'toggle', id: o.id })} aria-pressed="${picked.includes(o.id)}"><span class="mz-q-key">${'ABCDEFGHIJ'[i] ?? i + 1}</span><span class="mz-q-label">${inline(o.text)}</span>${count(o.id)}</button>`).join('')}</div>` +
+        `<div class="mz-q-options">${(it.options as Choice[]).map((o, i) => `<button type="button" class="mz-q-opt${picked.includes(o.id) ? ' mz-q-picked' : ''}${mark(o.id, right.has(o.id))}"${hook(o.id, i)} ${mzq({ op: 'toggle', id: o.id })} aria-pressed="${picked.includes(o.id)}"><span class="mz-q-key">${'ABCDEFGHIJ'[i] ?? i + 1}</span><span class="mz-q-label">${inline(o.text)}</span>${count(o.id)}</button>`).join('')}</div>` +
           submit(picked, picked.length > 0),
       );
     }
@@ -140,9 +146,10 @@ export function renderQuestion(item: OQSEAnyItem, options: QuestionOptions, qc: 
       const picked = (locked && Array.isArray(options.chosen) ? (options.chosen as string[]) : local.picked ?? []).filter((id) => list.some((c) => c.id === id));
       const rest = list.filter((c) => !picked.includes(c.id));
       const byId = new Map(list.map((c) => [c.id, c]));
+      const at = (id: string) => list.findIndex((c) => c.id === id);
       return wrap(
-        `<ol class="mz-q-order">${picked.map((id) => `<li><button type="button" class="mz-q-opt mz-q-placed" ${mzq({ op: 'remove', id })}><span class="mz-q-label">${inline(byId.get(id)!.text)}</span></button></li>`).join('')}</ol>` +
-          `<div class="mz-q-options">${rest.map((c) => `<button type="button" class="mz-q-opt" ${mzq({ op: 'push', id: c.id })}><span class="mz-q-label">${inline(c.text)}</span></button>`).join('')}</div>` +
+        `<ol class="mz-q-order">${picked.map((id) => `<li><button type="button" class="mz-q-opt mz-q-placed"${hook(id, at(id))} ${mzq({ op: 'remove', id })}><span class="mz-q-label">${inline(byId.get(id)!.text)}</span></button></li>`).join('')}</ol>` +
+          `<div class="mz-q-options">${rest.map((c) => `<button type="button" class="mz-q-opt"${hook(c.id, at(c.id))} ${mzq({ op: 'push', id: c.id })}><span class="mz-q-label">${inline(c.text)}</span></button>`).join('')}</div>` +
           `<div class="mz-q-row">${picked.length ? `<button type="button" class="mz-q-reset" ${mzq({ op: 'reset' })}>${t.reset}</button>` : ''}${submit(picked, rest.length === 0)}</div>`,
       );
     }
@@ -192,12 +199,12 @@ export function renderQuestion(item: OQSEAnyItem, options: QuestionOptions, qc: 
     case 'flashcard': {
       const back = !it.answerHidden && local.flipped ? `<div class="mz-q-back">${qc.text(it.back, { item })}</div>` : '';
       const flip = it.answerHidden || local.flipped ? '' : `<button type="button" class="mz-q-reset" ${mzq({ op: 'flip' })}>${t.flip}</button>`;
-      const rate = local.flipped || it.answerHidden ? `<div class="mz-q-options mz-q-three">${(['again', 'good', 'easy'] as const).map((r) => `<button type="button" class="mz-q-opt${isChosen(r) ? ' mz-q-chosen' : ''}" ${act(r)}><span class="mz-q-label">${t[r]}</span></button>`).join('')}</div>` : '';
-      return `<div class="mz-q mz-q-flashcard" data-mzq-root="${escapeHtml(item.id)}"><div class="mz-q-front">${qc.text(it.front, { item })}</div>${back}${flip}${rate}</div>`;
+      const rate = local.flipped || it.answerHidden ? `<div class="mz-q-options mz-q-three">${(['again', 'good', 'easy'] as const).map((r, i) => `<button type="button" class="mz-q-opt${isChosen(r) ? ' mz-q-chosen' : ''}"${hook(r, i)} ${act(r)}><span class="mz-q-label">${t[r]}</span></button>`).join('')}</div>` : '';
+      return `<div class="mz-q mz-q-flashcard" data-type="flashcard" data-mzq-root="${escapeHtml(item.id)}"><div class="mz-q-front">${qc.text(it.front, { item })}</div>${back}${flip}${rate}</div>`;
     }
 
     case 'note':
-      return `<div class="mz-q mz-q-note" data-mzq-root="${escapeHtml(item.id)}">${qc.text(it.content, { item })}<button type="button" class="mz-q-submit" ${act('read')}>${t.read}</button></div>`;
+      return `<div class="mz-q mz-q-note" data-type="note" data-mzq-root="${escapeHtml(item.id)}">${qc.text(it.content, { item })}<button type="button" class="mz-q-submit" ${act('read')}>${t.read}</button></div>`;
 
     case 'pin-on-image': {
       const url = it.targetAsset && qc.assetUrl?.(it.targetAsset);

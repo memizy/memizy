@@ -22,6 +22,22 @@ describe('ui.html', () => {
     expect(JSON.parse(button.getAttribute('data-payload')!)).toEqual(payload);
   });
 
+  it('serializes objects in unquoted attributes (data-payload=${{ … }}) and quotes other values', () => {
+    const tricky = { item: "O'Connor \"<b>\"", n: 2 };
+    const out = String(html`<button data-act="buy" data-payload=${tricky} class=${'a b'} title=${null}>x</button><i data-payload=${'map'}></i>`);
+    const doc = new DOMParser().parseFromString(out, 'text/html');
+    const button = doc.querySelector('button')!;
+    expect(JSON.parse(button.getAttribute('data-payload')!)).toEqual(tricky);
+    expect(button.className).toBe('a b');
+    expect(button.getAttribute('title')).toBe('');
+    expect(JSON.parse(doc.querySelector('i')!.getAttribute('data-payload')!)).toBe('map');
+  });
+
+  it('does not treat text with "=" as an attribute; objects in text become JSON, not [object Object]', () => {
+    expect(String(html`<p>a = ${'x'}, b=${1}</p>`)).toBe('<p>a = x, b=1</p>');
+    expect(String(html`<p>${{ a: 1 }}</p>`)).toBe('<p>{&quot;a&quot;:1}</p>');
+  });
+
   it('works in plain template literals too (it is a String)', () => {
     expect(`<div>${html`<i>${'x'}</i>`}</div>`).toBe('<div><i>x</i></div>');
   });

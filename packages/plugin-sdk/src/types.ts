@@ -29,8 +29,15 @@ export interface GameContext {
   readonly settings: Readonly<Record<string, unknown>>;
   readonly mode: SessionMode;
   readonly hostAs: HostAs | null;
-  /** Current time in ms (same clock on all devices). */
+  /** Current time in ms (same clock on all devices; game time, stands still while paused). */
   readonly now: number;
+  /**
+   * When the player tapped (game time), for points by speed: on a slow network the
+   * action arrives later, but `actedAt` is the moment of the tap. The SDK limits it to
+   * at most 400 ms before the arrival (a player cannot claim an earlier tap). Equal to
+   * `now` for timers, hooks and the authority's own actions.
+   */
+  readonly actedAt: number;
   /** Deterministic random number in [0, 1). */
   random(): number;
   /** Deterministically shuffled copy of an array. */
@@ -40,11 +47,17 @@ export interface GameContext {
   /** Cancel a timer by its key. */
   cancel(key: string): void;
   /**
-   * Move to another phase (games with `phases`). Takes effect right after this action:
-   * `state.phase`, `state.phaseEndsAt` and the phase timer are set, then `onEnter` runs.
+   * Move to another phase (games with `phases`). Takes effect immediately: `state.phase`,
+   * `state.phaseSeq`, `state.phaseEndsAt` and the phase timer are set and `onEnter` runs
+   * right away, so the rest of the action already sees the new phase. In `initialState`
+   * the phase starts right after it returns.
    */
   goto(phase: string): void;
-  /** Take back `reveal` (e.g. before the same item is asked again): the devices get the item without answers. */
+  /**
+   * Take back `reveal` (e.g. before the same item is asked again): the devices get the item
+   * without answers. Does nothing for items that were not revealed, so a game may call it
+   * at the start of every question.
+   */
   hide(itemIds: string | string[], options?: { to?: string | string[] }): void;
   /**
    * Save a learning result (default player: `ctx.playerId`). Pass the item itself instead of
@@ -108,7 +121,7 @@ export interface GameUI {
    * Changes `ui.local` and re-renders: device-only UI state (a selected tab, a 2D/3D
    * switch, an animation flag) without a global variable. `ui.setLocal({ tab: 'map' })`
    * or `ui.setLocal((local) => { local.count += 1; })`. From HTML use `data-local`
-   * with a handler in `defineGame({ local })`.
+   * with a handler in `defineGame({ localActions })`.
    */
   setLocal(update: Record<string, unknown> | ((local: Record<string, any>) => void)): void;
   /** Call an action (normally use `data-act`). */
@@ -124,11 +137,15 @@ export interface GameUI {
   timeLeft(deadline?: number): number;
   /** The current phase (games with `phases`), else `null`. */
   readonly phase: string | null;
-  /** Current session clock in ms. */
-  now(): number;
+  /**
+   * Current time in ms, like `ctx.now` (game time: the same clock on all devices, stands
+   * still while paused). A number, read again on every access (also outside `render`,
+   * e.g. in a 3D scene or a timer): `state.endsAt - ui.now`.
+   */
+  readonly now: number;
   /**
    * Whether the host has paused the game (RC4). The SDK covers the game with a "paused"
-   * curtain, stops `ui.now()` / timers and ignores actions; show it in the game if you like.
+   * curtain, stops `ui.now` / timers and ignores actions; show it in the game if you like.
    */
   readonly paused: boolean;
   /**
@@ -170,7 +187,7 @@ export interface GameUI {
 export type RenderResult = string | SafeHtml | void | undefined | null;
 
 /**
- * A device-only click handler (`<button data-local="tab" data-payload='"map"'>`): changes
+ * A device-only click handler (`<button data-local="tab" data-payload=${'map'}>`): changes
  * `local` (= `ui.local`), then the screen re-renders. Nothing is sent to other devices.
  */
 export type LocalHandler = (local: Record<string, any>, payload: any, ui: GameUI) => void;
@@ -184,10 +201,11 @@ export interface GameDefinition<S = any> {
   actions: Record<string, ActionHandler<S>>;
   /**
    * Device-only handlers for `data-local` clicks (tabs, a 2D/3D switch, an open menu):
-   * `local: { tab(local, payload) { local.tab = payload; } }`. They change `ui.local`
-   * and re-render this screen; game rules and anything others should see go to `actions`.
+   * `localActions: { tab(local, payload) { local.tab = payload; } }`. They change
+   * `ui.local` and re-render this screen; game rules and anything others should see go
+   * to `actions` (`data-act`).
    */
-  local?: Record<string, LocalHandler>;
+  localActions?: Record<string, LocalHandler>;
   playerJoined?(state: S, player: Player, ctx: GameContext): void | S;
   playerLeft?(state: S, player: Player, ctx: GameContext): void | S;
   render(state: S, ui: GameUI): RenderResult;
@@ -205,9 +223,13 @@ export interface GameDefinition<S = any> {
   /**
    * Optional phases of the game (a clear life cycle): enter one with `ctx.goto(name)`.
    * The SDK keeps `state.phase`, `state.phaseEndsAt` (deadline or null) and
-   * `state.phaseSeq`, ends the phase after `seconds` with `onTimeout`, and ignores
-   * actions that are listed in other phases but not in this one (actions that no phase
-   * lists are always allowed, e.g. a teacher's "next").
+   * `state.phaseSeq` (reserved: do not set them; `playerView` gets them copied), ends the
+   * phase after `seconds` with `onTimeout`, re-renders timed phases (no `tickMs` needed),
+   * and ignores:
+   * - actions listed in other phases but not in this one (actions that no phase lists are
+   *   allowed in every phase, e.g. a teacher's "next");
+   * - every action sent from the screen of an older phase (a late answer, a double click
+   *   on "next"), so a game needs no round numbers in its payloads.
    */
   phases?: Record<string, PhaseDefinition<S>>;
   /**

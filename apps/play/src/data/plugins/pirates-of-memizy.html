@@ -962,7 +962,7 @@ function givenText(item, given, ui) {
 function renderQuiz(state, ui, me) {
   const pending = state.pending[me];
   const fb = ui.local.feedback;
-  const reviewLeft = (state.stunnedUntil[me] ?? 0) - ui.now();
+  const reviewLeft = (state.stunnedUntil[me] ?? 0) - ui.now;
   const showFb = fb && !fb.correct && reviewLeft > 0;
   const itemId = pending?.itemId ?? (showFb ? fb.itemId : null);
   if (!itemId) return '';
@@ -1075,7 +1075,7 @@ function renderBattle(state, ui) {
   const foe = otherTeam(team);
   const own = state.ships[team], enemy = state.ships[foe];
   const inv = state.inventory[me] ?? null;
-  const reviewLeft = (state.stunnedUntil[me] ?? 0) - ui.now();
+  const reviewLeft = (state.stunnedUntil[me] ?? 0) - ui.now;
   const streak = state.streaks[me] ?? 0;
   const aim = state.aiming[me];
   const showFloat = local.float && local.float.until > performance.now();
@@ -1487,7 +1487,7 @@ const Scene = {
   onTap(e) {
     const state = view.state, me = view.me;
     if (!state || state.phase !== 'battle' || state.aiming[me]) return;
-    if ((state.stunnedUntil[me] ?? 0) > view.ui.now()) return floatMsg(L.msgStunned, '#ef476f');
+    if ((state.stunnedUntil[me] ?? 0) > view.ui.now) return floatMsg(L.msgStunned, '#ef476f');
     const inv = state.inventory[me];
     // 1) The nearest label on screen (what the player sees), repairs first when holding planks.
     const near = (list) => this.s3.nearest(list, e);
@@ -1606,7 +1606,7 @@ const Scene = {
       return;
     }
     this.aiming = true;
-    const elapsed = clamp(view.ui.now() - aim.start, 0, AIM_MS);
+    const elapsed = clamp(view.ui.now - aim.start, 0, AIM_MS);
     const s = sway(aim.seed, elapsed);
     const cannon = this.own.userData.cannons[aim.cannon] || this.own.userData.cannons[0];
     const cpos = this.own.localToWorld(new THREE.Vector3(cannon.x, 3.15, -1.35));
@@ -1830,7 +1830,7 @@ function aim2dLoop() {
     if (!aim || !view.ui?.local.mode2d || !reticle) { aim2dRaf = 0; return; }
     const r = Math.min(field.clientWidth, field.clientHeight) * 0.22; // radius where accuracy reaches 0
     field.style.setProperty('--r2', `${r * 2}px`);
-    const s = sway(aim.seed, clamp(view.ui.now() - aim.start, 0, AIM_MS));
+    const s = sway(aim.seed, clamp(view.ui.now - aim.start, 0, AIM_MS));
     reticle.style.transform = `translate(${(s.yaw / 0.13) * r}px, ${(-s.pitch / 0.13) * r}px)`;
     aim2dRaf = requestAnimationFrame(step);
   };
@@ -1840,7 +1840,7 @@ function aim2dLoop() {
 /* ═════════════════════════════════════════════════════════
    Device-only clicks (data-local) and the shot
    ═════════════════════════════════════════════════════════ */
-const local = {
+const localActions = {
   /** The 2D / 3D button: the player's choice (createScene3d does not switch it back). */
   toggle2d(local) {
     if (local.mode2d) Object.assign(local, { mode2d: false, reason2d: null });
@@ -1854,7 +1854,7 @@ const local = {
   go2d(local, { to, hitId } = {}, ui) {
     const state = view.state, me = view.me;
     if (!state || state.phase !== 'battle' || local.walking || !(to in DECK_X)) return;
-    if ((state.stunnedUntil[me] ?? 0) > ui.now()) return floatMsg(L.msgStunned, '#f0c96c');
+    if ((state.stunnedUntil[me] ?? 0) > ui.now) return floatMsg(L.msgStunned, '#f0c96c');
     const act = () => {
       if (to === 'ammo') game.act('request_question', { crate: 'ammo' });
       else if (to === 'material') game.act('request_question', { crate: 'material' });
@@ -1872,7 +1872,7 @@ const local = {
 document.addEventListener('pointerdown', (e) => {
   if (!e.target.closest?.('[data-fire]')) return;
   e.preventDefault();
-  game.act('fire', { t: view.ui?.now() });
+  game.act('fire', { t: view.ui?.now });
   if (Scene.ready) Scene.muzzle(view.state?.aiming?.[view.me]?.cannon ?? 1); // the flash right away
 });
 
@@ -1883,7 +1883,7 @@ const game = defineGame({
   root: document.getElementById('app'),
   tickMs: 250, // the battle clock, quiz timers and 2D animations (no SDK phases here)
   ...rules,
-  local,
+  localActions,
   renderWaiting(ui) {
     setLang(ui.locale);
     return ui.html`<section class="screen"><div style="font-size:64px">🦜</div><div class="panel-title" style="font-size:20px">${L.waitTitle}</div><div class="muted">${L.waitSub}</div></section>`;
