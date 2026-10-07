@@ -16,7 +16,7 @@
     "tags": ["quiz", "multiplayer", "solo", "game", "pirates", "teams", "battle", "3d"],
     "capabilities": {
       "actions": ["render"],
-      "types": ["mcq-single", "mcq-multi", "true-false", "match-pairs", "sort-items", "short-answer"],
+      "types": ["mcq-single", "mcq-multi", "true-false", "match-pairs", "sort-items", "short-answer", "numeric-input", "categorize", "fill-in-select", "fill-in-blanks", "timeline"],
       "features": ["markdown", "latex"]
     },
     "appSpecific": {
@@ -165,6 +165,14 @@
     .quiz-timer div { height: 100%; border-radius: 3px; transition: width .25s linear; }
     .quiz-q { font-size: 15px; font-weight: 600; line-height: 1.5; }
     .quiz-q img { max-width: 100%; height: auto; border-radius: 8px; }
+    .quiz .mz-q { --mz-q-accent: var(--gold-bright); --mz-q-bg: rgba(255,255,255,.06); --mz-q-border: rgba(255,255,255,.2); --mz-q-radius: 10px; --mz-q-gap: 8px; --mz-q-right: #3fb950; --mz-q-wrong: #ef476f; color: #fff; font-size: 14px; }
+    .quiz .mz-q-options { grid-template-columns: 1fr 1fr; }
+    .quiz .mz-q-mcq-single .mz-q-opt, .quiz .mz-q-true-false .mz-q-opt { border-color: transparent; color: #fff; }
+    .quiz .mz-q-mcq-single .mz-q-opt:nth-child(4n+1), .quiz .mz-q-true-false .mz-q-opt:nth-child(1) { background: #7f1d2c; }
+    .quiz .mz-q-mcq-single .mz-q-opt:nth-child(4n+2), .quiz .mz-q-true-false .mz-q-opt:nth-child(2) { background: #1d3a6e; }
+    .quiz .mz-q-mcq-single .mz-q-opt:nth-child(4n+3) { background: #14532d; } .quiz .mz-q-mcq-single .mz-q-opt:nth-child(4n+4) { background: #6d4a12; }
+    .quiz .mz-q-submit { color: #221604; background: linear-gradient(180deg, var(--gold-bright), #b3862f); border: none; align-self: center; }
+    .quiz .mz-q-select, .quiz .mz-q-input { background: #0d1c2e; color: #fff; }
     .qgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .qbtn { border: 2px solid transparent; border-radius: 10px; padding: 13px 10px; font-size: 14px; font-weight: 700; cursor: pointer; color: #fff; text-align: left; line-height: 1.35; }
     .qbtn:disabled { cursor: default; color: #fff; }
@@ -234,7 +242,7 @@
     .reticle2d::after { top: 50%; left: -12px; right: -12px; height: 2px; margin-top: -1px; }
 
     @media (max-width: 680px) {
-      .panel { padding: 16px; } .panel-title { font-size: 20px; } .qgrid { grid-template-columns: 1fr; }
+      .panel { padding: 16px; } .panel-title { font-size: 20px; } .qgrid, .quiz .mz-q-options { grid-template-columns: 1fr; }
       .hp-label { min-width: 62px; font-size: 10px; } .result-banner div { font-size: 24px; }
     }
   </style>
@@ -323,7 +331,7 @@ const setLang = (locale) => { L = String(locale || '').toLowerCase().startsWith(
 /* ═════════════════════════════════════════════════════════
    Rules (they run on the authority: the board, or the device in solo)
    ═════════════════════════════════════════════════════════ */
-const SUPPORTED = ['true-false', 'mcq-single', 'mcq-multi', 'short-answer', 'match-pairs', 'sort-items'];
+const SUPPORTED = ['true-false', 'mcq-single', 'mcq-multi', 'short-answer', 'match-pairs', 'sort-items', 'numeric-input', 'categorize', 'fill-in-select', 'fill-in-blanks', 'timeline'];
 const AIM_MS = 6000;
 /** After a wrong answer the player reads the correct one (and cannot act). */
 const REVIEW_MS = 4500;
@@ -558,17 +566,9 @@ function playerFire(state, ctx, pid, accuracy) {
   applyShot(state, ctx, team, computeDamage(accuracy !== null, accuracy, mult, ctx.random), pid);
 }
 
-/** Answers from buttons and forms, as OQSE 0.3 answers (choices by ID). */
-function normalizeAnswer(item, p) {
-  switch (item.type) {
-    case 'mcq-single': return String(p.answer ?? '');
-    case 'true-false': return p.answer === true || p.answer === 'true';
-    case 'mcq-multi': return [].concat(p.sel ?? []).map(String);
-    case 'short-answer': return String(p.text ?? '');
-    case 'sort-items': return item.items.map((_, i) => String(p[`o${i}`] ?? ''));
-    case 'match-pairs': return Object.fromEntries(item.prompts.map((prompt, i) => [prompt.id, String(p[`p${i}`] ?? '')]));
-    default: return null;
-  }
+/** The answer from ui.question (already in the checkAnswer format). */
+function normalizeAnswer(_item, p) {
+  return p.answer === undefined ? null : p.answer;
 }
 
 /** Common checks of crew actions; returns the team or null. */
@@ -711,6 +711,7 @@ const rules = {
       state.slotStart[slot] ??= Math.floor(ctx.random() * state.order.length); // shared by sailor no. `slot` of both crews
       state.qIdx[pid] ??= 0;
       const itemId = state.order[(state.slotStart[slot] + state.qIdx[pid]) % state.order.length];
+      ctx.hide(itemId, { to: pid }); // revealed for an earlier review: hidden again for this attempt
       const seq = nextSeq(state);
       state.pending[pid] = { seq, itemId, crate, deadline: ctx.now + state.timerSec * 1000 };
       ctx.after(state.timerSec * 1000 + 1000, 'questionTimeout', { pid, seq });
@@ -762,7 +763,9 @@ const rules = {
       if (!state.aimMode) return playerFire(state, ctx, pid, null);
       if (!aim) return; // with aiming on, every shot (3D or 2D) goes through the aiming
       // The authority computes the hit from the moment of the tap (not trusting a sent accuracy).
-      const when = clamp(Number.isFinite(Number(t)) ? Math.min(Number(t), ctx.now) : ctx.now, aim.start, aim.start + AIM_MS);
+      // The device's tap time may be up to 400 ms old (the trip over the network), never more:
+      // otherwise a player could pick the perfect moment afterwards.
+      const when = clamp(Number.isFinite(Number(t)) ? clamp(Number(t), ctx.now - 400, ctx.now) : ctx.now, aim.start, aim.start + AIM_MS);
       playerFire(state, ctx, pid, accuracyAt(aim.seed, when - aim.start));
     },
     repair(state, { hitId } = {}, ctx) {
@@ -920,32 +923,11 @@ function answerText(item, ui) {
     case 'short-answer': return esc(item.correctAnswers.slice(0, 3).join(' / '));
     case 'sort-items': return item.correctOrder.map((id) => inline(choiceText(item.items, id))).join(' → ');
     case 'match-pairs': return item.prompts.map((p) => `${inline(p.text)} = ${inline(choiceText(item.matches, item.pairs[p.id]))}`).join('; ');
-    default: return '';
-  }
-}
-
-function quizControls(item, seq, ui, sent) {
-  const inline = (s) => ui.text(String(s ?? ''), { inline: true, item });
-  const hidden = `<input type="hidden" name="seq" value="${seq}">`;
-  const submit = sent ? `<div class="sent">${L.sent}</div>` : `<button class="qsub" type="submit">${L.submit}</button>`;
-  const chosen = (answer) => (sent && sent.answer === answer ? ' chosen' : '');
-  const off = sent ? 'disabled' : '';
-  switch (item.type) {
-    case 'mcq-single':
-      return `<div class="qgrid">${item.options.map((o) => `<button class="qbtn${chosen(o.id)}" ${off} data-act="submit_answer" data-payload='${esc(JSON.stringify({ seq, answer: o.id }))}'>${inline(o.text)}</button>`).join('')}</div>${sent ? `<div class="sent">${L.sent}</div>` : ''}`;
-    case 'true-false':
-      return `<div class="qgrid"><button class="qbtn${chosen(true)}" ${off} data-act="submit_answer" data-payload='{"seq":${seq},"answer":true}'>${L.truth}</button><button class="qbtn${chosen(false)}" ${off} data-act="submit_answer" data-payload='{"seq":${seq},"answer":false}'>${L.lie}</button></div>${sent ? `<div class="sent">${L.sent}</div>` : ''}`;
-    case 'mcq-multi':
-      return `<form class="qform" data-act="submit_answer">${hidden}${item.options.map((o) => `<label class="qcheck"><input type="checkbox" name="sel" value="${esc(o.id)}"><span>${inline(o.text)}</span></label>`).join('')}${submit}</form>`;
-    case 'short-answer':
-      return `<form class="qform" data-act="submit_answer">${hidden}<input class="qinput" name="text" autocomplete="off" placeholder="${L.yourAnswer}">${submit}</form>`;
-    // The host already shuffled the lists for this game (SPEC 4.4).
-    case 'sort-items':
-      return `<form class="qform" data-act="submit_answer">${hidden}${item.items.map((_, pos) => `<div class="qpair"><b style="color:var(--gold-bright)">${pos + 1}.</b>
-        <select class="qsel" name="o${pos}">${item.items.map((c) => `<option value="${esc(c.id)}">${esc(String(c.text).replace(/[*_`$]/g, ''))}</option>`).join('')}</select></div>`).join('')}${submit}</form>`;
-    case 'match-pairs':
-      return `<form class="qform" data-act="submit_answer">${hidden}${item.prompts.map((p, pi) => `<div class="qpair"><div>${inline(p.text)}</div>
-        <select class="qsel" name="p${pi}">${item.matches.map((c) => `<option value="${esc(c.id)}">${esc(String(c.text).replace(/[*_`$]/g, ''))}</option>`).join('')}</select></div>`).join('')}${submit}</form>`;
+    case 'numeric-input': return esc(`${item.range ? `${item.range.min}–${item.range.max}` : item.correctAnswer}${item.unit ? ` ${item.unit}` : ''}`);
+    case 'categorize': return item.items.map((e) => `${inline(e.text)} → ${inline(choiceText(item.categories, e.correctCategoryId))}`).join('; ');
+    case 'fill-in-select': return Object.values(item.blanks).map((b) => inline(choiceText(b.options, b.correctId))).join(', ');
+    case 'fill-in-blanks': return esc(Object.values(item.blanks).map((b) => b[0]).join(', '));
+    case 'timeline': return [...item.events].sort((a, b) => a.date.localeCompare(b.date)).map((e) => inline(e.text)).join(' → ');
     default: return '';
   }
 }
@@ -961,26 +943,14 @@ function givenText(item, given, ui) {
     case 'short-answer': return esc(given || '—');
     case 'sort-items': return given.map((id) => inline(choiceText(item.items, id))).join(' → ');
     case 'match-pairs': return item.prompts.map((p) => `${inline(p.text)} = ${inline(choiceText(item.matches, given[p.id]))}`).join('; ');
+    case 'numeric-input': return esc(String(given));
+    case 'categorize': return item.items.map((e) => `${inline(e.text)} → ${inline(choiceText(item.categories, given[e.id]))}`).join('; ');
+    case 'fill-in-select': return Object.entries(item.blanks).map(([k, b]) => inline(choiceText(b.options, given[k]))).join(', ');
+    case 'fill-in-blanks': return esc(Object.values(given).join(', '));
+    case 'timeline': return given.map((id) => inline(choiceText(item.events, id))).join(' → ');
     default: return '—';
   }
 }
-
-/** Options with the correct ones and the player's choice marked (choice questions). */
-function reviewOptions(item, given, ui) {
-  const inline = (s) => ui.text(String(s ?? ''), { inline: true, item });
-  let options, correct, chosen;
-  if (item.type === 'true-false') {
-    options = [L.truth, L.lie];
-    correct = [item.correctAnswer ? 0 : 1];
-    chosen = given === null || given === undefined ? [] : [given ? 0 : 1];
-    return options.map((o, i) => reviewRow(o, correct.includes(i), chosen.includes(i))).join('');
-  }
-  correct = item.type === 'mcq-single' ? [item.correctId] : item.correctIds;
-  chosen = given === null || given === undefined ? [] : [].concat(given);
-  return item.options.map((o) => reviewRow(inline(o.text), correct.includes(o.id), chosen.includes(o.id))).join('');
-}
-const reviewRow = (html, isCorrect, isChosen) =>
-  `<div class="rv-row${isCorrect ? ' rv-ok' : isChosen ? ' rv-bad' : ''}"><span>${isCorrect ? '✅' : isChosen ? '❌' : '▫️'}</span><span>${html}</span></div>`;
 
 function renderQuiz(state, ui, me) {
   const pending = state.pending[me];
@@ -1000,7 +970,8 @@ function renderQuiz(state, ui, me) {
       <div class="quiz-tag"><span>${tag}</span><span>${Math.ceil(left / 1000)} s</span></div>
       <div class="quiz-timer"><div style="width:${frac * 100}%;background:${frac > 0.5 ? 'var(--gold)' : frac > 0.25 ? '#e8974a' : 'var(--danger)'}"></div></div>
       <div class="quiz-q">${ui.text(item.question ?? '', { item })}</div>
-      ${quizControls(item, pending.seq, ui, ui.pending.find((a) => a.name === 'submit_answer' && Number(a.payload?.seq) === pending.seq)?.payload)}
+      ${ui.question(item, { action: 'submit_answer', payload: { seq: pending.seq }, showQuestion: false, chosen: ui.pending.find((a) => a.name === 'submit_answer' && Number(a.payload?.seq) === pending.seq)?.payload?.answer })}
+      ${ui.isPending('submit_answer') ? `<div class="sent">${L.sent}</div>` : ''}
     </div></div>`;
   }
   // Wrong or too late: time to look at the correct answer (the player cannot act meanwhile).
@@ -1013,7 +984,7 @@ function renderQuiz(state, ui, me) {
     <div class="feedback fb-wrong">${fb.timedOut ? L.timeUp(fb.dmg) : L.wrong(fb.dmg)}</div>
     <div class="quiz-q">${ui.text(item.question ?? '', { item })}</div>
     ${!known ? `<div class="rv-text"><b>${L.yourWas}</b> ${givenText(item, fb.given, ui)}</div>`
-      : choice ? `<div class="rv-list">${reviewOptions(item, fb.given, ui)}</div>`
+      : choice ? `<div class="rv-list">${ui.question(item, { chosen: fb.given ?? undefined, reveal: true, disabled: true, showQuestion: false })}</div>`
       : `<div class="rv-text"><b>${L.yourWas}</b> ${givenText(item, fb.given, ui)}</div><div class="rv-text rv-ok"><b>${L.correctWas}</b> ${answerText(item, ui)}</div>`}
     ${item.explanation ? `<div class="rv-expl">${ui.text(item.explanation, { item })}</div>` : ''}
     <div class="rv-wait"><div style="width:${clamp(reviewLeft / total, 0, 1) * 100}%"></div></div>
