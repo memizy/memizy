@@ -99,6 +99,42 @@ describe('Babiš vs. Alzák rules', () => {
     expect(session.get('anna').state.answers.anna.answer).toBe(correctOf(currentItem(s)));
   });
 
+  it('players get the answer at the reveal, and lose it when the question comes again', async () => {
+    const two = items.slice(0, 2); // battle questions repeat the campaign ones
+    const session = new FakeSession<any>(definition(), { players: ['anna', 'ben'], items: two, settings: { questionCount: 2, battleRounds: 4 } });
+    session.start();
+    await tick();
+    session.get('anna').dispatch('chooseTeam', { team: 'babis' });
+    session.get('ben').dispatch('chooseTeam', { team: 'alzak' });
+    await tick(2600);
+    const board = () => session.get('board').state;
+    const first = currentItem(board());
+    const answerOf = (address: string) => {
+      const item = session.get(address).item(first) as any;
+      return item.type === 'true-false' ? item.correctAnswer : item.correctId;
+    };
+    expect(answerOf('ben')).toBeUndefined(); // a public item during the question
+    for (const p of ['anna', 'ben']) session.get(p).dispatch('answer', { answer: correctOf(first), round: board().phaseSeq });
+    await tick();
+    expect(board().phase).toBe('reveal');
+    expect(answerOf('ben')).toBe(correctOf(first));
+
+    let guard = 0;
+    while (!(board().phase === 'question' && currentItem(board()) === first) && guard++ < 50) {
+      const s = board();
+      if (s.phase === 'question') {
+        for (const p of ['anna', 'ben']) session.get(p).dispatch('answer', { answer: correctOf(currentItem(s)), round: s.phaseSeq });
+        await tick();
+      } else if (s.phase === 'shop') {
+        for (const p of ['anna', 'ben']) session.get(p).dispatch('shopDone', null);
+        await tick();
+      } else await tick(5000);
+    }
+    expect(board().stage).toBe('battle');
+    expect(answerOf('ben')).toBeUndefined(); // hidden again for the repeat
+    expect(session.errors).toEqual([]);
+  });
+
   it('ignores late taps, wrong rounds and invalid answers', async () => {
     const session = new FakeSession<any>(definition(), { players: ['anna', 'ben'], items });
     session.start();

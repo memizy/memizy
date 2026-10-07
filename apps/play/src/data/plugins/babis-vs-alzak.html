@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>Babiš vs. Alzák: Válka týmů</title>
   <script type="application/oqse-manifest+json">
 {
@@ -57,11 +57,11 @@
       font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     }
     * { box-sizing: border-box; }
-    html, body { margin: 0; min-height: 100%; background: radial-gradient(ellipse at top, #1b2650 0%, var(--bg) 60%) fixed; color: var(--text); touch-action: manipulation; }
+    html, body { margin: 0; min-height: 100%; background: radial-gradient(ellipse at top, #1b2650 0%, var(--bg) 60%) fixed; color: var(--text); }
     #app { min-height: 100vh; }
     .screen { max-width: 1000px; margin: 0 auto; padding: 12px; display: flex; flex-direction: column; gap: 12px; }
     .board .screen { max-width: 1400px; font-size: 1.25rem; padding: 20px; gap: 18px; }
-    button { font: inherit; font-weight: 800; color: inherit; cursor: pointer; border: 0; touch-action: manipulation; }
+    button { font: inherit; font-weight: 800; color: inherit; cursor: pointer; border: 0; }
     button:disabled { cursor: default; }
     .muted { color: var(--muted); }
 
@@ -123,19 +123,30 @@
     .tag.battle { background: rgba(244,63,94,0.15); color: #fda4af; }
     .q { font-size: 1.3em; font-weight: 800; line-height: 1.35; }
     .board .q { font-size: 1.9em; }
-    .opts { display: grid; grid-template-columns: 1fr; gap: 10px; }
-    @media (min-width: 620px) { .opts { grid-template-columns: 1fr 1fr; } }
-    .opt { display: flex; align-items: center; gap: 12px; min-height: 58px; padding: 12px 14px; border-radius: 14px; text-align: left; color: #fff; font-size: 1.05em; box-shadow: inset 0 -4px 0 rgba(0,0,0,0.25); transition: transform 0.1s, filter 0.2s, opacity 0.2s; }
-    .board .opt { min-height: 84px; font-size: 1.35em; }
-    .opt:not(:disabled):active { transform: translateY(2px); }
-    .opt .key { flex: none; width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; background: rgba(0,0,0,0.25); font-weight: 1000; }
-    .opt .lbl { flex: 1; min-width: 0; }
-    .opt .cnt { flex: none; font-weight: 1000; background: rgba(0,0,0,0.3); border-radius: 9px; padding: 2px 9px; }
-    .c0 { background: #e11d48; } .c1 { background: #2563eb; } .c2 { background: #d97706; } .c3 { background: #16a34a; } .c4 { background: #7c3aed; } .c5 { background: #0891b2; }
-    .opt.yes { background: #16a34a; } .opt.no { background: #e11d48; }
-    .opt.mine { outline: 4px solid #fff; outline-offset: 2px; }
-    .opt.dim { opacity: 0.35; filter: grayscale(0.6); }
-    .opt.right { outline: 4px solid var(--gold); outline-offset: 2px; filter: brightness(1.1); }
+    /* Answer tiles: the SDK's ui.question in Babiš's colours (6 colours by position, green/red for true/false). */
+    .answers .mz-q { --mz-q-radius: 14px; --mz-q-gap: 10px; }
+    .answers .mz-q-options { grid-template-columns: 1fr; }
+    @media (min-width: 620px) { .answers .mz-q-options { grid-template-columns: 1fr 1fr; } }
+    .answers .mz-q-opt { gap: 12px; min-height: 58px; padding: 12px 14px; border: 0; color: #fff; font-size: 1.05em; font-weight: 800; box-shadow: inset 0 -4px 0 rgba(0,0,0,0.25); transition: transform 0.1s, filter 0.2s, opacity 0.2s; }
+    .board .answers .mz-q-opt { min-height: 84px; font-size: 1.35em; }
+    .answers .mz-q-opt:not(:disabled):active { transform: translateY(2px); }
+    .answers .mz-q .mz-q-opt:disabled { opacity: 1; }
+    .answers .mz-q-key, .answers .mz-q-yes::before, .answers .mz-q-no::before { flex: none; width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; background: rgba(0,0,0,0.25); font-weight: 1000; }
+    .answers .mz-q-yes::before { content: '✓'; }
+    .answers .mz-q-no::before { content: '✗'; }
+    .answers .mz-q-count { min-width: 0; padding: 2px 9px; border-radius: 9px; background: rgba(0,0,0,0.3); font-weight: 1000; }
+    .answers .mz-q-count-0 { display: none; }
+    .answers .mz-q-opt:nth-child(6n+1) { background: #e11d48; }
+    .answers .mz-q-opt:nth-child(6n+2) { background: #2563eb; }
+    .answers .mz-q-opt:nth-child(6n+3) { background: #d97706; }
+    .answers .mz-q-opt:nth-child(6n+4) { background: #16a34a; }
+    .answers .mz-q-opt:nth-child(6n+5) { background: #7c3aed; }
+    .answers .mz-q-opt:nth-child(6n+6) { background: #0891b2; }
+    .answers .mz-q-opt.mz-q-yes { background: #16a34a; }
+    .answers .mz-q-opt.mz-q-no { background: #e11d48; }
+    .answers .mz-q .mz-q-opt.mz-q-chosen { box-shadow: inset 0 -4px 0 rgba(0,0,0,0.25); outline: 4px solid #fff; outline-offset: 2px; }
+    .answers .mz-q .mz-q-opt.mz-q-dim, .answers .mz-q .mz-q-opt.mz-q-wrong { opacity: 0.35; filter: grayscale(0.6); }
+    .answers .mz-q .mz-q-opt.mz-q-right { outline: 4px solid var(--gold); outline-offset: 2px; filter: brightness(1.1); }
     .result { text-align: center; font-weight: 900; font-size: 1.15em; padding: 10px; border-radius: 14px; }
     .result.good { background: rgba(34,197,94,0.15); color: #86efac; }
     .result.bad { background: rgba(244,63,94,0.15); color: #fda4af; }
@@ -453,10 +464,6 @@
       state.correct[id] ??= 0;
     }
 
-    function correctValue(item) {
-      return item.type === 'true-false' ? item.correctAnswer : item.correctId;
-    }
-
     /* ---- phases ---- */
     /** Remembers when the phase started (the timer bar, the speed of answers). */
     function started(state, ctx) {
@@ -484,6 +491,12 @@
       state.answers = {};
       state.reveal = null;
       state.lastRound = null;
+      // A question asked again (short sets) is hidden again: its answer was revealed before.
+      const itemId = currentItemId(state);
+      if (state.revealed.includes(itemId)) {
+        ctx.hide(itemId);
+        state.revealed = state.revealed.filter((id) => id !== itemId);
+      }
       // No quote here: the question speaks for itself (quotes only react to what happened).
       ctx.goto('question');
     }
@@ -500,10 +513,18 @@
       return { answered: true, correct: checkAnswer(item, a.answer), speed };
     }
 
+    /** The players' devices get the answer (they have items without answers until now). */
+    function showAnswer(state, ctx, itemId) {
+      if (!ctx.item(itemId)) return;
+      ctx.reveal(itemId);
+      if (!state.revealed.includes(itemId)) state.revealed.push(itemId);
+    }
+
     function revealQuiz(state, ctx) {
       const itemId = currentItemId(state);
       const item = ctx.item(itemId);
-      state.reveal = { correct: item ? correctValue(item) : null, results: {} };
+      showAnswer(state, ctx, itemId);
+      state.reveal = { results: {} };
       const rate = { babis: [0, 0], alzak: [0, 0] };
       for (const p of connected(ctx)) {
         const team = state.teams[p.id];
@@ -553,7 +574,8 @@
     function resolveBattle(state, ctx) {
       const itemId = currentItemId(state);
       const item = ctx.item(itemId);
-      state.reveal = { correct: item ? correctValue(item) : null, results: {} };
+      showAnswer(state, ctx, itemId);
+      state.reveal = { results: {} };
       const out = { babis: { dmg: 0, hits: 0, of: 0 }, alzak: { dmg: 0, hits: 0, of: 0 } };
 
       for (const team of ['babis', 'alzak']) {
@@ -723,12 +745,13 @@
         const pct = Math.max(0, Math.min(100, (state.hp[team] / state.maxHp[team]) * 100));
         const n = state.ai === team ? '🤖' : `👥 ${ui.players.filter((p) => p.connected && state.teams[p.id] === team).length}`;
         const shaking = hit && state.lastRound[other(team)].dmg > 0;
-        return `<div class="side ${team}">
-          <div class="avatar">${team === 'babis' ? babisSvg(shaking ? 'shaking' : 'bobbing') : alzakSvg(shaking ? 'shaking' : 'bobbing')}</div>
+        const avatar = team === 'babis' ? babisSvg(shaking ? 'shaking' : 'bobbing') : alzakSvg(shaking ? 'shaking' : 'bobbing');
+        return ui.html`<div class="side ${team}">
+          <div class="avatar">${ui.raw(avatar)}</div>
           <div class="who">
             <div class="name"><span class="long">${teamLabel(state, team)}</span><span class="short">${team === 'babis' ? 'Babiš' : 'Alzák'}${state.ai === team ? ' 🤖' : ''}</span></div>
             <div class="hp"><i style="width:${pct}%"></i><b>${state.hp[team]} / ${state.maxHp[team]}</b></div>
-            <div class="chips"><span class="chip">${n}</span>${state.shield[team] > 0 ? `<span class="chip">🛡️ ${state.shield[team]}</span>` : ''}${state.regen[team].rounds > 0 ? `<span class="chip">🦋 ${state.regen[team].rounds}×</span>` : ''}${state.boost[team] ? '<span class="chip">🎤 +40 %</span>' : ''}${state.weak[team] ? '<span class="chip">📺 −30 %</span>' : ''}</div>
+            <div class="chips"><span class="chip">${n}</span>${state.shield[team] > 0 ? ui.html`<span class="chip">🛡️ ${state.shield[team]}</span>` : ''}${state.regen[team].rounds > 0 ? ui.html`<span class="chip">🦋 ${state.regen[team].rounds}×</span>` : ''}${state.boost[team] ? ui.html`<span class="chip">🎤 +40 %</span>` : ''}${state.weak[team] ? ui.html`<span class="chip">📺 −30 %</span>` : ''}</div>
           </div>
         </div>`;
       };
@@ -737,13 +760,13 @@
       const timed = typeof state.phaseEndsAt === 'number' && state.phase !== 'end';
       const pops = hit ? ['babis', 'alzak'].map((t) => {
         const dmg = state.lastRound[other(t)].dmg - (state.lastRound[other(t)].absorbed ?? 0);
-        return dmg > 0 ? `<div class="dmg on-${t}" data-key="d${t}${state.battleRound}">−${dmg}</div>` : '';
-      }).join('') : '';
-      return `<div class="stage">
+        return dmg > 0 ? ui.html`<div class="dmg on-${t}" data-key="d${t}${state.battleRound}">−${dmg}</div>` : '';
+      }) : '';
+      return ui.html`<div class="stage">
         ${side('babis')}
-        <div class="mid"><div class="vs">VS</div>${timed ? `<div class="clock">${Math.ceil(left / 1000)} s</div>` : ''}</div>
+        <div class="mid"><div class="vs">VS</div>${timed ? ui.html`<div class="clock">${Math.ceil(left / 1000)} s</div>` : ''}</div>
         ${side('alzak')}
-        ${timed ? `<div class="timebar ${left < 4000 ? 'low' : ''}"><i style="width:${(left / total) * 100}%"></i></div>` : ''}
+        ${timed ? ui.html`<div class="timebar ${left < 4000 ? 'low' : ''}"><i style="width:${(left / total) * 100}%"></i></div>` : ''}
         ${pops}
       </div>`;
     }
@@ -751,12 +774,12 @@
     function bubbles(state, ui) {
       const lines = state.dialogue?.lines ?? [];
       if (!lines.length) return '';
-      return `<div class="bubbles" data-key="dlg${state.dialogue.id}">${lines.map((l, i) => `<div class="bubble ${l.who}${i ? ' second' : ''}"><small>${TEAMS[l.who].hero}</small>${ui.html`${l.text}`}</div>`).join('')}</div>`;
+      return ui.html`<div class="bubbles" data-key="dlg${state.dialogue.id}">${lines.map((l, i) => ui.html`<div class="bubble ${l.who}${i ? ' second' : ''}"><small>${TEAMS[l.who].hero}</small>${l.text}</div>`)}</div>`;
     }
 
     function skipButton(state, ui) {
       const host = ui.mode !== 'solo' && (ui.view === 'board' || ui.self?.isHost);
-      return host && state.phase !== 'end' ? `<button class="skip" data-act="next">Přeskočit ⏩</button>` : '';
+      return host && state.phase !== 'end' ? ui.html`<button class="skip" data-act="next">Přeskočit ⏩</button>` : '';
     }
 
     function renderTeamSelect(state, ui) {
@@ -764,15 +787,15 @@
       const myTeam = me ? state.teams[me] : null;
       const card = (team) => {
         const list = ui.players.filter((p) => state.teams[p.id] === team);
-        return `<div class="team-card ${team}">
-          <div class="avatar">${team === 'babis' ? babisSvg() : alzakSvg()}</div>
+        return ui.html`<div class="team-card ${team}">
+          <div class="avatar">${ui.raw(team === 'babis' ? babisSvg() : alzakSvg())}</div>
           <h2>${TEAMS[team].name}</h2>
           <div class="muted">${TEAMS[team].slogan}</div>
-          ${ui.self ? `<button class="join ${team}" data-act="chooseTeam" data-payload='{"team":"${team}"}' ${myTeam === team ? 'disabled' : ''}>${myTeam === team ? 'Jsi tady ✔' : 'Přidat se'}</button>` : ''}
-          <div class="pills">${list.map((p) => `<span class="pill${p.id === me ? ' me' : ''}">${ui.html`${p.name}`}</span>`).join('') || '<span class="muted">zatím nikdo</span>'}</div>
+          ${ui.self ? ui.html`<button class="join ${team}" data-act="chooseTeam" data-payload='${JSON.stringify({ team })}' ${myTeam === team ? 'disabled' : ''}>${myTeam === team ? 'Jsi tady ✔' : 'Přidat se'}</button>` : ''}
+          <div class="pills">${list.length ? list.map((p) => ui.html`<span class="pill${p.id === me ? ' me' : ''}">${p.name}</span>`) : ui.html`<span class="muted">zatím nikdo</span>`}</div>
         </div>`;
       };
-      return `<div class="card big">
+      return ui.html`<div class="card big">
         <h1>Vyber si tým</h1>
         <div class="muted">Kampaň o peníze → obchod → bitva odpovědí. Menší tým má silnější rány, takže je to fér. Když jsou všichni v jednom týmu, druhý hraje počítač.</div>
       </div>
@@ -780,55 +803,49 @@
     }
 
     function renderQuestion(state, ui) {
-      const itemId = state.stage === 'quiz' ? state.quizIds[state.quizRound] : state.battleIds[state.battleRound % state.battleIds.length];
-      const item = ui.item(itemId);
-      if (!item) return '<div class="card">Načítám otázku…</div>';
+      const item = ui.item(currentItemId(state));
+      if (!item) return ui.html`<div class="card">Načítám otázku…</div>`;
       const me = ui.self?.id;
       const mine = me ? state.answers[me] : null;
       const sent = ui.pending.find((a) => a.name === 'answer')?.payload;
       const chosen = mine ? mine.answer : sent?.answer;
       const revealed = state.phase === 'reveal' || state.phase === 'resolve';
-      const correct = state.reveal?.correct;
-      const counts = new Map();
-      if (revealed || ui.view === 'board') for (const a of Object.values(state.answers)) counts.set(JSON.stringify(a.answer), (counts.get(JSON.stringify(a.answer)) ?? 0) + 1);
-      const options = item.type === 'true-false'
-        ? [{ value: true, label: 'Pravda', cls: 'yes', key: '✓' }, { value: false, label: 'Nepravda', cls: 'no', key: '✗' }]
-        : (item.options ?? []).map((o, i) => ({ value: o.id, label: ui.text(o.text, { inline: true, item }), cls: `c${i % 6}`, key: 'ABCDEF'[i] ?? i + 1 }));
+      // After the reveal: how many players chose each option (badges on the tiles).
+      const counts = {};
+      if (revealed) for (const a of Object.values(state.answers)) if (a.answer !== undefined) counts[String(a.answer)] = (counts[String(a.answer)] ?? 0) + 1;
       const players = ui.players.filter((p) => p.connected && state.teams[p.id]);
       const answered = Object.keys(state.answers).length;
       const battle = state.stage === 'battle';
-
-      const optHtml = options.map((o) => {
-        let cls = `opt ${o.cls}`;
-        if (chosen !== undefined && chosen === o.value) cls += ' mine';
-        if (revealed) cls += o.value === correct ? ' right' : ' dim';
-        const n = counts.get(JSON.stringify(o.value));
-        const disabled = !ui.self || chosen !== undefined || revealed || !state.teams[me] ? 'disabled' : '';
-        return `<button class="${cls}" ${disabled} data-act="answer" data-payload='${JSON.stringify({ answer: o.value, round: state.phaseSeq })}'>
-          <span class="key">${o.key}</span><span class="lbl">${o.label}</span>${revealed && n ? `<span class="cnt">${n}</span>` : ''}
-        </button>`;
-      }).join('');
+      // The tiles: the SDK's controls (answer format, locking, reveal) in Babiš's colours (CSS).
+      const controls = ui.question(item, {
+        payload: { round: state.phaseSeq },
+        chosen,
+        reveal: revealed,
+        disabled: !ui.self || revealed || !state.teams[me],
+        showQuestion: false,
+        counts: revealed ? counts : undefined,
+      });
 
       let result = '';
       const r = me ? state.reveal?.results?.[me] : null;
       if (revealed && r) {
-        if (battle) result = r.correct ? `<div class="result good">🔥 Zásah za ${r.dmg}!${r.combo ? ' Kombo ×1,3!' : ''}</div>` : r.dmg > 0 ? `<div class="result wait">🧾 Záruka zachránila aspoň ${r.dmg}.</div>` : `<div class="result bad">❌ ${r.answered ? 'Vedle.' : 'Nestihl jsi to.'}</div>`;
-        else result = r.correct ? `<div class="result good">💰 Správně! +${r.earned} Kč</div>` : `<div class="result bad">❌ ${r.answered ? `Špatně${r.earned ? `, ${r.earned} Kč` : ''}.` : 'Nestihl jsi to.'}</div>`;
+        if (battle) result = r.correct ? ui.html`<div class="result good">🔥 Zásah za ${r.dmg}!${r.combo ? ' Kombo ×1,3!' : ''}</div>` : r.dmg > 0 ? ui.html`<div class="result wait">🧾 Záruka zachránila aspoň ${r.dmg}.</div>` : ui.html`<div class="result bad">❌ ${r.answered ? 'Vedle.' : 'Nestihl jsi to.'}</div>`;
+        else result = r.correct ? ui.html`<div class="result good">💰 Správně! +${r.earned} Kč</div>` : ui.html`<div class="result bad">❌ ${r.answered ? `Špatně${r.earned ? `, ${r.earned} Kč` : ''}.` : 'Nestihl jsi to.'}</div>`;
       } else if (!revealed && chosen !== undefined && ui.self) {
-        result = `<div class="result wait">${mine ? 'Odpověď je uložená. Čekáme na ostatní…' : 'Odesílám…'}</div>`;
+        result = ui.html`<div class="result wait">${mine ? 'Odpověď je uložená. Čekáme na ostatní…' : 'Odesílám…'}</div>`;
       }
       if (revealed && ui.view === 'board' && battle && state.lastRound) {
         const l = state.lastRound;
-        result = `<div class="row"><div class="result good" style="flex:1">${TEAMS.babis.name}: ${l.babis.hits}/${l.babis.of} zásahů · ${l.babis.dmg} poškození</div><div class="result good" style="flex:1">${TEAMS.alzak.name}: ${l.alzak.hits}/${l.alzak.of} zásahů · ${l.alzak.dmg} poškození</div></div>`;
+        result = ui.html`<div class="row"><div class="result good" style="flex:1">${TEAMS.babis.name}: ${l.babis.hits}/${l.babis.of} zásahů · ${l.babis.dmg} poškození</div><div class="result good" style="flex:1">${TEAMS.alzak.name}: ${l.alzak.hits}/${l.alzak.of} zásahů · ${l.alzak.dmg} poškození</div></div>`;
       }
 
-      return `<div class="card">
+      return ui.html`<div class="card">
         <div class="row">
           <span class="tag ${battle ? 'battle' : ''}">${battle ? `⚔️ Bitva ${state.battleRound + 1} / ${state.totalBattle}` : `💰 Kampaň ${state.quizRound + 1} / ${state.quizIds.length}`}</span>
           <span class="muted">Odpovědělo ${answered} / ${players.length} ${skipButton(state, ui)}</span>
         </div>
         <div class="q">${ui.text(item.question ?? '', { item })}</div>
-        <div class="opts">${optHtml}</div>
+        <div class="answers">${controls}</div>
         ${result}
       </div>`;
     }
@@ -843,30 +860,30 @@
         const cost = me ? price(state, me, s) : s.cost;
         const can = ui.self && state.teams[me] && !owned && !done && coins >= cost && !ui.isPending('buy');
         const buyers = ui.view === 'board' ? state.shopLog.filter((l) => l.item === s.id && l.who !== 'ai').length : 0;
-        return `<div class="ware${owned ? ' owned' : ''}">
+        return ui.html`<div class="ware${owned ? ' owned' : ''}">
           <div class="top"><span class="ico">${s.icon}</span><div><div class="nm">${s.name}</div><span class="kind ${s.kind}">${s.kind === 'team' ? 'pro tým' : s.kind === 'self' ? 'pro tebe' : 'na soupeře'}</span></div></div>
           <div class="ds">${s.desc}</div>
           <div class="ft">
-            <span class="price">${cost !== s.cost ? `<s>${s.cost}</s>` : ''}${cost} Kč</span>
-            ${ui.self ? `<button class="buy" ${can ? '' : 'disabled'} data-act="buy" data-payload='{"item":"${s.id}"}'>${owned ? 'Máš ✔' : coins < cost ? 'Málo peněz' : 'Koupit'}</button>` : `<span class="muted">${buyers ? `koupeno ${buyers}×` : ''}</span>`}
+            <span class="price">${cost !== s.cost ? ui.html`<s>${s.cost}</s>` : ''}${cost} Kč</span>
+            ${ui.self ? ui.html`<button class="buy" ${can ? '' : 'disabled'} data-act="buy" data-payload='${JSON.stringify({ item: s.id })}'>${owned ? 'Máš ✔' : coins < cost ? 'Málo peněz' : 'Koupit'}</button>` : ui.html`<span class="muted">${buyers ? `koupeno ${buyers}×` : ''}</span>`}
           </div>
         </div>`;
-      }).join('');
+      });
       const log = state.shopLog.slice(-12).reverse().map((l) => {
         const s = shopItem(l.item);
-        const name = l.who === 'ai' ? 'Počítač' : ui.html`${ui.players.find((p) => p.id === l.who)?.name ?? '?'}`;
-        return `<div>${s?.icon ?? '🛒'} <b>${name}</b> koupil ${l.who === 'ai' ? 'zásoby pro svůj tým' : s?.name ?? ''}</div>`;
-      }).join('');
+        const name = l.who === 'ai' ? 'Počítač' : ui.players.find((p) => p.id === l.who)?.name ?? '?';
+        return ui.html`<div>${s?.icon ?? '🛒'} <b>${name}</b> koupil ${l.who === 'ai' ? 'zásoby pro svůj tým' : s?.name ?? ''}</div>`;
+      });
       const readyCount = Object.keys(state.shopDone).length;
       const players = ui.players.filter((p) => p.connected && state.teams[p.id]).length;
-      return `<div class="card">
+      return ui.html`<div class="card">
         <div class="row">
           <span class="tag">🛒 ${state.shopIdx === 1 ? 'Obchod před bitvou' : 'Obchod v půlce bitvy'} · dotace +${SUBSIDY} Kč pro každého</span>
           <span class="muted">Hotovo ${readyCount} / ${players} ${skipButton(state, ui)}</span>
         </div>
-        ${ui.self ? `<div class="row"><b style="font-size:1.3em;color:var(--gold)">💰 ${coins} Kč</b><button class="done${done ? ' on' : ''}" data-act="shopDone" ${done ? 'disabled' : ''}>${done ? 'Připraven ✔' : 'Hotovo, jdeme bojovat'}</button></div>` : ''}
+        ${ui.self ? ui.html`<div class="row"><b style="font-size:1.3em;color:var(--gold)">💰 ${coins} Kč</b><button class="done${done ? ' on' : ''}" data-act="shopDone" ${done ? 'disabled' : ''}>${done ? 'Připraven ✔' : 'Hotovo, jdeme bojovat'}</button></div>` : ''}
         <div class="shop">${wares}</div>
-        ${ui.view === 'board' && log ? `<div class="log">${log}</div>` : ''}
+        ${ui.view === 'board' && log.length ? ui.html`<div class="log">${log}</div>` : ''}
       </div>`;
     }
 
@@ -874,13 +891,13 @@
       const w = state.winner;
       const ranking = [...ui.players].filter((p) => state.teams[p.id]).sort((a, b) => (state.scores[b.id] ?? 0) - (state.scores[a.id] ?? 0));
       const mvp = (team) => ranking.filter((p) => state.teams[p.id] === team).sort((a, b) => (state.dealt[b.id] ?? 0) - (state.dealt[a.id] ?? 0))[0];
-      return `<div class="card big">
+      return ui.html`<div class="card big">
         <h1>${w === 'draw' ? '🤝 Remíza!' : w === 'babis' ? `👑 Vítězí ${teamLabel(state, 'babis')}!` : `🎉 Vítězí ${teamLabel(state, 'alzak')}!`}</h1>
         <div class="mvp">${['babis', 'alzak'].map((t) => {
           const p = mvp(t);
-          return `<div class="result ${t === w ? 'good' : 'wait'}">${TEAMS[t].name}<br>${p ? `⭐ ${ui.html`${p.name}`} · ${state.dealt[p.id]} poškození` : state.ai === t ? '🤖 počítač' : '—'}</div>`;
-        }).join('')}</div>
-        <div class="rank">${ranking.map((p, i) => `<div class="${i === 0 ? 'first' : ''}"><span>${i === 0 ? '🏆 ' : `${i + 1}. `}${ui.html`${p.name}`} <span class="muted">· ${state.teams[p.id] === 'babis' ? 'Babiš' : 'Alzák'}</span></span><span>${state.scores[p.id] ?? 0} b.</span></div>`).join('')}</div>
+          return ui.html`<div class="result ${t === w ? 'good' : 'wait'}">${TEAMS[t].name}<br>${p ? ui.html`⭐ ${p.name} · ${state.dealt[p.id]} poškození` : state.ai === t ? '🤖 počítač' : '—'}</div>`;
+        })}</div>
+        <div class="rank">${ranking.map((p, i) => ui.html`<div class="${i === 0 ? 'first' : ''}"><span>${i === 0 ? '🏆 ' : `${i + 1}. `}${p.name} <span class="muted">· ${state.teams[p.id] === 'babis' ? 'Babiš' : 'Alzák'}</span></span><span>${state.scores[p.id] ?? 0} b.</span></div>`)}</div>
       </div>`;
     }
 
@@ -889,7 +906,6 @@
        ═════════════════════════════════════════════════════════ */
     defineGame({
       root: document.getElementById('app'),
-      tickMs: 250,
 
       initialState(ctx) {
         const usable = ctx.items.filter((it) => it.type === 'mcq-single' || it.type === 'true-false');
@@ -906,7 +922,7 @@
           boost: { babis: false, alzak: false }, weak: { babis: false, alzak: false },
           quizIds, battleIds, quizRound: 0, battleRound: 0, totalBattle,
           phaseStart: 0,
-          answers: {}, reveal: null, lastRound: null,
+          answers: {}, reveal: null, lastRound: null, revealed: [],
           coins: {}, perks: {}, bought: {}, streak: {}, dealt: {}, correct: {},
           shopIdx: 0, shopDone: {}, shopLog: [],
           dialogue: { id: 0, lines: [] }, used: [], winner: null, scores: {},
@@ -1037,9 +1053,9 @@
         if (state.phase === 'team_select') body = renderTeamSelect(state, ui);
         else if (state.phase === 'shop') body = renderShop(state, ui);
         else if (state.phase === 'end') body = renderEnd(state, ui);
-        else if (state.phase === 'battle_intro') body = `<div class="card big"><h1>⚔️ Bitva začíná!</h1><div class="muted">Každá správná odpověď je rána do soupeře. Čím rychleji, tím silněji. Tři zásahy po sobě = kombo.</div><div style="margin-top:10px">${skipButton(state, ui)}</div></div>`;
+        else if (state.phase === 'battle_intro') body = ui.html`<div class="card big"><h1>⚔️ Bitva začíná!</h1><div class="muted">Každá správná odpověď je rána do soupeře. Čím rychleji, tím silněji. Tři zásahy po sobě = kombo.</div><div style="margin-top:10px">${skipButton(state, ui)}</div></div>`;
         else body = renderQuestion(state, ui);
-        return `<div class="screen">${stage(state, ui)}${bubbles(state, ui)}${body}</div>`;
+        return ui.html`<div class="screen">${stage(state, ui)}${bubbles(state, ui)}${body}</div>`;
       },
     });
   </script>
