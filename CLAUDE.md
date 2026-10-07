@@ -34,6 +34,7 @@ its library (see "Using the engine from the platform").
 | `docs/ai-plugin-guide.md` | The guide students paste into their AI (rules, API, item table, full example). The Lab copies it into prompts. |
 | `docs/ARCHITEKTURA-A-PLAN.md` | Architecture and plan (Czech). `docs/presentation/` = the workshop talk. |
 | `docs/PLAN-RC4.md` | **Current plan** (Czech): RC4 contract, SDK additions, decisions and what is reserved. Check it before changing the contract. |
+| `docs/PLAN-OQSE-1.0.md` | **Current plan to 1.0** (Czech): OQSE 1.0 decisions, set migration, host-sdk review, guide, docs, release. |
 
 ## Commands
 

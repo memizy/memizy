@@ -233,6 +233,9 @@ výchozí `ui.local`, zvuky, upozornění Labu na `render` bez `ui.html`.
 
 ## 3. OQSE 1.0 a host-sdk
 
+**Podrobný plán kroků 3–5 (rozhodnutí k OQSE, převod sad, host-sdk, E–G, vydání):
+[`PLAN-OQSE-1.0.md`](./PLAN-OQSE-1.0.md).**
+
 - [ ] **Průchod formátu OQSE** před zmrazením: typy otázek, výchozí hodnoty (např.
       `ignoreDiacritics` – „Plzen“ vs. „Plzeň“ u dětí na telefonu), verze manifestu (dnes 0.2
       vs. sady 0.3). Sporné věci rozhodne vlastník.
