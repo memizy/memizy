@@ -156,3 +156,98 @@ konci. Hotové body se odškrtávají; rozhodnutí se zároveň přepisují do `
 3. Lab: „zlobivý hráč“, oprávnění a služby
 4. Převod her a nový návod pro AI
 5. 3D doplněk
+
+---
+
+# Cesta k 1.0 (na workshop 22. 10. 2026)
+
+Sepsáno 2026-10-07. **Rozhodnutí:** na workshop vydáme **1.0.0 bez RC** (OQSE, protokol,
+plugin-sdk, host-sdk). Pluginy importují `@memizy/plugin-sdk@1` a rozsah `@1` RC verze
+nebere; hry studentů pak musí fungovat dál. Po 1.0 v rámci 1.x jen přidávat (1.1…),
+rozbíjející změna = 2.0. Opravy chyb, CSS, zoom na iPhonu nebo pravidla 3D kontrakt
+nemění (1.0.x). Vydat až po ručním testu na telefonech, pár dní před workshopem.
+
+Kontrakt má tři vrstvy, všechny po 1.0 zpětně kompatibilní: **protokol** (host ↔ hra,
+SPEC), **API SDK** (`defineGame`, `ctx`, `ui`, `ui.question` včetně stabilních tříd pro
+styl) a **zprávy mezi instancemi SDK** (tabule a telefony můžou mít různé 1.x).
+
+## Hotovo na větvi `sdk-polish`
+
+- [x] **A. SDK:** `ui.question({ counts })`, fáze se překreslují samy (bez `tickMs`),
+      `data-local` + `local: {}`, pravidla 3D (černá / pomalá scéna → 2D jen jednou za
+      stránku, návrat hráče do 3D se respektuje, bez `onFallback` zůstane 3D),
+      žádný zoom na telefonu (viewport, gesta, políčka ≥ 16 px), `ui.escape` odebráno.
+- [x] **B. Play:** viewport, blokování gest, iframe bez zoomu, políčka ≥ 16 px.
+- [x] **C. Babiš:** `ui.html`, `ui.question` s počty, `ctx.reveal` / `ctx.hide`, bez `tickMs`.
+- [x] **D. Piráti:** `createScene3d`, bez globálního `G` (`ui.local`, most `view`, `seen`),
+      `data-local` přes SDK, výstřel na `pointerdown` (`data-fire`), `ui.html`, kvíz 16 px.
+
+## 1. SDK – poslední změny API před 1.0
+
+- [ ] **Pozdní akce:** každá akce nese číslo fáze (`phaseSeq`), kterou hráč viděl. Ve hrách
+      s fázemi autorita zahodí **každou** akci z obrazovky jiné fáze (i dvojklik učitele na
+      „Přeskočit“); akce z časovačů a háčků ne. Zahozená akce se potvrdí (`ui.pending` se
+      vyčistí). Hry pak nepotřebují ruční `round` / `seq`.
+- [ ] **`ctx.actedAt`:** čas klepnutí (společné hodiny), SDK ho omezí na nejvýš 400 ms před
+      příchodem a ne do budoucnosti. Body za rychlost bez znevýhodnění pomalé sítě.
+- [ ] **`ui.question` – odeslaná odpověď:** dokud čeká její akce, ukáže ji jako zvolenou a
+      zamkne ovládání (dvojí odeslání nejde). `chosen` zůstává pro potvrzené odpovědi.
+- [ ] **`ui.question` – `itemId`** v payloadu akce (ne v uložené odpovědi `recordAnswer.answer`).
+- [ ] **`ui.question` – stabilní háčky pro styl:** `data-option="<id>"` a `--mz-q-index` na
+      možnostech, `data-type` na kořeni; seznam stabilních tříd a proměnných v návodu,
+      ostatní jsou vnitřní.
+- [ ] **Varování:** `ui.question({ reveal: true })` u otázky bez odpovědi → „zavolej ctx.reveal“
+      (konzole, tedy i Lab).
+- [ ] **`ctx.hide`** u neodhalené otázky nic neposílá (hra ho může volat na začátku každé otázky).
+- [ ] **`localActions`** místo `local: {}` (paralela k `actions`, nesplete se s `ui.local`);
+      signatura `(local, payload, ui)`.
+- [ ] **`createScene3d`:** volby `near` / `far` kamery.
+- [ ] **`ui.now` jako vlastnost** (getter, vždy aktuální čas i mimo render) jako `ctx.now`;
+      všude (hra, nastavení, solo).
+- [ ] **`ctx.goto` platí hned:** `state.phase`, `phaseSeq`, `phaseEndsAt` se nastaví v tu chvíli
+      a `onEnter` proběhne na místě (jako systém, ne jako hráč).
+- [ ] **`ui.html` a objekty:** objekt v atributu (`data-payload=${{ item: s.id }}`) se převede
+      na bezpečný JSON v uvozovkách (dnes `[object Object]`); starý zápis funguje dál.
+- [ ] **Kompatibilita mezi verzemi SDK:** nové části zpráv jen jako volitelná pole (starší
+      autorita je ignoruje, novější bez nich použije dnešní chování); zapsat jako pravidlo.
+- [ ] **Rezervovaná pole stavu** `phase`, `phaseSeq`, `phaseEndsAt` zapsat do návodu.
+
+Vědomě **ne**: `game.state` / `game.ui` na objektu z `defineGame` (AI by měnila stav mimo
+akce); `onTimeout(state, payload, ctx)` (platí pravidlo „ctx poslední“); `recordAnswer`
+s automatickým vyhodnocením (nejednoznačné u pravda/nepravda, hra správnost potřebuje sama).
+Až v 1.x (kontrakt nemění): další jazyky textů SDK, klávesové zkratky v `ui.question`,
+výchozí `ui.local`, zvuky, upozornění Labu na `render` bez `ui.html`.
+
+## 2. Hry na finální API (hned po kroku 1, jinak padají)
+
+- [ ] **Babiš:** bez `round` (pozdní akce řeší SDK), `ctx.actedAt` pro rychlost, `ctx.hide` bez
+      vlastní evidence, barvy přes `data-option` / `--mz-q-index` místo `:nth-child`,
+      `ui.now`. Hlášky upravuje vlastník – před úpravou je commitnout zvlášť.
+- [ ] **Piráti:** `localActions`, `ui.now`, `near` / `far` místo výměny kamery, `ctx.actedAt`
+      místo vlastního času klepnutí (pokud sedí na míření), bez vlastního `seq`.
+- [ ] Příklad v návodu a jeho test (`guideExample`).
+
+## 3. OQSE 1.0 a host-sdk
+
+- [ ] **Průchod formátu OQSE** před zmrazením: typy otázek, výchozí hodnoty (např.
+      `ignoreDiacritics` – „Plzen“ vs. „Plzeň“ u dětí na telefonu), verze manifestu (dnes 0.2
+      vs. sady 0.3). Sporné věci rozhodne vlastník.
+- [ ] Formát sad i manifestu `"version": "1.0"`, převod sad v enginu, jasná chyba pro starší
+      verze; balíček `@memizy/oqse` 1.0.
+- [ ] **Průchod API host-sdk** (`LocalSession`, `mountPlugin`, `RelayHost`, `RelayPlayer`,
+      `HostStorage`) – používá ho Play a platforma, i tam 1.0 slibuje stabilitu.
+
+## 4. E–G
+
+- [ ] **E. Test 3D se skutečným WebGL** jako skript v repu (Playwright, Edge, SwiftShader):
+      vykreslení, 2D ↔ 3D, ztráta kontextu → 2D s hláškou, pomalost → 2D jen jednou a po
+      návratu zůstane 3D, bez WebGL 2D bez tlačítka 3D, výstřel ve 2D i 3D.
+- [ ] **F. Návod pro AI** podle finálního API: jedna cesta pro každou věc (`ui.html`,
+      `localActions`, fáze bez `tickMs`, `ui.question` s `counts`), pravidla 3D a toast
+      v `onFallback`, „políčka nezmenšuj pod 16 px“, rezervovaná pole, stabilní třídy.
+- [ ] **G. Dokumentace:** changelog SDK, SPEC (pokud se dotkne), `CLAUDE.md`, tento plán.
+
+## 5. Vydání
+
+- [ ] Ruční test vlastníka na telefonech (iPhone: zoom, 3D; slabé zařízení).
+- [ ] Verze **1.0.0** všech balíčků, publikace na npm (CDN `@1`), nasazení Play.
