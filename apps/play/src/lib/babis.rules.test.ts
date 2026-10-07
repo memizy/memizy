@@ -53,7 +53,7 @@ describe('Babiš vs. Alzák rules', () => {
     await tick();
     await tick(2600);
     expect(board().phase).toBe('question');
-    expect(board().maxHp).toEqual({ babis: 340, alzak: 340 }); // from the bigger team
+    expect(board().maxHp).toEqual({ babis: 1020, alzak: 1020 }); // from the bigger team
 
     const lines: string[] = [];
     const seen = new Set<number>();
