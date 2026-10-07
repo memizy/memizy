@@ -8,7 +8,7 @@ konci. Hotové body se odškrtávají; rozhodnutí se zároveň přepisují do `
 
 ### OQSE 0.3: ID možností a dovednosti
 
-- [ ] **ID možností.** Seznamy, na jejichž pořadí nebo výběru záleží, mají položky s `id`:
+- [x] **ID možností.** Seznamy, na jejichž pořadí nebo výběru záleží, mají položky s `id`:
       možnosti mcq (`options: [{ id, text }]`), možnosti výběru v `fill-in-select`, `items` u
       `sort-items`, `prompts` / `matches` u `match-pairs`, strany `match-complex`, `labels` u
       `diagram-label`, kategorie u `categorize`, řádky a sloupce `matrix` (události `timeline` a
@@ -17,41 +17,41 @@ konci. Hotové body se odškrtávají; rozhodnutí se zároveň přepisují do `
       Důvod: učitel sadu upravuje (přehodí nebo přidá možnost) a uložené odpovědi i statistiky
       musí zůstat správné; míchání pak nepotřebuje přemapování (`correctOrder` /
       `correctMatches` z RC3 odpadnou).
-- [ ] **Bez automatického převodu 0.2 → 0.3.** `loadOQSEFile` umí jen 0.3. Sady se převedou
+- [x] **Bez automatického převodu 0.2 → 0.3.** `loadOQSEFile` umí jen 0.3. Sady se převedou
       jednorázovým skriptem (viz „Sady mimo engine“). Starý soubor dostane jasnou chybu
       „sada je ve formátu 0.2“.
-- [ ] **`skills`** – volitelné pole položky: ID dovedností ze společného slovníku, hierarchická
+- [x] **`skills`** – volitelné pole položky: ID dovedností ze společného slovníku, hierarchická
       s tečkami (`chess.tactics.fork`, `math.fractions.addition`). Odděleně od `tags` (volné
       štítky na hledání). Dovednosti pocházejí z **obsahu** (sada, služba, generátor), nikdy je
       neurčuje plugin, takže se dají sledovat napříč pluginy.
-- [ ] Markdown formát sad (`.oqse.md`) – ID možností: automaticky podle pořadí (`a`, `b`, …)
+- [x] Markdown formát sad (`.oqse.md`) – ID možností: automaticky podle pořadí (`a`, `b`, …)
       s možností je napsat ručně; `skills` jako řádek položky.
-- [ ] Převést sady **v enginu**: `apps/play/src/data/sets/*.oqse.json` a `web-app-notes.oqse.md`,
+- [x] Převést sady **v enginu**: `apps/play/src/data/sets/*.oqse.json` a `web-app-notes.oqse.md`,
       sady v testech, ukázková sada SDK (`standalone/sampleSet.ts`), prompt pro AI sady v Labu
       (`apps/play/src/lib/aiSets.ts`) a JSON schema `oqse-v0.3.json`.
-- [ ] `checkAnswer`, `prepareDisplaySet`, `publicItem`, typy a validace na 0.3.
+- [x] `checkAnswer`, `prepareDisplaySet`, `publicItem`, typy a validace na 0.3.
 
 ### Protokol
 
-- [ ] **`recordAnswer`**:
+- [x] **`recordAnswer`**:
   - volitelná `answer` (odpověď hráče, v ID možností), aby Classroom ukázal např. „70 % třídy
     zvolilo Brno“;
   - otázky **mimo sadu** (vygenerované): hra přiloží položku (bez odpovědi stačí typ, otázka,
     `tags`, `skills`, `elo`…). Hostitel je uloží jako vygenerované – do statistik podle
     `skills`, ne do opakování. Dnes je hostitel odmítne („Unknown item“).
   - hostitel ukládá `skills` položky k záznamu a sčítá i rodičovské úrovně.
-- [ ] **Pauza učitelem**: nová zpráva hostitele (např. `paused(boolean)`, za feature).
+- [x] **Pauza učitelem**: nová zpráva hostitele (např. `paused(boolean)`, za feature).
       SDK zastaví časovače, `ctx.now` i `ui.timeLeft`; hra nemusí dělat nic. Tlačítko v Play.
-- [ ] **Oprávnění v manifestu** `permissions`: `network` (seznam adres), `camera`,
+- [x] **Oprávnění v manifestu** `permissions`: `network` (seznam adres), `camera`,
       `microphone`, `geolocation`, `serial`, `bluetooth`. Hostitel je vynutí (CSP v iframu
       pro síť – povolena jen deklarovaná místa a běžná CDN s knihovnami; atribut `allow`
       pro zařízení) a ukáže je („hra komunikuje s lichess.org“). Opravit návod, který tvrdí,
       že síť je zablokovaná (není).
-- [ ] **Služby Memizy**: obecná metoda `service(name, payload)` + pole `services` v
+- [x] **Služby Memizy**: obecná metoda `service(name, payload)` + pole `services` v
       manifestu; hostitel při handshake řekne, které služby nabízí. Kontrakt nezná žádnou
       konkrétní službu (AI, předčítání, žebříček, šachové úlohy… jsou v registru služeb).
-- [ ] **SPEC: oddíl „Rozhodnutí a plánované rozšíření“** se vším z oddílů 4 a 5 tohoto plánu.
-- [ ] Verze balíčků `1.0.0-rc.4`, changelog, AI guide.
+- [x] **SPEC: oddíl „Rozhodnutí a plánované rozšíření“** se vším z oddílů 4 a 5 tohoto plánu.
+- [x] Verze balíčků `1.0.0-rc.4`, changelog, AI guide.
 
 ## 2. SDK (přidává, nic nerozbíjí)
 
