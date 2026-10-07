@@ -2,27 +2,22 @@
  * `checkAnswer(item, answer)` – evaluates a player's answer according to the
  * rules of the OQSE specification, so every plugin grades the same way.
  *
- * Answer formats (also listed in the AI guide):
- *  mcq-single: option index · mcq-multi: array of indices · true-false: boolean
+ * Answer formats (OQSE 0.3: choices are referenced by their `id`, also listed in the AI guide):
+ *  mcq-single: option id · mcq-multi: array of option ids · true-false: boolean
  *  short-answer: text · numeric-input / slider: number (or numeric text)
- *  math-input: LaTeX text · sort-items: indices of `items` in the player's order
- *  match-pairs: for each prompt the index of the chosen match
- *
- * Indices refer to the lists as the plugin gets them. The host shuffles them once
- * per session (SPEC 4.4); for sort-items, match-pairs and timeline the right
- * order is then in `correctOrder` / `correctMatches` (otherwise the listed order).
- *  match-complex: array of [left, right] pairs · matrix: array of [row, column]
- *  fill-in-blanks: { token: text } · fill-in-select: { token: option index }
- *  categorize: { entryId: category index } · timeline: event ids in order
- *  pin-on-image: { x, y } in % (array of points when multipleCorrect)
- *  diagram-label: { zoneIndex: labelIndex } (or { zoneIndex: text } with requireTyping)
+ *  math-input: LaTeX text · sort-items: item ids in the player's order
+ *  match-pairs: { promptId: matchId } · match-complex: array of [leftId, rightId]
+ *  matrix: array of [rowId, columnId] · fill-in-blanks: { token: text }
+ *  fill-in-select: { token: option id } · categorize: { entryId: categoryId }
+ *  timeline: event ids in order · pin-on-image: { x, y } in % (array when multipleCorrect)
+ *  diagram-label: { zoneId: labelId } (or { zoneId: text } with requireTyping)
  *  pin-on-model: mesh name (array when multipleCorrect) · chess-puzzle: array of SAN moves
  *
  * `flashcard`, `note`, `open-ended` and custom `x-` types cannot be checked
  * automatically; calling `checkAnswer` on them throws.
  */
 
-import type { Hotspot2D, OQSEAnyItem } from '@memizy/oqse';
+import type { Hotspot2D, OQSEAnyItem, TimelineEvent } from '@memizy/oqse';
 
 export function checkAnswer(item: OQSEAnyItem, answer: unknown): boolean {
   if (!item || typeof item !== 'object') throw new Error('checkAnswer: missing item');
@@ -32,11 +27,11 @@ export function checkAnswer(item: OQSEAnyItem, answer: unknown): boolean {
 
   switch (item.type) {
     case 'mcq-single':
-      return toInt(answer) === item.correctIndex;
+      return answer === item.correctId;
 
     case 'mcq-multi': {
-      const chosen = intArray(answer);
-      return chosen !== null && sameSet(chosen, item.correctIndices);
+      const chosen = stringArray(answer);
+      return chosen !== null && sameSet(chosen, item.correctIds);
     }
 
     case 'true-false':
@@ -71,22 +66,20 @@ export function checkAnswer(item: OQSEAnyItem, answer: unknown): boolean {
     }
 
     case 'sort-items': {
-      const order = intArray(answer);
-      const target = (item as { correctOrder?: number[] }).correctOrder ?? item.items.map((_, i) => i);
-      return order !== null && order.length === item.items.length && order.every((value, i) => value === target[i]);
+      const order = stringArray(answer);
+      return order !== null && order.length === item.correctOrder.length && order.every((id, i) => id === item.correctOrder[i]);
     }
 
     case 'match-pairs': {
-      const mapping = intArray(answer);
-      const target = (item as { correctMatches?: number[] }).correctMatches ?? item.prompts.map((_, i) => i);
-      return mapping !== null && mapping.length === item.prompts.length && mapping.every((value, i) => value === target[i]);
+      const mapping = record(answer);
+      return !!mapping && item.prompts.every((prompt) => mapping[prompt.id] === item.pairs[prompt.id]);
     }
 
     case 'match-complex': {
       const pairs = pairArray(answer);
       if (!pairs) return false;
-      const correct = new Set(item.connections.map(([l, r]) => `${l}:${r}`));
-      const given = new Set(pairs.map(([l, r]) => `${l}:${r}`));
+      const correct = new Set(item.connections.map(([l, r]) => pairKey(l, r)));
+      const given = new Set(pairs.map(([l, r]) => pairKey(l, r)));
       const hits = [...given].filter((pair) => correct.has(pair)).length;
       return hits === given.size && hits >= (item.minCorrect ?? correct.size);
     }
@@ -94,7 +87,7 @@ export function checkAnswer(item: OQSEAnyItem, answer: unknown): boolean {
     case 'matrix': {
       const cells = pairArray(answer);
       if (!cells) return false;
-      return sameSet(cells.map(([r, c]) => `${r}:${c}`), item.correctCells.map(([r, c]) => `${r}:${c}`));
+      return sameSet(cells.map(([r, c]) => pairKey(r, c)), item.correctCells.map(([r, c]) => pairKey(r, c)));
     }
 
     case 'fill-in-blanks': {
@@ -109,18 +102,21 @@ export function checkAnswer(item: OQSEAnyItem, answer: unknown): boolean {
 
     case 'fill-in-select': {
       const values = record(answer);
-      return !!values && Object.entries(item.blanks).every(([token, blank]) => toInt(values[token]) === blank.correctIndex);
+      return !!values && Object.entries(item.blanks).every(([token, blank]) => values[token] === blank.correctId);
     }
 
     case 'categorize': {
       const values = record(answer);
-      return !!values && item.items.every((entry) => toInt(values[entry.id]) === entry.correctCategoryIndex);
+      return !!values && item.items.every((entry) => values[entry.id] === entry.correctCategoryId);
     }
 
     case 'timeline': {
-      if (!Array.isArray(answer) || answer.length !== item.events.length) return false;
-      const target = (item as { correctOrder?: string[] }).correctOrder ?? item.events.map((event) => event.id);
-      return target.every((id, i) => answer[i] === id);
+      // Correct when every event is there once and the dates never go back (same date: any order).
+      const ids = stringArray(answer);
+      if (!ids || ids.length !== item.events.length || new Set(ids).size !== ids.length) return false;
+      const events = ids.map((id) => item.events.find((event) => event.id === id));
+      if (events.some((event) => !event)) return false;
+      return events.every((event, i) => i === 0 || compareEventDates(events[i - 1]!, event!) <= 0);
     }
 
     case 'pin-on-image': {
@@ -140,13 +136,14 @@ export function checkAnswer(item: OQSEAnyItem, answer: unknown): boolean {
       const values = record(answer);
       if (!values) return false;
       const caseSensitive = item.caseSensitive ?? false;
-      return item.zones.every((zone, index) => {
-        const given = values[index];
+      return item.zones.every((zone) => {
+        const given = values[zone.id];
         if (item.requireTyping) {
+          const label = item.labels.find((l) => l.id === zone.correctLabelId);
           const opts = { caseSensitive, trim: true, diacritics: false };
-          return typeof given === 'string' && normalizeText(given, opts) === normalizeText(item.labels[zone.correctLabelIndex], opts);
+          return !!label && typeof given === 'string' && normalizeText(given, opts) === normalizeText(label.text, opts);
         }
-        return toInt(given) === zone.correctLabelIndex;
+        return given === zone.correctLabelId;
       });
     }
 
@@ -184,11 +181,6 @@ export function checkAnswer(item: OQSEAnyItem, answer: unknown): boolean {
 // Helpers
 // ============================================================================
 
-function toInt(value: unknown): number | null {
-  const n = typeof value === 'string' && value.trim() !== '' ? Number(value) : value;
-  return typeof n === 'number' && Number.isInteger(n) ? n : null;
-}
-
 function toNumber(value: unknown): number | null {
   if (typeof value === 'number') return Number.isFinite(value) ? value : null;
   if (typeof value !== 'string') return null;
@@ -205,16 +197,24 @@ function toBoolean(value: unknown): boolean | null {
   return null;
 }
 
-function intArray(value: unknown): number[] | null {
-  if (!Array.isArray(value)) return null;
-  const ints = value.map(toInt);
-  return ints.every((n) => n !== null) ? (ints as number[]) : null;
+function stringArray(value: unknown): string[] | null {
+  return Array.isArray(value) && value.every((v) => typeof v === 'string') ? (value as string[]) : null;
 }
 
-function pairArray(value: unknown): [number, number][] | null {
+function pairArray(value: unknown): [string, string][] | null {
   if (!Array.isArray(value)) return null;
-  const pairs = value.map((pair) => (Array.isArray(pair) && pair.length === 2 ? intArray(pair) : null));
-  return pairs.every((p) => p !== null) ? (pairs as [number, number][]) : null;
+  return value.every((pair) => Array.isArray(pair) && pair.length === 2 && typeof pair[0] === 'string' && typeof pair[1] === 'string')
+    ? (value as [string, string][])
+    : null;
+}
+
+const pairKey = (a: string, b: string) => `${a}\u0000${b}`;
+
+/** Compares two timeline events at the coarser of their precisions (year < month < day < datetime). */
+function compareEventDates(a: TimelineEvent, b: TimelineEvent): number {
+  const length = { year: 4, month: 7, day: 10, datetime: Infinity } as const;
+  const cut = Math.min(length[a.precision ?? 'datetime'], length[b.precision ?? 'datetime']);
+  return a.date.slice(0, cut).localeCompare(b.date.slice(0, cut));
 }
 
 function record(value: unknown): Record<string, unknown> | null {

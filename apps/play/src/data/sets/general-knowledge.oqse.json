@@ -1,6 +1,6 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@memizy/oqse@0.2/schemas/oqse-v0.2.json",
-  "version": "0.2",
+  "$schema": "https://cdn.jsdelivr.net/npm/@memizy/oqse@0.3/schemas/oqse-v0.3.json",
+  "version": "0.3",
   "meta": {
     "id": "0192f0c4-a003-7000-8000-000000000000",
     "language": "cs",
@@ -10,36 +10,333 @@
     "createdAt": "2026-10-04T12:00:00Z",
     "updatedAt": "2026-10-04T12:00:00Z",
     "license": "CC-BY-4.0",
-    "requirements": { "features": ["markdown", "latex"] },
-    "tags": ["kvíz", "všeobecné znalosti"]
+    "requirements": {
+      "features": [
+        "markdown",
+        "latex"
+      ]
+    },
+    "tags": [
+      "kvíz",
+      "všeobecné znalosti"
+    ]
   },
   "items": [
-    { "id": "0192f0c4-a003-7000-8000-000000000001", "type": "mcq-single", "topic": "Zeměpis", "question": "Jaké je hlavní město Austrálie?", "options": ["Sydney", "Canberra", "Melbourne", "Perth"], "correctIndex": 1 },
-    { "id": "0192f0c4-a003-7000-8000-000000000002", "type": "mcq-single", "topic": "Biologie", "question": "Kolik kostí má dospělý člověk?", "options": ["106", "206", "306", "406"], "correctIndex": 1 },
-    { "id": "0192f0c4-a003-7000-8000-000000000003", "type": "mcq-single", "topic": "Matematika", "question": "Kolik je $\\sqrt{144}$?", "options": ["10", "11", "12", "14"], "correctIndex": 2 },
-    { "id": "0192f0c4-a003-7000-8000-000000000004", "type": "mcq-single", "topic": "Vesmír", "question": "Která planeta má nejvíc měsíců?", "options": ["Země", "Mars", "Saturn", "Merkur"], "correctIndex": 2 },
-    { "id": "0192f0c4-a003-7000-8000-000000000005", "type": "mcq-multi", "topic": "Biologie", "question": "Které z těchto zvířat jsou savci?", "options": ["Delfín", "Žralok", "Netopýr", "Tučňák", "Velryba"], "correctIndices": [0, 2, 4] },
-    { "id": "0192f0c4-a003-7000-8000-000000000006", "type": "true-false", "topic": "Fyzika", "question": "Blesk nikdy neudeří dvakrát do stejného místa.", "correctAnswer": false, "explanation": "Udeří – vysoké budovy jako Empire State Building zasáhne blesk i desítkykrát ročně." },
-    { "id": "0192f0c4-a003-7000-8000-000000000007", "type": "true-false", "topic": "Fyzika", "question": "Na vrcholu Mount Everestu vře voda při nižší teplotě než u moře.", "correctAnswer": true, "explanation": "Nižší tlak vzduchu = nižší bod varu (asi 70 °C)." },
-    { "id": "0192f0c4-a003-7000-8000-000000000008", "type": "short-answer", "topic": "Umění", "question": "Kdo namaloval Monu Lisu?", "correctAnswers": ["Leonardo da Vinci", "da Vinci", "Leonardo"], "acceptPartial": true },
-    { "id": "0192f0c4-a003-7000-8000-000000000009", "type": "short-answer", "topic": "Vesmír", "question": "Jak se jmenuje největší planeta Sluneční soustavy?", "correctAnswers": ["Jupiter"], "acceptPartial": true },
-    { "id": "0192f0c4-a003-7000-8000-000000000010", "type": "numeric-input", "topic": "Matematika", "question": "Kolik minut má jeden den?", "correctAnswer": 1440 },
-    { "id": "0192f0c4-a003-7000-8000-000000000011", "type": "numeric-input", "topic": "Matematika", "question": "Napiš číslo $\\pi$ na dvě desetinná místa.", "correctAnswer": 3.14, "tolerance": 0.005 },
-    { "id": "0192f0c4-a003-7000-8000-000000000012", "type": "slider", "topic": "Dějepis", "question": "Ve kterém roce vznikla samostatná Česká republika?", "min": 1900, "max": 2020, "step": 1, "correctAnswer": 1993 },
-    { "id": "0192f0c4-a003-7000-8000-000000000013", "type": "sort-items", "topic": "Vesmír", "question": "Seřaď planety podle vzdálenosti od Slunce:", "items": ["Merkur", "Venuše", "Země", "Mars"] },
-    { "id": "0192f0c4-a003-7000-8000-000000000014", "type": "match-pairs", "topic": "Zeměpis", "question": "Přiřaď hlavní města:", "prompts": ["Francie", "Itálie", "Polsko", "Maďarsko"], "matches": ["Paříž", "Řím", "Varšava", "Budapešť"] },
+    {
+      "id": "0192f0c4-a003-7000-8000-000000000001",
+      "type": "mcq-single",
+      "topic": "Zeměpis",
+      "question": "Jaké je hlavní město Austrálie?",
+      "options": [
+        {
+          "id": "a",
+          "text": "Sydney"
+        },
+        {
+          "id": "b",
+          "text": "Canberra"
+        },
+        {
+          "id": "c",
+          "text": "Melbourne"
+        },
+        {
+          "id": "d",
+          "text": "Perth"
+        }
+      ],
+      "correctId": "b"
+    },
+    {
+      "id": "0192f0c4-a003-7000-8000-000000000002",
+      "type": "mcq-single",
+      "topic": "Biologie",
+      "question": "Kolik kostí má dospělý člověk?",
+      "options": [
+        {
+          "id": "a",
+          "text": "106"
+        },
+        {
+          "id": "b",
+          "text": "206"
+        },
+        {
+          "id": "c",
+          "text": "306"
+        },
+        {
+          "id": "d",
+          "text": "406"
+        }
+      ],
+      "correctId": "b"
+    },
+    {
+      "id": "0192f0c4-a003-7000-8000-000000000003",
+      "type": "mcq-single",
+      "topic": "Matematika",
+      "question": "Kolik je $\\sqrt{144}$?",
+      "options": [
+        {
+          "id": "a",
+          "text": "10"
+        },
+        {
+          "id": "b",
+          "text": "11"
+        },
+        {
+          "id": "c",
+          "text": "12"
+        },
+        {
+          "id": "d",
+          "text": "14"
+        }
+      ],
+      "correctId": "c"
+    },
+    {
+      "id": "0192f0c4-a003-7000-8000-000000000004",
+      "type": "mcq-single",
+      "topic": "Vesmír",
+      "question": "Která planeta má nejvíc měsíců?",
+      "options": [
+        {
+          "id": "a",
+          "text": "Země"
+        },
+        {
+          "id": "b",
+          "text": "Mars"
+        },
+        {
+          "id": "c",
+          "text": "Saturn"
+        },
+        {
+          "id": "d",
+          "text": "Merkur"
+        }
+      ],
+      "correctId": "c"
+    },
+    {
+      "id": "0192f0c4-a003-7000-8000-000000000005",
+      "type": "mcq-multi",
+      "topic": "Biologie",
+      "question": "Které z těchto zvířat jsou savci?",
+      "options": [
+        {
+          "id": "a",
+          "text": "Delfín"
+        },
+        {
+          "id": "b",
+          "text": "Žralok"
+        },
+        {
+          "id": "c",
+          "text": "Netopýr"
+        },
+        {
+          "id": "d",
+          "text": "Tučňák"
+        },
+        {
+          "id": "e",
+          "text": "Velryba"
+        }
+      ],
+      "correctIds": [
+        "a",
+        "c",
+        "e"
+      ]
+    },
+    {
+      "id": "0192f0c4-a003-7000-8000-000000000006",
+      "type": "true-false",
+      "topic": "Fyzika",
+      "question": "Blesk nikdy neudeří dvakrát do stejného místa.",
+      "correctAnswer": false,
+      "explanation": "Udeří – vysoké budovy jako Empire State Building zasáhne blesk i desítkykrát ročně."
+    },
+    {
+      "id": "0192f0c4-a003-7000-8000-000000000007",
+      "type": "true-false",
+      "topic": "Fyzika",
+      "question": "Na vrcholu Mount Everestu vře voda při nižší teplotě než u moře.",
+      "correctAnswer": true,
+      "explanation": "Nižší tlak vzduchu = nižší bod varu (asi 70 °C)."
+    },
+    {
+      "id": "0192f0c4-a003-7000-8000-000000000008",
+      "type": "short-answer",
+      "topic": "Umění",
+      "question": "Kdo namaloval Monu Lisu?",
+      "correctAnswers": [
+        "Leonardo da Vinci",
+        "da Vinci",
+        "Leonardo"
+      ],
+      "acceptPartial": true
+    },
+    {
+      "id": "0192f0c4-a003-7000-8000-000000000009",
+      "type": "short-answer",
+      "topic": "Vesmír",
+      "question": "Jak se jmenuje největší planeta Sluneční soustavy?",
+      "correctAnswers": [
+        "Jupiter"
+      ],
+      "acceptPartial": true
+    },
+    {
+      "id": "0192f0c4-a003-7000-8000-000000000010",
+      "type": "numeric-input",
+      "topic": "Matematika",
+      "question": "Kolik minut má jeden den?",
+      "correctAnswer": 1440
+    },
+    {
+      "id": "0192f0c4-a003-7000-8000-000000000011",
+      "type": "numeric-input",
+      "topic": "Matematika",
+      "question": "Napiš číslo $\\pi$ na dvě desetinná místa.",
+      "correctAnswer": 3.14,
+      "tolerance": 0.005
+    },
+    {
+      "id": "0192f0c4-a003-7000-8000-000000000012",
+      "type": "slider",
+      "topic": "Dějepis",
+      "question": "Ve kterém roce vznikla samostatná Česká republika?",
+      "min": 1900,
+      "max": 2020,
+      "step": 1,
+      "correctAnswer": 1993
+    },
+    {
+      "id": "0192f0c4-a003-7000-8000-000000000013",
+      "type": "sort-items",
+      "topic": "Vesmír",
+      "question": "Seřaď planety podle vzdálenosti od Slunce:",
+      "items": [
+        {
+          "id": "i1",
+          "text": "Merkur"
+        },
+        {
+          "id": "i2",
+          "text": "Venuše"
+        },
+        {
+          "id": "i3",
+          "text": "Země"
+        },
+        {
+          "id": "i4",
+          "text": "Mars"
+        }
+      ],
+      "correctOrder": [
+        "i1",
+        "i2",
+        "i3",
+        "i4"
+      ]
+    },
+    {
+      "id": "0192f0c4-a003-7000-8000-000000000014",
+      "type": "match-pairs",
+      "topic": "Zeměpis",
+      "question": "Přiřaď hlavní města:",
+      "prompts": [
+        {
+          "id": "p1",
+          "text": "Francie"
+        },
+        {
+          "id": "p2",
+          "text": "Itálie"
+        },
+        {
+          "id": "p3",
+          "text": "Polsko"
+        },
+        {
+          "id": "p4",
+          "text": "Maďarsko"
+        }
+      ],
+      "matches": [
+        {
+          "id": "m1",
+          "text": "Paříž"
+        },
+        {
+          "id": "m2",
+          "text": "Řím"
+        },
+        {
+          "id": "m3",
+          "text": "Varšava"
+        },
+        {
+          "id": "m4",
+          "text": "Budapešť"
+        }
+      ],
+      "pairs": {
+        "p1": "m1",
+        "p2": "m2",
+        "p3": "m3",
+        "p4": "m4"
+      }
+    },
     {
       "id": "0192f0c4-a003-7000-8000-000000000015",
       "type": "categorize",
       "topic": "Biologie",
       "question": "Roztřiď na ovoce a zeleninu:",
-      "categories": ["Ovoce", "Zelenina"],
+      "categories": [
+        {
+          "id": "c1",
+          "text": "Ovoce"
+        },
+        {
+          "id": "c2",
+          "text": "Zelenina"
+        }
+      ],
       "items": [
-        { "id": "jablko", "text": "Jablko", "correctCategoryIndex": 0 },
-        { "id": "mrkev", "text": "Mrkev", "correctCategoryIndex": 1 },
-        { "id": "banan", "text": "Banán", "correctCategoryIndex": 0 },
-        { "id": "brokolice", "text": "Brokolice", "correctCategoryIndex": 1 },
-        { "id": "hruska", "text": "Hruška", "correctCategoryIndex": 0 }
+        {
+          "id": "jablko",
+          "text": "Jablko",
+          "correctCategoryId": "c1"
+        },
+        {
+          "id": "mrkev",
+          "text": "Mrkev",
+          "correctCategoryId": "c2"
+        },
+        {
+          "id": "banan",
+          "text": "Banán",
+          "correctCategoryId": "c1"
+        },
+        {
+          "id": "brokolice",
+          "text": "Brokolice",
+          "correctCategoryId": "c2"
+        },
+        {
+          "id": "hruska",
+          "text": "Hruška",
+          "correctCategoryId": "c1"
+        }
       ]
     },
     {
@@ -48,10 +345,30 @@
       "topic": "Dějepis",
       "question": "Seřaď události podle toho, jak šly za sebou:",
       "events": [
-        { "id": "amerika", "text": "Kolumbus doplul do Ameriky", "date": "1492-10-12", "precision": "year" },
-        { "id": "revoluce", "text": "Francouzská revoluce", "date": "1789-07-14", "precision": "year" },
-        { "id": "mesic", "text": "Člověk poprvé přistál na Měsíci", "date": "1969-07-20", "precision": "year" },
-        { "id": "zed", "text": "Pád Berlínské zdi", "date": "1989-11-09", "precision": "year" }
+        {
+          "id": "amerika",
+          "text": "Kolumbus doplul do Ameriky",
+          "date": "1492-10-12",
+          "precision": "year"
+        },
+        {
+          "id": "revoluce",
+          "text": "Francouzská revoluce",
+          "date": "1789-07-14",
+          "precision": "year"
+        },
+        {
+          "id": "mesic",
+          "text": "Člověk poprvé přistál na Měsíci",
+          "date": "1969-07-20",
+          "precision": "year"
+        },
+        {
+          "id": "zed",
+          "text": "Pád Berlínské zdi",
+          "date": "1989-11-09",
+          "precision": "year"
+        }
       ]
     },
     {
@@ -60,7 +377,15 @@
       "topic": "Zeměpis",
       "question": "Doplň:",
       "text": "Nejvyšší hora světa je <blank:hora /> a nejdelší řeka Česka je <blank:reka />.",
-      "blanks": { "hora": ["Mount Everest", "Everest"], "reka": ["Vltava"] }
+      "blanks": {
+        "hora": [
+          "Mount Everest",
+          "Everest"
+        ],
+        "reka": [
+          "Vltava"
+        ]
+      }
     },
     {
       "id": "0192f0c4-a003-7000-8000-000000000018",
@@ -68,21 +393,149 @@
       "topic": "Chemie",
       "question": "Vyber správné slovo:",
       "text": "Voda se skládá z vodíku a <blank:prvek />.",
-      "blanks": { "prvek": { "options": ["kyslíku", "dusíku", "uhlíku"], "correctIndex": 0 } }
+      "blanks": {
+        "prvek": {
+          "options": [
+            {
+              "id": "a",
+              "text": "kyslíku"
+            },
+            {
+              "id": "b",
+              "text": "dusíku"
+            },
+            {
+              "id": "c",
+              "text": "uhlíku"
+            }
+          ],
+          "correctId": "a"
+        }
+      }
     },
     {
       "id": "0192f0c4-a003-7000-8000-000000000019",
       "type": "matrix",
       "topic": "Zeměpis",
       "question": "Jakým jazykem se mluví v které zemi?",
-      "rows": ["Brazílie", "Mexiko", "Rakousko"],
-      "columns": ["Španělština", "Portugalština", "Němčina"],
-      "correctCells": [[0, 1], [1, 0], [2, 2]]
+      "rows": [
+        {
+          "id": "r1",
+          "text": "Brazílie"
+        },
+        {
+          "id": "r2",
+          "text": "Mexiko"
+        },
+        {
+          "id": "r3",
+          "text": "Rakousko"
+        }
+      ],
+      "columns": [
+        {
+          "id": "c1",
+          "text": "Španělština"
+        },
+        {
+          "id": "c2",
+          "text": "Portugalština"
+        },
+        {
+          "id": "c3",
+          "text": "Němčina"
+        }
+      ],
+      "correctCells": [
+        [
+          "r1",
+          "c2"
+        ],
+        [
+          "r2",
+          "c1"
+        ],
+        [
+          "r3",
+          "c3"
+        ]
+      ]
     },
-    { "id": "0192f0c4-a003-7000-8000-000000000020", "type": "math-input", "topic": "Matematika", "question": "Zjednoduš výraz $2x + 3x$.", "correctAnswer": "5x", "alternativeAnswers": ["5\\cdot x", "5*x"] },
-    { "id": "0192f0c4-a003-7000-8000-000000000021", "type": "flashcard", "topic": "Biologie", "front": "Fotosyntéza", "back": "Proces, kterým rostliny ze světla, vody a $CO_2$ vyrábějí cukr a kyslík." },
-    { "id": "0192f0c4-a003-7000-8000-000000000022", "type": "mcq-single", "topic": "Technologie", "question": "Co znamená zkratka **CPU**?", "options": ["Central Processing Unit", "Computer Power Unit", "Central Program Utility", "Core Processing Usage"], "correctIndex": 0 },
-    { "id": "0192f0c4-a003-7000-8000-000000000023", "type": "true-false", "topic": "Zeměpis", "question": "Sahara je největší poušť na světě.", "correctAnswer": false, "explanation": "Největší poušť je Antarktida – poušť znamená málo srážek, ne horko. Sahara je největší horká poušť." },
-    { "id": "0192f0c4-a003-7000-8000-000000000024", "type": "mcq-single", "topic": "Sport", "question": "Kolik hráčů má jedno fotbalové družstvo na hřišti?", "options": ["9", "10", "11", "12"], "correctIndex": 2 }
+    {
+      "id": "0192f0c4-a003-7000-8000-000000000020",
+      "type": "math-input",
+      "topic": "Matematika",
+      "question": "Zjednoduš výraz $2x + 3x$.",
+      "correctAnswer": "5x",
+      "alternativeAnswers": [
+        "5\\cdot x",
+        "5*x"
+      ]
+    },
+    {
+      "id": "0192f0c4-a003-7000-8000-000000000021",
+      "type": "flashcard",
+      "topic": "Biologie",
+      "front": "Fotosyntéza",
+      "back": "Proces, kterým rostliny ze světla, vody a $CO_2$ vyrábějí cukr a kyslík."
+    },
+    {
+      "id": "0192f0c4-a003-7000-8000-000000000022",
+      "type": "mcq-single",
+      "topic": "Technologie",
+      "question": "Co znamená zkratka **CPU**?",
+      "options": [
+        {
+          "id": "a",
+          "text": "Central Processing Unit"
+        },
+        {
+          "id": "b",
+          "text": "Computer Power Unit"
+        },
+        {
+          "id": "c",
+          "text": "Central Program Utility"
+        },
+        {
+          "id": "d",
+          "text": "Core Processing Usage"
+        }
+      ],
+      "correctId": "a"
+    },
+    {
+      "id": "0192f0c4-a003-7000-8000-000000000023",
+      "type": "true-false",
+      "topic": "Zeměpis",
+      "question": "Sahara je největší poušť na světě.",
+      "correctAnswer": false,
+      "explanation": "Největší poušť je Antarktida – poušť znamená málo srážek, ne horko. Sahara je největší horká poušť."
+    },
+    {
+      "id": "0192f0c4-a003-7000-8000-000000000024",
+      "type": "mcq-single",
+      "topic": "Sport",
+      "question": "Kolik hráčů má jedno fotbalové družstvo na hřišti?",
+      "options": [
+        {
+          "id": "a",
+          "text": "9"
+        },
+        {
+          "id": "b",
+          "text": "10"
+        },
+        {
+          "id": "c",
+          "text": "11"
+        },
+        {
+          "id": "d",
+          "text": "12"
+        }
+      ],
+      "correctId": "c"
+    }
   ]
 }

@@ -37,10 +37,10 @@ const { success, data, errors, warnings } = loadOQSEFile(JSON.parse(text));
 
 The auto-generated JSON Schemas are published with this repository and are available at the following URLs:
 
-- Core OQSE Schema: https://cdn.jsdelivr.net/npm/@memizy/oqse@0.2/schemas/oqse-v0.2.json
-- Manifest Schema: https://cdn.jsdelivr.net/npm/@memizy/oqse@0.2/schemas/oqse-manifest-v0.2.json
-- Progress Schema: https://cdn.jsdelivr.net/npm/@memizy/oqse@0.2/schemas/oqse-progress-v0.2.json
-- Header Schema: https://cdn.jsdelivr.net/npm/@memizy/oqse@0.2/schemas/oqse-header-v0.2.json
+- Core OQSE Schema: https://cdn.jsdelivr.net/npm/@memizy/oqse@0.3/schemas/oqse-v0.3.json
+- Manifest Schema: https://cdn.jsdelivr.net/npm/@memizy/oqse@0.3/schemas/oqse-manifest-v0.2.json
+- Progress Schema: https://cdn.jsdelivr.net/npm/@memizy/oqse@0.3/schemas/oqse-progress-v0.2.json
+- Header Schema: https://cdn.jsdelivr.net/npm/@memizy/oqse@0.3/schemas/oqse-header-v0.2.json
 
 ## Architecture & Single Source of Truth
 

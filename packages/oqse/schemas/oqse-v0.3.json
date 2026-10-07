@@ -601,6 +601,15 @@
                       "type": "string"
                     }
                   },
+                  "skills": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 128,
+                      "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$"
+                    }
+                  },
                   "topic": {
                     "type": "string"
                   },
@@ -890,6 +899,15 @@
                       "type": "string"
                     }
                   },
+                  "skills": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 128,
+                      "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$"
+                    }
+                  },
                   "topic": {
                     "type": "string"
                   },
@@ -1177,6 +1195,15 @@
                       "type": "string"
                     }
                   },
+                  "skills": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 128,
+                      "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$"
+                    }
+                  },
                   "topic": {
                     "type": "string"
                   },
@@ -1462,6 +1489,15 @@
                       "type": "string"
                     }
                   },
+                  "skills": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 128,
+                      "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$"
+                    }
+                  },
                   "topic": {
                     "type": "string"
                   },
@@ -1602,32 +1638,36 @@
                     "maxItems": 100,
                     "type": "array",
                     "items": {
-                      "type": "string",
-                      "minLength": 1,
-                      "maxLength": 2000
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9_.-]{1,64}$"
+                        },
+                        "text": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 2000
+                        },
+                        "explanation": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 10000
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "text"
+                      ],
+                      "additionalProperties": {}
                     }
                   },
-                  "correctIndex": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "maximum": 9007199254740991
+                  "correctId": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_.-]{1,64}$"
                   },
                   "shuffle": {
                     "type": "boolean"
-                  },
-                  "optionExplanations": {
-                    "type": "array",
-                    "items": {
-                      "anyOf": [
-                        {
-                          "type": "string",
-                          "minLength": 1
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ]
-                    }
                   }
                 },
                 "required": [
@@ -1635,7 +1675,7 @@
                   "type",
                   "question",
                   "options",
-                  "correctIndex"
+                  "correctId"
                 ],
                 "additionalProperties": {}
               },
@@ -1777,6 +1817,15 @@
                       "type": "string"
                     }
                   },
+                  "skills": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 128,
+                      "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$"
+                    }
+                  },
                   "topic": {
                     "type": "string"
                   },
@@ -1917,18 +1966,36 @@
                     "maxItems": 100,
                     "type": "array",
                     "items": {
-                      "type": "string",
-                      "minLength": 1,
-                      "maxLength": 2000
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9_.-]{1,64}$"
+                        },
+                        "text": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 2000
+                        },
+                        "explanation": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 10000
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "text"
+                      ],
+                      "additionalProperties": {}
                     }
                   },
-                  "correctIndices": {
+                  "correctIds": {
                     "minItems": 1,
                     "type": "array",
                     "items": {
-                      "type": "integer",
-                      "minimum": 0,
-                      "maximum": 9007199254740991
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_.-]{1,64}$"
                     }
                   },
                   "minSelections": {
@@ -1943,20 +2010,6 @@
                   },
                   "shuffle": {
                     "type": "boolean"
-                  },
-                  "optionExplanations": {
-                    "type": "array",
-                    "items": {
-                      "anyOf": [
-                        {
-                          "type": "string",
-                          "minLength": 1
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ]
-                    }
                   }
                 },
                 "required": [
@@ -1964,7 +2017,7 @@
                   "type",
                   "question",
                   "options",
-                  "correctIndices"
+                  "correctIds"
                 ],
                 "additionalProperties": {}
               },
@@ -2104,6 +2157,15 @@
                     "type": "array",
                     "items": {
                       "type": "string"
+                    }
+                  },
+                  "skills": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 128,
+                      "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$"
                     }
                   },
                   "topic": {
@@ -2405,6 +2467,15 @@
                     "type": "array",
                     "items": {
                       "type": "string"
+                    }
+                  },
+                  "skills": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 128,
+                      "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$"
                     }
                   },
                   "topic": {
@@ -2713,6 +2784,15 @@
                       "type": "string"
                     }
                   },
+                  "skills": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 128,
+                      "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$"
+                    }
+                  },
                   "topic": {
                     "type": "string"
                   },
@@ -2863,21 +2943,44 @@
                       "properties": {
                         "options": {
                           "minItems": 1,
+                          "maxItems": 100,
                           "type": "array",
                           "items": {
-                            "type": "string",
-                            "minLength": 1
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[A-Za-z0-9_.-]{1,64}$"
+                              },
+                              "text": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 2000
+                              },
+                              "explanation": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 10000
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "text"
+                            ],
+                            "additionalProperties": {}
                           }
                         },
-                        "correctIndex": {
-                          "type": "integer",
-                          "minimum": 0,
-                          "maximum": 9007199254740991
+                        "correctId": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9_.-]{1,64}$"
+                        },
+                        "shuffle": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
                         "options",
-                        "correctIndex"
+                        "correctId"
                       ],
                       "additionalProperties": {}
                     }
@@ -3029,6 +3132,15 @@
                       "type": "string"
                     }
                   },
+                  "skills": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 128,
+                      "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$"
+                    }
+                  },
                   "topic": {
                     "type": "string"
                   },
@@ -3168,8 +3280,28 @@
                     "maxItems": 100,
                     "type": "array",
                     "items": {
-                      "type": "string",
-                      "minLength": 1
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9_.-]{1,64}$"
+                        },
+                        "text": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 2000
+                        },
+                        "explanation": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 10000
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "text"
+                      ],
+                      "additionalProperties": {}
                     }
                   },
                   "matches": {
@@ -3177,8 +3309,39 @@
                     "maxItems": 100,
                     "type": "array",
                     "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9_.-]{1,64}$"
+                        },
+                        "text": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 2000
+                        },
+                        "explanation": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 10000
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "text"
+                      ],
+                      "additionalProperties": {}
+                    }
+                  },
+                  "pairs": {
+                    "type": "object",
+                    "propertyNames": {
                       "type": "string",
-                      "minLength": 1
+                      "pattern": "^[A-Za-z0-9_.-]{1,64}$"
+                    },
+                    "additionalProperties": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_.-]{1,64}$"
                     }
                   }
                 },
@@ -3186,7 +3349,8 @@
                   "id",
                   "type",
                   "prompts",
-                  "matches"
+                  "matches",
+                  "pairs"
                 ],
                 "additionalProperties": {}
               },
@@ -3328,6 +3492,15 @@
                       "type": "string"
                     }
                   },
+                  "skills": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 128,
+                      "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$"
+                    }
+                  },
                   "topic": {
                     "type": "string"
                   },
@@ -3464,18 +3637,60 @@
                   },
                   "leftItems": {
                     "minItems": 1,
+                    "maxItems": 100,
                     "type": "array",
                     "items": {
-                      "type": "string",
-                      "minLength": 1
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9_.-]{1,64}$"
+                        },
+                        "text": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 2000
+                        },
+                        "explanation": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 10000
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "text"
+                      ],
+                      "additionalProperties": {}
                     }
                   },
                   "rightItems": {
                     "minItems": 1,
+                    "maxItems": 100,
                     "type": "array",
                     "items": {
-                      "type": "string",
-                      "minLength": 1
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9_.-]{1,64}$"
+                        },
+                        "text": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 2000
+                        },
+                        "explanation": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 10000
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "text"
+                      ],
+                      "additionalProperties": {}
                     }
                   },
                   "connections": {
@@ -3485,14 +3700,12 @@
                       "type": "array",
                       "items": [
                         {
-                          "type": "integer",
-                          "minimum": 0,
-                          "maximum": 9007199254740991
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9_.-]{1,64}$"
                         },
                         {
-                          "type": "integer",
-                          "minimum": 0,
-                          "maximum": 9007199254740991
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9_.-]{1,64}$"
                         }
                       ],
                       "additionalItems": false,
@@ -3653,6 +3866,15 @@
                       "type": "string"
                     }
                   },
+                  "skills": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 128,
+                      "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$"
+                    }
+                  },
                   "topic": {
                     "type": "string"
                   },
@@ -3790,10 +4012,38 @@
                   },
                   "items": {
                     "minItems": 2,
+                    "maxItems": 100,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9_.-]{1,64}$"
+                        },
+                        "text": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 2000
+                        },
+                        "explanation": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 10000
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "text"
+                      ],
+                      "additionalProperties": {}
+                    }
+                  },
+                  "correctOrder": {
                     "type": "array",
                     "items": {
                       "type": "string",
-                      "minLength": 1
+                      "pattern": "^[A-Za-z0-9_.-]{1,64}$"
                     }
                   }
                 },
@@ -3801,7 +4051,8 @@
                   "id",
                   "type",
                   "question",
-                  "items"
+                  "items",
+                  "correctOrder"
                 ],
                 "additionalProperties": {}
               },
@@ -3941,6 +4192,15 @@
                     "type": "array",
                     "items": {
                       "type": "string"
+                    }
+                  },
+                  "skills": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 128,
+                      "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$"
                     }
                   },
                   "topic": {
@@ -4246,6 +4506,15 @@
                     "type": "array",
                     "items": {
                       "type": "string"
+                    }
+                  },
+                  "skills": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 128,
+                      "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$"
                     }
                   },
                   "topic": {
@@ -4666,6 +4935,15 @@
                       "type": "string"
                     }
                   },
+                  "skills": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 128,
+                      "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$"
+                    }
+                  },
                   "topic": {
                     "type": "string"
                   },
@@ -4803,9 +5081,31 @@
                   },
                   "categories": {
                     "minItems": 2,
+                    "maxItems": 100,
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9_.-]{1,64}$"
+                        },
+                        "text": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 2000
+                        },
+                        "explanation": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 10000
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "text"
+                      ],
+                      "additionalProperties": {}
                     }
                   },
                   "items": {
@@ -4815,22 +5115,22 @@
                       "type": "object",
                       "properties": {
                         "id": {
-                          "type": "string"
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9_.-]{1,64}$"
                         },
                         "text": {
                           "type": "string",
                           "minLength": 1
                         },
-                        "correctCategoryIndex": {
-                          "type": "integer",
-                          "minimum": 0,
-                          "maximum": 9007199254740991
+                        "correctCategoryId": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9_.-]{1,64}$"
                         }
                       },
                       "required": [
                         "id",
                         "text",
-                        "correctCategoryIndex"
+                        "correctCategoryId"
                       ],
                       "additionalProperties": {}
                     }
@@ -4981,6 +5281,15 @@
                     "type": "array",
                     "items": {
                       "type": "string"
+                    }
+                  },
+                  "skills": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 128,
+                      "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$"
                     }
                   },
                   "topic": {
@@ -5303,6 +5612,15 @@
                       "type": "string"
                     }
                   },
+                  "skills": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 128,
+                      "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$"
+                    }
+                  },
                   "topic": {
                     "type": "string"
                   },
@@ -5440,16 +5758,60 @@
                   },
                   "rows": {
                     "minItems": 1,
+                    "maxItems": 100,
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9_.-]{1,64}$"
+                        },
+                        "text": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 2000
+                        },
+                        "explanation": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 10000
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "text"
+                      ],
+                      "additionalProperties": {}
                     }
                   },
                   "columns": {
                     "minItems": 1,
+                    "maxItems": 100,
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9_.-]{1,64}$"
+                        },
+                        "text": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 2000
+                        },
+                        "explanation": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 10000
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "text"
+                      ],
+                      "additionalProperties": {}
                     }
                   },
                   "correctCells": {
@@ -5459,14 +5821,12 @@
                       "type": "array",
                       "items": [
                         {
-                          "type": "integer",
-                          "minimum": 0,
-                          "maximum": 9007199254740991
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9_.-]{1,64}$"
                         },
                         {
-                          "type": "integer",
-                          "minimum": 0,
-                          "maximum": 9007199254740991
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9_.-]{1,64}$"
                         }
                       ],
                       "additionalItems": false,
@@ -5624,6 +5984,15 @@
                     "type": "array",
                     "items": {
                       "type": "string"
+                    }
+                  },
+                  "skills": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 128,
+                      "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$"
                     }
                   },
                   "topic": {
@@ -5921,6 +6290,15 @@
                       "type": "string"
                     }
                   },
+                  "skills": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 128,
+                      "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$"
+                    }
+                  },
                   "topic": {
                     "type": "string"
                   },
@@ -6062,10 +6440,31 @@
                   },
                   "labels": {
                     "minItems": 1,
+                    "maxItems": 100,
                     "type": "array",
                     "items": {
-                      "type": "string",
-                      "minLength": 1
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9_.-]{1,64}$"
+                        },
+                        "text": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 2000
+                        },
+                        "explanation": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 10000
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "text"
+                      ],
+                      "additionalProperties": {}
                     }
                   },
                   "caseSensitive": {
@@ -6109,10 +6508,13 @@
                               "minimum": 0,
                               "maximum": 100
                             },
-                            "correctLabelIndex": {
-                              "type": "integer",
-                              "minimum": 0,
-                              "maximum": 9007199254740991
+                            "id": {
+                              "type": "string",
+                              "pattern": "^[A-Za-z0-9_.-]{1,64}$"
+                            },
+                            "correctLabelId": {
+                              "type": "string",
+                              "pattern": "^[A-Za-z0-9_.-]{1,64}$"
                             }
                           },
                           "required": [
@@ -6121,7 +6523,8 @@
                             "y",
                             "width",
                             "height",
-                            "correctLabelIndex"
+                            "id",
+                            "correctLabelId"
                           ],
                           "additionalProperties": {}
                         },
@@ -6150,10 +6553,13 @@
                               "minimum": 0,
                               "maximum": 100
                             },
-                            "correctLabelIndex": {
-                              "type": "integer",
-                              "minimum": 0,
-                              "maximum": 9007199254740991
+                            "id": {
+                              "type": "string",
+                              "pattern": "^[A-Za-z0-9_.-]{1,64}$"
+                            },
+                            "correctLabelId": {
+                              "type": "string",
+                              "pattern": "^[A-Za-z0-9_.-]{1,64}$"
                             }
                           },
                           "required": [
@@ -6161,7 +6567,8 @@
                             "x",
                             "y",
                             "radius",
-                            "correctLabelIndex"
+                            "id",
+                            "correctLabelId"
                           ],
                           "additionalProperties": {}
                         },
@@ -6199,16 +6606,20 @@
                                 "additionalProperties": {}
                               }
                             },
-                            "correctLabelIndex": {
-                              "type": "integer",
-                              "minimum": 0,
-                              "maximum": 9007199254740991
+                            "id": {
+                              "type": "string",
+                              "pattern": "^[A-Za-z0-9_.-]{1,64}$"
+                            },
+                            "correctLabelId": {
+                              "type": "string",
+                              "pattern": "^[A-Za-z0-9_.-]{1,64}$"
                             }
                           },
                           "required": [
                             "type",
                             "points",
-                            "correctLabelIndex"
+                            "id",
+                            "correctLabelId"
                           ],
                           "additionalProperties": {}
                         }
@@ -6362,6 +6773,15 @@
                     "type": "array",
                     "items": {
                       "type": "string"
+                    }
+                  },
+                  "skills": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 128,
+                      "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$"
                     }
                   },
                   "topic": {
@@ -6692,6 +7112,15 @@
                       "type": "string"
                     }
                   },
+                  "skills": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 128,
+                      "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$"
+                    }
+                  },
                   "topic": {
                     "type": "string"
                   },
@@ -6998,6 +7427,15 @@
                     "type": "array",
                     "items": {
                       "type": "string"
+                    }
+                  },
+                  "skills": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 128,
+                      "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$"
                     }
                   },
                   "topic": {
@@ -7365,6 +7803,15 @@
                       "type": "string"
                     }
                   },
+                  "skills": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 128,
+                      "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$"
+                    }
+                  },
                   "topic": {
                     "type": "string"
                   },
@@ -7667,6 +8114,15 @@
                 "type": "array",
                 "items": {
                   "type": "string"
+                }
+              },
+              "skills": {
+                "maxItems": 20,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "maxLength": 128,
+                  "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$"
                 }
               },
               "topic": {

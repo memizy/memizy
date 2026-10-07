@@ -72,7 +72,7 @@ describe('OQSE Validation Schemas', () => {
 describe('Complex Constraints & Referential Integrity', () => {
   it('validateOQSEFile: relatedItems integrity (non-existent item)', () => {
     const invalidFile = {
-      version: '0.2',
+      version: '0.3',
       meta: {
         id: '123e4567-e89b-12d3-a456-426614174000',
         title: 'T',
@@ -98,7 +98,7 @@ describe('Complex Constraints & Referential Integrity', () => {
 
   it('validateOQSEFile: thumbnail integrity (missing asset)', () => {
     const invalidFile = {
-      version: '0.2',
+      version: '0.3',
       meta: {
         id: '123e4567-e89b-12d3-a456-426614174000',
         title: 'T',
@@ -119,7 +119,7 @@ describe('Complex Constraints & Referential Integrity', () => {
 
   it('validateOQSEFile: sourceMaterials integrity (missing source)', () => {
     const invalidFile = {
-      version: '0.2',
+      version: '0.3',
       meta: {
         id: '123e4567-e89b-12d3-a456-426614174000',
         title: 'T',
@@ -144,13 +144,13 @@ describe('Complex Constraints & Referential Integrity', () => {
     expect(result.errors.some(i => i.code === 'DANGLING_REFERENCE' && i.path === 'items[0].sources')).toBe(true);
   });
 
-  it('MCQSingleItemSchema: bounds checking for correctIndex', () => {
+  it('MCQSingleItemSchema: correctId must reference an option', () => {
     const invalidItem = {
       id: '123e4567-e89b-12d3-a456-426614174001',
       type: 'mcq-single',
       question: 'Q?',
-      options: ['A', 'B'],
-      correctIndex: 2
+      options: [{ id: 'a', text: 'A' }, { id: 'b', text: 'B' }],
+      correctId: 'c'
     };
     
     const result = MCQSingleItemSchema.safeParse(invalidItem);
@@ -165,8 +165,8 @@ describe('Complex Constraints & Referential Integrity', () => {
       id: '123e4567-e89b-12d3-a456-426614174001',
       type: 'mcq-multi',
       question: 'Q?',
-      options: ['A', 'B'],
-      correctIndices: [0],
+      options: [{ id: 'a', text: 'A' }, { id: 'b', text: 'B' }],
+      correctIds: ['a'],
       minSelections: 3,
     };
 
@@ -182,11 +182,11 @@ describe('Complex Constraints & Referential Integrity', () => {
       id: '123e4567-e89b-12d3-a456-426614174001',
       type: 'categorize',
       question: 'Sort items',
-      categories: ['A', 'B'],
+      categories: [{ id: 'a', text: 'A' }, { id: 'b', text: 'B' }],
       items: [
         {
           text: 'Alpha',
-          correctCategoryIndex: 0,
+          correctCategoryId: 'a',
         },
       ],
     };
@@ -240,7 +240,7 @@ describe('Complex Constraints & Referential Integrity', () => {
 
   it('formatOQSEErrors: formats OQSEFileSchema validation errors into flat list', () => {
     const result = OQSEFileSchema.safeParse({
-      version: '0.2',
+      version: '0.3',
       items: [],
     });
 
@@ -253,7 +253,7 @@ describe('Complex Constraints & Referential Integrity', () => {
   });
 });
 
-describe('OQSE 0.2 item shape', () => {
+describe('OQSE 0.3 item shape', () => {
   const id = '0192f0c4-7a1e-7c3b-9a52-2f1d8e4b6a10';
 
   it('uses correctAnswer / correctAnswers consistently', () => {
@@ -280,8 +280,33 @@ describe('OQSE 0.2 item shape', () => {
     expect(OQSEItemSchema.safeParse({ id, type: 'note', content: 'x'.repeat(100_001) }).success).toBe(false);
   });
 
-  it('treats empty optionExplanations as omitted', () => {
-    expect(OQSEItemSchema.safeParse({ id, type: 'mcq-single', question: 'Q', options: ['a', 'b'], correctIndex: 0, optionExplanations: [] }).success).toBe(true);
+  it('choices have unique IDs and answers refer to them', () => {
+    const options = [{ id: 'a', text: 'Brno' }, { id: 'b', text: 'Praha', explanation: 'The capital.' }];
+    expect(OQSEItemSchema.safeParse({ id, type: 'mcq-single', question: 'Q', options, correctId: 'b' }).success).toBe(true);
+    expect(OQSEItemSchema.safeParse({ id, type: 'mcq-single', question: 'Q', options, correctId: 'c' }).success).toBe(false);
+    expect(OQSEItemSchema.safeParse({ id, type: 'mcq-single', question: 'Q', options: ['Brno', 'Praha'], correctIndex: 1 }).success).toBe(false);
+    expect(OQSEItemSchema.safeParse({ id, type: 'mcq-single', question: 'Q', options: [{ id: 'a', text: 'x' }, { id: 'a', text: 'y' }], correctId: 'a' }).success).toBe(false);
+    expect(OQSEItemSchema.safeParse({ id, type: 'mcq-multi', question: 'Q', options, correctIds: ['a', 'b'] }).success).toBe(true);
+  });
+
+  it('sort-items, match-pairs and the others reference choices by ID', () => {
+    const items = [{ id: 'x', text: '1' }, { id: 'y', text: '2' }, { id: 'z', text: '3' }];
+    expect(OQSEItemSchema.safeParse({ id, type: 'sort-items', question: 'Q', items, correctOrder: ['z', 'x', 'y'] }).success).toBe(true);
+    expect(OQSEItemSchema.safeParse({ id, type: 'sort-items', question: 'Q', items, correctOrder: ['z', 'x'] }).success).toBe(false);
+    const prompts = [{ id: 'cz', text: 'CZ' }, { id: 'sk', text: 'SK' }];
+    const matches = [{ id: 'p', text: 'Praha' }, { id: 'b', text: 'Bratislava' }, { id: 'v', text: 'Vídeň' }];
+    expect(OQSEItemSchema.safeParse({ id, type: 'match-pairs', prompts, matches, pairs: { cz: 'p', sk: 'b' } }).success).toBe(true); // a distractor match
+    expect(OQSEItemSchema.safeParse({ id, type: 'match-pairs', prompts, matches, pairs: { cz: 'p' } }).success).toBe(false);
+    expect(OQSEItemSchema.safeParse({ id, type: 'match-pairs', prompts, matches, pairs: { cz: 'p', sk: 'p' } }).success).toBe(false);
+    expect(OQSEItemSchema.safeParse({ id, type: 'categorize', question: 'Q', categories: [{ id: 'm', text: 'Savci' }, { id: 'b', text: 'Ptáci' }], items: [{ id: 'e1', text: 'Pes', correctCategoryId: 'm' }] }).success).toBe(true);
+    expect(OQSEItemSchema.safeParse({ id, type: 'matrix', question: 'Q', rows: [{ id: 'r', text: 'R' }], columns: [{ id: 'c', text: 'C' }], correctCells: [['r', 'c']] }).success).toBe(true);
+    expect(OQSEItemSchema.safeParse({ id, type: 'fill-in-select', text: 'A <blank:t />', blanks: { t: { options: [{ id: 'a', text: 'x' }], correctId: 'a' } } }).success).toBe(true);
+  });
+
+  it('skills are lowercase IDs joined by dots', () => {
+    expect(OQSEItemSchema.safeParse({ id, type: 'note', content: 'x', skills: ['chess.tactics.fork', 'math'] }).success).toBe(true);
+    expect(OQSEItemSchema.safeParse({ id, type: 'note', content: 'x', skills: ['Chess.Fork'] }).success).toBe(false);
+    expect(OQSEItemSchema.safeParse({ id, type: 'note', content: 'x', skills: ['chess..fork'] }).success).toBe(false);
   });
 
   it('rejects whitespace-only plain text and media tags in plain text', () => {

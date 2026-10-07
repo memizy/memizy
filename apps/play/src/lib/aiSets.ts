@@ -9,12 +9,12 @@ export const AI_TYPES = ['mcq-single', 'mcq-multi', 'true-false', 'short-answer'
 export type AiType = (typeof AI_TYPES)[number];
 
 const SHAPES: Record<AiType, string> = {
-  'mcq-single': '{"type":"mcq-single","question":"…","options":["A","B","C","D"],"correctIndex":0,"explanation":"…"}  (one correct option; 4 options, all different)',
-  'mcq-multi': '{"type":"mcq-multi","question":"…","options":["A","B","C","D"],"correctIndices":[0,2],"explanation":"…"}  (two or more correct options)',
+  'mcq-single': '{"type":"mcq-single","question":"…","options":[{"id":"a","text":"…"},{"id":"b","text":"…"},{"id":"c","text":"…"},{"id":"d","text":"…"}],"correctId":"b","explanation":"…"}  (one correct option; 4 options, all different; vary which one is correct)',
+  'mcq-multi': '{"type":"mcq-multi","question":"…","options":[{"id":"a","text":"…"},{"id":"b","text":"…"},{"id":"c","text":"…"},{"id":"d","text":"…"}],"correctIds":["a","c"],"explanation":"…"}  (two or more correct options)',
   'true-false': '{"type":"true-false","question":"A statement …","correctAnswer":true,"explanation":"…"}',
   'short-answer': '{"type":"short-answer","question":"…","correctAnswers":["answer","other accepted spelling"]}  (an answer of one or two words)',
-  'match-pairs': '{"type":"match-pairs","question":"…","prompts":["left 1","left 2","left 3"],"matches":["right 1","right 2","right 3"]}  (prompts[i] belongs to matches[i])',
-  'sort-items': '{"type":"sort-items","question":"Sort from … to …","items":["first","second","third","fourth"]}  (items in the correct order)',
+  'match-pairs': '{"type":"match-pairs","question":"…","prompts":[{"id":"p1","text":"…"},{"id":"p2","text":"…"},{"id":"p3","text":"…"}],"matches":[{"id":"m1","text":"…"},{"id":"m2","text":"…"},{"id":"m3","text":"…"}],"pairs":{"p1":"m1","p2":"m2","p3":"m3"}}  (pairs: prompt id → its match id)',
+  'sort-items': '{"type":"sort-items","question":"Sort from … to …","items":[{"id":"i1","text":"…"},{"id":"i2","text":"…"},{"id":"i3","text":"…"},{"id":"i4","text":"…"}],"correctOrder":["i3","i1","i4","i2"]}  (correctOrder: item ids in the right order)',
   flashcard: '{"type":"flashcard","front":"term","back":"definition"}',
 };
 
@@ -57,7 +57,37 @@ export function buildAiPrompt(r: AiRequest): string {
 
 export type NormalizeResult = { success: true; json: string; count: number; dropped: number } | { success: false; error: string };
 
-/** Turns what the chat answered into an OQSE 0.2 file (as JSON text). */
+type Raw = Record<string, unknown>;
+const letter = (i: number) => String.fromCharCode(97 + i);
+/** Plain strings become choices `{ id, text }` (chats sometimes answer in the older style). */
+const toChoices = (list: unknown, id: (i: number) => string): Raw[] | null =>
+  Array.isArray(list) && list.every((x) => typeof x === 'string') ? list.map((text, i) => ({ id: id(i), text })) : null;
+
+/** Accepts the older shape (texts and positions) and turns it into OQSE 0.3 (choices and IDs). */
+function upgradeItem(it: Raw): Raw {
+  const out = { ...it };
+  const opts = toChoices(it.options, letter);
+  if (opts && (it.type === 'mcq-single' || it.type === 'mcq-multi')) {
+    out.options = opts;
+    if (typeof it.correctIndex === 'number') { out.correctId = opts[it.correctIndex]?.id; delete out.correctIndex; }
+    if (Array.isArray(it.correctIndices)) { out.correctIds = it.correctIndices.map((i) => opts[Number(i)]?.id); delete out.correctIndices; }
+  }
+  const items = toChoices(it.items, (i) => `i${i + 1}`);
+  if (items && it.type === 'sort-items') {
+    out.items = items;
+    out.correctOrder ??= items.map((c) => c.id); // listed in the right order
+  }
+  const prompts = toChoices(it.prompts, (i) => `p${i + 1}`);
+  const matches = toChoices(it.matches, (i) => `m${i + 1}`);
+  if (prompts && matches && it.type === 'match-pairs') {
+    out.prompts = prompts;
+    out.matches = matches;
+    out.pairs ??= Object.fromEntries(prompts.map((p, i) => [p.id, matches[i]?.id]));
+  }
+  return out;
+}
+
+/** Turns what the chat answered into an OQSE 0.3 file (as JSON text). */
 export function normalizeAiAnswer(text: string, r: Pick<AiRequest, 'topic' | 'language'>): NormalizeResult {
   let body = text.trim().replace(/^```[a-z]*\s*/i, '').replace(/```\s*$/, '');
   const start = body.search(/[[{]/);
@@ -74,13 +104,13 @@ export function normalizeAiAnswer(text: string, r: Pick<AiRequest, 'topic' | 'la
   const raw = Array.isArray(obj?.items) ? obj.items : [];
   const items = raw
     .filter((it): it is Record<string, unknown> => !!it && typeof it === 'object' && typeof (it as { type?: unknown }).type === 'string')
-    .map((it) => ({ ...it, id: crypto.randomUUID() }));
+    .map((it) => ({ ...upgradeItem(it), id: crypto.randomUUID() }));
   if (!items.length) return { success: false, error: 'no-items' };
   const title = [obj.title, obj.meta?.title].find((t): t is string => typeof t === 'string' && t.trim().length > 0) ?? r.topic.trim();
   const now = new Date().toISOString();
   const file = {
-    $schema: 'https://cdn.jsdelivr.net/npm/@memizy/oqse@0.2/schemas/oqse-v0.2.json',
-    version: '0.2',
+    $schema: 'https://cdn.jsdelivr.net/npm/@memizy/oqse@0.3/schemas/oqse-v0.3.json',
+    version: '0.3',
     meta: {
       id: crypto.randomUUID(),
       language: r.language,

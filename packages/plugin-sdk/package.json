@@ -25,7 +25,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@memizy/oqse": "^0.2.0",
+    "@memizy/oqse": "^0.3.0",
     "@memizy/protocol": "^1.0.0-rc.3",
     "dompurify": "^3.4.1",
     "marked": "^16.0.0",

@@ -6,7 +6,7 @@ import { LocalRouter, wait } from '../test/localRouter';
 import type { GameDefinition } from '../types';
 
 const items = [
-  { id: 'q1', type: 'mcq-single', question: 'Hlavní město **Česka**?', options: ['Brno', 'Praha'], correctIndex: 1 },
+  { id: 'q1', type: 'mcq-single', question: 'Hlavní město **Česka**?', options: [{ id: 'brno', text: 'Brno' }, { id: 'praha', text: 'Praha' }], correctId: 'praha' },
   { id: 'q2', type: 'true-false', question: 'Měsíc je planeta.', correctAnswer: false },
 ] as OQSEAnyItem[];
 
@@ -42,7 +42,7 @@ afterEach(() => {
 
 interface State {
   round: number;
-  answers: Record<string, number | boolean>;
+  answers: Record<string, string | boolean>;
   scores: Record<string, number>;
 }
 
@@ -64,7 +64,7 @@ const quiz: Omit<GameDefinition<State>, 'root'> = {
     if (ui.view === 'board') return `<h1>${ui.text(item.question, { inline: true })}</h1><p class="count">${answered}/${ui.players.length}</p>`;
     const mine = ui.self && ui.self.id in state.answers;
     return `<p class="who">${ui.escape(ui.self?.name)}</p>${item.options
-      .map((o: string, i: number) => `<button data-act="answer" data-payload='${JSON.stringify({ answer: i })}' ${mine ? 'disabled' : ''}>${ui.text(o, { inline: true })}</button>`)
+      .map((o: { id: string; text: string }) => `<button data-act="answer" data-payload='${JSON.stringify({ answer: o.id })}' ${mine ? 'disabled' : ''}>${ui.text(o.text, { inline: true })}</button>`)
       .join('')}<p class="score">${state.scores[ui.self!.id] ?? 0}</p>`;
   },
 };
@@ -124,14 +124,14 @@ describe('defineGame end to end', () => {
     document.body.appendChild(annaRoot);
     const anna = startGame({ ...def, root: annaRoot }, { connector: router.connector('anna') });
     handles.push(anna);
-    anna.act('answer', { answer: 1 }); // before the start: ignored with a warning
+    anna.act('answer', { answer: 'praha' }); // before the start: ignored with a warning
     await Promise.all(handles.map((h) => h.ready));
     await router.start();
     await wait();
     const canvas = board.querySelector('#scene canvas');
     expect(canvas).not.toBeNull();
 
-    anna.act('answer', { answer: 1 }); // e.g. a tap in a 3D scene
+    anna.act('answer', { answer: 'praha' }); // e.g. a tap in a 3D scene
     await wait(150);
     expect(board.querySelector('.count')!.textContent).toBe('1');
     expect(board.querySelector('#scene canvas')).toBe(canvas); // the scene survived re-rendering

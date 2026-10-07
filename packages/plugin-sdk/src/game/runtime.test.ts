@@ -310,21 +310,21 @@ describe('hidden answers (ctx.reveal)', () => {
     const session = new FakeSession(def);
     session.start();
     await tick();
-    expect(session.get('board').item('q1')).toHaveProperty('correctIndex', 1);
+    expect(session.get('board').item('q1')).toHaveProperty('correctId', 'b');
     expect(session.get('anna').item('q1')).toMatchObject({ answerHidden: true });
-    expect(session.get('anna').item('q1')).not.toHaveProperty('correctIndex');
+    expect(session.get('anna').item('q1')).not.toHaveProperty('correctId');
     session.get('anna').dispatch('mine', null);
     await tick();
     expect(session.get('anna').item('q2')).toHaveProperty('correctAnswer', true);
     expect(session.get('ben').item('q2')).not.toHaveProperty('correctAnswer');
     session.get('ben').dispatch('all', null);
     await tick();
-    expect(session.get('anna').item('q1')).toHaveProperty('correctIndex', 1);
-    expect(session.get('ben').item('q1')).toHaveProperty('correctIndex', 1);
+    expect(session.get('anna').item('q1')).toHaveProperty('correctId', 'b');
+    expect(session.get('ben').item('q1')).toHaveProperty('correctId', 'b');
     // A reloaded device and a resumed authority send the reveals again.
     session.open('ben');
     await tick();
-    expect(session.get('ben').item('q1')).toHaveProperty('correctIndex', 1);
+    expect(session.get('ben').item('q1')).toHaveProperty('correctId', 'b');
     expect(session.get('ben').item('q2')).not.toHaveProperty('correctAnswer');
     await tick(600); // snapshot
     session.open('board');

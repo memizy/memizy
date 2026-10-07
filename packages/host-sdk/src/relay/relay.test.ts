@@ -33,9 +33,9 @@ const manifest = {
 };
 const pluginHtml = `<!doctype html><script type="application/oqse-manifest+json">${JSON.stringify(manifest)}</script>`;
 const setFile = loadOQSEFile({
-  version: '0.2',
+  version: '0.3',
   meta: { id: id(0), language: 'cs', title: 'Set', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
-  items: [{ id: id(1), type: 'mcq-single', question: 'Who barks?', options: ['cat', 'dog'], correctIndex: 1 }],
+  items: [{ id: id(1), type: 'mcq-single', question: 'Who barks?', options: [{ id: 'cat', text: 'cat' }, { id: 'dog', text: 'dog' }], correctId: 'dog' }],
 }).data as OQSEFile;
 
 interface State { scores: Record<string, number> }
@@ -156,7 +156,7 @@ describe('relayed multiplayer', () => {
     // Anyone with the PIN can download the bundle: it has no answers (SPEC 4.4).
     const bundle = await (await fetch(`${serverUrl}/api/rooms/${host.pin}/bundle`)).json();
     expect(bundle.set.items[0]).toMatchObject({ answerHidden: true, question: 'Who barks?' });
-    expect(bundle.set.items[0]).not.toHaveProperty('correctIndex');
+    expect(bundle.set.items[0]).not.toHaveProperty('correctId');
 
     const boardRoot = document.createElement('div');
     document.body.appendChild(boardRoot);

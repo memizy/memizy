@@ -20,9 +20,9 @@ export interface FakeSessionOptions {
 }
 
 export const sampleItems: OQSEAnyItem[] = [
-  { id: 'q1', type: 'mcq-single', question: 'A?', options: ['a', 'b', 'c'], correctIndex: 1 },
+  { id: 'q1', type: 'mcq-single', question: 'A?', options: [{ id: 'a', text: 'a' }, { id: 'b', text: 'b' }, { id: 'c', text: 'c' }], correctId: 'b' },
   { id: 'q2', type: 'true-false', question: 'B?', correctAnswer: true },
-  { id: 'q3', type: 'mcq-single', question: 'C?', options: ['x', 'y'], correctIndex: 0 },
+  { id: 'q3', type: 'mcq-single', question: 'C?', options: [{ id: 'x', text: 'x' }, { id: 'y', text: 'y' }], correctId: 'x' },
 ] as OQSEAnyItem[];
 
 export class FakeSession<S> {
@@ -61,7 +61,7 @@ export class FakeSession<S> {
     const init: InitPayload = {
       protocol: '1.0',
       host: { name: 'fake', version: '0' },
-      oqseVersion: '0.2',
+      oqseVersion: '0.3',
       features: [],
       session: {
         id: 'session-1',

@@ -136,6 +136,7 @@ export const OFFICIAL_ITEM_PROPERTIES = [
   'timeLimit',         // Application enforces/displays item time limits
   'lang',              // Application respects per-item language override
   'topic',             // Application groups/filters items by topic
+  'skills',            // Application tracks progress per skill (and its parents)
   'pedagogy'           // Application uses IRT/forgetting-curve data
 ] as const;
 

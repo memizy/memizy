@@ -558,15 +558,15 @@ function playerFire(state, ctx, pid, accuracy) {
   applyShot(state, ctx, team, computeDamage(accuracy !== null, accuracy, mult, ctx.random), pid);
 }
 
-/** Answers from buttons and forms (form values are strings). */
+/** Answers from buttons and forms, as OQSE 0.3 answers (choices by ID). */
 function normalizeAnswer(item, p) {
   switch (item.type) {
-    case 'mcq-single': return Number(p.answer);
+    case 'mcq-single': return String(p.answer ?? '');
     case 'true-false': return p.answer === true || p.answer === 'true';
-    case 'mcq-multi': return [].concat(p.sel ?? []).map(Number);
+    case 'mcq-multi': return [].concat(p.sel ?? []).map(String);
     case 'short-answer': return String(p.text ?? '');
-    case 'sort-items': return item.items.map((_, i) => Number(p[`o${i}`]));
-    case 'match-pairs': return item.prompts.map((_, i) => Number(p[`p${i}`]));
+    case 'sort-items': return item.items.map((_, i) => String(p[`o${i}`] ?? ''));
+    case 'match-pairs': return Object.fromEntries(item.prompts.map((prompt, i) => [prompt.id, String(p[`p${i}`] ?? '')]));
     default: return null;
   }
 }
@@ -796,13 +796,6 @@ function floatMsg(text, color = '#fff', ms = 1600) { G.float = { text, color, un
 const pct = (ship) => (ship ? clamp((ship.hp / ship.maxHp) * 100, 0, 100) : 0);
 
 /** A small seeded shuffle for displaying options (stable across renders). */
-function stableShuffle(list, seed) {
-  const a = list.map((v, i) => ({ v, i }));
-  let s = seed * 9301 + 49297;
-  for (let i = a.length - 1; i > 0; i--) { s = (s * 9301 + 49297) % 233280; const j = Math.floor((s / 233280) * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
-  return a;
-}
-
 /* ═════════════════════════════════════════════════════════
    Rendering: board
    ═════════════════════════════════════════════════════════ */
@@ -915,16 +908,18 @@ function renderTeamSelect(state, ui) {
     </div></section>`;
 }
 
+/** Text of a choice by its ID. */
+const choiceText = (list, id) => list.find((c) => c.id === id)?.text ?? '';
+
 function answerText(item, ui) {
   const inline = (s) => ui.text(String(s ?? ''), { inline: true, item });
   switch (item.type) {
-    case 'mcq-single': return inline(item.options[item.correctIndex]);
+    case 'mcq-single': return inline(choiceText(item.options, item.correctId));
     case 'true-false': return item.correctAnswer ? L.truth : L.lie;
-    case 'mcq-multi': return item.correctIndices.map((i) => inline(item.options[i])).join(', ');
+    case 'mcq-multi': return item.correctIds.map((id) => inline(choiceText(item.options, id))).join(', ');
     case 'short-answer': return esc(item.correctAnswers.slice(0, 3).join(' / '));
-    // The host shuffles the lists; the right order comes with the item (SPEC 4.4).
-    case 'sort-items': return (item.correctOrder ?? item.items.map((_, i) => i)).map((i) => inline(item.items[i])).join(' → ');
-    case 'match-pairs': return item.prompts.map((p, i) => `${inline(p)} = ${inline(item.matches[item.correctMatches?.[i] ?? i])}`).join('; ');
+    case 'sort-items': return item.correctOrder.map((id) => inline(choiceText(item.items, id))).join(' → ');
+    case 'match-pairs': return item.prompts.map((p) => `${inline(p.text)} = ${inline(choiceText(item.matches, item.pairs[p.id]))}`).join('; ');
     default: return '';
   }
 }
@@ -937,23 +932,20 @@ function quizControls(item, seq, ui, sent) {
   const off = sent ? 'disabled' : '';
   switch (item.type) {
     case 'mcq-single':
-      return `<div class="qgrid">${item.options.map((o, i) => `<button class="qbtn${chosen(i)}" ${off} data-act="submit_answer" data-payload='{"seq":${seq},"answer":${i}}'>${inline(o)}</button>`).join('')}</div>${sent ? `<div class="sent">${L.sent}</div>` : ''}`;
+      return `<div class="qgrid">${item.options.map((o) => `<button class="qbtn${chosen(o.id)}" ${off} data-act="submit_answer" data-payload='${esc(JSON.stringify({ seq, answer: o.id }))}'>${inline(o.text)}</button>`).join('')}</div>${sent ? `<div class="sent">${L.sent}</div>` : ''}`;
     case 'true-false':
       return `<div class="qgrid"><button class="qbtn${chosen(true)}" ${off} data-act="submit_answer" data-payload='{"seq":${seq},"answer":true}'>${L.truth}</button><button class="qbtn${chosen(false)}" ${off} data-act="submit_answer" data-payload='{"seq":${seq},"answer":false}'>${L.lie}</button></div>${sent ? `<div class="sent">${L.sent}</div>` : ''}`;
     case 'mcq-multi':
-      return `<form class="qform" data-act="submit_answer">${hidden}${item.options.map((o, i) => `<label class="qcheck"><input type="checkbox" name="sel" value="${i}"><span>${inline(o)}</span></label>`).join('')}${submit}</form>`;
+      return `<form class="qform" data-act="submit_answer">${hidden}${item.options.map((o) => `<label class="qcheck"><input type="checkbox" name="sel" value="${esc(o.id)}"><span>${inline(o.text)}</span></label>`).join('')}${submit}</form>`;
     case 'short-answer':
       return `<form class="qform" data-act="submit_answer">${hidden}<input class="qinput" name="text" autocomplete="off" placeholder="${L.yourAnswer}">${submit}</form>`;
-    case 'sort-items': {
-      const shuffled = stableShuffle(item.items, seq);
+    // The host already shuffled the lists for this game (SPEC 4.4).
+    case 'sort-items':
       return `<form class="qform" data-act="submit_answer">${hidden}${item.items.map((_, pos) => `<div class="qpair"><b style="color:var(--gold-bright)">${pos + 1}.</b>
-        <select class="qsel" name="o${pos}">${shuffled.map(({ v, i }) => `<option value="${i}">${esc(String(v).replace(/[*_`$]/g, ''))}</option>`).join('')}</select></div>`).join('')}${submit}</form>`;
-    }
-    case 'match-pairs': {
-      const shuffled = stableShuffle(item.matches, seq);
-      return `<form class="qform" data-act="submit_answer">${hidden}${item.prompts.map((p, pi) => `<div class="qpair"><div>${inline(p)}</div>
-        <select class="qsel" name="p${pi}">${shuffled.map(({ v, i }) => `<option value="${i}">${esc(String(v).replace(/[*_`$]/g, ''))}</option>`).join('')}</select></div>`).join('')}${submit}</form>`;
-    }
+        <select class="qsel" name="o${pos}">${item.items.map((c) => `<option value="${esc(c.id)}">${esc(String(c.text).replace(/[*_`$]/g, ''))}</option>`).join('')}</select></div>`).join('')}${submit}</form>`;
+    case 'match-pairs':
+      return `<form class="qform" data-act="submit_answer">${hidden}${item.prompts.map((p, pi) => `<div class="qpair"><div>${inline(p.text)}</div>
+        <select class="qsel" name="p${pi}">${item.matches.map((c) => `<option value="${esc(c.id)}">${esc(String(c.text).replace(/[*_`$]/g, ''))}</option>`).join('')}</select></div>`).join('')}${submit}</form>`;
     default: return '';
   }
 }
@@ -963,12 +955,12 @@ function givenText(item, given, ui) {
   if (given === null || given === undefined) return '—';
   const inline = (s) => ui.text(String(s ?? ''), { inline: true, item });
   switch (item.type) {
-    case 'mcq-single': return inline(item.options[given]);
+    case 'mcq-single': return inline(choiceText(item.options, given));
     case 'true-false': return given ? L.truth : L.lie;
-    case 'mcq-multi': return given.length ? given.map((i) => inline(item.options[i])).join(', ') : '—';
+    case 'mcq-multi': return given.length ? given.map((id) => inline(choiceText(item.options, id))).join(', ') : '—';
     case 'short-answer': return esc(given || '—');
-    case 'sort-items': return given.map((i) => inline(item.items[i])).join(' → ');
-    case 'match-pairs': return item.prompts.map((p, i) => `${inline(p)} = ${inline(item.matches[given[i]])}`).join('; ');
+    case 'sort-items': return given.map((id) => inline(choiceText(item.items, id))).join(' → ');
+    case 'match-pairs': return item.prompts.map((p) => `${inline(p.text)} = ${inline(choiceText(item.matches, given[p.id]))}`).join('; ');
     default: return '—';
   }
 }
@@ -983,10 +975,9 @@ function reviewOptions(item, given, ui) {
     chosen = given === null || given === undefined ? [] : [given ? 0 : 1];
     return options.map((o, i) => reviewRow(o, correct.includes(i), chosen.includes(i))).join('');
   }
-  options = item.options.map(inline);
-  correct = item.type === 'mcq-single' ? [item.correctIndex] : item.correctIndices;
+  correct = item.type === 'mcq-single' ? [item.correctId] : item.correctIds;
   chosen = given === null || given === undefined ? [] : [].concat(given);
-  return options.map((o, i) => reviewRow(o, correct.includes(i), chosen.includes(i))).join('');
+  return item.options.map((o) => reviewRow(inline(o.text), correct.includes(o.id), chosen.includes(o.id))).join('');
 }
 const reviewRow = (html, isCorrect, isChosen) =>
   `<div class="rv-row${isCorrect ? ' rv-ok' : isChosen ? ' rv-bad' : ''}"><span>${isCorrect ? '✅' : isChosen ? '❌' : '▫️'}</span><span>${html}</span></div>`;

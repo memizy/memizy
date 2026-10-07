@@ -13,7 +13,7 @@ const id = (n: number) => `0192f0c4-7a1e-7c3b-9a52-2f1d8e4b6a${String(n).padStar
 
 function file(items: unknown[], meta: Record<string, unknown> = {}) {
   return {
-    version: '0.2',
+    version: '0.3',
     meta: {
       id: META_ID,
       language: 'cs',
@@ -101,6 +101,11 @@ describe('loadOQSEFile (best effort)', () => {
 
   it('fails only on critical errors', () => {
     expect(loadOQSEFile({ version: '0.2' }).success).toBe(false);
+    // 0.2 used indices instead of choice IDs: refused with a clear message (no conversion).
+    const old = loadOQSEFile({ ...file([note(1)]), version: '0.2' });
+    expect(old.success).toBe(false);
+    expect(old.errors[0]).toMatchObject({ code: 'UNSUPPORTED_VERSION' });
+    expect(old.errors[0].message).toMatch(/convert the set to 0\.3/);
     expect(loadOQSEFile({ ...file([]), version: 'v1' }).success).toBe(false);
     expect(loadOQSEFile(file([], { title: '' })).success).toBe(false);
     const future = loadOQSEFile({ ...file([note(1)]), version: '1.0' });

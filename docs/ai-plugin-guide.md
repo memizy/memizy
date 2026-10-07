@@ -255,22 +255,24 @@ HTML from `render` is for text, buttons and menus. For a canvas or a 3D scene (e
 
 Every item has `id` and `type`. Common optional fields: `hints`, `explanation`, `tags`, `topic`.
 
+Lists the player chooses from or arranges are **choices** `{ id, text }` (OQSE 0.3): `options`, `items`, `prompts`, `matches`. Show `choice.text` (with `ui.text`) and send back **`choice.id`** – never a position.
+
 | `type` | Fields to show | Answer for `checkAnswer(item, answer)` |
 | :--- | :--- | :--- |
-| `mcq-single` | `question`, `options[]` | index of the chosen option |
-| `mcq-multi` | `question`, `options[]` | array of chosen indices |
+| `mcq-single` | `question`, `options[]` | id of the chosen option |
+| `mcq-multi` | `question`, `options[]` | array of chosen option ids |
 | `true-false` | `question` | `true` / `false` |
 | `short-answer` | `question` | typed text |
 | `numeric-input` | `question`, `unit?` | number |
 | `slider` | `question`, `min`, `max`, `step`, `unit?` | number |
-| `sort-items` | `question`, `items[]` (already shuffled) | array of indices of `items[]` in the player's order |
-| `match-pairs` | `question?`, `prompts[]`, `matches[]` (already shuffled) | array: for each prompt the index of the chosen match |
+| `sort-items` | `question`, `items[]` | array of item ids in the player's order |
+| `match-pairs` | `question?`, `prompts[]`, `matches[]` (may have extra matches) | `{ promptId: matchId }` |
 | `flashcard` | `front`, `back` | no checking – let the player rate themselves |
 | `note` | `title?`, `content`, `hiddenContent?` | no checking – show with `ui.renderNote` |
 
 * `checkAnswer(item, answer)` returns `true`/`false` and applies the rules of the set (case, tolerance, alternative answers). Import it from the SDK and call it in **actions** (on a player's device the item has no answer and `checkAnswer` throws).
-* Memizy already shuffles options, items and matches once per game (the same order on every device, so the board and the phones agree). Show them in the order you get them and send back **indices of these lists**. Do not read the answer from the order (for `sort-items` it is in `correctOrder`, only on the authority) – use `checkAnswer`.
-* The answer fields (`correctIndex`, `correctAnswer`, `correctAnswers`, `explanation`, the `back` of a flashcard…) exist on players' devices only after `ctx.reveal`. Show them only in the reveal phase and only when `!item.answerHidden`.
+* Memizy already shuffles options, items and matches once per game (the same order on every device, so the board and the phones agree). Show them in the order you get them; do not shuffle them again.
+* The answer fields (`correctId`, `correctIds`, `correctOrder`, `pairs`, `correctAnswer`, `correctAnswers`, `explanation`, a choice's `explanation`, the `back` of a flashcard…) exist on players' devices only after `ctx.reveal`. Show them only in the reveal phase and only when `!item.answerHidden`.
 
 ---
 
@@ -381,7 +383,7 @@ defineGame({
     const item = ui.item(state.questions[state.round]);
     const options = item.type === 'true-false'
       ? [{ label: 'Pravda', answer: true }, { label: 'Nepravda', answer: false }]
-      : item.options.map((text, i) => ({ label: ui.text(text, { inline: true }), answer: i }));
+      : item.options.map((option) => ({ label: ui.text(option.text, { inline: true }), answer: option.id }));
     const ranking = [...ui.players].sort((a, b) => (state.scores[b.id] ?? 0) - (state.scores[a.id] ?? 0));
     const board = ui.view === 'board';
 

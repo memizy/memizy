@@ -1,27 +1,17 @@
 /**
  * Study items as the instances of a session see them (SPEC section 4.4).
  *
- * 1. Display order: the host shuffles options, pairs, events… once per session
- *    (the same order on every device, so a board and the phones agree). The
- *    authority gets the full item in this order: answers are remapped, and the
- *    types whose answer is the order itself carry it in an extra field
- *    (`correctOrder`, `correctMatches`).
- * 2. Public items: in multiplayer, the other instances get the same items
- *    without anything that gives the answer away (`answerHidden: true`). The
- *    authority shows answers with `ctx.reveal` (plugin SDK).
+ * 1. Display order: the host shuffles options, items to sort, pairs, events… once per
+ *    session (the same order on every device, so a board and the phones agree). OQSE 0.3
+ *    answers refer to choice IDs, so shuffling never changes an answer.
+ * 2. Public items: in multiplayer, the other instances get the same items without
+ *    anything that gives the answer away (`answerHidden: true`). The authority shows
+ *    answers with `ctx.reveal` (plugin SDK).
  *
  * Pure functions, so a future server-side authority can do exactly the same.
  */
 
 import type { OQSEAnyItem, OQSEMeta } from '@memizy/oqse';
-
-/** Extra fields of an item in display order (only on the authority's copy). */
-export interface DisplayAnswerFields {
-  /** sort-items: indices of `items` in the correct order. timeline: event ids in order. */
-  correctOrder?: number[] | string[];
-  /** match-pairs: for each prompt, the index of its match in `matches`. */
-  correctMatches?: number[];
-}
 
 /** Marks an item whose answer was removed (multiplayer, not the authority). */
 export interface PublicItemMark {
@@ -50,97 +40,62 @@ export function seededRandom(seed: string): () => number {
   };
 }
 
-/** A random permutation: `perm[displayIndex] = originalIndex`. Never the identity when it can avoid it. */
-function permutation(length: number, random: () => number, avoidIdentity = false): number[] {
-  const base = Array.from({ length }, (_, i) => i);
+/** A shuffled copy; when `avoid` is given, tries not to return that exact order. */
+function shuffled<T>(list: T[], random: () => number, avoid?: (order: T[]) => boolean): T[] {
   for (let attempt = 0; attempt < 6; attempt++) {
-    const perm = [...base];
-    for (let i = perm.length - 1; i > 0; i--) {
+    const copy = [...list];
+    for (let i = copy.length - 1; i > 0; i--) {
       const j = Math.floor(random() * (i + 1));
-      [perm[i], perm[j]] = [perm[j], perm[i]];
+      [copy[i], copy[j]] = [copy[j], copy[i]];
     }
-    if (!avoidIdentity || length < 2 || perm.some((v, i) => v !== i)) return perm;
+    if (!avoid || copy.length < 2 || !avoid(copy)) return copy;
   }
-  return [...base.slice(1), 0];
+  return [...list.slice(1), list[0]];
 }
 
-const inverse = (perm: number[]): number[] => {
-  const inv: number[] = [];
-  perm.forEach((original, display) => (inv[original] = display));
-  return inv;
-};
-const pick = <T>(list: T[], perm: number[]): T[] => perm.map((i) => list[i]);
+const byId = (ids: string[]) => (order: { id: string }[]) => order.every((c, i) => c.id === ids[i]);
 
 // ----------------------------------------------------------------------------
 // Display order (authority copy, answers kept)
 // ----------------------------------------------------------------------------
 
-/** The item in display order with its answers remapped. Items that must not be shuffled stay as they are. */
+/** The item in display order. Answers refer to IDs, so only the lists move. */
 export function displayItem(item: OQSEAnyItem, random: () => number): OQSEAnyItem {
   const it = structuredClone(item) as any;
   switch (it.type) {
     case 'mcq-single':
-    case 'mcq-multi': {
-      if (it.shuffle === false || !Array.isArray(it.options)) return it;
-      const perm = permutation(it.options.length, random);
-      const inv = inverse(perm);
-      it.options = pick(it.options, perm);
-      if (Array.isArray(it.optionExplanations) && it.optionExplanations.length === perm.length) it.optionExplanations = pick(it.optionExplanations, perm);
-      if (it.type === 'mcq-single') it.correctIndex = inv[it.correctIndex];
-      else it.correctIndices = (it.correctIndices as number[]).map((i) => inv[i]).sort((a, b) => a - b);
+    case 'mcq-multi':
+      if (it.shuffle !== false) it.options = shuffled(it.options, random);
       return it;
-    }
-    case 'fill-in-select': {
-      for (const blank of Object.values(it.blanks ?? {}) as { options: string[]; correctIndex: number; shuffle?: boolean }[]) {
-        if (blank.shuffle === false || !Array.isArray(blank.options)) continue;
-        const perm = permutation(blank.options.length, random);
-        blank.correctIndex = inverse(perm)[blank.correctIndex];
-        blank.options = pick(blank.options, perm);
+    case 'fill-in-select':
+      for (const blank of Object.values(it.blanks ?? {}) as { options: unknown[]; shuffle?: boolean }[]) {
+        if (blank.shuffle !== false) blank.options = shuffled(blank.options, random);
       }
       return it;
-    }
-    case 'sort-items': {
-      // OQSE: the items are listed in the correct order and the application must shuffle them.
-      const perm = permutation(it.items.length, random, true);
-      it.items = pick(it.items, perm);
-      it.correctOrder = inverse(perm);
+    case 'sort-items':
+      // Never show the items already sorted.
+      it.items = shuffled(it.items, random, byId(it.correctOrder));
       return it;
-    }
-    case 'match-pairs': {
-      const p = permutation(it.prompts.length, random);
-      const m = permutation(it.matches.length, random, true);
-      const mInv = inverse(m);
-      it.prompts = pick(it.prompts, p);
-      it.matches = pick(it.matches, m);
-      it.correctMatches = p.map((original) => mInv[original]);
+    case 'match-pairs':
+      it.prompts = shuffled(it.prompts, random);
+      it.matches = shuffled(it.matches, random);
       return it;
-    }
-    case 'match-complex': {
-      const l = permutation(it.leftItems.length, random);
-      const r = permutation(it.rightItems.length, random);
-      const lInv = inverse(l), rInv = inverse(r);
-      it.leftItems = pick(it.leftItems, l);
-      it.rightItems = pick(it.rightItems, r);
-      it.connections = (it.connections as [number, number][]).map(([a, b]) => [lInv[a], rInv[b]]);
+    case 'match-complex':
+      it.leftItems = shuffled(it.leftItems, random);
+      it.rightItems = shuffled(it.rightItems, random);
       return it;
-    }
-    case 'timeline': {
-      it.correctOrder = (it.events as { id: string }[]).map((e) => e.id);
-      if (it.shuffle !== false) it.events = pick(it.events, permutation(it.events.length, random, true));
+    case 'timeline':
+      if (it.shuffle !== false) {
+        const chronological = [...it.events].sort((a: { date: string }, b: { date: string }) => a.date.localeCompare(b.date)).map((e: { id: string }) => e.id);
+        it.events = shuffled(it.events, random, byId(chronological));
+      }
       return it;
-    }
-    case 'categorize': {
-      it.items = pick(it.items, permutation(it.items.length, random)); // answers are keyed by entry id
+    case 'categorize':
+      it.items = shuffled(it.items, random);
       return it;
-    }
-    case 'diagram-label': {
-      if (it.requireTyping) return it;
-      const perm = permutation(it.labels.length, random);
-      const inv = inverse(perm);
-      it.labels = pick(it.labels, perm);
-      for (const zone of it.zones) zone.correctLabelIndex = inv[zone.correctLabelIndex];
+    case 'diagram-label':
+      if (!it.requireTyping) it.labels = shuffled(it.labels, random);
       return it;
-    }
     default:
       return it;
   }
@@ -151,26 +106,28 @@ export function displayItem(item: OQSEAnyItem, random: () => number): OQSEAnyIte
 // ----------------------------------------------------------------------------
 
 /** Fields that explain or give away the answer, on any item. */
-const COMMON_HIDDEN = ['explanation', 'incorrectFeedback', 'optionExplanations'];
+const COMMON_HIDDEN = ['explanation', 'incorrectFeedback'];
 
 const HIDDEN: Record<string, string[]> = {
   note: ['hiddenContent'],
   flashcard: ['back'],
   'true-false': ['correctAnswer'],
-  'mcq-single': ['correctIndex'],
-  'mcq-multi': ['correctIndices'],
+  'mcq-single': ['correctId'],
+  'mcq-multi': ['correctIds'],
   'short-answer': ['correctAnswers'],
   'sort-items': ['correctOrder'],
-  'match-pairs': ['correctMatches'],
+  'match-pairs': ['pairs'],
   'match-complex': ['connections'],
   slider: ['correctAnswer'],
   'numeric-input': ['correctAnswer', 'range'],
   'math-input': ['correctAnswer', 'alternativeAnswers'],
   matrix: ['correctCells'],
-  timeline: ['correctOrder'],
   'open-ended': ['sampleAnswer', 'rubric'],
   'chess-puzzle': ['correctAnswers'],
 };
+
+/** Lists of choices (whose `explanation` tells the answer). */
+const CHOICE_LISTS = ['options', 'items', 'prompts', 'matches', 'leftItems', 'rightItems', 'categories', 'rows', 'columns', 'labels'];
 
 /**
  * The item without its answer. Custom (`x-`) types are passed unchanged: the
@@ -181,21 +138,28 @@ export function publicItem(item: OQSEAnyItem): OQSEAnyItem {
   if (type.startsWith('x-')) return structuredClone(item);
   const it = structuredClone(item) as any;
   for (const key of [...COMMON_HIDDEN, ...(HIDDEN[type] ?? [])]) delete it[key];
+  for (const key of CHOICE_LISTS) {
+    if (Array.isArray(it[key])) for (const choice of it[key]) if (choice && typeof choice === 'object') delete choice.explanation;
+  }
   switch (type) {
     case 'fill-in-blanks':
       it.blanks = Object.fromEntries(Object.keys(it.blanks ?? {}).map((token) => [token, []]));
       break;
     case 'fill-in-select':
-      for (const blank of Object.values(it.blanks ?? {}) as Record<string, unknown>[]) delete blank.correctIndex;
+      for (const blank of Object.values(it.blanks ?? {}) as Record<string, any>[]) {
+        delete blank.correctId;
+        for (const choice of blank.options ?? []) delete choice.explanation;
+      }
       break;
     case 'categorize':
-      for (const entry of it.items ?? []) delete entry.correctCategoryIndex;
+      for (const entry of it.items ?? []) delete entry.correctCategoryId;
       break;
     case 'timeline':
       for (const event of it.events ?? []) { delete event.date; delete event.precision; }
       break;
     case 'diagram-label':
-      for (const zone of it.zones ?? []) delete zone.correctLabelIndex;
+      for (const zone of it.zones ?? []) delete zone.correctLabelId;
+      if (it.requireTyping) it.labels = []; // typed answers: the labels are the answers
       break;
     case 'pin-on-image':
     case 'pin-on-model':

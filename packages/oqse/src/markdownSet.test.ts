@@ -22,7 +22,7 @@ $$`;
 
 function set(items: NoteItem[], meta: Partial<OQSEFile['meta']> = {}): OQSEFile {
   return {
-    version: '0.2',
+    version: '0.3',
     meta: {
       id: META_ID,
       language: 'cs',
@@ -93,7 +93,7 @@ describe('round-trip json -> md -> json', () => {
     expect(md).toBe(
       [
         '---',
-        'oqse: "0.2"',
+        'oqse: "0.3"',
         `id: ${META_ID}`,
         'language: cs',
         'createdAt: 2026-01-01T00:00:00Z',
@@ -122,11 +122,11 @@ describe('round-trip json -> md -> json', () => {
 });
 
 describe('parseMarkdownSet', () => {
-  const header = `---\noqse: "0.2"\nid: ${META_ID}\nlanguage: cs\ncreatedAt: 2026-01-01T00:00:00Z\nupdatedAt: 2026-01-01T00:00:00Z\n---\n# T\n`;
+  const header = `---\noqse: "0.3"\nid: ${META_ID}\nlanguage: cs\ncreatedAt: 2026-01-01T00:00:00Z\nupdatedAt: 2026-01-01T00:00:00Z\n---\n# T\n`;
 
   it('parses the conventional structure and generates missing IDs and dates', () => {
     const { file, generated } = parseMarkdownSet(
-      '---\noqse: "0.2"\nlanguage: cs\n---\n# Termodynamika\n\nÚvod.\n\n## Zákony\n\n### A\nObsah A\n\n#### Detail\n\n### B\n<!-- oqse: {tags: [x]} -->\nObsah B\n',
+      '---\noqse: "0.3"\nlanguage: cs\n---\n# Termodynamika\n\nÚvod.\n\n## Zákony\n\n### A\nObsah A\n\n#### Detail\n\n### B\n<!-- oqse: {tags: [x]} -->\nObsah B\n',
     );
     expect(generated).toEqual(['meta.id', 'meta.createdAt', 'meta.updatedAt', 'items[0].id', 'items[1].id']);
     expect(file.meta).toMatchObject({ title: 'Termodynamika', description: 'Úvod.' });
@@ -135,12 +135,12 @@ describe('parseMarkdownSet', () => {
   });
 
   it('accepts the title only in the frontmatter (no title heading)', () => {
-    const { file } = parseMarkdownSet('---\noqse: "0.2"\ntitle: T\nlanguage: cs\n---\nPopis\n\n## K\n\n### A\nx\n');
+    const { file } = parseMarkdownSet('---\noqse: "0.3"\ntitle: T\nlanguage: cs\n---\nPopis\n\n## K\n\n### A\nx\n');
     expect(file.meta).toMatchObject({ title: 'T', description: 'Popis' });
   });
 
   it('supports noteHeadingLevel 2 (chapters #, notes ##)', () => {
-    const { file } = parseMarkdownSet('---\noqse: "0.2"\nnoteHeadingLevel: 2\ntitle: T\nlanguage: cs\n---\n# K\n\n## A\nx\n\n### Sekce\n');
+    const { file } = parseMarkdownSet('---\noqse: "0.3"\nnoteHeadingLevel: 2\ntitle: T\nlanguage: cs\n---\n# K\n\n## A\nx\n\n### Sekce\n');
     expect(file.items[0]).toMatchObject({ title: 'A', topic: 'K', content: 'x\n\n## Sekce' });
   });
 
@@ -159,12 +159,12 @@ describe('parseMarkdownSet', () => {
   it.each([
     ['missing frontmatter', 'Body', /must start with "---"/],
     ['missing version', `---\ntitle: T\n---\n### A\nx`, /OQSE version/],
-    ['description in frontmatter', `---\noqse: "0.2"\ndescription: x\n---\n`, /description as text/],
-    ['title heading differs from frontmatter', `---\noqse: "0.2"\ntitle: A\nlanguage: cs\n---\n# B\n### N\nx`, /differs from "title"/],
+    ['description in frontmatter', `---\noqse: "0.3"\ndescription: x\n---\n`, /description as text/],
+    ['title heading differs from frontmatter', `---\noqse: "0.3"\ntitle: A\nlanguage: cs\n---\n# B\n### N\nx`, /differs from "title"/],
     ['two title headings', `${header}### A\nx\n# Second`, /must come before|Only one/],
-    ['text before the title heading', `---\noqse: "0.2"\nlanguage: cs\n---\nIntro\n# T\n### A\nx`, /before the set title/],
+    ['text before the title heading', `---\noqse: "0.3"\nlanguage: cs\n---\nIntro\n# T\n### A\nx`, /before the set title/],
     ['only chapters, no notes (hint)', `${header}## A\nx`, /No note headings found.*noteHeadingLevel/],
-    ['heading above the title level', `---\noqse: "0.2"\nnoteHeadingLevel: 4\ntitle: T\nlanguage: cs\n---\n# Too high\n`, /Heading level 1 is not allowed/],
+    ['heading above the title level', `---\noqse: "0.3"\nnoteHeadingLevel: 4\ntitle: T\nlanguage: cs\n---\n# Too high\n`, /Heading level 1 is not allowed/],
     ['text directly under a chapter', `${header}## Kapitola\nloose text\n### A\nx`, /must belong to a note/],
     ['reserved key in metadata', `${header}### A\n<!-- oqse: {content: x} -->\nx`, /"content" must not be/],
     ['topic in metadata with chapters', `${header}### A\n<!-- oqse: {topic: x} -->\nx`, /comes from the chapter heading/],

@@ -3,7 +3,7 @@
  *
  * ```markdown
  * ---
- * oqse: "0.2"
+ * oqse: "0.3"
  * language: cs
  * ---
  * # Termodynamika                         ← level L-2: set title (`meta.title`)
@@ -108,7 +108,7 @@ export function parseMarkdownSet(markdown: string): MarkdownSetParseResult {
   const front = parseYamlMapping(all.slice(1, closing).map((l) => l.text).join('\n'), 2, 'Frontmatter');
   const version = front.oqse;
   if (typeof version !== 'string' && typeof version !== 'number') {
-    throw new MarkdownSetError('Frontmatter must contain the OQSE version, e.g. oqse: "0.2".', { line: 2 });
+    throw new MarkdownSetError('Frontmatter must contain the OQSE version, e.g. oqse: "0.3".', { line: 2 });
   }
   const level = front.noteHeadingLevel ?? DEFAULT_NOTE_HEADING_LEVEL;
   if (!Number.isInteger(level) || (level as number) < 1 || (level as number) > 6) {

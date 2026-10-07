@@ -1,5 +1,5 @@
 /**
- * OQSE v0.2 Zod Validation Schemas
+ * OQSE v0.3 Zod Validation Schemas
  * 
  * Runtime validation schemas for OQSE (Open Quiz & Study Exchange) format.
  * Uses Zod for type-safe runtime validation with detailed error messages.
@@ -90,6 +90,41 @@ export const OptionalRichContentSchema = z.string().max(10000, 'Question must no
  * Blank token identifier
  */
 export const BlankTokenSchema = z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/, 'Token must be alphanumeric, max 64 chars');
+
+/**
+ * ID of a choice within its item (letters, digits, "_", "-", "."; max 64).
+ * Answers refer to choices by this ID, so they survive reordering and editing.
+ */
+export const ChoiceIdSchema = z.string().regex(/^[A-Za-z0-9_.-]{1,64}$/, 'Choice ID must contain only letters, digits, "_", "-" and "." (max 64 chars)');
+
+/**
+ * A choice the learner selects or arranges: `{ id, text, explanation? }`.
+ */
+export const ChoiceSchema = z.looseObject({
+  id: ChoiceIdSchema,
+  text: RichContentSchema.max(2000, 'Choice text must not be longer than 2000 characters'),
+  explanation: RichContentSchema.max(10000, 'Choice explanation must not be longer than 10000 characters').optional(),
+});
+
+/** A list of choices with unique IDs. */
+export function choiceList(min: number, what: string) {
+  return z
+    .array(ChoiceSchema)
+    .min(min, `Must have at least ${min} ${what}`)
+    .max(100, `Maximum 100 ${what}`)
+    .refine((list) => new Set(list.map((c) => c.id)).size === list.length, { message: 'Choice IDs must be unique within the list' });
+}
+
+const ids = (list: { id: string }[]) => new Set(list.map((c) => c.id));
+
+/**
+ * Skill ID from a shared vocabulary: lowercase segments joined by dots, from general to
+ * specific (e.g. "chess.tactics.fork", "math.fractions.addition").
+ */
+export const SkillIdSchema = z
+  .string()
+  .max(128, 'Skill ID must not be longer than 128 characters')
+  .regex(/^[a-z0-9][a-z0-9_-]*(\.[a-z0-9][a-z0-9_-]*)*$/, 'Skill ID must be lowercase segments joined by dots (e.g. "chess.tactics.fork")');
 
 // ============================================================================
 // Media Types
@@ -363,6 +398,7 @@ export const BaseItemSchema = z.looseObject({
   assets: AssetDictionarySchema.optional(),
   lang: LanguageCodeSchema.optional(),
   tags: z.array(PlainTextSchema).optional(),
+  skills: z.array(SkillIdSchema).max(20, 'Maximum 20 skills per item').optional(),
   topic: PlainTextSchema.optional(),
   difficulty: z.number().int().min(1, 'Difficulty must be at least 1').max(5, 'Difficulty must be at most 5').optional(),
   timeLimit: z.number().positive('Time limit must be a positive number').optional(),
@@ -385,14 +421,12 @@ export const BaseItemSchema = z.looseObject({
  * Select blank object for fill-in-select
  */
 export const SelectBlankObjectSchema = z.looseObject({
-  options: z.array(RichContentSchema).min(1, 'Must have at least 1 option'),
-  correctIndex: z.number().int().nonnegative(),
+  options: choiceList(1, 'options'),
+  correctId: ChoiceIdSchema,
+  shuffle: z.boolean().optional(),
 }).refine(
-  (data) => data.correctIndex < data.options.length,
-  {
-    message: 'Correct answer index references non-existent option',
-    path: ['correctIndex'],
-  }
+  (data) => ids(data.options).has(data.correctId),
+  { message: 'correctId references a non-existent option', path: ['correctId'] }
 );
 
 /**
@@ -470,9 +504,9 @@ export const CameraSetupSchema = z.looseObject({
  * Categorize item
  */
 export const CategorizeEntrySchema = z.looseObject({
-  id: PlainTextSchema,
+  id: ChoiceIdSchema,
   text: RichContentSchema,
-  correctCategoryIndex: z.number().int().nonnegative(),
+  correctCategoryId: ChoiceIdSchema,
 });
 
 /**
@@ -491,9 +525,9 @@ export const TimelineEventSchema = z.looseObject({
  * Diagram zone (extended hotspot)
  */
 export const DiagramZoneSchema = z.union([
-  RectHotspotSchema.extend({ correctLabelIndex: z.number().int().nonnegative() }),
-  CircleHotspotSchema.extend({ correctLabelIndex: z.number().int().nonnegative() }),
-  PolygonHotspotSchema.extend({ correctLabelIndex: z.number().int().nonnegative() }),
+  RectHotspotSchema.extend({ id: ChoiceIdSchema, correctLabelId: ChoiceIdSchema }),
+  CircleHotspotSchema.extend({ id: ChoiceIdSchema, correctLabelId: ChoiceIdSchema }),
+  PolygonHotspotSchema.extend({ id: ChoiceIdSchema, correctLabelId: ChoiceIdSchema }),
 ]);
 
 /**
@@ -571,32 +605,14 @@ export const TrueFalseItemSchema = BaseItemSchema.extend({
 export const MCQSingleItemSchema = BaseItemSchema.extend({
   type: z.literal('mcq-single'),
   question: RichContentSchema.max(10000, 'Question must not be longer than 10000 characters'),
-  options: z.array(RichContentSchema.max(2000, 'Option must not be longer than 2000 characters')).min(2, 'Question must have at least 2 options').max(100, 'Maximum 100 options'),
-  correctIndex: z.number().int().nonnegative(),
+  options: choiceList(2, 'options'),
+  correctId: ChoiceIdSchema,
   shuffle: z.boolean().optional(),
-  optionExplanations: z.array(z.union([RichContentSchema, z.null()])).optional(),
 }).refine(
-  (data) => data.correctIndex < data.options.length,
-  {
-    message: 'Correct answer index references non-existent option',
-    path: ['correctIndex'],
-  }
+  (data) => ids(data.options).has(data.correctId),
+  { message: 'correctId references a non-existent option', path: ['correctId'] }
 ).refine(
-  (data) => {
-    if (data.optionExplanations) {
-      return data.optionExplanations.length === 0 || data.optionExplanations.length === data.options.length;
-    }
-    return true;
-  },
-  {
-    message: 'Number of option explanations must match number of options',
-    path: ['optionExplanations'],
-  }
-).refine(
-  (data) => {
-    const uniqueOptions = new Set(data.options.map(opt => opt.toLowerCase()));
-    return uniqueOptions.size === data.options.length;
-  },
+  (data) => new Set(data.options.map((o) => o.text.toLowerCase())).size === data.options.length,
   { message: 'Options must not contain duplicates (case-insensitive)', path: ['options'] }
 );
 
@@ -606,80 +622,28 @@ export const MCQSingleItemSchema = BaseItemSchema.extend({
 export const MCQMultiItemSchema = BaseItemSchema.extend({
   type: z.literal('mcq-multi'),
   question: RichContentSchema.max(10000, 'Question must not be longer than 10000 characters'),
-  options: z.array(RichContentSchema.max(2000, 'Option must not be longer than 2000 characters')).min(2, 'Question must have at least 2 options').max(100, 'Maximum 100 options'),
-  correctIndices: z.array(z.number().int().nonnegative()).min(1, 'Must have at least 1 correct answer'),
+  options: choiceList(2, 'options'),
+  correctIds: z.array(ChoiceIdSchema).min(1, 'Must have at least 1 correct answer'),
   minSelections: z.number().int().positive().optional(),
   maxSelections: z.number().int().positive().optional(),
   shuffle: z.boolean().optional(),
-  optionExplanations: z.array(z.union([RichContentSchema, z.null()])).optional(),
 }).refine(
-  (data) => {
-    // All correctIndices must be valid
-    return data.correctIndices.every(idx => idx < data.options.length);
-  },
-  {
-    message: 'Some of correct answer indices reference non-existent option',
-    path: ['correctIndices'],
-  }
+  (data) => data.correctIds.every((id) => ids(data.options).has(id)),
+  { message: 'Some of correctIds reference a non-existent option', path: ['correctIds'] }
 ).refine(
-  (data) => {
-    // No duplicate indices
-    const unique = new Set(data.correctIndices);
-    return unique.size === data.correctIndices.length;
-  },
-  {
-    message: 'Correct answer indices contain duplicates',
-    path: ['correctIndices'],
-  }
+  (data) => new Set(data.correctIds).size === data.correctIds.length,
+  { message: 'correctIds contain duplicates', path: ['correctIds'] }
 ).refine(
-  (data) => {
-    if (data.minSelections && data.maxSelections) {
-      return data.minSelections <= data.maxSelections;
-    }
-    return true;
-  },
-  {
-    message: 'Minimum number of selections must be less than or equal to maximum',
-    path: ['maxSelections'],
-  }
+  (data) => !(data.minSelections && data.maxSelections) || data.minSelections <= data.maxSelections,
+  { message: 'Minimum number of selections must be less than or equal to maximum', path: ['maxSelections'] }
 ).refine(
-  (data) => {
-    if (data.maxSelections) {
-      return data.maxSelections <= data.options.length;
-    }
-    return true;
-  },
-  {
-    message: 'Maximum number of selections must not exceed number of options',
-    path: ['maxSelections'],
-  }
+  (data) => !data.maxSelections || data.maxSelections <= data.options.length,
+  { message: 'Maximum number of selections must not exceed number of options', path: ['maxSelections'] }
 ).refine(
-  (data) => {
-    if (data.minSelections) {
-      return data.minSelections <= data.options.length;
-    }
-    return true;
-  },
-  {
-    message: 'minSelections cannot be greater than the number of options',
-    path: ['minSelections'],
-  }
+  (data) => !data.minSelections || data.minSelections <= data.options.length,
+  { message: 'minSelections cannot be greater than the number of options', path: ['minSelections'] }
 ).refine(
-  (data) => {
-    if (data.optionExplanations) {
-      return data.optionExplanations.length === 0 || data.optionExplanations.length === data.options.length;
-    }
-    return true;
-  },
-  {
-    message: 'Number of option explanations must match number of options',
-    path: ['optionExplanations'],
-  }
-).refine(
-  (data) => {
-    const uniqueOptions = new Set(data.options.map(opt => opt.toLowerCase()));
-    return uniqueOptions.size === data.options.length;
-  },
+  (data) => new Set(data.options.map((o) => o.text.toLowerCase())).size === data.options.length,
   { message: 'Options must not contain duplicates (case-insensitive)', path: ['options'] }
 );
 
@@ -802,14 +766,20 @@ export const FillInSelectItemSchema = BaseItemSchema.extend({
 export const MatchPairsItemSchema = BaseItemSchema.extend({
   type: z.literal('match-pairs'),
   question: OptionalRichContentSchema,
-  prompts: z.array(RichContentSchema).min(2, 'Must have at least 2 pairs to match').max(100, 'Maximum 100 pairs'),
-  matches: z.array(RichContentSchema).min(2, 'Must have at least 2 pairs to match').max(100, 'Maximum 100 pairs'),
+  prompts: choiceList(2, 'prompts'),
+  /** May contain more entries than prompts (distractors). */
+  matches: choiceList(2, 'matches'),
+  /** For every prompt ID, the ID of its match. */
+  pairs: z.record(ChoiceIdSchema, ChoiceIdSchema),
 }).refine(
-  (data) => data.prompts.length === data.matches.length,
-  {
-    message: 'Number of prompts must match number of matches',
-    path: ['matches'],
-  }
+  (data) => data.prompts.every((p) => p.id in data.pairs) && Object.keys(data.pairs).every((id) => ids(data.prompts).has(id)),
+  { message: 'pairs must have exactly one entry for every prompt', path: ['pairs'] }
+).refine(
+  (data) => Object.values(data.pairs).every((id) => ids(data.matches).has(id)),
+  { message: 'Some pair references a non-existent match', path: ['pairs'] }
+).refine(
+  (data) => new Set(Object.values(data.pairs)).size === Object.values(data.pairs).length,
+  { message: 'Each match may belong to only one prompt', path: ['pairs'] }
 );
 
 /**
@@ -818,42 +788,19 @@ export const MatchPairsItemSchema = BaseItemSchema.extend({
 export const MatchComplexItemSchema = BaseItemSchema.extend({
   type: z.literal('match-complex'),
   question: OptionalRichContentSchema,
-  leftItems: z.array(RichContentSchema).min(1, 'Must have at least 1 item on left'),
-  rightItems: z.array(RichContentSchema).min(1, 'Must have at least 1 item on right'),
-  connections: z.array(z.tuple([z.number().int().nonnegative(), z.number().int().nonnegative()])).min(1, 'Must have at least 1 connection'),
+  leftItems: choiceList(1, 'items on the left'),
+  rightItems: choiceList(1, 'items on the right'),
+  connections: z.array(z.tuple([ChoiceIdSchema, ChoiceIdSchema])).min(1, 'Must have at least 1 connection'),
   minCorrect: z.number().int().positive().optional(),
 }).refine(
-  (data) => {
-    // Validate all connection indices
-    return data.connections.every(([left, right]) => 
-      left < data.leftItems.length && right < data.rightItems.length
-    );
-  },
-  {
-    message: 'Some connection references non-existent item',
-    path: ['connections'],
-  }
+  (data) => data.connections.every(([left, right]) => ids(data.leftItems).has(left) && ids(data.rightItems).has(right)),
+  { message: 'Some connection references a non-existent item', path: ['connections'] }
 ).refine(
-  (data) => {
-    // Check for duplicate connections
-    const connectionSet = new Set(data.connections.map(c => `${c[0]}-${c[1]}`));
-    return connectionSet.size === data.connections.length;
-  },
-  {
-    message: 'Connections contain duplicates',
-    path: ['connections'],
-  }
+  (data) => new Set(data.connections.map(([l, r]) => `${l}\u0000${r}`)).size === data.connections.length,
+  { message: 'Connections contain duplicates', path: ['connections'] }
 ).refine(
-  (data) => {
-    if (data.minCorrect) {
-      return data.minCorrect <= data.connections.length;
-    }
-    return true;
-  },
-  {
-    message: 'Minimum correct answers must not exceed total number of connections',
-    path: ['minCorrect'],
-  }
+  (data) => !data.minCorrect || data.minCorrect <= data.connections.length,
+  { message: 'Minimum correct answers must not exceed total number of connections', path: ['minCorrect'] }
 );
 
 /**
@@ -862,8 +809,13 @@ export const MatchComplexItemSchema = BaseItemSchema.extend({
 export const SortItemsItemSchema = BaseItemSchema.extend({
   type: z.literal('sort-items'),
   question: RichContentSchema.max(10000, 'Question must not be longer than 10000 characters'),
-  items: z.array(RichContentSchema).min(2, 'Must have at least 2 items to sort'),
-});
+  items: choiceList(2, 'items to sort'),
+  /** IDs of all items in the correct order. */
+  correctOrder: z.array(ChoiceIdSchema),
+}).refine(
+  (data) => data.correctOrder.length === data.items.length && new Set(data.correctOrder).size === data.items.length && data.correctOrder.every((id) => ids(data.items).has(id)),
+  { message: 'correctOrder must list every item ID exactly once', path: ['correctOrder'] }
+);
 
 /**
  * Slider Item
@@ -936,23 +888,14 @@ export const PinOnImageItemSchema = BaseItemSchema.extend({
 export const CategorizeItemSchema = BaseItemSchema.extend({
   type: z.literal('categorize'),
   question: RichContentSchema.max(10000, 'Question must not be longer than 10000 characters'),
-  categories: z.array(PlainTextSchema).min(2, 'Must have at least 2 categories'),
+  categories: choiceList(2, 'categories'),
   items: z.array(CategorizeEntrySchema).min(1, 'Must have at least 1 item to categorize'),
 }).refine(
-  (data) => {
-    const uniqueCategories = new Set(data.categories.map(cat => cat.toLowerCase()));
-    return uniqueCategories.size === data.categories.length;
-  },
+  (data) => new Set(data.categories.map((c) => c.text.toLowerCase())).size === data.categories.length,
   { message: 'Categories must not contain duplicates (case-insensitive)', path: ['categories'] }
 ).refine(
-  (data) => {
-    // Validate all correctCategoryIndex values
-    return data.items.every(item => item.correctCategoryIndex < data.categories.length);
-  },
-  {
-    message: 'Some item references non-existent category',
-    path: ['items'],
-  }
+  (data) => data.items.every((entry) => ids(data.categories).has(entry.correctCategoryId)),
+  { message: 'Some item references a non-existent category', path: ['items'] }
 );
 
 /**
@@ -961,6 +904,7 @@ export const CategorizeItemSchema = BaseItemSchema.extend({
 export const TimelineItemSchema = BaseItemSchema.extend({
   type: z.literal('timeline'),
   question: RichContentSchema.max(10000, 'Question must not be longer than 10000 characters'),
+  /** The correct order is the order of the dates (events with the same date may come in any order). */
   events: z.array(TimelineEventSchema).min(2, 'Must have at least 2 events'),
   shuffle: z.boolean().optional(),
 });
@@ -971,47 +915,20 @@ export const TimelineItemSchema = BaseItemSchema.extend({
 export const MatrixItemSchema = BaseItemSchema.extend({
   type: z.literal('matrix'),
   question: RichContentSchema.max(10000, 'Question must not be longer than 10000 characters'),
-  rows: z.array(PlainTextSchema).min(1, 'Must have at least 1 row'),
-  columns: z.array(PlainTextSchema).min(1, 'Must have at least 1 column'),
-  correctCells: z.array(z.tuple([z.number().int().nonnegative(), z.number().int().nonnegative()])).min(1, 'Must have at least 1 correct cell'),
+  rows: choiceList(1, 'rows'),
+  columns: choiceList(1, 'columns'),
+  /** Correct cells as [rowId, columnId]. */
+  correctCells: z.array(z.tuple([ChoiceIdSchema, ChoiceIdSchema])).min(1, 'Must have at least 1 correct cell'),
   multiplePerRow: z.boolean().optional(),
 }).refine(
-  (data) => {
-    // Validate all cell coordinates
-    return data.correctCells.every(([row, col]) => 
-      row < data.rows.length && col < data.columns.length
-    );
-  },
-  {
-    message: 'Some cell coordinates reference non-existent row or column',
-    path: ['correctCells'],
-  }
+  (data) => data.correctCells.every(([row, col]) => ids(data.rows).has(row) && ids(data.columns).has(col)),
+  { message: 'Some cell references a non-existent row or column', path: ['correctCells'] }
 ).refine(
-  (data) => {
-    // Check for duplicate cells
-    const cellSet = new Set(data.correctCells.map(c => `${c[0]}-${c[1]}`));
-    return cellSet.size === data.correctCells.length;
-  },
-  {
-    message: 'Correct cells contain duplicates',
-    path: ['correctCells'],
-  }
+  (data) => new Set(data.correctCells.map(([r, c]) => `${r}\u0000${c}`)).size === data.correctCells.length,
+  { message: 'Correct cells contain duplicates', path: ['correctCells'] }
 ).refine(
-  (data) => {
-    if (!data.multiplePerRow) {
-      // Check that each row has at most one correct cell
-      const rowCounts = new Map<number, number>();
-      for (const [row] of data.correctCells) {
-        rowCounts.set(row, (rowCounts.get(row) || 0) + 1);
-      }
-      return Array.from(rowCounts.values()).every(count => count <= 1);
-    }
-    return true;
-  },
-  {
-    message: 'If multiplePerRow is false, each row may have maximum 1 correct cell',
-    path: ['correctCells'],
-  }
+  (data) => data.multiplePerRow || new Set(data.correctCells.map(([r]) => r)).size === data.correctCells.length,
+  { message: 'If multiplePerRow is false, each row may have maximum 1 correct cell', path: ['correctCells'] }
 );
 
 /**
@@ -1032,19 +949,17 @@ export const DiagramLabelItemSchema = BaseItemSchema.extend({
   type: z.literal('diagram-label'),
   question: RichContentSchema.max(10000, 'Question must not be longer than 10000 characters'),
   targetAsset: AssetKeySchema,
-  labels: z.array(RichContentSchema).min(1, 'Must have at least 1 label'),
+  /** Labels to assign: all correct ones, may contain distractors. */
+  labels: choiceList(1, 'labels'),
   caseSensitive: z.boolean().optional(),
   requireTyping: z.boolean().optional(),
   zones: z.array(DiagramZoneSchema).min(1, 'Must have at least 1 zone'),
 }).refine(
-  (data) => {
-    // Validate all correctLabelIndex values
-    return data.zones.every(zone => zone.correctLabelIndex < data.labels.length);
-  },
-  {
-    message: 'Some zone references non-existent label',
-    path: ['zones'],
-  }
+  (data) => data.zones.every((zone) => ids(data.labels).has(zone.correctLabelId)),
+  { message: 'Some zone references a non-existent label', path: ['zones'] }
+).refine(
+  (data) => new Set(data.zones.map((z) => z.id)).size === data.zones.length,
+  { message: 'Zone IDs must be unique within the item', path: ['zones'] }
 );
 
 /**
@@ -1198,7 +1113,7 @@ export function getItemSchema(data: unknown): typeof OQSEItemSchema | typeof Cus
  */
 export const OQSEFileSchema = z.looseObject({
   $schema: z.string().url().optional(),
-  version: z.string().regex(/^\d+\.\d+$/, 'Version must be in MAJOR.MINOR format (e.g. "0.2")'),
+  version: z.string().regex(/^\d+\.\d+$/, 'Version must be in MAJOR.MINOR format (e.g. "0.3")'),
   meta: OQSEMetaSchema,
   items: z.array(AnyOQSEItemSchema).max(10000, 'Maximum 10000 items per set'),
 });

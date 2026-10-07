@@ -1,4 +1,4 @@
-# OQSE v0.2 Specification (Open Quiz & Study Exchange)
+# OQSE v0.3 Specification (Open Quiz & Study Exchange)
 
 **OQSE** (Open Quiz & Study Exchange) is an open, JSON-based format designed for easy creation, sharing, and importing of study sets. It is designed with emphasis on flexibility, extensibility, semantic interoperability, legal clarity, and backward compatibility.
 
@@ -27,6 +27,7 @@ In this specification, the keywords **MUST**, **MUST NOT**, **SHOULD**, **SHOULD
 *   [The `meta` Object](#the-meta-object)
 *   [Common Item Properties](#common-item-properties-in-items)
 *   [The `MediaObject` Object](#the-mediaobject-object)
+*   [Choices and Answers by ID](#choices-and-answers-by-id)
 *   [Item Types](#item-types-itemtype)
 *   [Helper Data Structures](#helper-data-structures)
 *   [Complete Example File](#complete-example-file)
@@ -100,15 +101,15 @@ The root object of an OQSE file consists of 4 keys:
 
 ```json
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@memizy/oqse@0.2/schemas/oqse-v0.2.json",
-  "version": "0.2",
+  "$schema": "https://cdn.jsdelivr.net/npm/@memizy/oqse@0.3/schemas/oqse-v0.3.json",
+  "version": "0.3",
   "meta": { ... },
   "items": [ ... ]
 }
 ```
 
   * `$schema` (string): **Recommended.** URL reference to the JSON Schema specification for automatic validation.
-  * `version` (string): **Required.** Version of the OQSE specification in `MAJOR.MINOR` format. The current version is `"0.2"`.
+  * `version` (string): **Required.** Version of the OQSE specification in `MAJOR.MINOR` format. The current version is `"0.3"`.
   * `meta` (object): **Required.** Object containing metadata about the entire set. [See The `meta` Object](#the-meta-object).
   * `items` (array): **Required.** Array containing individual study items. May be empty (e.g., for a template or work-in-progress set). [See Common Item Properties](#common-item-properties-in-items).
 
@@ -306,7 +307,8 @@ Each object in the `items` array is one study item. All items share these basic 
 | `type` | string | Yes | Defines the item type and its other properties. [See Item Types](#item-types-itemtype). |
 | `assets` | object | No | Dictionary (map) of media, where the key is a local identifier (e.g., `"img1"`) and the value is a `MediaObject` object. [See The `MediaObject` Object](#the-mediaobject-object). |
 | `lang` | string | No | **Plain Text.** Language code (BCP 47) for *this specific* item. Overrides `meta.language`. |
-| `tags` | string[] | No | **Plain Text.** Array of text labels (tags) for this item. |
+| `tags` | string[] | No | **Plain Text.** Array of free text labels (tags) for this item, for search and filtering. |
+| `skills` | string[] | No | Skills the item trains, as IDs from a shared vocabulary: lowercase segments joined by dots, from general to specific (e.g., `"chess.tactics.fork"`, `"math.fractions.addition"`). Regex per ID: `^[a-z0-9][a-z0-9_-]*(\.[a-z0-9][a-z0-9_-]*)*$`, max 128 characters, max 20 per item. Applications aggregate learning progress per skill and per each parent (`"chess.tactics"`, `"chess"`), across applications. Unlike `tags`, skills are meant for progress tracking, not for search. |
 | `topic` | string | No | **Plain Text.** A primary category, chapter, or lecture name to which the item belongs (e.g., "Lecture 1: Introduction"). Useful for grouping items in the UI independently of multiple `tags`. |
 | `difficulty` | number | No | Numeric difficulty from range 1 (easy) to 5 (hard). Used for simple categorization in UI. For advanced psychometric models, use `pedagogy.irtDifficulty`. |
 | `timeLimit` | number | No | Recommended time limit in seconds for answering this item. |
@@ -450,6 +452,22 @@ If same key exists in both scopes, local definition (`item.assets`) takes preced
 
 -----
 
+## Choices and Answers by ID
+
+Lists that the learner selects from or arranges are lists of **choices**: options of `mcq-single` / `mcq-multi` and of `fill-in-select` blanks, `items` of `sort-items`, `prompts` and `matches` of `match-pairs`, the sides of `match-complex`, `categories` of `categorize`, `rows` and `columns` of `matrix` and `labels` of `diagram-label`.
+
+```json
+{ "id": "b", "text": "Praha", "explanation": "The capital since the 10th century." }
+```
+
+| Key | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | string | Yes | ID unique within its list. Regex: `^[A-Za-z0-9_.-]{1,64}$` (e.g., `"a"`, `"praha"`, `"opt-1"`). |
+| `text` | string | Yes | **Rich Content.** The text of the choice (max 2,000 characters). |
+| `explanation` | string | No | **Rich Content.** Why this choice is (in)correct, shown after answering. |
+
+**Answers always refer to choice IDs, never to positions** (`correctId`, `correctIds`, `correctOrder`, `pairs`, `connections`, `correctCategoryId`, `correctCells`, `correctLabelId`). Answers, statistics and learning progress therefore stay valid when an author reorders, adds or edits choices, and applications can shuffle lists freely without remapping anything. Choice IDs are local to their list; the same ID may appear in another list of the same item.
+
 ## Item Types (`item.type`)
 
 The specification in the current version defines **22 official item types**. Each application MUST clearly identify the type using the `type` key, which determines what other processing logic is applied.
@@ -515,10 +533,9 @@ A set consisting only of notes can also be written as one Markdown document, see
 ### `type: "mcq-single"` (Single Choice)
 
   * `question` (string, required): **Rich Content.** Question text.
-  * `options` (string[], required): **Rich Content.** Array of text options. Must contain at least 2 items.
-  * `correctIndex` (number, required): Index (0, 1, 2...) of correct answer in `options` array.
+  * `options` (Choice[], required): Options to choose from ([see Choices](#choices-and-answers-by-id)). Must contain at least 2 choices; their texts must be unique (case-insensitive).
+  * `correctId` (string, required): ID of the correct option.
   * `shuffle` (boolean, optional): Whether application should shuffle options. Default: `true`.
-  * `optionExplanations` (Array<string | null>, optional): **Rich Content.** Array of explanations specific to each option. Index in this array corresponds to index in `options` array. If specific option doesn't require explanation (e.g., it's obvious), value `null` may be at that position.
 
 **Example:**
 ```json
@@ -527,11 +544,11 @@ A set consisting only of notes can also be written as one Markdown document, see
   "type": "mcq-single",
   "question": "Which engine was used on the 1st stage of the **Saturn V** rocket?",
   "options": [
-    "Raptor",
-    "Merlin",
-    "F-1"
+    { "id": "raptor", "text": "Raptor", "explanation": "Raptor powers Starship." },
+    { "id": "merlin", "text": "Merlin" },
+    { "id": "f1", "text": "F-1" }
   ],
-  "correctIndex": 2,
+  "correctId": "f1",
   "shuffle": true,
   "explanation": "Five **F-1** engines powered the first stage of Saturn V."
 }
@@ -540,12 +557,11 @@ A set consisting only of notes can also be written as one Markdown document, see
 ### `type: "mcq-multi"` (Multiple Choice)
 
   * `question` (string, required): **Rich Content.** Question text.
-  * `options` (string[], required): **Rich Content.** Array of text options. Must contain at least 2 items.
-  * `correctIndices` (number[], required): Array of indices of correct answers. Must contain at least 1 index.
+  * `options` (Choice[], required): Options to choose from. Must contain at least 2 choices with unique texts.
+  * `correctIds` (string[], required): IDs of the correct options. At least 1, no duplicates.
   * `minSelections` (number, optional): Minimum number of answers user must select.
   * `maxSelections` (number, optional): Maximum number of answers user can select.
   * `shuffle` (boolean, optional): Whether application should shuffle options. Default: `true`.
-  * `optionExplanations` (Array<string | null>, optional): **Rich Content.** Array of explanations specific to each option. Index in this array corresponds to index in `options` array. If specific option doesn't require explanation (e.g., it's obvious), value `null` may be at that position.
 
 **Example:**
 ```json
@@ -554,15 +570,14 @@ A set consisting only of notes can also be written as one Markdown document, see
   "type": "mcq-multi",
   "question": "Which of the following planets are gas giants?",
   "options": [
-    "Jupiter",
-    "Mars",
-    "Saturn",
-    "Earth",
-    "Neptune"
+    { "id": "jupiter", "text": "Jupiter" },
+    { "id": "mars", "text": "Mars" },
+    { "id": "saturn", "text": "Saturn" },
+    { "id": "earth", "text": "Earth" },
+    { "id": "neptune", "text": "Neptune" }
   ],
-  "correctIndices": [0, 2, 4],
+  "correctIds": ["jupiter", "saturn", "neptune"],
   "minSelections": 1,
-  "shuffle": true,
   "explanation": "The gas giants of the solar system are: **Jupiter**, **Saturn**, **Uranus**, and **Neptune**."
 }
 ```
@@ -633,12 +648,12 @@ A set consisting only of notes can also be written as one Markdown document, see
   "text": "The Sun is a <blank:1 /> and Earth orbits around it every <blank:2 /> days.",
   "blanks": {
     "1": {
-      "options": ["star", "planet", "moon"],
-      "correctIndex": 0
+      "options": [{ "id": "star", "text": "star" }, { "id": "planet", "text": "planet" }, { "id": "moon", "text": "moon" }],
+      "correctId": "star"
     },
     "2": {
-      "options": ["30", "365", "24"],
-      "correctIndex": 1
+      "options": [{ "id": "30", "text": "30" }, { "id": "365", "text": "365" }, { "id": "24", "text": "24" }],
+      "correctId": "365"
     }
   }
 }
@@ -647,9 +662,10 @@ A set consisting only of notes can also be written as one Markdown document, see
 ### `type: "match-pairs"` (Match Pairs)
 
   * `question` (string, optional): **Rich Content.** Instructions.
-  * `prompts` (string[], required): **Rich Content.** Left side (what is being matched) - array of strings. Must contain at least 2 items.
-  * `matches` (string[], required): **Rich Content.** Right side (target) - array of strings. Must have same length as `prompts`. Minimum length: 2 (at least 2 pairs). Maximum length: 100 items per [Length and Size Constraints](#length-and-size-constraints).
-  * **Note:** `prompts[0]` belongs to `matches[0]`, etc. Application shuffles pairs before display.
+  * `prompts` (Choice[], required): Left side (what is being matched). At least 2, max 100.
+  * `matches` (Choice[], required): Right side (targets). At least 2, max 100. May contain more choices than `prompts` – the extra ones are distractors.
+  * `pairs` (object, required): For every prompt ID, the ID of its match: `{ "promptId": "matchId" }`. Every prompt has exactly one entry; a match belongs to at most one prompt.
+  * **Note:** Application shuffles both sides before display.
 
 **Example:**
 ```json
@@ -658,46 +674,32 @@ A set consisting only of notes can also be written as one Markdown document, see
   "type": "match-pairs",
   "question": "Match planets with their characteristics:",
   "prompts": [
-    "Mars",
-    "Jupiter",
-    "Saturn"
+    { "id": "mars", "text": "Mars" },
+    { "id": "jupiter", "text": "Jupiter" },
+    { "id": "saturn", "text": "Saturn" }
   ],
   "matches": [
-    "Red planet",
-    "Largest planet",
-    "Planet with rings"
-  ]
+    { "id": "red", "text": "Red planet" },
+    { "id": "largest", "text": "Largest planet" },
+    { "id": "rings", "text": "Planet with rings" },
+    { "id": "hottest", "text": "Hottest planet" }
+  ],
+  "pairs": { "mars": "red", "jupiter": "largest", "saturn": "rings" }
 }
 ```
 
 ### `type: "match-complex"` (Advanced Matching)
 
   * `question` (string, optional): **Rich Content.** Instructions.
-  * `leftItems` (string[], required): **Rich Content.** Items on left side.
-  * `rightItems` (string[], required): **Rich Content.** Items on right side.
-  * `connections` (number[][], required): Array of index pairs `[left_index, right_index]` defining correct pairs.
+  * `leftItems` (Choice[], required): Items on left side.
+  * `rightItems` (Choice[], required): Items on right side.
+  * `connections` (string[][], required): Correct pairs as `[leftId, rightId]`.
   * `minCorrect` (number, optional): Minimum number of correct connections required for success. If not specified, user must find all connections in `connections`.
   * **Note:** This type explicitly supports more complex graph structures:
     * Multiple connections are allowed in both directions (`1:N`, `N:1`, `N:M`).
     * Isolated items (distractors) are allowed.
-    * Application MUST validate that each index in pair `[left, right]` falls within range of respective array. If index doesn't exist, import MUST stop with error.
-    * If two different connections reference same `[left, right]`, Application MUST reject duplicity (has no benefit and complicates evaluation).
-
-**Example:**
-```json
-{
-  "id": "019aa5f5-3f94-78d4-a9dc-6a0cd3a1a7df",
-  "type": "match-complex",
-  "question": "Match capitals with countries (some cities are extra):",
-  "leftItems": ["France", "Germany", "Spain"],
-  "rightItems": ["Paris", "Berlin", "Madrid", "London", "Rome"],
-  "connections": [
-    [0, 0],
-    [1, 1],
-    [2, 2]
-  ]
-}
-```
+    * Every ID in a connection MUST exist on the respective side, otherwise the item is invalid.
+    * Duplicate connections are invalid.
 
 **Example with multiple connections and distractors:**
 ```json
@@ -705,24 +707,32 @@ A set consisting only of notes can also be written as one Markdown document, see
   "id": "019aa5f5-907f-7373-aeed-128158901d17",
   "type": "match-complex",
   "question": "Match rockets to their main engines (some options are extra):",
-  "leftItems": ["Starship", "Falcon 9", "Space Launch System"],
-  "rightItems": ["Raptor", "Merlin", "RS-25", "BE-4"],
-  "connections": [
-    [0, 0],
-    [0, 3],
-    [1, 1],
-    [2, 2]
+  "leftItems": [
+    { "id": "starship", "text": "Starship" },
+    { "id": "falcon9", "text": "Falcon 9" },
+    { "id": "sls", "text": "Space Launch System" }
   ],
-  "minCorrect": 3
+  "rightItems": [
+    { "id": "raptor", "text": "Raptor" },
+    { "id": "merlin", "text": "Merlin" },
+    { "id": "rs25", "text": "RS-25" },
+    { "id": "be4", "text": "BE-4" }
+  ],
+  "connections": [
+    ["starship", "raptor"],
+    ["falcon9", "merlin"],
+    ["sls", "rs25"]
+  ]
 }
-
 ```
-In the example above, `Starship` has two correct connections (`Raptor` and `BE-4`), demonstrating the `1:N` matching capability. All four right-side items are referenced as correct answers — an item without any connection to the left side would be a distractor. Application MUST still maintain index order and ensure no index exceeds defined arrays.
+
+In the example above, `BE-4` has no connection: it is a distractor.
 
 ### `type: "sort-items"` (Sorting)
 
   * `question` (string, required): **Rich Content.** Instructions.
-  * `items` (string[], required): **Rich Content.** Array of items in **correct** order. Must contain at least 2 items and application MUST shuffle them.
+  * `items` (Choice[], required): Items to sort, in any order. At least 2. Application MUST shuffle them before display.
+  * `correctOrder` (string[], required): IDs of all items in the correct order (each ID exactly once).
 
 **Example:**
 ```json
@@ -731,11 +741,12 @@ In the example above, `Starship` has two correct connections (`Raptor` and `BE-4
   "type": "sort-items",
   "question": "Sort planets by distance from the Sun:",
   "items": [
-    "Mercury",
-    "Venus",
-    "Earth",
-    "Mars"
-  ]
+    { "id": "mercury", "text": "Mercury" },
+    { "id": "venus", "text": "Venus" },
+    { "id": "earth", "text": "Earth" },
+    { "id": "mars", "text": "Mars" }
+  ],
+  "correctOrder": ["mercury", "venus", "earth", "mars"]
 }
 ```
 
@@ -802,8 +813,8 @@ In the example above, `Starship` has two correct connections (`Raptor` and `BE-4
 ### `type: "categorize"` (Categorization)
 
   * `question` (string, required): **Rich Content.** Instructions.
-  * `categories` (string[], required): **Plain Text.** Array of category names. Must contain at least 2 items.
-  * `items` (CategorizeEntry[], required): Entries to sort. Each entry references category using 0-based index. [See CategorizeEntry](#categorizeentry-for-categorize).
+  * `categories` (Choice[], required): Categories. At least 2, with unique texts.
+  * `items` (CategorizeEntry[], required): Entries to sort. Each entry references its category by ID. [See CategorizeEntry](#categorizeentry-for-categorize).
   * **Note:** User assigns each item to a category.
 
 **Example:**
@@ -812,28 +823,16 @@ In the example above, `Starship` has two correct connections (`Raptor` and `BE-4
   "id": "019aa5fa-086e-76c5-9731-a872689f1112",
   "type": "categorize",
   "question": "Sort animals into categories:",
-  "categories": ["Mammals", "Birds", "Fish"],
+  "categories": [
+    { "id": "mammals", "text": "Mammals" },
+    { "id": "birds", "text": "Birds" },
+    { "id": "fish", "text": "Fish" }
+  ],
   "items": [
-    {
-      "id": "item1",
-      "text": "Dolphin",
-      "correctCategoryIndex": 0
-    },
-    {
-      "id": "item2",
-      "text": "Eagle",
-      "correctCategoryIndex": 1
-    },
-    {
-      "id": "item3",
-      "text": "Shark",
-      "correctCategoryIndex": 2
-    },
-    {
-      "id": "item4",
-      "text": "Penguin",
-      "correctCategoryIndex": 1
-    }
+    { "id": "item1", "text": "Dolphin", "correctCategoryId": "mammals" },
+    { "id": "item2", "text": "Eagle", "correctCategoryId": "birds" },
+    { "id": "item3", "text": "Shark", "correctCategoryId": "fish" },
+    { "id": "item4", "text": "Penguin", "correctCategoryId": "birds" }
   ]
 }
 ```
@@ -841,8 +840,8 @@ In the example above, `Starship` has two correct connections (`Raptor` and `BE-4
 ### `type: "timeline"` (Timeline)
 
   * `question` (string, required): **Rich Content.** Instructions.
-  * `events` (TimelineEvent[], required): Array of events in correct chronological order. Must contain at least 2 events. [See TimelineEvent](#timelineevent-for-timeline) for detail on date handling.
-  * `shuffle` (boolean, optional): Determines whether application should shuffle events before displaying to user. Default: `true`. Set to `false` if you want to display events as study material in chronological order.
+  * `events` (TimelineEvent[], required): Events in any order; the correct order is the order of their `date`s (events with the same date may come in any order). Must contain at least 2 events. [See TimelineEvent](#timelineevent-for-timeline) for detail on date handling.
+  * `shuffle` (boolean, optional): Determines whether application should shuffle events before displaying to user. Default: `true`. Set to `false` to show the events in the listed order (e.g., as study material).
 
 **Example:**
 ```json
@@ -876,9 +875,9 @@ In the example above, `Starship` has two correct connections (`Raptor` and `BE-4
 ### `type: "matrix"` (Matrix / Table Answer)
 
   * `question` (string, required): **Rich Content.** Instructions.
-  * `rows` (string[], required): **Plain Text.** Row labels. Must not be empty array.
-  * `columns` (string[], required): **Plain Text.** Column labels. Must not be empty array.
-  * `correctCells` (number[][], required): Array of coordinates of correct answers in format `[row, column]`. Indices are 0-based. Example: `[[0, 1], [2, 0]]` marks correct answer in 1st row/2nd column and 3rd row/1st column.
+  * `rows` (Choice[], required): Rows. Must not be empty.
+  * `columns` (Choice[], required): Columns. Must not be empty.
+  * `correctCells` (string[][], required): Correct cells as `[rowId, columnId]`.
   * `multiplePerRow` (boolean, optional): Can user select multiple answers in one row? Default: `false`.
   * **Note:** Useful for "Which of the following statements are true?" type questions.
 
@@ -888,13 +887,13 @@ In the example above, `Starship` has two correct connections (`Raptor` and `BE-4
   "id": "019aa5fb-d486-7225-8741-0f714b2ae057",
   "type": "matrix",
   "question": "Mark which properties apply to which planets:",
-  "rows": ["Mars", "Jupiter", "Saturn"],
-  "columns": ["Has rings", "Is gas giant", "Has red color"],
+  "rows": [{ "id": "mars", "text": "Mars" }, { "id": "jupiter", "text": "Jupiter" }, { "id": "saturn", "text": "Saturn" }],
+  "columns": [{ "id": "rings", "text": "Has rings" }, { "id": "gas", "text": "Is gas giant" }, { "id": "red", "text": "Has red color" }],
   "correctCells": [
-    [0, 2],
-    [1, 1],
-    [2, 0],
-    [2, 1]
+    ["mars", "red"],
+    ["jupiter", "gas"],
+    ["saturn", "rings"],
+    ["saturn", "gas"]
   ],
   "multiplePerRow": true
 }
@@ -927,15 +926,10 @@ In the example above, `Starship` has two correct connections (`Raptor` and `BE-4
 
   * `question` (string, required): **Rich Content.** Instructions.
   * `targetAsset` (string, required): **Key from `assets`**, which determines the diagram image.
-  * `labels` (string[], required): **Rich Content.** Array of text labels for user to assign. Must contain all correct answers and may contain distractors (extra labels).
-  * `caseSensitive` (boolean, optional): Distinguish letter case when comparing labels. Default: `false`. Applies globally to all zones in this item.
-  * `requireTyping` (boolean, optional): Default `false`. If `true`, application MUST NOT display draggable labels; instead render text fields for each zone and compare user input with `labels[correctLabelIndex]` (respects `caseSensitive`, also recommended to trim whitespace). Value `true` therefore activates "type answer" mode without needing to change `labels` structure.
-  * `zones` (object[], required): Array of zones on image. Each zone is defined as extended `HotspotObject` ([see HotspotObject](#hotspotobject-for-pin-on-image)) with added `correctLabelIndex` key.
-
-**Zone structure in `zones` array:**
-  * All properties of `HotspotObject` (`type`, `x`, `y`...).
-  * `correctLabelIndex` (number, required): Index of correct label from `labels` array (0-based).
-  * For point definition, circle with small radius can be used
+  * `labels` (Choice[], required): Labels to assign. Must contain all correct ones and may contain distractors.
+  * `caseSensitive` (boolean, optional): Distinguish letter case when comparing typed labels. Default: `false`.
+  * `requireTyping` (boolean, optional): Default `false`. If `true`, application MUST NOT display the labels; it renders a text field for each zone and compares the input with the text of the zone's correct label (respects `caseSensitive`, trims whitespace).
+  * `zones` (object[], required): Zones on the image: a 2D `HotspotObject` ([see HotspotObject](#hotspotobject-for-pin-on-image)) with `id` (unique within the item) and `correctLabelId`.
 
 **Example:**
 ```json
@@ -951,27 +945,17 @@ In the example above, `Starship` has two correct connections (`Raptor` and `BE-4
       "altText": "Cell diagram"
     }
   },
-  "labels": ["Nucleus", "Mitochondria", "Ribosome"],
+  "labels": [
+    { "id": "nucleus", "text": "Nucleus" },
+    { "id": "mito", "text": "Mitochondria" },
+    { "id": "ribo", "text": "Ribosome" }
+  ],
   "zones": [
-    {
-      "type": "rect",
-      "x": 10,
-      "y": 10,
-      "width": 20,
-      "height": 20,
-      "correctLabelIndex": 0
-    },
-    {
-      "type": "circle",
-      "x": 50,
-      "y": 50,
-      "radius": 10,
-      "correctLabelIndex": 1
-    }
+    { "id": "z1", "type": "rect", "x": 10, "y": 10, "width": 20, "height": 20, "correctLabelId": "nucleus" },
+    { "id": "z2", "type": "circle", "x": 50, "y": 50, "radius": 10, "correctLabelId": "mito" }
   ]
 }
 ```
-  If item should require independent writing of names instead of dragging, set `requireTyping: true`. In that case, application displays input field for each zone and answer is compared with text from `labels` array according to corresponding `correctLabelIndex`.
 
 ### `type: "open-ended"` (Open-Ended Answer)
 
@@ -1115,8 +1099,9 @@ Applications **MUST** normalize user input before evaluation to handle localizat
 
 | Key | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
-| `options` | string[] | Yes | **Rich Content.** Array of text options to choose from. Must not be empty array. |
-| `correctIndex` | number | Yes | Index of correct answer in `options` array (0-based). |
+| `options` | Choice[] | Yes | Choices for this blank. Must not be empty. |
+| `correctId` | string | Yes | ID of the correct option. |
+| `shuffle` | boolean | No | Whether application should shuffle the options. Default: `true`. |
 
 ### `HotspotObject` (for `pin-on-image` and `pin-on-model`)
 
@@ -1149,31 +1134,9 @@ Defines clickable zone on image or named mesh in a 3D model. For `pin-on-image`,
 
 | Key | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
-| `id` | string | Yes | **Plain Text.** Unique ID of item (within question, doesn't have to be UUIDv7). |
+| `id` | string | Yes | ID of the entry, unique within the item (same format as a choice ID). |
 | `text` | string | Yes | **Rich Content.** Item text. |
-| `correctCategoryIndex` | number | Yes | 0-based index into `categories` array in parent item. |
-
-**Example:**
-```json
-{
-  "id": "019aa600-0cf8-7dc7-8493-925641accc35",
-  "type": "categorize",
-  "question": "Sort animals into categories:",
-  "categories": ["Mammals", "Birds", "Fish"],
-  "items": [
-    {
-      "id": "item1",
-      "text": "Dolphin",
-      "correctCategoryIndex": 0
-    },
-    {
-      "id": "item2",
-      "text": "Eagle",
-      "correctCategoryIndex": 1
-    }
-  ]
-}
-```
+| `correctCategoryId` | string | Yes | ID of the correct category. |
 
 ### `TimelineEvent` (for `timeline`)
 
@@ -1272,8 +1235,8 @@ This optional object (`item.pedagogy`) serves to store advanced metadata about d
 
 ```json
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@memizy/oqse@0.2/schemas/oqse-v0.2.json",
-  "version": "0.2",
+  "$schema": "https://cdn.jsdelivr.net/npm/@memizy/oqse@0.3/schemas/oqse-v0.3.json",
+  "version": "0.3",
   "meta": {
     "id": "019aa606-cbb5-7b2e-9e61-ac335db1eb4b",
     "title": "Rocket Science Basics 🚀",
@@ -1398,18 +1361,14 @@ This optional object (`item.pedagogy`) serves to store advanced metadata about d
       "difficulty": 4,
       "timeLimit": 30,
       "question": "Which engine was used on the 1st stage of the **Saturn V** rocket?",
+      "skills": ["history.spaceflight"],
       "options": [
-        "Raptor",
-        "Merlin",
-        "F-1"
+        { "id": "raptor", "text": "Raptor", "explanation": "Raptor powers Starship spacecraft, not Saturn V." },
+        { "id": "merlin", "text": "Merlin", "explanation": "Merlin is an engine for Falcon 9 and Falcon Heavy rockets." },
+        { "id": "f1", "text": "F-1" }
       ],
-      "correctIndex": 2,
+      "correctId": "f1",
       "shuffle": true,
-      "optionExplanations": [
-        "Raptor powers Starship spacecraft, not Saturn V.",
-        "Merlin is an engine for Falcon 9 and Falcon Heavy rockets.",
-        null
-      ],
       "explanation": "Five **F-1** engines powered the first stage of Saturn V. It remains the most powerful single-chamber liquid-fueled rocket engine ever developed."
     },
     {
@@ -1418,10 +1377,10 @@ This optional object (`item.pedagogy`) serves to store advanced metadata about d
       "tags": ["Rocket Engine"],
       "difficulty": 3,
       "question": "Match countries with their main spaceports (some items are extra):",
-      "leftItems": ["USA", "France", "Kazakhstan"],
-      "rightItems": ["Cape Canaveral", "Kourou", "Baikonur", "Spaceport Cornwall"],
+      "leftItems": [{ "id": "usa", "text": "USA" }, { "id": "france", "text": "France" }, { "id": "kz", "text": "Kazakhstan" }],
+      "rightItems": [{ "id": "cape", "text": "Cape Canaveral" }, { "id": "kourou", "text": "Kourou" }, { "id": "baikonur", "text": "Baikonur" }, { "id": "cornwall", "text": "Spaceport Cornwall" }],
       "connections": [
-        [0, 0],
+        ["usa", "cape"],
         [1, 1],
         [2, 2]
       ]
@@ -1484,7 +1443,7 @@ A set that contains only `note` items MAY be written as a single Markdown docume
 **Example** (default `noteHeadingLevel: 3`):
 ````markdown
 ---
-oqse: "0.2"
+oqse: "0.3"
 id: 019aa5ec-3daa-796f-9289-01c6214ec2b0
 language: en
 createdAt: 2026-10-01T12:00:00Z
@@ -1531,7 +1490,7 @@ Headings with a level above the set title level are not allowed.
 **Structure:**
 
 1. **YAML frontmatter** (REQUIRED). The file MUST start with a line `---`; the frontmatter ends with the next line `---`. It is a YAML 1.2 mapping:
-    * `oqse` (REQUIRED): the OQSE version (`file.version`), written as a quoted string (e.g., `"0.2"`).
+    * `oqse` (REQUIRED): the OQSE version (`file.version`), written as a quoted string (e.g., `"0.3"`).
     * `noteHeadingLevel` (OPTIONAL): the note heading level `L`, an integer 1–6. Default: `3`.
     * All other keys are the `meta` object, except `description`, which MUST NOT appear in the frontmatter.
 2. **Set title heading** (only when `L ≥ 3`, OPTIONAL): at most one heading of level `L - 2`. It MUST come before all chapters and notes, and only blank lines may precede it. Its text is `meta.title`; if `title` is also in the frontmatter, both MUST be equal. When serializing with `L ≥ 3`, applications MUST write the title as this heading (not in the frontmatter).
@@ -1586,12 +1545,13 @@ To ensure consistency and practical implementability, the specification defines 
 
 **Note:** Applications SHOULD support at least these limits. If specific environment doesn't allow same or higher values, it MUST be documented and user must be warned before import.
 
-### Validation Rules for Indices and Arrays
+### Validation Rules for Choices and Answers
 
-- All indices (`correctIndex`, `correctIndices[]`) must be 0-based
-- Indices must not be negative
-- Indices must be within range of available options
-- For `correctIndices[]`: must not contain duplicates
+- Choice IDs are unique within their list and match `^[A-Za-z0-9_.-]{1,64}$`
+- Every answer reference (`correctId`, `correctIds[]`, `correctOrder[]`, `pairs`, `connections`, `correctCategoryId`, `correctCells`, `correctLabelId`) MUST reference an existing choice of the right list
+- `correctIds[]`, `connections` and `correctCells` must not contain duplicates
+- `correctOrder` lists every item ID of `sort-items` exactly once
+- `pairs` of `match-pairs` has exactly one entry per prompt; a match belongs to at most one prompt
 
 **For `ageMin` and `ageMax`:**
 - `ageMin >= 0` (value 0 = preschool age, but recommended is >= 3)
@@ -1610,18 +1570,6 @@ To ensure consistency and practical implementability, the specification defines 
 - Must be in range 1-5 (integer)
 - Values outside range are invalid
 - Used for simple categorization; for advanced psychometric models use `pedagogy.irtDifficulty`
-
-**For `optionExplanations` (in `mcq-single` and `mcq-multi`):**
-- If present, length MUST be same as `options`
-- Empty array `[]` is equivalent to field omission
-- Missing explanation = `null` (not empty string `""`)
-- Example:
-  ```json
-  "options": ["A", "B", "C"]
-  "optionExplanations": ["Correct!", null, "Wrong"]  // Correct
-  "optionExplanations": ["Correct!"]                  // Wrong (missing 2 elements)
-  "optionExplanations": []                            // Correct (no explanations)
-  ```
 
 **For `timeLimit`:**
 - Must be `> 0` or be omitted
@@ -1647,9 +1595,9 @@ To ensure consistency and practical implementability, the specification defines 
 - If `range` is present, `correctAnswer` SHOULD lie within `<range.min, range.max>` (consistency recommendation).
 
 **For `correctCells` in `matrix`:**
+- Cells are `[rowId, columnId]` of existing rows and columns
 - If `multiplePerRow: false`, each row may have maximum one correct cell
 - If `multiplePerRow: true`, rows can have multiple correct cells
-- Invalid when `multiplePerRow: false` and `correctCells` contains multiple cells from same row
 
 ### Referential Integrity Validation
 
@@ -1663,12 +1611,11 @@ To ensure consistency and practical implementability, the specification defines 
 - `thumbnail`, `targetAsset`: Application MUST declare error if asset doesn't exist (critical property)
 
 **Field synchronization:**
-- `optionExplanations` vs `options`: Lengths MUST be same OR `optionExplanations` is empty/omitted
 - `blanks` tokens vs `text` tokens: Must match exactly ([see Type: Fill in Blanks](#type-fill-in-blanks-fill-in-the-blanks))
 
 ### UUID Validation Rules
 
-The standard for OQSE v0.2 is **UUIDv7**. For applications simplification, it is recommended to support only **UUIDv7** (preferred) and **UUIDv4** (fallback).
+The standard for OQSE v0.3 is **UUIDv7**. For applications simplification, it is recommended to support only **UUIDv7** (preferred) and **UUIDv4** (fallback).
 
 **Rules for Applications:**
 1. **Import:** Application MUST accept UUID versions 4 and 7 when loading existing sets. Application MAY accept other versions (1-6), but this is not required.
@@ -1758,10 +1705,10 @@ Applications processing `.oqse` packages (ZIP) MUST implement following protecti
 
 ### Shuffling Rules
 
-- Shuffling is performed on each new attempt, not per-session
-- Original order from JSON is "correct order" and MUST be preserved in application logic
-- For `mcq-single/multi`: If `shuffle: false`, options display in order from `options` array
-- For `sort-items`: Items are always shuffled (otherwise task would be meaningless)
+- Applications MAY shuffle once per attempt or once per session (e.g., the same order for all players of a multiplayer game)
+- The listed order is never the answer: answers refer to choice IDs (`sort-items`: `correctOrder`; `timeline`: dates)
+- For `mcq-single/multi` and `fill-in-select` blanks: If `shuffle: false`, options display in the listed order
+- For `sort-items`: Items are always shuffled and SHOULD NOT be displayed already in the correct order
 - For `timeline`: Respect `shuffle` flag (default: `true`)
 - For `match-pairs`: Application MUST shuffle both sides before display
 
@@ -1807,8 +1754,8 @@ This order ensures that:
 **Example of correct order:**
 ```json
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@memizy/oqse@0.2/schemas/oqse-v0.2.json",
-  "version": "0.2",
+  "$schema": "https://cdn.jsdelivr.net/npm/@memizy/oqse@0.3/schemas/oqse-v0.3.json",
+  "version": "0.3",
   "meta": { ... },
   "items": [ ... ]
 }
@@ -2016,7 +1963,7 @@ The `@memizy/oqse` npm package provides TypeScript types, `loadOQSEFile` (tolera
 ### JSON Schema
 The JSON Schema describes the structure only; cross-item rules (unique IDs, references, assets, raw HTML) are checked by the reference implementation. Official JSON Schema is available at:
 
-[https://cdn.jsdelivr.net/npm/@memizy/oqse@0.2/schemas/oqse-v0.2.json](https://cdn.jsdelivr.net/npm/@memizy/oqse@0.2/schemas/oqse-v0.2.json)
+[https://cdn.jsdelivr.net/npm/@memizy/oqse@0.3/schemas/oqse-v0.3.json](https://cdn.jsdelivr.net/npm/@memizy/oqse@0.3/schemas/oqse-v0.3.json)
 
 ### Recommended Tools
   * **Validators:** Ajv, JSON Schema Validator
@@ -2084,15 +2031,22 @@ No `europe_map` is defined in `item.assets` nor `meta.assets`.
 }
 ```
 
-#### **Error: Indices out of range**
+#### **Error: Answers by position instead of choice ID (OQSE 0.2 style)**
 ```json
 {
   "type": "mcq-single",
   "options": ["A", "B", "C"],
-  "correctIndex": 3
+  "correctIndex": 2
 }
 ```
-**Correct:** `correctIndex: 2` (0-based, max index is 2)
+**Correct:** choices with IDs and an answer by ID:
+```json
+{
+  "type": "mcq-single",
+  "options": [{ "id": "a", "text": "A" }, { "id": "b", "text": "B" }, { "id": "c", "text": "C" }],
+  "correctId": "c"
+}
+```
 
 #### **Error: Incorrect `correctCells` format (using object instead of coordinates array)**
 ```json
@@ -2100,10 +2054,10 @@ No `europe_map` is defined in `item.assets` nor `meta.assets`.
   "row_0_col_1": true
 }
 ```
-**Correct:** (Array of arrays `[row, column]`)
+**Correct:** (Array of `[rowId, columnId]`)
 ```json
 "correctCells": [
-  [0, 1]
+  ["mars", "red"]
 ]
 ```
 
@@ -2135,13 +2089,13 @@ No `europe_map` is defined in `item.assets` nor `meta.assets`.
 "id": "019aa7f8-bdf4-7093-b7e1-37730c3e48fb"
 ```
 
-#### **Error: Duplicate indices in `correctIndices`**
+#### **Error: Duplicate IDs in `correctIds`**
 ```json
-"correctIndices": [0, 2, 2, 4]
+"correctIds": ["jupiter", "saturn", "saturn"]
 ```
 **Correct:**
 ```json
-"correctIndices": [0, 2, 4]
+"correctIds": ["jupiter", "saturn"]
 ```
 
 -----
@@ -2162,11 +2116,18 @@ OQSE is an open standard. Suggestions for improvements:
 
 -----
 
-**Document Version:** 0.2  
+**Document Version:** 0.3  
 **Last Updated:** October 2026  
 **Documentation License:** CC-BY-SA-4.0
 
 -----
+
+### Version 0.3 (October 2026)
+* **Choices with IDs.** Lists the learner selects from or arranges are lists of [choices](#choices-and-answers-by-id) (`{ id, text, explanation? }`), and answers refer to choice IDs instead of positions: `correctIndex` → `correctId`, `correctIndices` → `correctIds`, `sort-items` gets `correctOrder` (items may be listed in any order), `match-pairs` gets `pairs` (and may have distractor matches), `match-complex.connections`, `matrix.correctCells`, `categorize` (`correctCategoryId`) and `diagram-label` (zone `id`, `correctLabelId`) use IDs. `optionExplanations` is replaced by `explanation` on each choice. Answers and progress survive edits of a set, and shuffling needs no remapping.
+* `timeline`: the correct order is the order of the dates; events may be listed in any order.
+* `fill-in-select` blanks have an optional `shuffle` flag.
+* New item property [`skills`](#common-item-properties-in-items): hierarchical skill IDs for progress tracking across applications.
+* No conversion: OQSE 0.2 files are not loaded (`UNSUPPORTED_VERSION`) and must be converted once.
 
 ### Version 0.2 (October 2026)
 * Renamed the `math` feature to `latex` (consistent with `latexPackages`). Without the `latex` feature, `$` is a literal character.

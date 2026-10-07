@@ -44,7 +44,7 @@ export class LocalRouter {
       const init: InitPayload = {
         protocol: '1.0',
         host: { name: 'test-router', version: '0' },
-        oqseVersion: '0.2',
+        oqseVersion: '0.3',
         features: [],
         session: {
           id: 'e2e',

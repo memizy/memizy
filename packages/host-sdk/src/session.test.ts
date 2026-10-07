@@ -35,11 +35,11 @@ const manifest = {
 const pluginHtml = `<!doctype html><script type="application/oqse-manifest+json">${JSON.stringify(manifest)}</script>`;
 
 const setFile = loadOQSEFile({
-  version: '0.2',
+  version: '0.3',
   meta: { id: id(0), language: 'cs', title: 'Set', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
   items: [
-    { id: id(1), type: 'mcq-single', question: 'A?', options: ['x', 'y'], correctIndex: 1 },
-    { id: id(2), type: 'mcq-single', question: 'B?', options: ['x', 'y'], correctIndex: 0 },
+    { id: id(1), type: 'mcq-single', question: 'A?', options: [{ id: 'x', text: 'x' }, { id: 'y', text: 'y' }], correctId: 'y' },
+    { id: id(2), type: 'mcq-single', question: 'B?', options: [{ id: 'x', text: 'x' }, { id: 'y', text: 'y' }], correctId: 'x' },
     { id: id(3), type: 'note', content: 'not for this plugin' },
   ],
 }).data as OQSEFile;
@@ -83,7 +83,7 @@ const race: Omit<GameDefinition<State>, 'root'> = {
   render: (state, ui) =>
     ui.view === 'board'
       ? `<p class="answered">${state.answered.length}</p>`
-      : `<button data-act="answer" data-payload='{"answer":1}'>y</button><p class="score">${state.scores[ui.self!.id] ?? 0}</p>`,
+      : `<button data-act="answer" data-payload='{"answer":"y"}'>y</button><p class="score">${state.scores[ui.self!.id] ?? 0}</p>`,
   renderSettings: (settings) => `<input type="number" data-setting="rounds" value="${settings.rounds}">`,
 };
 
@@ -173,7 +173,7 @@ describe('display order and hidden answers (SPEC 4.4)', () => {
     },
     render: (_state, ui) => {
       const item = ui.item(ui.items[0].id) as any;
-      return `<p class="opts">${item.options.join(',')}</p><p class="answer">${item.answerHidden ? 'hidden' : item.correctIndex}</p><button data-act="show">s</button>`;
+      return `<p class="opts">${item.options.map((o: any) => o.text).join(',')}</p><p class="answer">${item.answerHidden ? 'hidden' : item.correctId}</p><button data-act="show">s</button>`;
     },
   };
 
@@ -187,22 +187,22 @@ describe('display order and hidden answers (SPEC 4.4)', () => {
     await wait(150);
     const full = session.prepared.set.items[0] as any;
     expect(session.prepared.publicSet.items[0]).toMatchObject({ answerHidden: true });
-    expect('correctIndex' in session.prepared.publicSet.items[0]).toBe(false);
+    expect('correctId' in session.prepared.publicSet.items[0]).toBe(false);
     // The same order everywhere; the answer only on the board (the authority).
-    expect(board.root.querySelector('.opts')!.textContent).toBe(full.options.join(','));
-    expect(anna.root.querySelector('.opts')!.textContent).toBe(full.options.join(','));
-    expect(board.root.querySelector('.answer')!.textContent).toBe(String(full.correctIndex));
+    expect(board.root.querySelector('.opts')!.textContent).toBe(full.options.map((o: any) => o.text).join(','));
+    expect(anna.root.querySelector('.opts')!.textContent).toBe(full.options.map((o: any) => o.text).join(','));
+    expect(board.root.querySelector('.answer')!.textContent).toBe(full.correctId);
     expect(anna.root.querySelector('.answer')!.textContent).toBe('hidden');
     // Revealed to Anna only.
     (anna.root.querySelector('button') as HTMLButtonElement).click();
     await wait(150);
-    expect(anna.root.querySelector('.answer')!.textContent).toBe(String(full.correctIndex));
+    expect(anna.root.querySelector('.answer')!.textContent).toBe(full.correctId);
     expect(ben.root.querySelector('.answer')!.textContent).toBe('hidden');
     // A reloaded device gets the reveal again.
     const anna2 = play(session, 'anna', reveal);
     await anna2.game.ready;
     await wait(150);
-    expect(anna2.root.querySelector('.answer')!.textContent).toBe(String(full.correctIndex));
+    expect(anna2.root.querySelector('.answer')!.textContent).toBe(full.correctId);
   });
 
   it('the order depends on the seed; solo gets the answers', () => {
@@ -221,7 +221,7 @@ describe('solo', () => {
       ...race,
       render: (state, ui) => {
         ui.save('set', { best: state.scores.me ?? 0 });
-        return `<button data-act="answer" data-payload='{"answer":1}'>y</button><p class="score">${state.scores.me ?? 0}</p>`;
+        return `<button data-act="answer" data-payload='{"answer":"y"}'>y</button><p class="score">${state.scores.me ?? 0}</p>`;
       },
     });
     // Poll instead of a fixed delay: the test can share the CPU with the relay end-to-end test.

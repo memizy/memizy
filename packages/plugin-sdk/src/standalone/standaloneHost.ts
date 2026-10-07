@@ -43,7 +43,7 @@ export function standaloneConnector(options: StandaloneOptions): Connector {
     const init: InitPayload = {
       protocol: PROTOCOL_VERSION,
       host: { name: 'memizy-standalone', version: '1.0.0' },
-      oqseVersion: '0.2',
+      oqseVersion: '0.3',
       features: [],
       session: { id: `standalone-${Date.now()}`, mode: 'solo', hostAs: null, view: 'solo', self: PLAYER_ID, authority: PLAYER_ID, lateJoin: false },
       players: [{ id: PLAYER_ID, name: 'Hráč', isHost: true, connected: true }],

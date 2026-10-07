@@ -596,7 +596,7 @@ export class LocalSession {
     return {
       protocol,
       host: this.options.host ?? { name: '@memizy/host-sdk', version: '1.0.0-rc.3' },
-      oqseVersion: '0.2',
+      oqseVersion: '0.3',
       features: [],
       session: {
         id: this.id,

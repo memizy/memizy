@@ -24,9 +24,11 @@ describe('AI study sets', () => {
       JSON.stringify({
         title: 'Fotosyntéza',
         items: [
-          { id: '1', type: 'mcq-single', question: 'Kde probíhá?', options: ['V chloroplastech', 'V jádře', 'V ribozomech'], correctIndex: 0 },
+          { id: '1', type: 'mcq-single', question: 'Kde probíhá?', options: [{ id: 'a', text: 'V chloroplastech' }, { id: 'b', text: 'V jádře' }, { id: 'c', text: 'V ribozomech' }], correctId: 'a' },
           { id: '1', type: 'true-false', question: 'Rostliny při ní uvolňují kyslík.', correctAnswer: true },
-          { type: 'mcq-single', question: 'Broken', options: ['A'], correctIndex: 3 },
+          { type: 'mcq-single', question: 'Broken', options: [{ id: 'a', text: 'A' }], correctId: 'z' },
+          // The older style (texts and positions) is upgraded.
+          { type: 'sort-items', question: 'Seřaď', items: ['malý', 'střední', 'velký'] },
           'not an item',
         ],
       }),
@@ -35,7 +37,7 @@ describe('AI study sets', () => {
     const normalized = normalizeAiAnswer(answer, { topic: 'Fotosyntéza', language: 'cs' });
     expect(normalized.success).toBe(true);
     if (!normalized.success) return;
-    expect(normalized.count).toBe(3);
+    expect(normalized.count).toBe(4);
     expect(normalized.dropped).toBe(1);
     const parsed = parseSetText(normalized.json, 'ai.oqse.json', 'upload');
     expect(parsed.success).toBe(true);
@@ -45,6 +47,8 @@ describe('AI study sets', () => {
     const ids = parsed.set.file.items.map((i) => i.id);
     expect(new Set(ids).size).toBe(ids.length);
     expect(parsed.set.file.items.some((i) => i.type === 'true-false')).toBe(true);
+    expect(parsed.set.file.items.find((i) => i.type === 'sort-items')).toMatchObject({ items: [{ id: 'i1', text: 'malý' }, { id: 'i2' }, { id: 'i3' }], correctOrder: ['i1', 'i2', 'i3'] });
+    expect(parsed.set.file.items.filter((i) => i.type === 'mcq-single')).toHaveLength(1); // the broken one is skipped
   });
 
   it('accepts a bare array and reports text without JSON', () => {

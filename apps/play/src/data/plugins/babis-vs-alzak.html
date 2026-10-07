@@ -456,7 +456,7 @@
     }
 
     function correctValue(item) {
-      return item.type === 'true-false' ? item.correctAnswer : item.correctIndex;
+      return item.type === 'true-false' ? item.correctAnswer : item.correctId;
     }
 
     /* ---- phases ---- */
@@ -801,7 +801,7 @@
       if (revealed || ui.view === 'board') for (const a of Object.values(state.answers)) counts.set(JSON.stringify(a.answer), (counts.get(JSON.stringify(a.answer)) ?? 0) + 1);
       const options = item.type === 'true-false'
         ? [{ value: true, label: 'Pravda', cls: 'yes', key: '✓' }, { value: false, label: 'Nepravda', cls: 'no', key: '✗' }]
-        : (item.options ?? []).map((o, i) => ({ value: i, label: ui.text(o, { inline: true, item }), cls: `c${i % 6}`, key: 'ABCDEF'[i] ?? i + 1 }));
+        : (item.options ?? []).map((o, i) => ({ value: o.id, label: ui.text(o.text, { inline: true, item }), cls: `c${i % 6}`, key: 'ABCDEF'[i] ?? i + 1 }));
       const players = ui.players.filter((p) => p.connected && state.teams[p.id]);
       const answered = Object.keys(state.answers).length;
       const battle = state.stage === 'battle';
@@ -952,7 +952,7 @@
           const item = ctx.item(currentItemId(state));
           if (!item) return;
           const answer = payload?.answer;
-          if (item.type === 'true-false' ? typeof answer !== 'boolean' : !Number.isInteger(answer) || answer < 0 || answer >= (item.options?.length ?? 0)) return;
+          if (item.type === 'true-false' ? typeof answer !== 'boolean' : !(item.options ?? []).some((o) => o.id === answer)) return;
           // Only the answer and its time; correctness is judged at the reveal (nothing to peek at).
           state.answers[pid] = { answer, at: ctx.now };
           const waiting = connected(ctx).filter((p) => state.teams[p.id] && !state.answers[p.id]);

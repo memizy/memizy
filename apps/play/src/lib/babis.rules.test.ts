@@ -16,15 +16,15 @@ function definition(): GameDefinition<any> {
 const items: OQSEAnyItem[] = Array.from({ length: 16 }, (_, i) =>
   (i % 2
     ? { id: `t${i}`, type: 'true-false', question: `T${i}?`, correctAnswer: i % 4 === 1 }
-    : { id: `m${i}`, type: 'mcq-single', question: `M${i}?`, options: ['a', 'b', 'c', 'd'], correctIndex: i % 4 }) as OQSEAnyItem,
+    : { id: `m${i}`, type: 'mcq-single', question: `M${i}?`, options: ['a', 'b', 'c', 'd'].map((id) => ({ id, text: id })), correctId: 'abcd'[i % 4] }) as OQSEAnyItem,
 );
 const correctOf = (id: string) => {
   const item = items.find((i) => i.id === id)! as any;
-  return item.type === 'true-false' ? item.correctAnswer : item.correctIndex;
+  return item.type === 'true-false' ? item.correctAnswer : item.correctId;
 };
 const wrongOf = (id: string) => {
   const c = correctOf(id);
-  return typeof c === 'boolean' ? !c : (c + 1) % 4;
+  return typeof c === 'boolean' ? !c : c === 'a' ? 'b' : 'a';
 };
 
 beforeEach(() => vi.useFakeTimers());

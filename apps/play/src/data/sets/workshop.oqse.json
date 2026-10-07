@@ -1,6 +1,6 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@memizy/oqse@0.2/schemas/oqse-v0.2.json",
-  "version": "0.2",
+  "$schema": "https://cdn.jsdelivr.net/npm/@memizy/oqse@0.3/schemas/oqse-v0.3.json",
+  "version": "0.3",
   "meta": {
     "id": "0192f0c4-a002-7000-8000-000000000000",
     "language": "cs",
@@ -29,12 +29,24 @@
       "topic": "Architektura",
       "question": "Co odlišuje skutečný software od hromady kódu, který vygenerovala AI?",
       "options": [
-        "Počet řádků kódu",
-        "Promyšlená architektura a systémové myšlení",
-        "Hezké barvy tlačítek",
-        "Programovací jazyk"
+        {
+          "id": "a",
+          "text": "Počet řádků kódu"
+        },
+        {
+          "id": "b",
+          "text": "Promyšlená architektura a systémové myšlení"
+        },
+        {
+          "id": "c",
+          "text": "Hezké barvy tlačítek"
+        },
+        {
+          "id": "d",
+          "text": "Programovací jazyk"
+        }
       ],
-      "correctIndex": 1,
+      "correctId": "b",
       "explanation": "AI napíše stovky řádků za minutu. Aby z nich byla fungující aplikace, musí někdo rozhodnout, z jakých částí se skládá a jak spolu mluví."
     },
     {
@@ -58,12 +70,24 @@
       "topic": "Webovka vs. aplikace",
       "question": "Co potřebuje multiplayerová hra navíc oproti jednoduché webovce?",
       "options": [
-        "Jen hezčí CSS",
-        "Server, který propojuje hráče v reálném čase",
-        "Větší obrázky",
-        "Nic, stačí GitHub Pages"
+        {
+          "id": "a",
+          "text": "Jen hezčí CSS"
+        },
+        {
+          "id": "b",
+          "text": "Server, který propojuje hráče v reálném čase"
+        },
+        {
+          "id": "c",
+          "text": "Větší obrázky"
+        },
+        {
+          "id": "d",
+          "text": "Nic, stačí GitHub Pages"
+        }
       ],
-      "correctIndex": 1
+      "correctId": "b"
     },
     {
       "id": "0192f0c4-a002-7000-8000-000000000005",
@@ -71,12 +95,24 @@
       "topic": "Git",
       "question": "K čemu je git při vibe codingu nejdůležitější?",
       "options": [
-        "Zrychlí odpovědi AI",
-        "Umožní vrátit se k funkční verzi, když AI něco rozbije",
-        "Zašifruje kód",
-        "Nahradí testování"
+        {
+          "id": "a",
+          "text": "Zrychlí odpovědi AI"
+        },
+        {
+          "id": "b",
+          "text": "Umožní vrátit se k funkční verzi, když AI něco rozbije"
+        },
+        {
+          "id": "c",
+          "text": "Zašifruje kód"
+        },
+        {
+          "id": "d",
+          "text": "Nahradí testování"
+        }
       ],
-      "correctIndex": 1,
+      "correctId": "b",
       "explanation": "AI občas „opraví“ jednu věc a rozbije tři další. S gitem se během vteřiny vrátíš k poslední funkční verzi."
     },
     {
@@ -92,15 +128,27 @@
       "topic": "Git",
       "question": "Co ti git dává?",
       "options": [
-        "Historii všech změn",
-        "Možnost vrátit chybnou změnu",
-        "Větve pro bezpečné pokusy",
-        "Automatickou opravu chyb v kódu"
+        {
+          "id": "a",
+          "text": "Historii všech změn"
+        },
+        {
+          "id": "b",
+          "text": "Možnost vrátit chybnou změnu"
+        },
+        {
+          "id": "c",
+          "text": "Větve pro bezpečné pokusy"
+        },
+        {
+          "id": "d",
+          "text": "Automatickou opravu chyb v kódu"
+        }
       ],
-      "correctIndices": [
-        0,
-        1,
-        2
+      "correctIds": [
+        "a",
+        "b",
+        "c"
       ],
       "explanation": "Git chyby sám neopravuje – jen si pamatuje každou verzi, takže se k ní můžeš vrátit."
     },
@@ -120,12 +168,24 @@
       "topic": "Cloudflare",
       "question": "Proč je Cloudflare skvělý pro malé projekty?",
       "options": [
-        "Je jen pro velké firmy",
-        "Zdarma nabízí hosting stránek, CDN, ochranu před útoky a správu domény",
-        "Napíše za tebe kód",
-        "Nahrazuje git"
+        {
+          "id": "a",
+          "text": "Je jen pro velké firmy"
+        },
+        {
+          "id": "b",
+          "text": "Zdarma nabízí hosting stránek, CDN, ochranu před útoky a správu domény"
+        },
+        {
+          "id": "c",
+          "text": "Napíše za tebe kód"
+        },
+        {
+          "id": "d",
+          "text": "Nahrazuje git"
+        }
       ],
-      "correctIndex": 1
+      "correctId": "b"
     },
     {
       "id": "0192f0c4-a002-7000-8000-000000000010",
@@ -141,12 +201,24 @@
       "topic": "Uživatelské účty",
       "question": "Jak nejbezpečněji přidat do aplikace uživatelské účty?",
       "options": [
-        "Uložit hesla do textového souboru",
-        "Použít ověřenou službu pro přihlašování (např. přihlášení přes Google)",
-        "Posílat hesla e-mailem",
-        "Hesla si pamatovat v proměnné"
+        {
+          "id": "a",
+          "text": "Uložit hesla do textového souboru"
+        },
+        {
+          "id": "b",
+          "text": "Použít ověřenou službu pro přihlašování (např. přihlášení přes Google)"
+        },
+        {
+          "id": "c",
+          "text": "Posílat hesla e-mailem"
+        },
+        {
+          "id": "d",
+          "text": "Hesla si pamatovat v proměnné"
+        }
       ],
-      "correctIndex": 1,
+      "correctId": "b",
       "explanation": "Přihlašování je bezpečnostně citlivé. Ověřené služby řeší hesla, dvoufázové ověření i útoky za tebe."
     },
     {
@@ -163,15 +235,27 @@
       "topic": "Řízení AI",
       "question": "Co pomáhá, aby AI dělala to, co chceš?",
       "options": [
-        "Jasné zadání a omezení",
-        "Kontext – ukázky a dokumentace",
-        "Malé kroky a kontrola každého výsledku",
-        "Psát co nejméně, ať si to domyslí"
+        {
+          "id": "a",
+          "text": "Jasné zadání a omezení"
+        },
+        {
+          "id": "b",
+          "text": "Kontext – ukázky a dokumentace"
+        },
+        {
+          "id": "c",
+          "text": "Malé kroky a kontrola každého výsledku"
+        },
+        {
+          "id": "d",
+          "text": "Psát co nejméně, ať si to domyslí"
+        }
       ],
-      "correctIndices": [
-        0,
-        1,
-        2
+      "correctIds": [
+        "a",
+        "b",
+        "c"
       ]
     },
     {
@@ -180,12 +264,24 @@
       "topic": "Řízení AI",
       "question": "Co je „prompt“?",
       "options": [
-        "Zadání neboli instrukce pro AI",
-        "Programovací jazyk",
-        "Typ serveru",
-        "Chyba v kódu"
+        {
+          "id": "a",
+          "text": "Zadání neboli instrukce pro AI"
+        },
+        {
+          "id": "b",
+          "text": "Programovací jazyk"
+        },
+        {
+          "id": "c",
+          "text": "Typ serveru"
+        },
+        {
+          "id": "d",
+          "text": "Chyba v kódu"
+        }
       ],
-      "correctIndex": 0
+      "correctId": "a"
     },
     {
       "id": "0192f0c4-a002-7000-8000-000000000015",
@@ -201,12 +297,24 @@
       "topic": "Architektura multiplayeru",
       "question": "Co v multiplayerové hře dělá „authority“?",
       "options": [
-        "Kreslí grafiku",
-        "Drží stav hry a rozhoduje podle pravidel",
-        "Ukládá hesla",
-        "Posílá e-maily"
+        {
+          "id": "a",
+          "text": "Kreslí grafiku"
+        },
+        {
+          "id": "b",
+          "text": "Drží stav hry a rozhoduje podle pravidel"
+        },
+        {
+          "id": "c",
+          "text": "Ukládá hesla"
+        },
+        {
+          "id": "d",
+          "text": "Posílá e-maily"
+        }
       ],
-      "correctIndex": 1
+      "correctId": "b"
     },
     {
       "id": "0192f0c4-a002-7000-8000-000000000017",
@@ -214,12 +322,24 @@
       "topic": "Architektura multiplayeru",
       "question": "Proč běží pluginy v Memizy v izolovaném rámu (sandboxu)?",
       "options": [
-        "Aby byly rychlejší",
-        "Aby se nedostaly k datům aplikace a uživatele",
-        "Kvůli barvám",
-        "Aby fungovaly bez internetu"
+        {
+          "id": "a",
+          "text": "Aby byly rychlejší"
+        },
+        {
+          "id": "b",
+          "text": "Aby se nedostaly k datům aplikace a uživatele"
+        },
+        {
+          "id": "c",
+          "text": "Kvůli barvám"
+        },
+        {
+          "id": "d",
+          "text": "Aby fungovaly bez internetu"
+        }
       ],
-      "correctIndex": 1
+      "correctId": "b"
     },
     {
       "id": "0192f0c4-a002-7000-8000-000000000018",
@@ -239,12 +359,24 @@
       "topic": "Náklady",
       "question": "Kolik může stát vytvoření a provoz malé webové aplikace?",
       "options": [
-        "Tisíce korun měsíčně",
-        "Může to být zdarma díky free tierům",
-        "Bez placeného serveru to nejde",
-        "Jen se studentskou licencí"
+        {
+          "id": "a",
+          "text": "Tisíce korun měsíčně"
+        },
+        {
+          "id": "b",
+          "text": "Může to být zdarma díky free tierům"
+        },
+        {
+          "id": "c",
+          "text": "Bez placeného serveru to nejde"
+        },
+        {
+          "id": "d",
+          "text": "Jen se studentskou licencí"
+        }
       ],
-      "correctIndex": 1
+      "correctId": "b"
     },
     {
       "id": "0192f0c4-a002-7000-8000-000000000020",
@@ -266,17 +398,32 @@
       "topic": "Architektura",
       "question": "Co je u aplikace „pod hladinou“ – tedy to, co AI za vás nevymyslí a co musíte promyslet vy?",
       "options": [
-        "Architektura",
-        "Data a jejich struktura",
-        "Bezpečnost",
-        "Barva tlačítek",
-        "Nasazení a údržba"
+        {
+          "id": "a",
+          "text": "Architektura"
+        },
+        {
+          "id": "b",
+          "text": "Data a jejich struktura"
+        },
+        {
+          "id": "c",
+          "text": "Bezpečnost"
+        },
+        {
+          "id": "d",
+          "text": "Barva tlačítek"
+        },
+        {
+          "id": "e",
+          "text": "Nasazení a údržba"
+        }
       ],
-      "correctIndices": [
-        0,
-        1,
-        2,
-        4
+      "correctIds": [
+        "a",
+        "b",
+        "c",
+        "e"
       ],
       "explanation": "Kód je jen špička ledovce. Pod hladinou je architektura, data, bezpečnost, nasazení a údržba – tam rozhodujete vy."
     },
@@ -286,12 +433,24 @@
       "topic": "Nástroje",
       "question": "Co umí AI agent v editoru (IDE) navíc oproti obyčejnému chatu?",
       "options": [
-        "Mluví česky",
-        "Čte a upravuje soubory celého projektu a spouští příkazy a testy",
-        "Je vždycky zdarma",
-        "Nikdy se nemýlí"
+        {
+          "id": "a",
+          "text": "Mluví česky"
+        },
+        {
+          "id": "b",
+          "text": "Čte a upravuje soubory celého projektu a spouští příkazy a testy"
+        },
+        {
+          "id": "c",
+          "text": "Je vždycky zdarma"
+        },
+        {
+          "id": "d",
+          "text": "Nikdy se nemýlí"
+        }
       ],
-      "correctIndex": 1,
+      "correctId": "b",
       "explanation": "Chat vidí jen to, co mu vložíte. Agent pracuje přímo v projektu – a proto potřebuje pojistku: git."
     },
     {
@@ -300,16 +459,39 @@
       "topic": "Anatomie aplikace",
       "question": "Přiřaď části aplikace k restauraci.",
       "prompts": [
-        "Frontend",
-        "Backend",
-        "Databáze"
+        {
+          "id": "p1",
+          "text": "Frontend"
+        },
+        {
+          "id": "p2",
+          "text": "Backend"
+        },
+        {
+          "id": "p3",
+          "text": "Databáze"
+        }
       ],
       "matches": [
-        "Sál – co vidí host",
-        "Kuchyně – pravidla a tajemství",
-        "Spíž – co si pamatujeme"
+        {
+          "id": "m1",
+          "text": "Sál – co vidí host"
+        },
+        {
+          "id": "m2",
+          "text": "Kuchyně – pravidla a tajemství"
+        },
+        {
+          "id": "m3",
+          "text": "Spíž – co si pamatujeme"
+        }
       ],
-      "explanation": "Host (uživatel) nikdy nechodí do kuchyně: to, co je ve frontendu, může kdokoliv vidět i změnit."
+      "explanation": "Host (uživatel) nikdy nechodí do kuchyně: to, co je ve frontendu, může kdokoliv vidět i změnit.",
+      "pairs": {
+        "p1": "m1",
+        "p2": "m2",
+        "p3": "m3"
+      }
     },
     {
       "id": "0192f0c4-a002-7000-8000-000000000025",
@@ -325,12 +507,24 @@
       "topic": "Webovka vs. aplikace",
       "question": "Kdy potřebuješ backend (server)?",
       "options": [
-        "Když chci hezčí design",
-        "Když uživatelé sdílejí data nebo hrají spolu naživo",
-        "Když stránka obsahuje obrázky",
-        "Nikdy, vše jde ve frontendu"
+        {
+          "id": "a",
+          "text": "Když chci hezčí design"
+        },
+        {
+          "id": "b",
+          "text": "Když uživatelé sdílejí data nebo hrají spolu naživo"
+        },
+        {
+          "id": "c",
+          "text": "Když stránka obsahuje obrázky"
+        },
+        {
+          "id": "d",
+          "text": "Nikdy, vše jde ve frontendu"
+        }
       ],
-      "correctIndex": 1,
+      "correctId": "b",
       "explanation": "Kvíz pro sebe nebo portfolio stačí jako statická stránka. Účty, sdílení a multiplayer potřebují server a databázi."
     },
     {
@@ -339,18 +533,48 @@
       "topic": "Cloudflare",
       "question": "Přiřaď služby Cloudflare k tomu, k čemu slouží.",
       "prompts": [
-        "Pages",
-        "Workers",
-        "D1",
-        "R2"
+        {
+          "id": "p1",
+          "text": "Pages"
+        },
+        {
+          "id": "p2",
+          "text": "Workers"
+        },
+        {
+          "id": "p3",
+          "text": "D1"
+        },
+        {
+          "id": "p4",
+          "text": "R2"
+        }
       ],
       "matches": [
-        "Hosting frontendu",
-        "Backend (kód na serveru)",
-        "SQL databáze",
-        "Soubory a obrázky"
+        {
+          "id": "m1",
+          "text": "Hosting frontendu"
+        },
+        {
+          "id": "m2",
+          "text": "Backend (kód na serveru)"
+        },
+        {
+          "id": "m3",
+          "text": "SQL databáze"
+        },
+        {
+          "id": "m4",
+          "text": "Soubory a obrázky"
+        }
       ],
-      "explanation": "S Cloudflare jde celá malá aplikace postavit zdarma: Pages, Workers, D1 a R2."
+      "explanation": "S Cloudflare jde celá malá aplikace postavit zdarma: Pages, Workers, D1 a R2.",
+      "pairs": {
+        "p1": "m1",
+        "p2": "m2",
+        "p3": "m3",
+        "p4": "m4"
+      }
     },
     {
       "id": "0192f0c4-a002-7000-8000-000000000028",
@@ -366,12 +590,24 @@
       "topic": "Uživatelské účty",
       "question": "Jak nejlépe přidat přihlášení do vlastní aplikace?",
       "options": [
-        "Hesla ukládat do databáze tak, jak je uživatel napsal",
-        "Přihlášení přes Google/GitHub (OAuth) a hotová knihovna",
-        "Heslo uložit do localStorage",
-        "Přihlášení vůbec neověřovat"
+        {
+          "id": "a",
+          "text": "Hesla ukládat do databáze tak, jak je uživatel napsal"
+        },
+        {
+          "id": "b",
+          "text": "Přihlášení přes Google/GitHub (OAuth) a hotová knihovna"
+        },
+        {
+          "id": "c",
+          "text": "Heslo uložit do localStorage"
+        },
+        {
+          "id": "d",
+          "text": "Přihlášení vůbec neověřovat"
+        }
       ],
-      "correctIndex": 1,
+      "correctId": "b",
       "explanation": "Hesla si neukládejte sami. Nechte to Googlu nebo GitHubu a použijte hotovou knihovnu; backend pak ověřuje každý požadavek."
     },
     {
@@ -391,12 +627,24 @@
       "topic": "Git",
       "question": "AI ti rozbila půl aplikace a změny ještě nejsou commitnuté. Co uděláš?",
       "options": [
-        "Smažu celý projekt",
-        "`git restore .` – zahodím neuložené změny a jsem zpět u posledního commitu",
-        "Napíšu AI, ať to nějak spraví",
-        "Počkám, jestli se to opraví samo"
+        {
+          "id": "a",
+          "text": "Smažu celý projekt"
+        },
+        {
+          "id": "b",
+          "text": "`git restore .` – zahodím neuložené změny a jsem zpět u posledního commitu"
+        },
+        {
+          "id": "c",
+          "text": "Napíšu AI, ať to nějak spraví"
+        },
+        {
+          "id": "d",
+          "text": "Počkám, jestli se to opraví samo"
+        }
       ],
-      "correctIndex": 1,
+      "correctId": "b",
       "explanation": "Proto se commituje po každém kroku, který funguje: návrat je pak jeden příkaz."
     },
     {
@@ -405,12 +653,30 @@
       "topic": "Git",
       "question": "Seřaď správný postup práce s AI.",
       "items": [
-        "Napíšu zadání (prompt)",
-        "AI udělá změnu",
-        "Vyzkouším, že to funguje",
-        "Commitnu"
+        {
+          "id": "i1",
+          "text": "Napíšu zadání (prompt)"
+        },
+        {
+          "id": "i2",
+          "text": "AI udělá změnu"
+        },
+        {
+          "id": "i3",
+          "text": "Vyzkouším, že to funguje"
+        },
+        {
+          "id": "i4",
+          "text": "Commitnu"
+        }
       ],
-      "explanation": "Malé kroky: zadání → změna → test → commit. Když něco selže, vrátíte se jen o jeden krok."
+      "explanation": "Malé kroky: zadání → změna → test → commit. Když něco selže, vrátíte se jen o jeden krok.",
+      "correctOrder": [
+        "i1",
+        "i2",
+        "i3",
+        "i4"
+      ]
     },
     {
       "id": "0192f0c4-a002-7000-8000-000000000033",
@@ -426,12 +692,24 @@
       "topic": "Jak se ptát AI",
       "question": "Která otázka na AI je nejlepší?",
       "options": [
-        "Je to dobře?",
-        "Jsou tam chyby?",
-        "Co se stane, když dva hráči odpoví ve stejnou chvíli? Napiš test, který to ověří.",
-        "Zlepši to."
+        {
+          "id": "a",
+          "text": "Je to dobře?"
+        },
+        {
+          "id": "b",
+          "text": "Jsou tam chyby?"
+        },
+        {
+          "id": "c",
+          "text": "Co se stane, když dva hráči odpoví ve stejnou chvíli? Napiš test, který to ověří."
+        },
+        {
+          "id": "d",
+          "text": "Zlepši to."
+        }
       ],
-      "correctIndex": 2,
+      "correctId": "c",
       "explanation": "Konkrétní situace + důkaz testem. Na obecnou otázku dostanete obecnou (často vymyšlenou) odpověď."
     },
     {
@@ -440,17 +718,32 @@
       "topic": "Jak se ptát AI",
       "question": "Co patří do dobrého zadání pro AI?",
       "options": [
-        "Cíl – co stavím a pro koho",
-        "Omezení – technologie, co nesmí",
-        "Kdy je hotovo – jak poznám, že to funguje",
-        "Ať se mě nejdřív zeptá na to, co neví",
-        "Co nejvíc vykřičníků"
+        {
+          "id": "a",
+          "text": "Cíl – co stavím a pro koho"
+        },
+        {
+          "id": "b",
+          "text": "Omezení – technologie, co nesmí"
+        },
+        {
+          "id": "c",
+          "text": "Kdy je hotovo – jak poznám, že to funguje"
+        },
+        {
+          "id": "d",
+          "text": "Ať se mě nejdřív zeptá na to, co neví"
+        },
+        {
+          "id": "e",
+          "text": "Co nejvíc vykřičníků"
+        }
       ],
-      "correctIndices": [
-        0,
-        1,
-        2,
-        3
+      "correctIds": [
+        "a",
+        "b",
+        "c",
+        "d"
       ],
       "explanation": "Cíl, omezení, kritéria hotovo, prostor pro otázky a malé kroky."
     },
@@ -460,12 +753,24 @@
       "topic": "Data",
       "question": "„Může mít sada víc autorů?“ Kdo to má rozhodnout?",
       "options": [
-        "AI – ví nejlépe, co chci",
-        "Vy – je to rozhodnutí o produktu, ne o kódu",
-        "Databáze sama",
-        "Nikdo, na tom nezáleží"
+        {
+          "id": "a",
+          "text": "AI – ví nejlépe, co chci"
+        },
+        {
+          "id": "b",
+          "text": "Vy – je to rozhodnutí o produktu, ne o kódu"
+        },
+        {
+          "id": "c",
+          "text": "Databáze sama"
+        },
+        {
+          "id": "d",
+          "text": "Nikdo, na tom nezáleží"
+        }
       ],
-      "correctIndex": 1,
+      "correctId": "b",
       "explanation": "AI není věštec vašeho nápadu. Datové schéma vychází z toho, jak má produkt fungovat."
     },
     {
@@ -474,12 +779,24 @@
       "topic": "Bezpečnost",
       "question": "Sada se sdílí odkazem `/api/sets/8f3a…`, ale endpoint `/api/sets` vrátí všechny sady. Co je špatně?",
       "options": [
-        "Nic, tak to má být",
-        "Kdokoliv si stáhne i cizí soukromé sady",
-        "Je to jen pomalejší",
-        "Odkaz je moc dlouhý"
+        {
+          "id": "a",
+          "text": "Nic, tak to má být"
+        },
+        {
+          "id": "b",
+          "text": "Kdokoliv si stáhne i cizí soukromé sady"
+        },
+        {
+          "id": "c",
+          "text": "Je to jen pomalejší"
+        },
+        {
+          "id": "d",
+          "text": "Odkaz je moc dlouhý"
+        }
       ],
-      "correctIndex": 1,
+      "correctId": "b",
       "explanation": "AI dělá, aby to fungovalo, ne aby to bylo bezpečné. Zkuste po ní: „Teď jsi útočník. Jak bys dostal cizí data?“"
     },
     {
@@ -488,12 +805,24 @@
       "topic": "Skutečné chyby",
       "question": "Místnosti v Memizy byly chráněné PINem. V čem byla chyba, kterou AI udělala?",
       "options": [
-        "PIN měl jen 4 číslice",
-        "Endpoint `/api/rooms` vrátil všechny místnosti i s PINy",
-        "Místnosti nešly vytvořit",
-        "PIN se nedal zadat na mobilu"
+        {
+          "id": "a",
+          "text": "PIN měl jen 4 číslice"
+        },
+        {
+          "id": "b",
+          "text": "Endpoint `/api/rooms` vrátil všechny místnosti i s PINy"
+        },
+        {
+          "id": "c",
+          "text": "Místnosti nešly vytvořit"
+        },
+        {
+          "id": "d",
+          "text": "PIN se nedal zadat na mobilu"
+        }
       ],
-      "correctIndex": 1,
+      "correctId": "b",
       "explanation": "Funkce fungovala, ale „chráněné“ PINy šlo jedním požadavkem vypsat. Kdokoliv se mohl připojit kamkoliv."
     },
     {
@@ -502,12 +831,24 @@
       "topic": "Skutečné chyby",
       "question": "Co je špatně na kódu `.catch(() => {})`?",
       "options": [
-        "Je moc dlouhý",
-        "Spolkne chybu – něco tiše selže a nikdo se to nedozví",
-        "Zpomalí aplikaci",
-        "Nic, je to nejlepší praxe"
+        {
+          "id": "a",
+          "text": "Je moc dlouhý"
+        },
+        {
+          "id": "b",
+          "text": "Spolkne chybu – něco tiše selže a nikdo se to nedozví"
+        },
+        {
+          "id": "c",
+          "text": "Zpomalí aplikaci"
+        },
+        {
+          "id": "d",
+          "text": "Nic, je to nejlepší praxe"
+        }
       ],
-      "correctIndex": 1,
+      "correctId": "b",
       "explanation": "V Memizy se kvůli tomu tiše neukládala hra a po obnovení stránky se ztratila. Chyby nepolykejte, aspoň je vypište."
     },
     {
@@ -516,17 +857,32 @@
       "topic": "Testování",
       "question": "Co by měl tester vyzkoušet?",
       "options": [
-        "Obnovit stránku uprostřed hry",
-        "Hrát ve dvou ve stejnou chvíli",
-        "Zadat divnou nebo prázdnou odpověď",
-        "Otočit telefon",
-        "Jen to, co popsal vývojář"
+        {
+          "id": "a",
+          "text": "Obnovit stránku uprostřed hry"
+        },
+        {
+          "id": "b",
+          "text": "Hrát ve dvou ve stejnou chvíli"
+        },
+        {
+          "id": "c",
+          "text": "Zadat divnou nebo prázdnou odpověď"
+        },
+        {
+          "id": "d",
+          "text": "Otočit telefon"
+        },
+        {
+          "id": "e",
+          "text": "Jen to, co popsal vývojář"
+        }
       ],
-      "correctIndices": [
-        0,
-        1,
-        2,
-        3
+      "correctIds": [
+        "a",
+        "b",
+        "c",
+        "d"
       ],
       "explanation": "Tester hledá situace, na které vývojář nemyslel. Dobré hlášení: co jsem dělal, co jsem čekal, co se stalo, jaký telefon."
     }

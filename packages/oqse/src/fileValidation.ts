@@ -98,6 +98,9 @@ export function formatOQSEIssues(issues: OQSEIssue[]): string[] {
 /** OQSE MAJOR version supported by this library. */
 export const SUPPORTED_OQSE_MAJOR_VERSION = 0;
 
+/** The OQSE version this library reads and writes. Older 0.x files are not loaded (no conversion). */
+export const OQSE_VERSION = '0.3';
+
 // ============================================================================
 // Public API
 // ============================================================================
@@ -184,10 +187,16 @@ function analyze(input: unknown, mode: Mode): OQSELoadResult {
     return critical();
   }
   if (typeof root.version !== 'string' || !/^\d+\.\d+$/.test(root.version)) {
-    log.add('error', 'INVALID_VERSION', 'Version must be in MAJOR.MINOR format (e.g. "0.2").', ['version']);
+    log.add('error', 'INVALID_VERSION', `Version must be in MAJOR.MINOR format (e.g. "${OQSE_VERSION}").`, ['version']);
     return critical();
   }
-  if (Number(root.version.split('.')[0]) !== SUPPORTED_OQSE_MAJOR_VERSION) {
+  const [major, minor] = root.version.split('.').map(Number);
+  if (major === SUPPORTED_OQSE_MAJOR_VERSION && minor < 3) {
+    // 0.3 replaced indices with choice IDs; older sets must be converted once (no automatic conversion).
+    log.add('error', 'UNSUPPORTED_VERSION', `OQSE ${root.version} is no longer supported: convert the set to ${OQSE_VERSION} (choices with IDs).`, ['version']);
+    return critical();
+  }
+  if (major !== SUPPORTED_OQSE_MAJOR_VERSION) {
     log.add('warning', 'UNSUPPORTED_VERSION', `Unsupported MAJOR version ${root.version}; loading in best-effort mode.`, ['version']);
   }
   if (root.items.length > 10000) {
@@ -389,6 +398,16 @@ function pushTexts(out: TextEntry[], path: Path, values: unknown) {
   if (Array.isArray(values)) values.forEach((value, i) => pushText(out, [...path, i], value));
 }
 
+/** Texts (and explanations) of a list of choices. */
+function pushChoices(out: TextEntry[], path: Path, choices: unknown) {
+  if (!Array.isArray(choices)) return;
+  choices.forEach((choice, i) => {
+    if (!isRecord(choice)) return;
+    pushText(out, [...path, i, 'text'], choice.text);
+    pushText(out, [...path, i, 'explanation'], choice.explanation);
+  });
+}
+
 function pushMediaTexts(out: TextEntry[], path: Path, assets: Record<string, MediaObject> | undefined) {
   for (const [key, media] of Object.entries(assets ?? {})) {
     pushText(out, [...path, key, 'transcript'], media.transcript);
@@ -424,35 +443,39 @@ export function itemRichText(item: OQSEAnyItem): TextEntry[] {
       break;
     case 'mcq-single':
     case 'mcq-multi':
-      pushTexts(out, ['options'], item.options);
-      pushTexts(out, ['optionExplanations'], item.optionExplanations);
+      pushChoices(out, ['options'], item.options);
       break;
     case 'fill-in-blanks':
       pushText(out, ['text'], item.text);
       break;
     case 'fill-in-select':
       pushText(out, ['text'], item.text);
-      for (const [token, blank] of Object.entries(item.blanks)) pushTexts(out, ['blanks', token, 'options'], blank.options);
+      for (const [token, blank] of Object.entries(item.blanks)) pushChoices(out, ['blanks', token, 'options'], blank.options);
       break;
     case 'match-pairs':
-      pushTexts(out, ['prompts'], item.prompts);
-      pushTexts(out, ['matches'], item.matches);
+      pushChoices(out, ['prompts'], item.prompts);
+      pushChoices(out, ['matches'], item.matches);
       break;
     case 'match-complex':
-      pushTexts(out, ['leftItems'], item.leftItems);
-      pushTexts(out, ['rightItems'], item.rightItems);
+      pushChoices(out, ['leftItems'], item.leftItems);
+      pushChoices(out, ['rightItems'], item.rightItems);
       break;
     case 'sort-items':
-      pushTexts(out, ['items'], item.items);
+      pushChoices(out, ['items'], item.items);
       break;
     case 'categorize':
+      pushChoices(out, ['categories'], item.categories);
       item.items.forEach((entry, i) => pushText(out, ['items', i, 'text'], entry.text));
       break;
     case 'timeline':
       item.events.forEach((event, i) => pushText(out, ['events', i, 'text'], event.text));
       break;
     case 'diagram-label':
-      pushTexts(out, ['labels'], item.labels);
+      pushChoices(out, ['labels'], item.labels);
+      break;
+    case 'matrix':
+      pushChoices(out, ['rows'], item.rows);
+      pushChoices(out, ['columns'], item.columns);
       break;
     case 'open-ended':
       pushText(out, ['sampleAnswer'], item.sampleAnswer);

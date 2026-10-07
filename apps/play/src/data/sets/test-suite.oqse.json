@@ -1,6 +1,6 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@memizy/oqse@0.2/schemas/oqse-v0.2.json",
-  "version": "0.2",
+  "$schema": "https://cdn.jsdelivr.net/npm/@memizy/oqse@0.3/schemas/oqse-v0.3.json",
+  "version": "0.3",
   "meta": {
     "id": "019da5a2-013c-7728-8a1f-fcf579822022",
     "title": "Memizy OQSE Test Set",
@@ -130,22 +130,29 @@
       ],
       "question": "Which planet is known as the Red Planet?",
       "options": [
-        "Earth",
-        "Mars",
-        "Venus"
+        {
+          "id": "a",
+          "text": "Earth",
+          "explanation": "Earth is often called the Blue Planet."
+        },
+        {
+          "id": "b",
+          "text": "Mars",
+          "explanation": "Mars is called the Red Planet due to iron oxide on its surface."
+        },
+        {
+          "id": "c",
+          "text": "Venus",
+          "explanation": "Venus is known for its thick, hot atmosphere, not for a red surface."
+        }
       ],
-      "correctIndex": 1,
+      "correctId": "b",
       "shuffle": true,
       "hints": [
         "Its surface color is linked to iron oxide.",
         "It is the fourth planet from the Sun."
       ],
       "incorrectFeedback": "Focus on the nickname itself and think about the planet associated with red dust.",
-      "optionExplanations": [
-        "Earth is often called the Blue Planet.",
-        "Mars is called the Red Planet due to iron oxide on its surface.",
-        "Venus is known for its thick, hot atmosphere, not for a red surface."
-      ],
       "explanation": "Mars is known as the Red Planet because of iron oxide (rust-like dust) on its surface.",
       "appSpecific": {
         "memizy": {
@@ -164,24 +171,34 @@
       ],
       "question": "What is 5 * 5?",
       "options": [
-        "20",
-        "25",
-        "30",
-        "35"
+        {
+          "id": "a",
+          "text": "20",
+          "explanation": "20 equals 4 * 5."
+        },
+        {
+          "id": "b",
+          "text": "25",
+          "explanation": "25 is correct because 5 * 5 = 25."
+        },
+        {
+          "id": "c",
+          "text": "30",
+          "explanation": "30 equals 6 * 5."
+        },
+        {
+          "id": "d",
+          "text": "35",
+          "explanation": "35 equals 7 * 5."
+        }
       ],
-      "correctIndex": 1,
+      "correctId": "b",
       "shuffle": true,
       "hints": [
         "This is five groups of five.",
         "Think of the square of 5."
       ],
       "incorrectFeedback": "Try using repeated addition: 5 + 5 + 5 + 5 + 5.",
-      "optionExplanations": [
-        "20 equals 4 * 5.",
-        "25 is correct because 5 * 5 = 25.",
-        "30 equals 6 * 5.",
-        "35 equals 7 * 5."
-      ],
       "explanation": "5 multiplied by 5 equals 25."
     },
     {
@@ -195,22 +212,29 @@
       ],
       "question": "Which animal says 'Meow'?",
       "options": [
-        "Dog",
-        "Cow",
-        "Cat"
+        {
+          "id": "a",
+          "text": "Dog",
+          "explanation": "Dogs typically bark."
+        },
+        {
+          "id": "b",
+          "text": "Cow",
+          "explanation": "Cows typically moo."
+        },
+        {
+          "id": "c",
+          "text": "Cat",
+          "explanation": "Cats typically meow."
+        }
       ],
-      "correctIndex": 2,
+      "correctId": "c",
       "shuffle": true,
       "hints": [
         "It is a common household pet.",
         "It often purrs."
       ],
       "incorrectFeedback": "Think about which of these animals is typically kept indoors as a pet.",
-      "optionExplanations": [
-        "Dogs typically bark.",
-        "Cows typically moo.",
-        "Cats typically meow."
-      ],
       "explanation": "Cats are commonly associated with the sound 'Meow'."
     },
     {
@@ -224,14 +248,30 @@
       ],
       "question": "Select all **even** numbers:",
       "options": [
-        "1",
-        "2",
-        "3",
-        "4"
+        {
+          "id": "a",
+          "text": "1",
+          "explanation": "1 is odd."
+        },
+        {
+          "id": "b",
+          "text": "2",
+          "explanation": "2 is even."
+        },
+        {
+          "id": "c",
+          "text": "3",
+          "explanation": "3 is odd."
+        },
+        {
+          "id": "d",
+          "text": "4",
+          "explanation": "4 is even."
+        }
       ],
-      "correctIndices": [
-        1,
-        3
+      "correctIds": [
+        "b",
+        "d"
       ],
       "minSelections": 1,
       "maxSelections": 2,
@@ -241,12 +281,6 @@
         "There are exactly two correct answers."
       ],
       "incorrectFeedback": "Check each number by dividing it by 2.",
-      "optionExplanations": [
-        "1 is odd.",
-        "2 is even.",
-        "3 is odd.",
-        "4 is even."
-      ],
       "explanation": "The even numbers in the list are 2 and 4."
     },
     {
@@ -260,14 +294,30 @@
       ],
       "question": "Which of these are **fruits**?",
       "options": [
-        "Apple",
-        "Carrot",
-        "Banana",
-        "Potato"
+        {
+          "id": "a",
+          "text": "Apple",
+          "explanation": "Apple is a fruit."
+        },
+        {
+          "id": "b",
+          "text": "Carrot",
+          "explanation": "Carrot is a root vegetable."
+        },
+        {
+          "id": "c",
+          "text": "Banana",
+          "explanation": "Banana is a fruit."
+        },
+        {
+          "id": "d",
+          "text": "Potato",
+          "explanation": "Potato is a tuber vegetable."
+        }
       ],
-      "correctIndices": [
-        0,
-        2
+      "correctIds": [
+        "a",
+        "c"
       ],
       "maxSelections": 2,
       "shuffle": true,
@@ -276,12 +326,6 @@
         "Carrot and potato are typically classified as vegetables."
       ],
       "incorrectFeedback": "Separate fruits from root vegetables.",
-      "optionExplanations": [
-        "Apple is a fruit.",
-        "Carrot is a root vegetable.",
-        "Banana is a fruit.",
-        "Potato is a tuber vegetable."
-      ],
       "explanation": "Apple and banana are fruits."
     },
     {
@@ -295,15 +339,31 @@
       ],
       "question": "Select the primary colors in the RGB light model:",
       "options": [
-        "Red",
-        "Green",
-        "Yellow",
-        "Blue"
+        {
+          "id": "a",
+          "text": "Red",
+          "explanation": "Red is a primary RGB light color."
+        },
+        {
+          "id": "b",
+          "text": "Green",
+          "explanation": "Green is a primary RGB light color."
+        },
+        {
+          "id": "c",
+          "text": "Yellow",
+          "explanation": "Yellow is produced by mixing red and green light."
+        },
+        {
+          "id": "d",
+          "text": "Blue",
+          "explanation": "Blue is a primary RGB light color."
+        }
       ],
-      "correctIndices": [
-        0,
-        1,
-        3
+      "correctIds": [
+        "a",
+        "b",
+        "d"
       ],
       "maxSelections": 3,
       "shuffle": true,
@@ -312,12 +372,6 @@
         "Yellow is not one of the three base RGB channels."
       ],
       "incorrectFeedback": "Use additive color mixing, not paint color rules.",
-      "optionExplanations": [
-        "Red is a primary RGB light color.",
-        "Green is a primary RGB light color.",
-        "Yellow is produced by mixing red and green light.",
-        "Blue is a primary RGB light color."
-      ],
       "explanation": "The RGB primary colors are red, green, and blue."
     },
     {
@@ -385,20 +439,43 @@
       ],
       "question": "Match the animal to the sound it makes:",
       "prompts": [
-        "Dog",
-        "Cat",
-        "Cow"
+        {
+          "id": "p1",
+          "text": "Dog"
+        },
+        {
+          "id": "p2",
+          "text": "Cat"
+        },
+        {
+          "id": "p3",
+          "text": "Cow"
+        }
       ],
       "matches": [
-        "Bark",
-        "Meow",
-        "Moo"
+        {
+          "id": "m1",
+          "text": "Bark"
+        },
+        {
+          "id": "m2",
+          "text": "Meow"
+        },
+        {
+          "id": "m3",
+          "text": "Moo"
+        }
       ],
       "hints": [
         "Dog pairs with bark.",
         "Cat pairs with meow."
       ],
-      "explanation": "Correct pairs are Dog-Bark, Cat-Meow, and Cow-Moo."
+      "explanation": "Correct pairs are Dog-Bark, Cat-Meow, and Cow-Moo.",
+      "pairs": {
+        "p1": "m1",
+        "p2": "m2",
+        "p3": "m3"
+      }
     },
     {
       "id": "019da5a2-013f-7361-b54b-6904343d3d49",
@@ -411,20 +488,43 @@
       ],
       "question": "Match the math problem to its answer:",
       "prompts": [
-        "1 + 1",
-        "2 + 2",
-        "3 + 3"
+        {
+          "id": "p1",
+          "text": "1 + 1"
+        },
+        {
+          "id": "p2",
+          "text": "2 + 2"
+        },
+        {
+          "id": "p3",
+          "text": "3 + 3"
+        }
       ],
       "matches": [
-        "2",
-        "4",
-        "6"
+        {
+          "id": "m1",
+          "text": "2"
+        },
+        {
+          "id": "m2",
+          "text": "4"
+        },
+        {
+          "id": "m3",
+          "text": "6"
+        }
       ],
       "hints": [
         "Evaluate each addition left to right.",
         "Each right-side value is an even number."
       ],
-      "explanation": "Correct pairs are 1 + 1 = 2, 2 + 2 = 4, and 3 + 3 = 6."
+      "explanation": "Correct pairs are 1 + 1 = 2, 2 + 2 = 4, and 3 + 3 = 6.",
+      "pairs": {
+        "p1": "m1",
+        "p2": "m2",
+        "p3": "m3"
+      }
     },
     {
       "id": "019da5a2-013f-7361-b54b-6905739d5f55",
@@ -437,20 +537,43 @@
       ],
       "question": "Match the object to its typical color:",
       "prompts": [
-        "Apple",
-        "Sky",
-        "Grass"
+        {
+          "id": "p1",
+          "text": "Apple"
+        },
+        {
+          "id": "p2",
+          "text": "Sky"
+        },
+        {
+          "id": "p3",
+          "text": "Grass"
+        }
       ],
       "matches": [
-        "Red",
-        "Blue",
-        "Green"
+        {
+          "id": "m1",
+          "text": "Red"
+        },
+        {
+          "id": "m2",
+          "text": "Blue"
+        },
+        {
+          "id": "m3",
+          "text": "Green"
+        }
       ],
       "hints": [
         "Sky commonly matches blue.",
         "Grass commonly matches green."
       ],
-      "explanation": "Typical matches are Apple-Red, Sky-Blue, and Grass-Green."
+      "explanation": "Typical matches are Apple-Red, Sky-Blue, and Grass-Green.",
+      "pairs": {
+        "p1": "m1",
+        "p2": "m2",
+        "p3": "m3"
+      }
     },
     {
       "id": "019da5a2-013f-7361-b54b-6906d2fab18a",
@@ -463,16 +586,34 @@
       ],
       "question": "Sort the numbers from smallest to largest:",
       "items": [
-        "One (1)",
-        "Two (2)",
-        "Three (3)",
-        "Four (4)"
+        {
+          "id": "i1",
+          "text": "One (1)"
+        },
+        {
+          "id": "i2",
+          "text": "Two (2)"
+        },
+        {
+          "id": "i3",
+          "text": "Three (3)"
+        },
+        {
+          "id": "i4",
+          "text": "Four (4)"
+        }
       ],
       "hints": [
         "Use ascending numeric order.",
         "Start with 1 and end with 4."
       ],
-      "explanation": "The correct ascending order is 1, 2, 3, 4."
+      "explanation": "The correct ascending order is 1, 2, 3, 4.",
+      "correctOrder": [
+        "i1",
+        "i2",
+        "i3",
+        "i4"
+      ]
     },
     {
       "id": "019da5a2-013f-7361-b54b-690785940772",
@@ -485,17 +626,39 @@
       ],
       "question": "Sort the days of the week in order:",
       "items": [
-        "Monday",
-        "Tuesday",
-        "Wednesday",
-        "Thursday",
-        "Friday"
+        {
+          "id": "i1",
+          "text": "Monday"
+        },
+        {
+          "id": "i2",
+          "text": "Tuesday"
+        },
+        {
+          "id": "i3",
+          "text": "Wednesday"
+        },
+        {
+          "id": "i4",
+          "text": "Thursday"
+        },
+        {
+          "id": "i5",
+          "text": "Friday"
+        }
       ],
       "hints": [
         "Use weekday order from Monday to Friday.",
         "Tuesday comes immediately after Monday."
       ],
-      "explanation": "The weekday order is Monday, Tuesday, Wednesday, Thursday, Friday."
+      "explanation": "The weekday order is Monday, Tuesday, Wednesday, Thursday, Friday.",
+      "correctOrder": [
+        "i1",
+        "i2",
+        "i3",
+        "i4",
+        "i5"
+      ]
     },
     {
       "id": "019da5a2-013f-7361-b54b-6908f79760d4",
@@ -508,16 +671,34 @@
       ],
       "question": "Sort the inner planets by distance from the Sun (closest first):",
       "items": [
-        "Mercury",
-        "Venus",
-        "Earth",
-        "Mars"
+        {
+          "id": "i1",
+          "text": "Mercury"
+        },
+        {
+          "id": "i2",
+          "text": "Venus"
+        },
+        {
+          "id": "i3",
+          "text": "Earth"
+        },
+        {
+          "id": "i4",
+          "text": "Mars"
+        }
       ],
       "hints": [
         "Only inner rocky planets are included.",
         "Earth comes after Venus in this sequence."
       ],
-      "explanation": "The correct order from the Sun is Mercury, Venus, Earth, Mars."
+      "explanation": "The correct order from the Sun is Mercury, Venus, Earth, Mars.",
+      "correctOrder": [
+        "i1",
+        "i2",
+        "i3",
+        "i4"
+      ]
     },
     {
       "id": "019da5a2-013f-7361-b54b-6909e1c51ff1",

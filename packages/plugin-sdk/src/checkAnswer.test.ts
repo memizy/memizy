@@ -3,19 +3,21 @@ import type { OQSEAnyItem } from '@memizy/oqse';
 import { checkAnswer } from './checkAnswer';
 
 const item = (data: Record<string, unknown>) => ({ id: 'x', ...data }) as unknown as OQSEAnyItem;
+/** Choices with the given IDs (text = ID). */
+const ch = (...ids: string[]) => ids.map((id) => ({ id, text: id }));
 
 describe('checkAnswer', () => {
   it('choice types', () => {
-    const mcq = item({ type: 'mcq-single', question: 'Q', options: ['a', 'b'], correctIndex: 1 });
-    expect(checkAnswer(mcq, 1)).toBe(true);
-    expect(checkAnswer(mcq, '1')).toBe(true); // from data-payload / forms
-    expect(checkAnswer(mcq, 0)).toBe(false);
+    const mcq = item({ type: 'mcq-single', question: 'Q', options: ch('a', 'b'), correctId: 'b' });
+    expect(checkAnswer(mcq, 'b')).toBe(true);
+    expect(checkAnswer(mcq, 'a')).toBe(false);
+    expect(checkAnswer(mcq, 1)).toBe(false); // positions are not answers in OQSE 0.3
     expect(checkAnswer(mcq, undefined)).toBe(false);
 
-    const multi = item({ type: 'mcq-multi', question: 'Q', options: ['a', 'b', 'c'], correctIndices: [0, 2] });
-    expect(checkAnswer(multi, [2, 0])).toBe(true);
-    expect(checkAnswer(multi, [0])).toBe(false);
-    expect(checkAnswer(multi, [0, 2, 2])).toBe(false);
+    const multi = item({ type: 'mcq-multi', question: 'Q', options: ch('a', 'b', 'c'), correctIds: ['a', 'c'] });
+    expect(checkAnswer(multi, ['c', 'a'])).toBe(true);
+    expect(checkAnswer(multi, ['a'])).toBe(false);
+    expect(checkAnswer(multi, ['a', 'c', 'c'])).toBe(false);
 
     const tf = item({ type: 'true-false', question: 'Q', correctAnswer: false });
     expect(checkAnswer(tf, false)).toBe(true);
@@ -55,30 +57,46 @@ describe('checkAnswer', () => {
   });
 
   it('ordering and matching', () => {
-    expect(checkAnswer(item({ type: 'sort-items', question: 'Q', items: ['a', 'b', 'c'] }), [0, 1, 2])).toBe(true);
-    expect(checkAnswer(item({ type: 'sort-items', question: 'Q', items: ['a', 'b', 'c'] }), [1, 0, 2])).toBe(false);
-    expect(checkAnswer(item({ type: 'match-pairs', prompts: ['a', 'b'], matches: ['A', 'B'] }), [0, 1])).toBe(true);
-    expect(checkAnswer(item({ type: 'match-pairs', prompts: ['a', 'b'], matches: ['A', 'B'] }), [1, 0])).toBe(false);
-    const complex = item({ type: 'match-complex', leftItems: ['a', 'b'], rightItems: ['x', 'y'], connections: [[0, 0], [1, 1], [1, 0]], minCorrect: 2 });
-    expect(checkAnswer(complex, [[0, 0], [1, 1]])).toBe(true);
-    expect(checkAnswer(complex, [[0, 0], [0, 1]])).toBe(false);
-    const matrix = item({ type: 'matrix', question: 'Q', rows: ['r1', 'r2'], columns: ['c1', 'c2'], correctCells: [[0, 1], [1, 0]] });
-    expect(checkAnswer(matrix, [[1, 0], [0, 1]])).toBe(true);
-    expect(checkAnswer(matrix, [[0, 1]])).toBe(false);
-    const timeline = item({ type: 'timeline', question: 'Q', events: [{ id: 'e1', text: 'a', date: '1900-01-01' }, { id: 'e2', text: 'b', date: '1910-01-01' }] });
-    expect(checkAnswer(timeline, ['e1', 'e2'])).toBe(true);
-    expect(checkAnswer(timeline, ['e2', 'e1'])).toBe(false);
+    const sort = item({ type: 'sort-items', question: 'Q', items: ch('b', 'a', 'c'), correctOrder: ['a', 'b', 'c'] });
+    expect(checkAnswer(sort, ['a', 'b', 'c'])).toBe(true);
+    expect(checkAnswer(sort, ['b', 'a', 'c'])).toBe(false);
+    expect(checkAnswer(sort, ['a', 'b'])).toBe(false);
+    const pairs = item({ type: 'match-pairs', prompts: ch('cz', 'sk'), matches: ch('praha', 'bratislava', 'viden'), pairs: { cz: 'praha', sk: 'bratislava' } });
+    expect(checkAnswer(pairs, { sk: 'bratislava', cz: 'praha' })).toBe(true);
+    expect(checkAnswer(pairs, { cz: 'praha', sk: 'viden' })).toBe(false);
+    expect(checkAnswer(pairs, { cz: 'praha' })).toBe(false);
+    const complex = item({ type: 'match-complex', leftItems: ch('a', 'b'), rightItems: ch('x', 'y'), connections: [['a', 'x'], ['b', 'y'], ['b', 'x']], minCorrect: 2 });
+    expect(checkAnswer(complex, [['a', 'x'], ['b', 'y']])).toBe(true);
+    expect(checkAnswer(complex, [['a', 'x'], ['a', 'y']])).toBe(false);
+    const matrix = item({ type: 'matrix', question: 'Q', rows: ch('r1', 'r2'), columns: ch('c1', 'c2'), correctCells: [['r1', 'c2'], ['r2', 'c1']] });
+    expect(checkAnswer(matrix, [['r2', 'c1'], ['r1', 'c2']])).toBe(true);
+    expect(checkAnswer(matrix, [['r1', 'c2']])).toBe(false);
+    // Timeline: the order of the dates, listed in any order; the same year counts as simultaneous.
+    const timeline = item({
+      type: 'timeline',
+      question: 'Q',
+      events: [
+        { id: 'e2', text: 'b', date: '1910-01-01' },
+        { id: 'e1', text: 'a', date: '1900-01-01' },
+        { id: 'e3', text: 'c', date: '1910-06-01', precision: 'year' },
+      ],
+    });
+    expect(checkAnswer(timeline, ['e1', 'e2', 'e3'])).toBe(true);
+    expect(checkAnswer(timeline, ['e1', 'e3', 'e2'])).toBe(true);
+    expect(checkAnswer(timeline, ['e2', 'e1', 'e3'])).toBe(false);
+    expect(checkAnswer(timeline, ['e1', 'e2'])).toBe(false);
   });
 
   it('blanks and categories', () => {
     const blanks = item({ type: 'fill-in-blanks', text: '<blank:a /> <blank:b />', blanks: { a: ['Praha'], b: ['Brno', 'brno city'] } });
     expect(checkAnswer(blanks, { a: 'praha', b: 'BRNO' })).toBe(true);
     expect(checkAnswer(blanks, { a: 'praha' })).toBe(false);
-    const select = item({ type: 'fill-in-select', text: '<blank:a />', blanks: { a: { options: ['x', 'y'], correctIndex: 1 } } });
-    expect(checkAnswer(select, { a: 1 })).toBe(true);
-    const categorize = item({ type: 'categorize', question: 'Q', categories: ['A', 'B'], items: [{ id: 'i1', text: 't', correctCategoryIndex: 1 }] });
-    expect(checkAnswer(categorize, { i1: 1 })).toBe(true);
-    expect(checkAnswer(categorize, { i1: 0 })).toBe(false);
+    const select = item({ type: 'fill-in-select', text: '<blank:a />', blanks: { a: { options: ch('x', 'y'), correctId: 'y' } } });
+    expect(checkAnswer(select, { a: 'y' })).toBe(true);
+    expect(checkAnswer(select, { a: 'x' })).toBe(false);
+    const categorize = item({ type: 'categorize', question: 'Q', categories: ch('A', 'B'), items: [{ id: 'i1', text: 't', correctCategoryId: 'B' }] });
+    expect(checkAnswer(categorize, { i1: 'B' })).toBe(true);
+    expect(checkAnswer(categorize, { i1: 'A' })).toBe(false);
   });
 
   it('spatial and special types', () => {
@@ -99,9 +117,10 @@ describe('checkAnswer', () => {
     expect(checkAnswer(pins, [{ x: 50, y: 50 }, { x: 5, y: 5 }])).toBe(true);
     expect(checkAnswer(pins, [{ x: 50, y: 50 }, { x: 51, y: 51 }])).toBe(false);
 
-    const label = item({ type: 'diagram-label', question: 'Q', targetAsset: 'd', labels: ['Heart', 'Lung'], zones: [{ type: 'circle', x: 1, y: 1, radius: 1, correctLabelIndex: 1 }] });
-    expect(checkAnswer(label, { 0: 1 })).toBe(true);
-    expect(checkAnswer(item({ ...(label as object), requireTyping: true }), { 0: ' lung ' })).toBe(true);
+    const label = item({ type: 'diagram-label', question: 'Q', targetAsset: 'd', labels: [{ id: 'heart', text: 'Heart' }, { id: 'lung', text: 'Lung' }], zones: [{ id: 'z1', type: 'circle', x: 1, y: 1, radius: 1, correctLabelId: 'lung' }] });
+    expect(checkAnswer(label, { z1: 'lung' })).toBe(true);
+    expect(checkAnswer(label, { z1: 'heart' })).toBe(false);
+    expect(checkAnswer(item({ ...(label as object), requireTyping: true }), { z1: ' lung ' })).toBe(true);
 
     const model = item({ type: 'pin-on-model', question: 'Q', targetAsset: 'm', hotspots: [{ type: 'mesh', targetName: 'Femur' }] });
     expect(checkAnswer(model, 'femur_left')).toBe(true);

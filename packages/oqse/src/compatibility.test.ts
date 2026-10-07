@@ -6,7 +6,7 @@ import { checkCompatibility } from './compatibility';
 const id = (n: number) => `0192f0c4-7a1e-7c3b-9a52-2f1d8e4b6a${String(n).padStart(2, '0')}`;
 
 const file: OQSEFile = {
-  version: '0.2',
+  version: '0.3',
   meta: {
     id: id(0),
     language: 'cs',
@@ -18,7 +18,7 @@ const file: OQSEFile = {
   },
   items: [
     { id: id(1), type: 'note', content: 'x' },
-    { id: id(2), type: 'mcq-single', question: 'Q', options: ['a', 'b'], correctIndex: 0, assets: { snd: { type: 'audio', value: 'https://a/s.mp3' } } },
+    { id: id(2), type: 'mcq-single', question: 'Q', options: [{ id: 'a', text: 'a' }, { id: 'b', text: 'b' }], correctId: 'a', assets: { snd: { type: 'audio', value: 'https://a/s.mp3' } } },
   ],
 };
 
@@ -40,7 +40,7 @@ describe('checkCompatibility', () => {
   });
 
   it('reports every missing capability', () => {
-    const report = checkCompatibility(file, manifest({ types: ['note'], assets: { image: ['image/png'] }, features: ['markdown'] }, { minOqseVersion: '0.3' }));
+    const report = checkCompatibility(file, manifest({ types: ['note'], assets: { image: ['image/png'] }, features: ['markdown'] }, { minOqseVersion: '0.4' }));
     expect(report.compatible).toBe(false);
     expect(report.versionCompatible).toBe(false);
     expect(report.unsupportedTypes).toEqual(['mcq-single']);
