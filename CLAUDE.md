@@ -34,6 +34,7 @@ its library (see "Using the engine from the platform").
 | `apps/play` | Memizy Play (Vue 3 + Tailwind + vue-i18n): Lab (write/test plugins, AI question sets), host and join pages. Example plugins in `src/data/plugins`, sample sets in `src/data/sets`. |
 | `docs/ai-plugin-guide.md` | The guide students paste into their AI (rules, API, item table, full example). The Lab copies it into prompts. |
 | `docs/ARCHITEKTURA-A-PLAN.md` | Architecture and plan (Czech). `docs/presentation/` = the workshop talk. |
+| `docs/PLAN-RC4.md` | **Current plan** (Czech): RC4 contract, SDK additions, decisions and what is reserved. Check it before changing the contract. |
 
 ## Commands
 
