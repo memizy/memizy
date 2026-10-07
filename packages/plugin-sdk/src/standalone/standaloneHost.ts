@@ -94,6 +94,9 @@ export function standaloneConnector(options: StandaloneOptions): Connector {
       resize: async () => {},
       reportError: async (error) => console.error(`[memizy standalone] ${error.code}: ${error.message}`),
       exit: async () => console.info('[memizy standalone] exit requested'),
+      service: async (name) => {
+        throw new ProtocolError('SERVICE_UNAVAILABLE', `Service "${name}" is not available in the standalone preview (test it in Memizy).`);
+      },
     };
 
     return { host, init, standalone: true, destroy: () => {} };

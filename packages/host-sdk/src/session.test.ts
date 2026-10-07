@@ -9,7 +9,7 @@ import { LocalSession, SETTINGS_ADDRESS, type SessionConfig, type SessionEvent }
 import { loadPluginFromHtml, prepareSetForPlugin, type LoadedPlugin } from './plugin';
 import { MemoryStorage } from './storage';
 import { leitner } from './learning';
-import { PLUGIN_SANDBOX } from './frame';
+import { PLUGIN_SANDBOX, createPluginFrame } from './frame';
 
 // ----------------------------------------------------------------------------
 // Fixtures
@@ -350,6 +350,84 @@ describe('pause (RC4)', () => {
     // A reloaded host passes the stored clock on.
     const resumed = newSession({ resume: true, clock: { pausedMs: 1234, pausedAt: null } }).session;
     expect(resumed.clock).toEqual({ offsetMs: 0, pausedMs: 1234, pausedAt: null });
+  });
+});
+
+describe('services and permissions (RC4)', () => {
+  const withServices = (memizy: Record<string, unknown>) => {
+    const m = { ...manifest, appSpecific: { memizy: { ...manifest.appSpecific.memizy, ...memizy } } };
+    const html = `<!doctype html><html><head><script type="application/oqse-manifest+json">${JSON.stringify(m)}</script></head><body></body></html>`;
+    const result = loadPluginFromHtml(html);
+    if (!result.success) throw new Error(result.errors.join('\n'));
+    return result.plugin;
+  };
+
+  it('a game calls a service the host offers; others are unavailable', async () => {
+    const calls: unknown[] = [];
+    const plugin = withServices({ services: ['demo.echo', 'ai.chat'] });
+    const { session } = newSession({
+      plugin,
+      services: {
+        'demo.echo': async (payload, context) => {
+          calls.push({ payload, context });
+          return { echo: payload, by: context.playerId };
+        },
+      },
+    });
+    expect(session.services).toEqual(['demo.echo']); // ai.chat is declared but not offered
+    const def: Omit<GameDefinition<{ got: unknown; failed: string | null }>, 'root'> = {
+      initialState: () => ({ got: null, failed: null }),
+      actions: {
+        got(state, payload) { state.got = payload; },
+        failed(state, payload) { state.failed = String(payload); },
+      },
+      render: (state, ui) => `<p class="services">${ui.services.join(',')}</p><p class="got">${JSON.stringify(state.got)}</p><p class="failed">${state.failed ?? ''}</p>`,
+      afterRender(_state, ui) {
+        if (ui.view !== 'controller' || ui.self?.id !== 'anna' || ui.local.asked) return;
+        ui.local.asked = true;
+        ui.service('demo.echo', { level: 3 }).then((r) => ui.act('got', r));
+        ui.service('ai.chat', {}).catch((e) => ui.act('failed', e.message));
+      },
+    };
+    play(session, 'board', def);
+    const anna = play(session, 'anna', def);
+    play(session, 'ben', def);
+    await Promise.all(games.map((g) => g.ready));
+    await session.start();
+    await wait(250);
+    expect(anna.root.querySelector('.services')!.textContent).toBe('demo.echo');
+    expect(JSON.parse(anna.root.querySelector('.got')!.textContent!)).toEqual({ echo: { level: 3 }, by: 'anna' });
+    expect(anna.root.querySelector('.failed')!.textContent).toMatch(/SERVICE_UNAVAILABLE/);
+    expect(calls).toEqual([{ payload: { level: 3 }, context: expect.objectContaining({ playerId: 'anna', address: 'anna', pluginId: manifest.id }) }]);
+  });
+
+  it('rejects undeclared services, large requests and too many calls', async () => {
+    const plugin = withServices({ services: ['demo.echo'] });
+    const { session } = newSession({ plugin, services: { 'demo.echo': async (p) => p, 'secret.admin': async () => 'no' } });
+    const anna = await bare(session, 'anna');
+    await expect(anna.service('secret.admin', {})).rejects.toThrow(/\[SERVICE_UNAVAILABLE\]/);
+    await expect(anna.service('demo.echo', 'x'.repeat(70_000))).rejects.toThrow(/\[MESSAGE_TOO_LARGE\]/);
+    const results = await Promise.allSettled(Array.from({ length: 15 }, () => anna.service('demo.echo', 1)));
+    expect(results.filter((r) => r.status === 'rejected').length).toBeGreaterThan(0);
+  });
+
+  it('the iframe gets a content policy from the declared network and the declared devices', () => {
+    const plugin = withServices({ permissions: { network: ['https://lichess.org'], devices: ['microphone'] } });
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const frame = createPluginFrame(plugin.html, 'x', {} as HostApi);
+    frame.plugin.catch(() => {}); // no plugin runs in jsdom
+    container.appendChild(frame.iframe);
+    expect(frame.iframe.getAttribute('allow')).toBe('microphone *');
+    expect(frame.iframe.srcdoc).toMatch(/<head><meta http-equiv="Content-Security-Policy" content="[^"]*connect-src [^"]*https:\/\/lichess\.org/);
+    const plain = createPluginFrame(pluginHtml, 'y', {} as HostApi);
+    plain.plugin.catch(() => {});
+    container.appendChild(plain.iframe);
+    expect(plain.iframe.hasAttribute('allow')).toBe(false);
+    expect(plain.iframe.srcdoc).not.toContain('lichess');
+    frame.destroy();
+    plain.destroy();
+    container.remove();
   });
 });
 

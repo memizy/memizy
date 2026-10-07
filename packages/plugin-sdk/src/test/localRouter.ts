@@ -4,7 +4,7 @@
  */
 
 import type { HostApi, InitPayload, PluginApi, Player, SettingsUpdate, AnswerRecord, DataScope } from '@memizy/protocol';
-import { BOARD_ADDRESS } from '@memizy/protocol';
+import { BOARD_ADDRESS, ProtocolError } from '@memizy/protocol';
 import type { OQSEAnyItem } from '@memizy/oqse';
 import type { Connector } from '../connection/connect';
 
@@ -85,6 +85,7 @@ export class LocalRouter {
         resize: async () => {},
         reportError: async (error) => void this.errors.push(`${address} ${error.code}: ${error.message}`),
         exit: async () => {},
+        service: async (name) => { throw new ProtocolError('SERVICE_UNAVAILABLE', `No service "${name}" in tests.`); },
       };
       return { host, init, standalone: false, destroy: () => this.plugins.delete(address) };
     };

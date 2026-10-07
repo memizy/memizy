@@ -82,6 +82,11 @@ export interface InitPayload {
   config: Theme;
   /** The session clock and its pauses (see {@link SessionClock}). */
   clock: SessionClock;
+  /**
+   * RC4: Memizy services this host offers to the plugin (declared in its manifest and
+   * available here); call them with `service()`. Absent on older hosts.
+   */
+  services?: string[];
   /** Learning progress of `self` (empty for board/settings). */
   progress: Record<string, ProgressRecord>;
   /** Plugin data of `self` (`null` values for board/settings). */
@@ -186,6 +191,8 @@ export interface HostApi {
   resize(request: ResizeRequest): Promise<void>;
   reportError(error: ErrorReport): Promise<void>;
   exit(): Promise<void>;
+  /** RC4: calls a Memizy service (one of `InitPayload.services`); returns its JSON result. */
+  service(name: string, payload: unknown): Promise<unknown>;
 }
 
 /** Methods the plugin exposes to the host (host → plugin). SPEC section 7. */
@@ -203,7 +210,7 @@ export interface PluginApi {
 
 export const HOST_API_METHODS = [
   'hello', 'ready', 'send', 'saveSnapshot', 'recordAnswer', 'saveProgress', 'saveData',
-  'updateSettings', 'getAsset', 'end', 'resize', 'reportError', 'exit',
+  'updateSettings', 'getAsset', 'end', 'resize', 'reportError', 'exit', 'service',
 ] as const satisfies readonly (keyof HostApi)[];
 
 export const PLUGIN_API_METHODS = [

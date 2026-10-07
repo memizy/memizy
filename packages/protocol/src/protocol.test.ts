@@ -158,6 +158,8 @@ describe('plugin manifest', () => {
       settingsScreen: null,
       orientation: 'any',
       views: ['solo'],
+      permissions: { network: [], devices: [] },
+      services: [],
     });
 
     const all = safeParsePluginManifest(manifest({ protocol: '1.0', modes: { solo: {}, multiplayer }, settingsScreen: { size: 'large' } }));

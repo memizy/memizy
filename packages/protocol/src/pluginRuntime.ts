@@ -24,6 +24,10 @@ export interface PluginRuntime {
   orientation: 'any' | 'portrait' | 'landscape';
   /** Views the plugin must render (SPEC 3.2). */
   views: PluginView[];
+  /** Declared network origins and devices (SPEC 8.4). */
+  permissions: { network: string[]; devices: ('camera' | 'microphone' | 'geolocation' | 'serial' | 'bluetooth')[] };
+  /** Memizy services the plugin uses (SPEC 5.3). */
+  services: string[];
 }
 
 const DATA_ISLAND_RE = /<script\b[^>]*\btype\s*=\s*["']application\/oqse-manifest\+json["'][^>]*>([\s\S]*?)<\/script\s*>/i;
@@ -67,5 +71,7 @@ export function toRuntime(memizy: MemizyRuntimeManifest): PluginRuntime {
     settingsScreen: memizy.settingsScreen ? { size: memizy.settingsScreen.size } : null,
     orientation: memizy.display?.orientation ?? 'any',
     views,
+    permissions: { network: [...new Set(memizy.permissions?.network ?? [])], devices: [...new Set(memizy.permissions?.devices ?? [])] },
+    services: [...new Set(memizy.services ?? [])],
   };
 }

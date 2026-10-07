@@ -111,6 +111,15 @@ export interface GameUI {
    * curtain, stops `ui.now()` / timers and ignores actions; show it in the game if you like.
    */
   readonly paused: boolean;
+  /**
+   * RC4: calls a Memizy service the plugin declares in its manifest `services` and the
+   * host offers (`ui.services`), e.g. `await ui.service('chess.puzzles', { level: 3 })`.
+   * Rejects with SERVICE_UNAVAILABLE otherwise. Call it from event handlers or
+   * `afterRender`, then put the result into the game with an action.
+   */
+  service(name: string, payload?: unknown): Promise<unknown>;
+  /** Services available here (declared by the plugin and offered by the host). */
+  readonly services: readonly string[];
   /** Safe HTML for Rich Content from the study set. */
   text(markdown: string | undefined | null, options?: { inline?: boolean }): string;
   /** Safe HTML of a whole note item. */

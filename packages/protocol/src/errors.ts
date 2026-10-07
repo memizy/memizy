@@ -19,6 +19,8 @@ export const PROTOCOL_ERROR_CODES = [
   'ASSET_NOT_FOUND',
   'SESSION_ENDED',
   'INTERNAL_ERROR',
+  /** RC4: the service is not offered by this host (or not declared by the plugin). */
+  'SERVICE_UNAVAILABLE',
 ] as const;
 
 export type ProtocolErrorCode = (typeof PROTOCOL_ERROR_CODES)[number];

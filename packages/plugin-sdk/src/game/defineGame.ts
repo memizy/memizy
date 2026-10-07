@@ -6,6 +6,7 @@
 import {
   LIMITS,
   PROTOCOL_VERSION,
+  ProtocolError,
   assertJsonWithin,
   localize,
   resolveSettings,
@@ -228,7 +229,7 @@ abstract class BaseController implements Controller {
     };
   }
 
-  protected baseUi(): Omit<GameUI, 'view' | 'self' | 'isAuthority' | 'act' | 'pending' | 'isPending' | 'timeLeft' | 'now' | 'paused' | 'item' | 'items' | 'save' | 'setProgress' | 'progress' | 'saved'> {
+  protected baseUi(): Omit<GameUI, 'view' | 'self' | 'isAuthority' | 'act' | 'pending' | 'isPending' | 'timeLeft' | 'now' | 'paused' | 'service' | 'services' | 'item' | 'items' | 'save' | 'setProgress' | 'progress' | 'saved'> {
     const init = this.init;
     return {
       mode: init.session.mode,
@@ -316,9 +317,20 @@ class GameController<S> extends BaseController {
       timeLeft: (deadline) => Math.max(0, (typeof deadline === 'number' ? deadline : 0) - runtime.now()),
       now: () => runtime.now(),
       paused: runtime.paused,
+      services: this.init.services ?? [],
+      service: (name, payload) => this.callService(name, payload),
       save: (scope, value) => this.save(scope, value),
       setProgress: (itemId, progress) => this.setProgress(itemId, progress),
     };
+  }
+
+  private callService(name: string, payload: unknown): Promise<unknown> {
+    if (!(this.init.services ?? []).includes(name)) {
+      return Promise.reject(new ProtocolError('SERVICE_UNAVAILABLE', `Service "${name}" is not available (declare it in the manifest "services"; this host offers: ${(this.init.services ?? []).join(', ') || 'none'}).`));
+    }
+    return this.host.service(name, payload ?? null).catch((error) => {
+      throw toProtocolError(error);
+    });
   }
 
   private save(scope: DataScope, value: unknown): void {
@@ -440,6 +452,8 @@ class SettingsController extends BaseController {
       timeLeft: (deadline) => Math.max(0, deadline - (Date.now() + this.init.clock.offsetMs)),
       now: () => Date.now() + this.init.clock.offsetMs,
       paused: false,
+      services: [],
+      service: () => Promise.reject(new ProtocolError('NOT_ALLOWED_IN_VIEW', 'Services are not available on the settings screen.')),
       save: () => this.report('NOT_ALLOWED_IN_VIEW', 'ui.save is not available on the settings screen.'),
       setProgress: () => this.report('NOT_ALLOWED_IN_VIEW', 'ui.setProgress is not available on the settings screen.'),
     };

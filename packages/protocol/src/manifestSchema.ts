@@ -36,6 +36,24 @@ export const MultiplayerModeSchema = z.looseObject({
   lateJoin: z.boolean().optional(),
 });
 
+/** An origin a plugin may connect to: `https://host[:port]` or `wss://host[:port]`, no path. */
+const NetworkOriginSchema = z
+  .string()
+  .regex(/^(https|wss):\/\/[a-z0-9.-]+(:\d{1,5})?$/i, 'A network origin is "https://host" or "wss://host" (no path)');
+
+/** Service names are dot-separated lowercase segments, e.g. "ai.chat" or "chess.puzzles". */
+export const ServiceNameSchema = z
+  .string()
+  .max(100)
+  .regex(/^[a-z][a-z0-9-]*(\.[a-z0-9][a-z0-9-]*)*$/, 'A service name is lowercase segments joined by dots (e.g. "chess.puzzles")');
+
+export const PluginPermissionsSchema = z.looseObject({
+  /** Origins the plugin talks to (fetch, WebSocket). Shown to users; enforced with a CSP. */
+  network: z.array(NetworkOriginSchema).max(20).optional(),
+  /** Devices the plugin uses. */
+  devices: z.array(z.enum(['camera', 'microphone', 'geolocation', 'serial', 'bluetooth'])).max(5).optional(),
+});
+
 export const MemizyRuntimeSchema = z
   .looseObject({
     protocol: ProtocolVersionSchema,
@@ -46,6 +64,10 @@ export const MemizyRuntimeSchema = z
     settings: z.array(SettingDefinitionSchema).optional(),
     settingsScreen: z.looseObject({ size: z.enum(['compact', 'large']) }).optional(),
     display: z.looseObject({ orientation: z.enum(['any', 'portrait', 'landscape']).optional() }).optional(),
+    /** RC4: what the plugin reaches outside its sandbox (SPEC 8.4). */
+    permissions: PluginPermissionsSchema.optional(),
+    /** RC4: Memizy services the plugin uses (`ui.service`), e.g. "ai.chat" (SPEC 5.3). */
+    services: z.array(ServiceNameSchema).max(20).optional(),
   })
   .refine((r) => r.modes.solo !== undefined || r.modes.multiplayer !== undefined, {
     message: 'modes must declare "solo" and/or "multiplayer"',

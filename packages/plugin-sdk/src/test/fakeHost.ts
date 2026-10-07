@@ -139,6 +139,7 @@ export class FakeSession<S> {
       resize: async () => {},
       reportError: async (error) => { this.errors.push(`${error.code}: ${error.message}`); },
       exit: async () => {},
+      service: async (name) => { throw new ProtocolError('SERVICE_UNAVAILABLE', `No service "${name}" in tests.`); },
     };
   }
 }

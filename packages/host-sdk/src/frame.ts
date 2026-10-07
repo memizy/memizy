@@ -5,7 +5,17 @@
  */
 
 import { WindowMessenger, connect } from 'penpal';
-import { LIMITS, PLUGIN_API_METHODS, toProtocolError, type HostApi, type PluginApi } from '@memizy/protocol';
+import {
+  LIMITS,
+  PLUGIN_API_METHODS,
+  injectContentPolicy,
+  pluginAllowAttribute,
+  pluginContentPolicy,
+  readPluginManifestFromHtml,
+  toProtocolError,
+  type HostApi,
+  type PluginApi,
+} from '@memizy/protocol';
 import type { LocalSession, SessionInstance } from './session';
 
 /** Never add `allow-same-origin`: the plugin must not reach the app's origin. */
@@ -51,13 +61,20 @@ export interface PluginFrame {
 /**
  * Creates a sandboxed iframe with the plugin HTML and connects it to `hostApi`.
  * The iframe must be inserted into the document by the caller (right away).
+ * The plugin reaches only what its manifest declares (SPEC 8.4): a Content Security
+ * Policy limits network requests, `allow` grants the declared devices.
  */
 export function createPluginFrame(html: string, title: string, hostApi: HostApi, doc: Document = document): PluginFrame {
   const iframe = doc.createElement('iframe');
   iframe.setAttribute('sandbox', PLUGIN_SANDBOX);
   iframe.setAttribute('title', title);
   iframe.style.cssText = 'width:100%;height:100%;border:0;display:block;touch-action:manipulation;';
-  iframe.srcdoc = html;
+  const parsed = readPluginManifestFromHtml(html);
+  const runtime = parsed.success ? parsed.runtime : null;
+  const allow = pluginAllowAttribute(runtime);
+  if (allow) iframe.setAttribute('allow', allow);
+  const origin = doc.defaultView?.location?.origin ?? null;
+  iframe.srcdoc = injectContentPolicy(html, pluginContentPolicy(runtime, origin));
   let connection: ReturnType<typeof connect<PluginApi & Record<string, any>>> | null = null;
   const plugin = new Promise<PluginApi>((resolve, reject) => {
     // contentWindow exists only once the iframe is in the document.

@@ -76,6 +76,7 @@ export const HOST_API_ARGS = {
   resize: z.tuple([ResizeRequestSchema]),
   reportError: z.tuple([ErrorReportSchema]),
   exit: z.tuple([]),
+  service: z.tuple([ShortText(100), z.unknown()]),
 } satisfies Record<keyof HostApi, z.ZodType>;
 
 /**

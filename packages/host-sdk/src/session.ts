@@ -82,7 +82,16 @@ export interface SessionConfig {
   resume?: boolean;
   /** When resuming: the pauses so far (from the `paused` events), so timers stay right. */
   clock?: { pausedMs?: number; pausedAt?: number | null };
+  /**
+   * Memizy services this host offers (SPEC 5.3), by name. A plugin may call those it
+   * declares in `services`; payloads and results are JSON. Throw a `ProtocolError` to
+   * reject a call with a specific code.
+   */
+  services?: Record<string, ServiceHandler>;
 }
+
+/** Handles one service call. `playerId` is null on the board. */
+export type ServiceHandler = (payload: unknown, context: { playerId: string | null; address: string; pluginId: string; setId: string }) => Promise<unknown>;
 
 export type SessionEvent =
   | { type: 'ready'; address: string }
@@ -123,6 +132,7 @@ interface Instance extends SessionInstance {
   disposed: boolean;
   resumed: boolean;
   limiter: RateLimiter;
+  serviceLimiter: RateLimiter;
 }
 
 export const SETTINGS_ADDRESS = 'settings';
@@ -274,6 +284,7 @@ export class LocalSession {
       disposed: false,
       resumed: false,
       limiter: new RateLimiter(LIMITS.messagesPerSecond, LIMITS.messageBurst),
+      serviceLimiter: new RateLimiter(LIMITS.servicesPerMinute / 60, 10),
     };
     (instance as { hostApi: HostApi }).hostApi = this.createHostApi(instance);
     this.instances.set(address, instance);
@@ -391,6 +402,11 @@ export class LocalSession {
     }
     if (address === this.authority) this.setAuthorityConnected(connected);
     else if (connected && instance) void this.callPlugin(address, (p) => p.authorityChanged({ connected: true })); // makes the SDK re-synchronize
+  }
+
+  /** Services the plugin declares and this host offers (SPEC 5.3). */
+  get services(): string[] {
+    return this.runtime.services.filter((name) => typeof this.options.services?.[name] === 'function');
   }
 
   /** Whether the game is paused (the clock stands still on every device). */
@@ -633,6 +649,19 @@ export class LocalSession {
           parseHostCall('exit', args);
           this.emit({ type: 'exit', address: instance.address });
         }),
+
+      service: (...args) =>
+        call('service', async () => {
+          const [name, payload] = parseHostCall('service', args);
+          const handler = this.services.includes(name) ? this.options.services![name] : undefined;
+          if (!handler) throw new ProtocolError('SERVICE_UNAVAILABLE', `Service "${name}" is not available here (declare it in the manifest "services"; this host offers: ${this.services.join(', ') || 'none'}).`);
+          assertJsonWithin(payload, LIMITS.serviceBytes, 'MESSAGE_TOO_LARGE', `service ${name} request`);
+          if (!instance.serviceLimiter.tryTake()) throw new ProtocolError('RATE_LIMITED', `More than ${LIMITS.servicesPerMinute} service calls per minute.`);
+          const playerId = this.players.some((p) => p.id === instance.address) ? instance.address : null;
+          const result = await handler(plainCopy(payload), { playerId, address: instance.address, pluginId: this.plugin.manifest.id, setId: this.prepared.set.meta.id });
+          assertJsonWithin(result ?? null, LIMITS.messageBytes * 4, 'MESSAGE_TOO_LARGE', `service ${name} result`);
+          return plainCopy(result ?? null);
+        }),
     };
     return api;
   }
@@ -665,6 +694,7 @@ export class LocalSession {
       settings: { ...this.settings },
       config: this.config,
       clock: this.clock,
+      services: this.services,
       progress: userKey ? await this.storage.loadProgress(userKey, setId) : {},
       data: userKey
         ? {

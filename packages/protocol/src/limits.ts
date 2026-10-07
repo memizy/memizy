@@ -28,6 +28,10 @@ export const LIMITS = {
   answerBytes: 4 * 1024,
   /** Max serialized size of a generated item attached to `recordAnswer`. */
   generatedItemBytes: 32 * 1024,
+  /** Max serialized size of a service request (its result may be up to `messageBytes * 4`). */
+  serviceBytes: 64 * 1024,
+  /** Service calls per minute and instance (sustained). */
+  servicesPerMinute: 30,
 } as const;
 
 export type Limits = { [K in keyof typeof LIMITS]: number };
