@@ -33,6 +33,12 @@
         { "id": "questionTime", "type": "number", "label": { "cs": "Čas na otázku (s)", "en": "Time per question (s)" }, "default": 16, "min": 6, "max": 45 },
         { "id": "questionCount", "type": "number", "label": { "cs": "Otázek v kampani (o peníze)", "en": "Campaign questions (money)" }, "default": 4, "min": 2, "max": 8 },
         { "id": "battleRounds", "type": "number", "label": { "cs": "Bojových kol", "en": "Battle rounds" }, "description": { "cs": "V polovině bitvy se otevře druhý obchod.", "en": "A second shop opens halfway through." }, "default": 8, "min": 4, "max": 14 },
+        { "id": "enemySkill", "type": "select", "label": { "cs": "Síla počítače", "en": "Computer strength" }, "description": { "cs": "V solu a když jsou všichni hráči v jednom týmu.", "en": "In solo, and when all players join one team." }, "default": "normal",
+          "options": [
+            { "value": "easy", "label": { "cs": "Slabá", "en": "Weak" } },
+            { "value": "normal", "label": { "cs": "Normální", "en": "Normal" } },
+            { "value": "hard", "label": { "cs": "Těžká (Hardcore)", "en": "Hard" } }
+          ] },
         { "id": "soundEnabled", "type": "boolean", "label": { "cs": "Hlášky nahlas (čte je tabule)", "en": "Quotes out loud (on the board)" }, "default": true }
       ]
     }
@@ -56,158 +62,869 @@
       --green: #22c55e;
       font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     }
-    * { box-sizing: border-box; }
-    html, body { margin: 0; min-height: 100%; background: radial-gradient(ellipse at top, #1b2650 0%, var(--bg) 60%) fixed; color: var(--text); }
-    #app { min-height: 100vh; }
-    .screen { max-width: 1000px; margin: 0 auto; padding: 12px; display: flex; flex-direction: column; gap: 12px; }
-    .board .screen { max-width: 1400px; font-size: 1.25rem; padding: 20px; gap: 18px; }
-    button { font: inherit; font-weight: 800; color: inherit; cursor: pointer; border: 0; }
-    button:disabled { cursor: default; }
-    .muted { color: var(--muted); }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background: radial-gradient(ellipse at top, #1b2650 0%, var(--bg) 60%) fixed;
+      color: var(--text);
+    }
+
+    #app {
+      min-height: 100vh;
+    }
+
+    .screen {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .board .screen {
+      max-width: 1400px;
+      font-size: 1.25rem;
+      padding: 20px;
+      gap: 18px;
+    }
+
+    button {
+      font: inherit;
+      font-weight: 800;
+      color: inherit;
+      cursor: pointer;
+      border: 0;
+    }
+
+    button:disabled {
+      cursor: default;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
 
     /* ---------- stage: both characters, HP, timer, speech bubbles ---------- */
-    .stage { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: end; background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01)); border: 1px solid var(--line); border-radius: 20px; padding: 10px 12px 12px; position: relative; }
-    .side { display: flex; align-items: flex-end; gap: 10px; min-width: 0; }
-    .side.alzak { flex-direction: row-reverse; text-align: right; }
-    .side .who { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-    .side .name { font-weight: 900; letter-spacing: 0.5px; font-size: 0.85em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .name .short { display: none; }
-    @media (max-width: 560px) { .name .long { display: none; } .name .short { display: inline; } }
-    .babis .name { color: var(--babis); }
-    .alzak .name { color: var(--alzak); }
-    .avatar { flex: none; width: 64px; height: 64px; }
-    .board .avatar { width: 110px; height: 110px; }
-    .avatar svg { width: 100%; height: 100%; overflow: visible; }
-    .hp { height: 16px; border-radius: 9px; background: #0a0f1f; border: 1px solid var(--line); overflow: hidden; position: relative; }
-    .board .hp { height: 24px; }
-    .hp i { position: absolute; inset: 0 auto 0 0; transition: width 0.6s ease; }
-    .babis .hp i { background: linear-gradient(90deg, var(--babis-deep), var(--babis)); }
-    .alzak .hp i { left: auto; right: 0; background: linear-gradient(270deg, var(--alzak-deep), var(--alzak)); }
-    .hp b { position: absolute; inset: 0; display: grid; place-items: center; font-size: 11px; text-shadow: 0 1px 2px #000; }
-    .board .hp b { font-size: 15px; }
-    .chips { display: flex; gap: 4px; flex-wrap: wrap; font-size: 0.72em; font-weight: 800; }
-    .alzak .chips { justify-content: flex-end; }
-    .chip { padding: 1px 7px; border-radius: 9px; background: rgba(255,255,255,0.08); border: 1px solid var(--line); white-space: nowrap; }
-    .mid { display: flex; flex-direction: column; align-items: center; gap: 4px; padding-bottom: 2px; }
-    .vs { font-weight: 1000; font-size: 1.3em; color: var(--gold); text-shadow: 0 0 12px rgba(251,191,36,0.5); }
-    .clock { font-weight: 900; font-variant-numeric: tabular-nums; font-size: 0.9em; color: var(--gold); }
-    .timebar { grid-column: 1 / -1; height: 5px; border-radius: 3px; background: rgba(255,255,255,0.08); overflow: hidden; }
-    .timebar i { display: block; height: 100%; background: linear-gradient(90deg, var(--gold), #f97316); transition: width 0.25s linear; }
-    .timebar.low i { background: var(--red); }
-    .bubbles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .bubble { position: relative; padding: 10px 14px; border-radius: 16px; font-weight: 800; line-height: 1.3; animation: pop 0.35s ease-out both; }
-    .board .bubble { font-size: 1.15em; padding: 14px 18px; }
-    .bubble.babis { background: #0c2a44; border: 2px solid var(--babis); grid-column: 1; }
-    .bubble.alzak { background: #0b3320; border: 2px solid var(--alzak); grid-column: 2; text-align: right; }
-    .bubble.second { animation-delay: 1.2s; }
-    .bubble::after { content: ''; position: absolute; top: -9px; width: 16px; height: 16px; transform: rotate(45deg); background: inherit; border-left: inherit; border-top: inherit; }
-    .bubble.babis::after { left: 26px; }
-    .bubble.alzak::after { right: 26px; }
-    .bubble small { display: block; font-size: 0.7em; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.5px; }
-    @keyframes pop { from { opacity: 0; transform: translateY(6px) scale(0.96); } to { opacity: 1; transform: none; } }
-    @keyframes bob { 50% { transform: translateY(-4px); } }
-    @keyframes shake { 25% { transform: translateX(-5px) rotate(-3deg); } 75% { transform: translateX(5px) rotate(3deg); } }
-    .bobbing { animation: bob 2.4s ease-in-out infinite; }
-    .shaking { animation: shake 0.3s ease-in-out 4; }
-    .dmg { position: absolute; top: 18px; z-index: 2; font-weight: 1000; font-size: 1.6em; color: var(--red); text-shadow: 0 2px 8px rgba(0,0,0,0.7); animation: rise 1.6s ease-out both; pointer-events: none; }
-    .dmg.heal { color: var(--green); }
-    .dmg.on-babis { left: 18%; }
-    .dmg.on-alzak { right: 18%; }
-    @keyframes rise { from { opacity: 0; transform: translateY(14px) scale(0.8); } 20% { opacity: 1; transform: scale(1.15); } to { opacity: 0; transform: translateY(-26px); } }
+    .stage {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 10px;
+      align-items: end;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01));
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 10px 12px 12px;
+      position: relative;
+    }
+
+    .side {
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .side.alzak {
+      flex-direction: row-reverse;
+      text-align: right;
+    }
+
+    .side .who {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .side .name {
+      font-weight: 900;
+      letter-spacing: 0.5px;
+      font-size: 0.85em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .name .short {
+      display: none;
+    }
+
+    @media (max-width: 560px) {
+      .name .long {
+        display: none;
+      }
+
+      .name .short {
+        display: inline;
+      }
+    }
+
+    .babis .name {
+      color: var(--babis);
+    }
+
+    .alzak .name {
+      color: var(--alzak);
+    }
+
+    .avatar {
+      flex: none;
+      width: 64px;
+      height: 64px;
+    }
+
+    .board .avatar {
+      width: 110px;
+      height: 110px;
+    }
+
+    .avatar svg {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+
+    .hp {
+      height: 16px;
+      border-radius: 9px;
+      background: #0a0f1f;
+      border: 1px solid var(--line);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .board .hp {
+      height: 24px;
+    }
+
+    .hp i {
+      position: absolute;
+      inset: 0 auto 0 0;
+      transition: width 0.6s ease;
+    }
+
+    .babis .hp i {
+      background: linear-gradient(90deg, var(--babis-deep), var(--babis));
+    }
+
+    .alzak .hp i {
+      left: auto;
+      right: 0;
+      background: linear-gradient(270deg, var(--alzak-deep), var(--alzak));
+    }
+
+    .hp b {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      font-size: 11px;
+      text-shadow: 0 1px 2px #000;
+    }
+
+    .board .hp b {
+      font-size: 15px;
+    }
+
+    .chips {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+      font-size: 0.72em;
+      font-weight: 800;
+    }
+
+    .alzak .chips {
+      justify-content: flex-end;
+    }
+
+    .chip {
+      padding: 1px 7px;
+      border-radius: 9px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--line);
+      white-space: nowrap;
+    }
+
+    .mid {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding-bottom: 2px;
+    }
+
+    .vs {
+      font-weight: 1000;
+      font-size: 1.3em;
+      color: var(--gold);
+      text-shadow: 0 0 12px rgba(251, 191, 36, 0.5);
+    }
+
+    .clock {
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+      font-size: 0.9em;
+      color: var(--gold);
+    }
+
+    .timebar {
+      grid-column: 1 / -1;
+      height: 5px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.08);
+      overflow: hidden;
+    }
+
+    .timebar i {
+      display: block;
+      height: 100%;
+      background: linear-gradient(90deg, var(--gold), #f97316);
+      transition: width 0.25s linear;
+    }
+
+    .timebar.low i {
+      background: var(--red);
+    }
+
+    .bubbles {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .bubble {
+      position: relative;
+      padding: 10px 14px;
+      border-radius: 16px;
+      font-weight: 800;
+      line-height: 1.3;
+      animation: pop 0.35s ease-out both;
+    }
+
+    .board .bubble {
+      font-size: 1.15em;
+      padding: 14px 18px;
+    }
+
+    .bubble.babis {
+      background: #0c2a44;
+      border: 2px solid var(--babis);
+      grid-column: 1;
+    }
+
+    .bubble.alzak {
+      background: #0b3320;
+      border: 2px solid var(--alzak);
+      grid-column: 2;
+      text-align: right;
+    }
+
+    .bubble.second {
+      animation-delay: 1.2s;
+    }
+
+    .bubble::after {
+      content: '';
+      position: absolute;
+      top: -9px;
+      width: 16px;
+      height: 16px;
+      transform: rotate(45deg);
+      background: inherit;
+      border-left: inherit;
+      border-top: inherit;
+    }
+
+    .bubble.babis::after {
+      left: 26px;
+    }
+
+    .bubble.alzak::after {
+      right: 26px;
+    }
+
+    .bubble small {
+      display: block;
+      font-size: 0.7em;
+      opacity: 0.7;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    @keyframes pop {
+      from {
+        opacity: 0;
+        transform: translateY(6px) scale(0.96);
+      }
+
+      to {
+        opacity: 1;
+        transform: none;
+      }
+    }
+
+    @keyframes bob {
+      50% {
+        transform: translateY(-4px);
+      }
+    }
+
+    @keyframes shake {
+      25% {
+        transform: translateX(-5px) rotate(-3deg);
+      }
+
+      75% {
+        transform: translateX(5px) rotate(3deg);
+      }
+    }
+
+    .bobbing {
+      animation: bob 2.4s ease-in-out infinite;
+    }
+
+    .shaking {
+      animation: shake 0.3s ease-in-out 4;
+    }
+
+    .dmg {
+      position: absolute;
+      top: 18px;
+      z-index: 2;
+      font-weight: 1000;
+      font-size: 1.6em;
+      color: var(--red);
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+      animation: rise 1.6s ease-out both;
+      pointer-events: none;
+    }
+
+    .dmg.heal {
+      color: var(--green);
+    }
+
+    .dmg.on-babis {
+      left: 18%;
+    }
+
+    .dmg.on-alzak {
+      right: 18%;
+    }
+
+    @keyframes rise {
+      from {
+        opacity: 0;
+        transform: translateY(14px) scale(0.8);
+      }
+
+      20% {
+        opacity: 1;
+        transform: scale(1.15);
+      }
+
+      to {
+        opacity: 0;
+        transform: translateY(-26px);
+      }
+    }
 
     /* ---------- cards ---------- */
-    .card { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 16px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.25); }
-    .board .card { padding: 24px; }
-    .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .tag { font-size: 0.8em; font-weight: 900; padding: 3px 10px; border-radius: 10px; background: rgba(251,191,36,0.15); color: var(--gold); text-transform: uppercase; letter-spacing: 0.5px; }
-    .tag.battle { background: rgba(244,63,94,0.15); color: #fda4af; }
-    .q { font-size: 1.3em; font-weight: 800; line-height: 1.35; }
-    .board .q { font-size: 1.9em; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    }
+
+    .board .card {
+      padding: 24px;
+    }
+
+    .row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .tag {
+      font-size: 0.8em;
+      font-weight: 900;
+      padding: 3px 10px;
+      border-radius: 10px;
+      background: rgba(251, 191, 36, 0.15);
+      color: var(--gold);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .tag.battle {
+      background: rgba(244, 63, 94, 0.15);
+      color: #fda4af;
+    }
+
+    .q {
+      font-size: 1.3em;
+      font-weight: 800;
+      line-height: 1.35;
+    }
+
+    .board .q {
+      font-size: 1.9em;
+    }
+
     /* Answer tiles: the SDK's ui.question in Babiš's colours (6 colours by position, green/red for true/false). */
-    .answers .mz-q { --mz-q-radius: 14px; --mz-q-gap: 10px; }
-    .answers .mz-q-options { grid-template-columns: 1fr; }
-    @media (min-width: 620px) { .answers .mz-q-options { grid-template-columns: 1fr 1fr; } }
-    .answers .mz-q-opt { gap: 12px; min-height: 58px; padding: 12px 14px; border: 0; color: #fff; font-size: 1.05em; font-weight: 800; box-shadow: inset 0 -4px 0 rgba(0,0,0,0.25); transition: transform 0.1s, filter 0.2s, opacity 0.2s; }
-    .board .answers .mz-q-opt { min-height: 84px; font-size: 1.35em; }
-    .answers .mz-q-opt:not(:disabled):active { transform: translateY(2px); }
-    .answers .mz-q .mz-q-opt:disabled { opacity: 1; }
-    .answers .mz-q-key, .answers .mz-q-yes::before, .answers .mz-q-no::before { flex: none; width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; background: rgba(0,0,0,0.25); font-weight: 1000; }
-    .answers .mz-q-yes::before { content: '✓'; }
-    .answers .mz-q-no::before { content: '✗'; }
-    .answers .mz-q-count { min-width: 0; padding: 2px 9px; border-radius: 9px; background: rgba(0,0,0,0.3); font-weight: 1000; }
-    .answers .mz-q-count-0 { display: none; }
-    .answers .mz-q-opt:nth-child(6n+1) { background: #e11d48; }
-    .answers .mz-q-opt:nth-child(6n+2) { background: #2563eb; }
-    .answers .mz-q-opt:nth-child(6n+3) { background: #d97706; }
-    .answers .mz-q-opt:nth-child(6n+4) { background: #16a34a; }
-    .answers .mz-q-opt:nth-child(6n+5) { background: #7c3aed; }
-    .answers .mz-q-opt:nth-child(6n+6) { background: #0891b2; }
-    .answers .mz-q-opt.mz-q-yes { background: #16a34a; }
-    .answers .mz-q-opt.mz-q-no { background: #e11d48; }
-    .answers .mz-q .mz-q-opt.mz-q-chosen { box-shadow: inset 0 -4px 0 rgba(0,0,0,0.25); outline: 4px solid #fff; outline-offset: 2px; }
-    .answers .mz-q .mz-q-opt.mz-q-dim, .answers .mz-q .mz-q-opt.mz-q-wrong { opacity: 0.35; filter: grayscale(0.6); }
-    .answers .mz-q .mz-q-opt.mz-q-right { outline: 4px solid var(--gold); outline-offset: 2px; filter: brightness(1.1); }
-    .result { text-align: center; font-weight: 900; font-size: 1.15em; padding: 10px; border-radius: 14px; }
-    .result.good { background: rgba(34,197,94,0.15); color: #86efac; }
-    .result.bad { background: rgba(244,63,94,0.15); color: #fda4af; }
-    .result.wait { background: rgba(251,191,36,0.12); color: var(--gold); }
+    .answers .mz-q {
+      --mz-q-radius: 14px;
+      --mz-q-gap: 10px;
+    }
+
+    .answers .mz-q-options {
+      grid-template-columns: 1fr;
+    }
+
+    @media (min-width: 620px) {
+      .answers .mz-q-options {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    .answers .mz-q-opt {
+      gap: 12px;
+      min-height: 58px;
+      padding: 12px 14px;
+      border: 0;
+      color: #fff;
+      font-size: 1.05em;
+      font-weight: 800;
+      box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.25);
+      transition: transform 0.1s, filter 0.2s, opacity 0.2s;
+    }
+
+    .board .answers .mz-q-opt {
+      min-height: 84px;
+      font-size: 1.35em;
+    }
+
+    .answers .mz-q-opt:not(:disabled):active {
+      transform: translateY(2px);
+    }
+
+    .answers .mz-q .mz-q-opt:disabled {
+      opacity: 1;
+    }
+
+    .answers .mz-q-key,
+    .answers .mz-q-yes::before,
+    .answers .mz-q-no::before {
+      flex: none;
+      width: 32px;
+      height: 32px;
+      border-radius: 9px;
+      display: grid;
+      place-items: center;
+      background: rgba(0, 0, 0, 0.25);
+      font-weight: 1000;
+    }
+
+    .answers .mz-q-yes::before {
+      content: '✓';
+    }
+
+    .answers .mz-q-no::before {
+      content: '✗';
+    }
+
+    .answers .mz-q-count {
+      min-width: 0;
+      padding: 2px 9px;
+      border-radius: 9px;
+      background: rgba(0, 0, 0, 0.3);
+      font-weight: 1000;
+    }
+
+    .answers .mz-q-count-0 {
+      display: none;
+    }
+
+    .answers .mz-q-opt:nth-child(6n+1) {
+      background: #e11d48;
+    }
+
+    .answers .mz-q-opt:nth-child(6n+2) {
+      background: #2563eb;
+    }
+
+    .answers .mz-q-opt:nth-child(6n+3) {
+      background: #d97706;
+    }
+
+    .answers .mz-q-opt:nth-child(6n+4) {
+      background: #16a34a;
+    }
+
+    .answers .mz-q-opt:nth-child(6n+5) {
+      background: #7c3aed;
+    }
+
+    .answers .mz-q-opt:nth-child(6n+6) {
+      background: #0891b2;
+    }
+
+    .answers .mz-q-opt.mz-q-yes {
+      background: #16a34a;
+    }
+
+    .answers .mz-q-opt.mz-q-no {
+      background: #e11d48;
+    }
+
+    .answers .mz-q .mz-q-opt.mz-q-chosen {
+      box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.25);
+      outline: 4px solid #fff;
+      outline-offset: 2px;
+    }
+
+    .answers .mz-q .mz-q-opt.mz-q-dim,
+    .answers .mz-q .mz-q-opt.mz-q-wrong {
+      opacity: 0.35;
+      filter: grayscale(0.6);
+    }
+
+    .answers .mz-q .mz-q-opt.mz-q-right {
+      outline: 4px solid var(--gold);
+      outline-offset: 2px;
+      filter: brightness(1.1);
+    }
+
+    .result {
+      text-align: center;
+      font-weight: 900;
+      font-size: 1.15em;
+      padding: 10px;
+      border-radius: 14px;
+    }
+
+    .result.good {
+      background: rgba(34, 197, 94, 0.15);
+      color: #86efac;
+    }
+
+    .result.bad {
+      background: rgba(244, 63, 94, 0.15);
+      color: #fda4af;
+    }
+
+    .result.wait {
+      background: rgba(251, 191, 36, 0.12);
+      color: var(--gold);
+    }
 
     /* ---------- team select ---------- */
-    .pick { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .team-card { border-radius: 20px; padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; border: 2px solid transparent; }
-    .team-card.babis { background: linear-gradient(180deg, #0c2a44, #0a1a30); border-color: var(--babis); }
-    .team-card.alzak { background: linear-gradient(180deg, #0b3320, #08200f); border-color: var(--alzak); }
-    .team-card h2 { margin: 0; font-size: 1.3em; }
-    .team-card .avatar { width: 96px; height: 96px; }
-    .board .team-card .avatar { width: 150px; height: 150px; }
-    .join { width: 100%; padding: 14px; border-radius: 14px; font-size: 1.05em; color: #fff; }
-    .join.babis { background: linear-gradient(135deg, #0284c7, #075985); }
-    .join.alzak { background: linear-gradient(135deg, #22c55e, #166534); }
-    .join:disabled { opacity: 0.6; }
-    .pills { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; }
-    .pill { padding: 3px 9px; border-radius: 10px; background: rgba(255,255,255,0.08); font-size: 0.8em; font-weight: 800; }
-    .pill.me { background: var(--gold); color: #1a1205; }
+    .pick {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .team-card {
+      border-radius: 20px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      text-align: center;
+      border: 2px solid transparent;
+    }
+
+    .team-card.babis {
+      background: linear-gradient(180deg, #0c2a44, #0a1a30);
+      border-color: var(--babis);
+    }
+
+    .team-card.alzak {
+      background: linear-gradient(180deg, #0b3320, #08200f);
+      border-color: var(--alzak);
+    }
+
+    .team-card h2 {
+      margin: 0;
+      font-size: 1.3em;
+    }
+
+    .team-card .avatar {
+      width: 96px;
+      height: 96px;
+    }
+
+    .board .team-card .avatar {
+      width: 150px;
+      height: 150px;
+    }
+
+    .join {
+      width: 100%;
+      padding: 14px;
+      border-radius: 14px;
+      font-size: 1.05em;
+      color: #fff;
+    }
+
+    .join.babis {
+      background: linear-gradient(135deg, #0284c7, #075985);
+    }
+
+    .join.alzak {
+      background: linear-gradient(135deg, #22c55e, #166534);
+    }
+
+    .join:disabled {
+      opacity: 0.6;
+    }
+
+    .pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      justify-content: center;
+    }
+
+    .pill {
+      padding: 3px 9px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.08);
+      font-size: 0.8em;
+      font-weight: 800;
+    }
+
+    .pill.me {
+      background: var(--gold);
+      color: #1a1205;
+    }
 
     /* ---------- shop ---------- */
-    .shop { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
-    @media (max-width: 560px) {
-      .shop { grid-template-columns: 1fr 1fr; gap: 8px; }
-      .ware { padding: 9px; gap: 4px; }
-      .ware .ico { font-size: 1.5em; }
-      .ware .nm { font-size: 0.9em; }
-      .ware .ds { font-size: 0.75em; }
-      .ware .ft { flex-direction: column; align-items: stretch; }
-      .buy { padding: 7px; font-size: 0.85em; }
+    .shop {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+      gap: 10px;
     }
-    .board .shop { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
-    .ware { background: var(--bg2); border: 1px solid var(--line); border-radius: 16px; padding: 12px; display: flex; flex-direction: column; gap: 6px; }
-    .ware.owned { border-color: var(--gold); background: rgba(251,191,36,0.08); }
-    .ware .top { display: flex; align-items: center; gap: 10px; }
-    .ware .ico { font-size: 2em; line-height: 1; }
-    .ware .nm { font-weight: 900; line-height: 1.2; }
-    .ware .ds { font-size: 0.85em; color: var(--muted); flex: 1; }
-    .ware .ft { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
-    .price { font-weight: 1000; color: var(--gold); }
-    .price s { color: var(--muted); font-weight: 700; margin-right: 4px; }
-    .kind { font-size: 0.7em; font-weight: 900; padding: 2px 7px; border-radius: 8px; text-transform: uppercase; }
-    .kind.team { background: rgba(56,189,248,0.15); color: var(--babis); }
-    .kind.self { background: rgba(251,191,36,0.15); color: var(--gold); }
-    .kind.foe { background: rgba(244,63,94,0.15); color: #fda4af; }
-    .buy { padding: 8px 12px; border-radius: 10px; background: linear-gradient(135deg, #f59e0b, #b45309); color: #fff; }
-    .buy:disabled { background: #334; color: var(--muted); }
-    .done { padding: 12px 18px; border-radius: 14px; background: #334; color: #fff; }
-    .done.on { background: linear-gradient(135deg, #22c55e, #166534); }
-    .log { display: flex; flex-direction: column; gap: 4px; max-height: 220px; overflow: auto; font-size: 0.85em; }
+
+    @media (max-width: 560px) {
+      .shop {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      .ware {
+        padding: 9px;
+        gap: 4px;
+      }
+
+      .ware .ico {
+        font-size: 1.5em;
+      }
+
+      .ware .nm {
+        font-size: 0.9em;
+      }
+
+      .ware .ds {
+        font-size: 0.75em;
+      }
+
+      .ware .ft {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .buy {
+        padding: 7px;
+        font-size: 0.85em;
+      }
+    }
+
+    .board .shop {
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    }
+
+    .ware {
+      background: var(--bg2);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .ware.owned {
+      border-color: var(--gold);
+      background: rgba(251, 191, 36, 0.08);
+    }
+
+    .ware .top {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .ware .ico {
+      font-size: 2em;
+      line-height: 1;
+    }
+
+    .ware .nm {
+      font-weight: 900;
+      line-height: 1.2;
+    }
+
+    .ware .ds {
+      font-size: 0.85em;
+      color: var(--muted);
+      flex: 1;
+    }
+
+    .ware .ft {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
+    .price {
+      font-weight: 1000;
+      color: var(--gold);
+    }
+
+    .price s {
+      color: var(--muted);
+      font-weight: 700;
+      margin-right: 4px;
+    }
+
+    .kind {
+      font-size: 0.7em;
+      font-weight: 900;
+      padding: 2px 7px;
+      border-radius: 8px;
+      text-transform: uppercase;
+    }
+
+    .kind.team {
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--babis);
+    }
+
+    .kind.self {
+      background: rgba(251, 191, 36, 0.15);
+      color: var(--gold);
+    }
+
+    .kind.foe {
+      background: rgba(244, 63, 94, 0.15);
+      color: #fda4af;
+    }
+
+    .buy {
+      padding: 8px 12px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #f59e0b, #b45309);
+      color: #fff;
+    }
+
+    .buy:disabled {
+      background: #334;
+      color: var(--muted);
+    }
+
+    .done {
+      padding: 12px 18px;
+      border-radius: 14px;
+      background: #334;
+      color: #fff;
+    }
+
+    .done.on {
+      background: linear-gradient(135deg, #22c55e, #166534);
+    }
+
+    .log {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-height: 220px;
+      overflow: auto;
+      font-size: 0.85em;
+    }
 
     /* ---------- misc ---------- */
-    .big { text-align: center; padding: 24px 12px; }
-    .big h1 { margin: 0 0 6px; font-size: 2em; color: var(--gold); }
-    .board .big h1 { font-size: 3em; }
-    .skip { padding: 6px 12px; border-radius: 10px; background: rgba(255,255,255,0.1); font-size: 0.85em; }
-    .rank { display: flex; flex-direction: column; gap: 6px; width: 100%; max-width: 620px; margin: 0 auto; }
-    .rank div { display: flex; justify-content: space-between; gap: 8px; padding: 9px 14px; border-radius: 12px; background: var(--bg2); font-weight: 800; }
-    .rank div.first { background: rgba(251,191,36,0.15); border: 1px solid var(--gold); }
-    .mvp { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .big {
+      text-align: center;
+      padding: 24px 12px;
+    }
+
+    .big h1 {
+      margin: 0 0 6px;
+      font-size: 2em;
+      color: var(--gold);
+    }
+
+    .board .big h1 {
+      font-size: 3em;
+    }
+
+    .skip {
+      padding: 6px 12px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.1);
+      font-size: 0.85em;
+    }
+
+    .rank {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      width: 100%;
+      max-width: 620px;
+      margin: 0 auto;
+    }
+
+    .rank div {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 9px 14px;
+      border-radius: 12px;
+      background: var(--bg2);
+      font-weight: 800;
+    }
+
+    .rank div.first {
+      background: rgba(251, 191, 36, 0.15);
+      border: 1px solid var(--gold);
+    }
+
+    .mvp {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
   </style>
 </head>
 
@@ -249,154 +966,194 @@
     const QUOTES = {
       babis: {
         intro: [
-          'Čau lidi! Pojďte ke mně, u mě se maká a ne kecá!',
-          'Já jsem do toho nechtěl jít, ale když vidím ten zelený e-shop, tak musím!',
-          'Kdo se přidá k Týmu Babiš, dostane koblížek. Možná dva!',
-          'My jsme tým, který makal, zatímco ostatní tweetovali!',
+          'Všeci kradnú, iba ja čerpám! Poďte do Týmu Babiš, vybudujeme lepšie Slovensko… teda Česko!',
+          'Já jsem do politiky nechtěl! To Kalousek a novináři mě vyprovokovali!',
+          'Čapí hnízdo byla nejlepší farma v Evropě! Žádný dotační podvod!',
+          'Já jsem postavil dálnice, školy, nemocnice, obchvaty, všechno!',
+          'Moje firmy zaměstnávají tisíce lidí! Kdo nevolí Babiše, nerozumí ekonomice!',
+        ],
+        quiz: [
+          'Bleskově odpovězte! Záleží na každé setině vteřiny! Kdo spí, ten nevydělá!',
+          'Makáme, odpovídáme! Peníze na kampaň nerostou na stromech!',
+          'Čas běží! Kdo neodpoví včas, nedostane ani suchý rohlík!',
+          'Soustřeďte se! Tady jde o rozpočet, žádné lelkování!',
+          'Rychle klikat! Já taky makám osmnáct hodin denně bez přestávky!',
+          'Čas jsou dotace! Kdo odpoví první, dostane prémii do kapsy!',
+          'Nespěte u toho! Andrej se dívá a kontroluje vaši produktivitu!',
         ],
         good: [
-          'Vidíte to? Výsledky! Ne jako ti druzí!',
-          'Tak to je přesně ono. Rychle, efektivně, jako firma!',
-          'Výborně! Tohle si dám do kampaně!',
-          'Konečně někdo, kdo se učil, a ne jenom kecal v televizi!',
-          'To je úspěch, jaký tahle republika neviděla!',
-          'Takhle se odpovídá! Dám vám medaili. Vlastně koblížek.',
-          'Perfektní! Já jsem to věděl taky, jenom jsem to nechtěl říct.',
-          'Vidíte, že to jde? Stačí makat od rána do večera!',
+          'Výborně! Rychlá odpověď, vidíte ty skvělé výsledky? Dám vám koblížek!',
+          'Perfektní! Postavil jsem dálnice, školy a vy jste odpověděli za vteřinu!',
+          'Neskutečný úspěch naší vlády! Motýle a včely se radují!',
+          'Mně nikdo nebude diktovat! Takhle se maká pro Českou republiku!',
+          'Takhle se vydělávají dotace! Rychle, poctivě a bez korupce!',
+          'Geniální tah! Takhle efektivně nefunguje ani ministerstvo financí!',
+          'Přesně tak! Žádné zbytečné kecy, jen čistá práce a plný rozpočet!',
         ],
         bad: [
-          'Sorry jako, ale tohle je totální účelovka!',
-          'To je kampaň! Někdo vám poslal špatné odpovědi!',
-          'Já jsem tu otázku nikdy neviděl a nic jsem nepodepsal!',
-          'To není moje chyba, to je chyba těch předchozích vlád!',
-          'Kdo vás to učil? To se musí prověřit!',
-          'Takhle by to ve firmě nefungovalo, to vám řeknu!',
-          'To je naprostý nesmysl, ale my to dotáhneme!',
-          'Vy jste mi slíbili, že budete makat!',
-        ],
-        attack: [
-          'Tady máte koblížek přímo na kasu!',
-          'Řepkové dělo, pal!',
-          'Tak tohle je audit, přátelé!',
-          'Motýli útočí! A včely taky!',
-          'To je za všechny ty slevové kódy!',
-          'Jedna faktura, druhá faktura, a máte to!',
-          'Takhle se dělá politika: rychle a natvrdo!',
-          'My postavíme dálnici přímo přes váš sklad!',
-          'Tohle je odpověď na váš Black Friday!',
-          'Kontrola z finančáku! Bum!',
-          'Já vám ukážu, co je to efektivita!',
-          'Tohle jste nečekali, co? Já taky ne!',
-        ],
-        hit: [
-          'Au! To je útok na demokracii!',
-          'Já na vás podám trestní oznámení!',
-          'Tohle je hybridní válka proti mně!',
-          'To bolelo víc než Čapí hnízdo!',
-          'Kdo vám dal právo do mě takhle střílet?',
-          'To mi poslal Kalousek, určitě!',
-          'Moje koblihy! Vy jste zničili koblihy!',
-          'To je spiknutí e-shopů a novinářů!',
-          'Já to vydržím, já vydržím všechno!',
-          'Tohle si zapamatuju, to vám slibuju!',
-          'To je nefér, já jsem zrovna makal!',
-          'Au! Ale nikdy neodstoupím!',
-        ],
-        tie: [
-          'Plichta? To je jako koaliční vyjednávání!',
-          'Nikdo nevyhrál, tak to aspoň nikdo nemůže zdanit!',
-          'Remíza. Ale morálně jsme vyhráli my!',
+          'Sorry jako! To je totální účelovka a provokace České televize!',
+          'Zkorumpovaná pakáž toto! Kdo vás to učil? Kalousek?!',
+          'Vy jste nemehlo! Vy neumíte ani řídit traktor, natož odpovědět!',
+          'Já jsem nikdy neodstoupil a toto jsem nikdy neřekl! Penále za chybu!',
+          'Kde jsou motýle?! Včely! Řepka! Příroda! Vy nevíte vůbec nic!',
+          'To je neuvěřitelné diletantství! Vy byste zruinovali i fungující pekárnu!',
+          'Katastrofa! Vy jste snad na výplatní pásce opozice, ne?!',
         ],
         shop: [
           'Nakupujte! Ale fakturujte to přes moji firmu!',
           'Kdo odpovídal rychle, ten má na koblihy!',
           'Neplýtvejte! Každou korunu jsem si vydřel!',
+          'Kupte pořádné zásoby! Dotace jsou od toho, aby se utrácely!',
+          'Megastore nebo Agrofert, hlavní je mít na účtu dost kapitálu!',
+          'Investujte chytře! Kdo šetří na obraně, ten spláče nad výdělkem!',
+        ],
+        battle_intro: [
+          'Tým Babiš nastupuje v plné polní! Motýle a řepka vás vymažou z politiky i z trhu!',
+          'Jdeme do finále! Ukážeme zelenému skřetovi, kdo tady doopravdy řídí stát!',
+          'Bitva začíná! Moje divize Agrofertu nenechá na zeleném skladu kámen na kameni!',
+          'Armáda traktorů startuje motory! Zelený mužíček půjde k zemi!',
+        ],
+        battle: [
+          'Palte odpovědi! Každý správný zásah pošle zelenáče k zemi!',
+          'Mířit přesně! Žádné chyby, koblihová artilerie je připravena k palbě!',
+          'Odpovědět a zaútočit! Motýle letí přímo na cíl!',
+          'Nenechte je vydechnout! Správná odpověď je nejlepší zbraň naší vlády!',
+          'Tohle je rozhodující střet! Každá rána se počítá do statistik!',
+          'Zamiřte koblihy na Alzaboxy! Plnou parou vpřed, žádné váhání!',
+          'Správně odpovědět a rozdrtit konkurenci na prach!',
+          'Žádné slitování! Tým Babiš útočí na plný plyn!',
+        ],
+        attack: [
+          'Tady máte koblížek přímo do ksichtu! Motýle vás smetou!',
+          'My máme výsledky a postavili jsme dálnice, vy nemáte nic!',
+          'Já vám dám takový rozpočet, že se z toho zelený skřet zblázní!',
+          'Všeci kradnú, ale Tým Babiš rozdrtí zelené sklady na prach!',
+          'Tato debata je řízená lidem! Tady máte salvu z Agrofertu!',
+          'Dotační salva přímo na komoru! Zelený mimozemšťan letí do vesmíru!',
+          'Tohle je síla holdingu! Přímý zásah za miliardu korun!',
+        ],
+        hit: [
+          'To je kampaň! Kalousek poslal hackery na náš tým!',
+          'Sorry jako! Kdo vám dal právo do mě takhle střílet?!',
+          'Já na vás podám trestní oznámení! To je organizovaný zločin!',
+          'Nech si to všichni zapamatují: Nikdy neodstoupím! Nikdy!',
+          'Neskákejte mi do řeči! Já tady mluvím k lidem, nechte mě domluvit!',
+          'Pane moderátore, ať mi neskáče do řeči! Mě nikdo nebude přerušovat!',
+          'To je spiknutí mafie a novinářů! Bolí to, ale já vydržím!',
+        ],
+        tie: [
+          'Plichta? To je jako koaliční vyjednávání!',
+          'Nikdo nevyhrál, tak to aspoň nikdo nemůže zdanit!',
+          'Remíza. Ale morálně jsme vyhráli my!',
+          'Nerozhodně? Kalousek za to určitě může taky!',
         ],
         win: [
-          'Vyhráli jsme! Všem rozdávám koblížky!',
-          'To je historické vítězství! Jako vždycky!',
-          'Makali jsme a vyhráli! Tak to má být!',
+          'Vyhráli jsme! Všeci kradnú, ale Tým Babiš makal nejvíc ze všech!',
+          'Koblížky pro celou republiku! Zelený skřet byl vymazán z trhu!',
+          'Tohle je historické vítězství! Motýle slaví po celé zemi!',
+          'Vidíte ty preference? Absolutní triumf naší tvrdé práce!',
         ],
         lose: [
           'Já jsem to nevzdal, to oni podváděli!',
           'Prohráli jsme, ale jen o kousek. Moje čísla říkají něco jiného!',
           'To byla kampaň. Příště to bude jinak!',
+          'Zmanipulované volby! Na tohle si budu stěžovat u Ústavního soudu!',
         ],
       },
       alzak: {
         intro: [
-          'Ahoj, hejblátko! Přidej se ke mně a doručím ti vítězství do půlnoci!',
-          'Tým Alzák! Nakupuj rychle, než bude vyprodáno!',
-          'Zelená síla! Žádné koblihy, jen čisté gigabajty!',
-          'Mám pro tebe akci: jedna výhra za cenu dvou!',
+          'Sto tabletů týdně! Přidej se k Týmu Alzák a ovládneme e-shopy!',
+          'Do půlnoci objednáš, ráno v Alzaboxu máš! Žádné trapné koblihy!',
+          'Pozor! Akce platí jen do vyprodání zásob! Tisíce slev!',
+          'Černý pátek celej rok! Na tvé koblihy ti kašlu, Andreji!',
+          'Kde máš VIP kartu? Rychle nakupuj, nebo tě předběhnou!',
+        ],
+        quiz: [
+          'Čas běží, hejblátko! Čím dřív klikneš, tím větší hromadu kaček shrábneš!',
+          'Bleskový nákupní reflex! Klikni, nebo ti slevu vyfoukne Andrej!',
+          'Tik tak, hejblátko! Zelené kačky čekají na nejrychlejší prsty!',
+          'Nespinkat u klávesnice! Každá desetina vteřiny jsou těžké prachy!',
+          'Pozor na časomíru! Skladník už balí balíček s odměnou!',
+          'Klikni na to dřív, než vyprší akční nabídka! Bzzzt!',
+          'Expresní objednávka startuje! Ukaž své nákupní reflexy!',
         ],
         good: [
-          'Máááš to! Doručeno do Alzaboxu!',
-          'Bleskové doručení správné odpovědi!',
-          'Tohle je masakr cen! Teda masakr soupeře!',
-          'Skladník hlásí: všechno správně zabaleno!',
-          'Zelená karta schválena, hejblátko!',
-          'Takhle rychle jsem nedoručil ani ty tablety!',
-          'Odpověď je skladem a je tvoje!',
-          'Výborně! Dávám ti prodlouženou záruku na chytrost!',
+          'Máš to v Alzaboxu bleskovou rychlostí! Kačky se sypou na účet!',
+          'Máááme slevu! Masakr cen! Takhle bleskově se nakupuje!',
+          'Sto tabletů letí přímo k tobě! Expresní doručení na monitor!',
+          'Zelená karta schválena! Špičkový nákupní reflex, hejblátko!',
+          'Skladník hlásí plný košík! Kačky jsou tvoje, hejblátko!',
+          'Blesková platba prošla! Jsi jednička mezi zákazníky!',
+          'Algoritmus jásá! Takhle přesný zásah neviděl ani centrální server!',
         ],
         bad: [
-          'Reklamace! Tahle odpověď přišla rozbitá!',
-          'Chyba lávky, hejblátko!',
-          'Tohle v katalogu nemáme!',
-          'Zboží poškozeno při přepravě. Teda při přemýšlení.',
-          'Sleva vypršela a odpověď s ní!',
-          'Ale no tak! I kurýr na koloběžce by to věděl!',
-          'Vracíme peníze? Ne, tentokrát ne!',
-          'Košík prázdný, body taky!',
-        ],
-        attack: [
-          'Paleta tabletů letí přímo na tebe!',
-          'Expresní doručení rány!',
-          'Masakr cen! Masakr HP!',
-          'Bzzzt! Alzabox se otvírá a v něm je rána!',
-          'Kup si záruku, budeš ji potřebovat!',
-          'Tohle je doručení do vlastních rukou!',
-          'Zelená síla útočí!',
-          'Black Friday na tvoje HP!',
-          'Gigabajty rozbíjí koblihy!',
-          'Akce jedna plus jedna: dvě rány za cenu jedné!',
-          'Skladník hází krabice!',
-          'Tohle ti doručím ještě dnes!',
-        ],
-        hit: [
-          'Au! Kdo po mně hází koblihy?',
-          'Zásilka poškozena!',
-          'Tohle nebylo v obchodních podmínkách!',
-          'Moje anténky! Ne!',
-          'Alzabox hlásí poruchu!',
-          'Bzzzt, au, au!',
-          'Tohle reklamuju!',
-          'Kód z SMS nefunguje! Pomoc!',
-          'Sklad hoří! Teda skoro.',
-          'To bolí víc než doprava zdarma nad tisíc!',
-          'Řepka v mém skladu? Fuj!',
-          'To byla nečekaná zásilka!',
-        ],
-        tie: [
-          'Plichta! Vracím peníze oběma stranám!',
-          'Nerozhodně. To je jako vyprodáno na obou skladech!',
-          'Remíza? Dám si na to slevu!',
+          'Chyba lávky, hejblátko! Sleva vypršela před nosem! Všechno pryč!',
+          'Reklamace se zamítá! Zboží poškozeno špatnou odpovědí!',
+          'Žádný tablet pro tebe! Vrať se do fronty k pokladně!',
+          'Tohle ti v Alzaboxu nevyzvednu, to je totální šunt! Nula kaček!',
+          'Pomalý jako doručovatel na šlapacím kole! Peníze pryč!',
+          'Chyba 404: Správná odpověď nenalezena! Účet je na suchu!',
+          'Košík vysypán na podlahu! Tohle byla hodně drahá minela!',
         ],
         shop: [
           'Megastore otevřen! Nakupuj, hejblátko!',
           'Dnes všechno skladem! Teda skoro všechno!',
           'Rychlé prsty nakupují první!',
+          'Nacpi košík po okraj! V bitvě se ti každý gadget bude hodit!',
+          'Expresní výdej v plném proudu! Roztočte své vydělané kačky!',
+          'Černý pátek přímo v aréně! Levnější už to nikdy nebude!',
+        ],
+        battle_intro: [
+          'Tým Alzák tasí sto tabletů týdně! Válka začíná a milost nečekejte!',
+          'Zelená armáda útočí! Dneska doručíme Andrejovi expresní porážku!',
+          'Masakr cen právě propuká! Zabalíme vás do bublinkové fólie a pošleme zpátky!',
+          'Laserové skenery aktivovány! Andrejovy koblihy rozmetáme na atomy!',
+        ],
+        battle: [
+          'Zamiřte tablety přímo na Andreje! Kdo odpoví, ten střílí!',
+          'Palte ze všech e-shopů! Správná volba pálí plnou parou!',
+          'Útok na Čapí hnízdo! Rychle odpověz a vystřel z kanónu!',
+          'Naložte mu co se do něj vejde! Zelený laser nabíjí!',
+          'Zaměřit cíl a kliknout! Slevová vlna ho smete!',
+          'Sto tabletů nabíto! Vypalte další salvu, hejblátka!',
+          'Zelený blesk připraven! Správná odpověď drtí soupeře!',
+          'Expresní doručení škod přímo do Agrofertu!',
+        ],
+        attack: [
+          'Sto tabletů týdně přímo do hlavy! Masakr cen!',
+          'Zelená síla útočí! Moje gigabajty tě rozmetají na kousky!',
+          'Expresní doručení raketou přímo na Andreje! Bzzzt!',
+          'Kup si prodlouženou záruku, Andreji, budeš ji potřebovat!',
+          'Skladník posílá paletu tabletů! Zásah za plnou palbu!',
+          'Dron shodil gigawattový elektrošok! Tvoje obrana shořela!',
+          'Kód na slevu 100 % explodoval v tvém revíru! Konec legrace!',
+        ],
+        hit: [
+          'Pozor! Alzabox hlásí poruchu! Sleva byla brutálně zasažena!',
+          'Chyba lávky! Kdo po mně hází ty zkažené koblihy?!',
+          'A máme tu nového mistra světa ve skoku do řeči! Reklamace!',
+          'Hejblátko mi skočilo do řeči! Kde máš záruční list na slušné chování?!',
+          'Tohle nebylo v obchodních podmínkách! Bzzzt, auuu!',
+          'Slevový kód byl zničen! Zelený štít se hroutí!',
+          'Přepětí v obvodech! Chladicí kapalina stříká všude kolem!',
+        ],
+        tie: [
+          'Plichta! Vracím peníze oběma stranám!',
+          'Nerozhodně. To je jako vyprodáno na obou skladech!',
+          'Remíza? Dám si na to slevu!',
+          'Bzzzt! Remíza! Oba týmy dostanou voucher na útěchu!',
         ],
         win: [
-          'Vítězství doručeno! Sto tabletů pro všechny!',
-          'Zelená síla vyhrává! Masakr cen!',
-          'Vyhráli jsme a doprava je zdarma!',
+          'Vítězství zelené síly! Sto tabletů zdarma pro celý vítězný tým!',
+          'Masakr cen dokonal svůj osud! Andrejovy koblihy zplesnivěly!',
+          'E-shop ovládl republiku! Alzabox na každém rohu a vítězství je naše!',
+          'Konkurence zkrachovala! Zelená planeta slaví největší výprodej!',
         ],
         lose: [
           'Prohra? To musí být chyba v systému!',
           'Reklamuju výsledek!',
           'Příště doručím rychleji, slibuju!',
+          'Moje servery byly přetíženy! Tohle se musí přepočítat!',
         ],
       },
     };
@@ -435,7 +1192,9 @@
       return pool[i];
     }
     function say(state, lines) {
-      state.dialogue = { id: (state.dialogue?.id ?? 0) + 1, lines: lines.filter((l) => l.text) };
+      const valid = lines.filter((l) => l && l.text);
+      if (!valid.length) return;
+      state.dialogue = { id: (state.dialogue?.id ?? 0) + 1, lines: valid };
     }
 
     /** The coupon bought in the first shop works in the next one only. */
@@ -482,7 +1241,6 @@
       const hp = hullFor(state, ctx);
       state.hp = { babis: hp, alzak: hp };
       state.maxHp = { babis: hp, alzak: hp };
-      say(state, []);
       startQuestion(state, ctx, 'quiz');
     }
 
@@ -497,7 +1255,13 @@
         ctx.hide(itemId);
         state.revealed = state.revealed.filter((id) => id !== itemId);
       }
-      // No quote here: the question speaks for itself (quotes only react to what happened).
+      const first = ctx.random() < 0.5 ? 'babis' : 'alzak';
+      const second = other(first);
+      const cat = stage === 'quiz' ? 'quiz' : 'battle';
+      say(state, [
+        { who: first, text: quote(state, ctx, first, cat) },
+        { who: second, text: quote(state, ctx, second, cat) },
+      ]);
       ctx.goto('question');
     }
 
@@ -540,12 +1304,18 @@
         rate[team][1] += 1;
         if (j.answered) ctx.recordAnswer(itemId, j.correct, { playerId: p.id });
       }
-      // One reaction: the team that did better brags, or the worse one complains.
-      const share = (t) => (rate[t][1] ? rate[t][0] / rate[t][1] : state.ai === t ? 0.6 : 0);
-      const better = share('babis') >= share('alzak') ? 'babis' : 'alzak';
-      const who = ctx.random() < 0.5 ? better : other(better);
-      const good = who === better ? share(who) > 0 : share(who) >= 0.5;
-      say(state, [{ who, text: quote(state, ctx, who, good ? 'good' : 'bad') }]);
+      // Both teams react: one brags, one complains (or both react).
+      const skill = ctx.settings.enemySkill ?? 'normal';
+      const aiAcc = skill === 'easy' ? 0.45 : skill === 'hard' ? 0.88 : 0.65;
+      const share = (t) => (rate[t][1] ? rate[t][0] / rate[t][1] : state.ai === t ? aiAcc : 0);
+      const bGood = share('babis') >= 0.5;
+      const aGood = share('alzak') >= 0.5;
+      const first = ctx.random() < 0.5 ? 'babis' : 'alzak';
+      const second = other(first);
+      say(state, [
+        { who: first, text: quote(state, ctx, first, (first === 'babis' ? bGood : aGood) ? 'good' : 'bad') },
+        { who: second, text: quote(state, ctx, second, (second === 'babis' ? bGood : aGood) ? 'good' : 'bad') },
+      ]);
       ctx.goto('reveal');
     }
 
@@ -555,15 +1325,26 @@
       for (const id of Object.keys(state.bought)) state.bought[id] = [];
       state.shopLog = [];
       for (const p of connected(ctx)) if (state.teams[p.id]) state.coins[p.id] += SUBSIDY;
-      // The computer buys too (about what a team would).
+      // The computer buys too (scaled by difficulty).
       if (state.ai) {
         const n = teamSize(state, ctx, state.ai);
-        state.shield[state.ai] += Math.round(30 * n);
-        state.hp[state.ai] = Math.min(state.maxHp[state.ai], state.hp[state.ai] + Math.round(20 * n));
+        const skill = ctx.settings.enemySkill ?? 'normal';
+        const shieldPer = skill === 'easy' ? 18 : skill === 'hard' ? 50 : 30;
+        const hpPer = skill === 'easy' ? 12 : skill === 'hard' ? 35 : 20;
+        state.shield[state.ai] += Math.round(shieldPer * n);
+        state.hp[state.ai] = Math.min(state.maxHp[state.ai], state.hp[state.ai] + Math.round(hpPer * n));
+        if (skill === 'hard') {
+          state.boost[state.ai] = true;
+          state.shopLog.push({ who: 'ai', item: 'tiskovka' });
+        }
         state.shopLog.push({ who: 'ai', item: 'alzabox' });
       }
       const first = ctx.random() < 0.5 ? 'babis' : 'alzak';
-      say(state, [{ who: first, text: quote(state, ctx, first, 'shop') }]);
+      const second = other(first);
+      say(state, [
+        { who: first, text: quote(state, ctx, first, 'shop') },
+        { who: second, text: quote(state, ctx, second, 'shop') },
+      ]);
       ctx.goto('shop');
     }
 
@@ -580,12 +1361,23 @@
 
       for (const team of ['babis', 'alzak']) {
         if (state.ai === team) {
-          // The computer: as many "players" as the other team, about 60–70 % right.
+          // The computer: as many "players" as the other team, accuracy and power set by difficulty.
           const n = teamSize(state, ctx, team);
-          const acc = Math.min(0.72, 0.58 + 0.015 * state.battleRound);
+          const skill = ctx.settings.enemySkill ?? 'normal';
+          let accBase = 0.58, accMax = 0.72, dmgMult = 1.0;
+          if (skill === 'easy') {
+            accBase = 0.38; accMax = 0.50; dmgMult = 0.85;
+          } else if (skill === 'hard') {
+            // Beatable with accurate and fast answers + shop buffs, but computer hits 84–92% and packs combo damage!
+            accBase = 0.84; accMax = 0.92; dmgMult = 1.35;
+          }
+          const acc = Math.min(accMax, accBase + 0.015 * state.battleRound);
           for (let i = 0; i < n; i++) {
             out[team].of += 1;
-            if (ctx.random() < acc) { out[team].hits += 1; out[team].dmg += BASE_DMG * (0.85 + ctx.random() * 0.4); }
+            if (ctx.random() < acc) {
+              out[team].hits += 1;
+              out[team].dmg += Math.round(BASE_DMG * dmgMult * (0.85 + ctx.random() * 0.35));
+            }
           }
           continue;
         }
@@ -636,8 +1428,10 @@
       // Reactions: the stronger side attacks, the other one complains.
       const b = out.babis.dmg, a = out.alzak.dmg;
       if (b === a) {
-        const who = ctx.random() < 0.5 ? 'babis' : 'alzak';
-        say(state, [{ who, text: quote(state, ctx, who, 'tie') }]);
+        say(state, [
+          { who: 'babis', text: quote(state, ctx, 'babis', 'tie') },
+          { who: 'alzak', text: quote(state, ctx, 'alzak', 'tie') },
+        ]);
       } else {
         const att = b > a ? 'babis' : 'alzak';
         say(state, [{ who: att, text: quote(state, ctx, att, 'attack') }, { who: other(att), text: quote(state, ctx, other(att), 'hit') }]);
@@ -674,7 +1468,12 @@
         case 'shop':
           useCoupons(state);
           if (state.shopIdx === 1) {
-            say(state, []);
+            const first = ctx.random() < 0.5 ? 'babis' : 'alzak';
+            const second = other(first);
+            say(state, [
+              { who: first, text: quote(state, ctx, first, 'battle_intro') },
+              { who: second, text: quote(state, ctx, second, 'battle_intro') },
+            ]);
             return ctx.goto('battle_intro');
           }
           return startQuestion(state, ctx, 'battle');
@@ -690,21 +1489,99 @@
     /* ═════════════════════════════════════════════════════════
        Voice (only one device speaks: the board, the solo player or the host)
        ═════════════════════════════════════════════════════════ */
-    function speak(lines) {
-      if (!('speechSynthesis' in window)) return;
+    let isSpeaking = false;
+    let exchangeQueue = [];
+    let pendingLines = null;
+    let fallbackTimer = null;
+    let currentUtterance = null;
+
+    function stopSpeech() {
+      if (fallbackTimer) clearTimeout(fallbackTimer);
+      fallbackTimer = null;
+      currentUtterance = null;
+      pendingLines = null;
+      exchangeQueue = [];
+      isSpeaking = false;
+      if ('speechSynthesis' in window) {
+        try { window.speechSynthesis.cancel(); } catch { }
+      }
+    }
+
+    function playNextInExchange() {
+      if (!exchangeQueue.length) {
+        isSpeaking = false;
+        if (pendingLines && pendingLines.length) {
+          const next = pendingLines;
+          pendingLines = null;
+          startExchange(next);
+        }
+        return;
+      }
+
+      if (!('speechSynthesis' in window)) {
+        isSpeaking = false;
+        return;
+      }
+
+      const line = exchangeQueue.shift();
       try {
-        window.speechSynthesis.cancel(); // never lag behind the game
         const voices = window.speechSynthesis.getVoices();
         const cs = voices.find((v) => v.lang?.toLowerCase().startsWith('cs')) ?? voices.find((v) => v.lang?.toLowerCase().startsWith('sk'));
-        for (const l of lines) {
-          const u = new SpeechSynthesisUtterance(l.text);
-          u.lang = 'cs-CZ';
-          if (cs) u.voice = cs;
-          u.rate = l.who === 'babis' ? 1.15 : 1.3;
-          u.pitch = l.who === 'babis' ? 0.85 : 1.8;
-          window.speechSynthesis.speak(u);
-        }
-      } catch { /* no voice: the bubbles are enough */ }
+
+        const u = new SpeechSynthesisUtterance(line.text);
+        currentUtterance = u;
+        u.lang = 'cs-CZ';
+        if (cs) u.voice = cs;
+        u.rate = line.who === 'babis' ? 1.25 : 1.5;
+        u.pitch = line.who === 'babis' ? 0.85 : 2.0;
+
+        let finished = false;
+        const onDone = () => {
+          if (finished) return;
+          finished = true;
+          currentUtterance = null;
+          if (fallbackTimer) clearTimeout(fallbackTimer);
+          fallbackTimer = null;
+          // Short natural gap (120ms) between dialogue turns
+          setTimeout(playNextInExchange, 120);
+        };
+
+        u.onend = onDone;
+        u.onerror = onDone;
+
+        // Safety fallback in case browser TTS event stalls
+        const words = (line.text || '').split(/\s+/).length;
+        const maxMs = Math.max(2500, words * 450 + 2000);
+        fallbackTimer = setTimeout(onDone, maxMs);
+
+        window.speechSynthesis.speak(u);
+      } catch {
+        playNextInExchange();
+      }
+    }
+
+    function startExchange(lines) {
+      if (!lines || !lines.length) {
+        isSpeaking = false;
+        return;
+      }
+      isSpeaking = true;
+      exchangeQueue = [...lines];
+      playNextInExchange();
+    }
+
+    function speak(lines) {
+      if (!lines || !lines.length) {
+        pendingLines = null;
+        return;
+      }
+      if (isSpeaking) {
+        // The active dialogue exchange (e.g. both Babiš and Alzák) finishes its turn;
+        // only the most recent incoming dialogue lines are queued next.
+        pendingLines = lines;
+        return;
+      }
+      startExchange(lines);
     }
 
     /* ═════════════════════════════════════════════════════════
@@ -894,9 +1771,9 @@
       return ui.html`<div class="card big">
         <h1>${w === 'draw' ? '🤝 Remíza!' : w === 'babis' ? `👑 Vítězí ${teamLabel(state, 'babis')}!` : `🎉 Vítězí ${teamLabel(state, 'alzak')}!`}</h1>
         <div class="mvp">${['babis', 'alzak'].map((t) => {
-          const p = mvp(t);
-          return ui.html`<div class="result ${t === w ? 'good' : 'wait'}">${TEAMS[t].name}<br>${p ? ui.html`⭐ ${p.name} · ${state.dealt[p.id]} poškození` : state.ai === t ? '🤖 počítač' : '—'}</div>`;
-        })}</div>
+        const p = mvp(t);
+        return ui.html`<div class="result ${t === w ? 'good' : 'wait'}">${TEAMS[t].name}<br>${p ? ui.html`⭐ ${p.name} · ${state.dealt[p.id]} poškození` : state.ai === t ? '🤖 počítač' : '—'}</div>`;
+      })}</div>
         <div class="rank">${ranking.map((p, i) => ui.html`<div class="${i === 0 ? 'first' : ''}"><span>${i === 0 ? '🏆 ' : `${i + 1}. `}${p.name} <span class="muted">· ${state.teams[p.id] === 'babis' ? 'Babiš' : 'Alzák'}</span></span><span>${state.scores[p.id] ?? 0} b.</span></div>`)}</div>
       </div>`;
     }
@@ -1041,10 +1918,21 @@
         // One device speaks (the board, a solo player, or the host playing along); never every phone at once.
         const speaker = ui.view === 'board' || ui.mode === 'solo' || (ui.hostAs === 'player' && ui.self?.isHost);
         const id = state.dialogue?.id ?? 0;
-        if (ui.local.spoken === undefined) { ui.local.spoken = id; return; } // nothing old after a reload
-        if (!speaker || ui.settings.soundEnabled === false || id === ui.local.spoken) return;
+        if (ui.local.spoken === undefined) {
+          if (state.phase === 'team_select') {
+            ui.local.spoken = 0;
+          } else {
+            ui.local.spoken = id;
+            return;
+          }
+        }
+        if (!speaker || ui.settings.soundEnabled === false) {
+          if (ui.settings.soundEnabled === false) stopSpeech();
+          return;
+        }
+        if (id === ui.local.spoken) return;
         ui.local.spoken = id;
-        if (state.dialogue.lines.length) speak(state.dialogue.lines);
+        speak(state.dialogue.lines);
       },
 
       render(state, ui) {

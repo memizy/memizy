@@ -172,4 +172,26 @@ describe('Babiš vs. Alzák rules', () => {
     expect(me().winner).toBe('babis'); // all wrong in battle: the computer wins
     expect(session.records.length).toBeGreaterThan(0);
   });
+
+  it('solo enemySkill: hard mode gives AI boost and higher shop shields', async () => {
+    const session = new FakeSession<any>(definition(), { mode: 'solo', items, settings: { questionTime: 8, questionCount: 2, battleRounds: 2, enemySkill: 'hard' } });
+    session.start();
+    await tick();
+    const me = () => session.get('me').state;
+    session.get('me').dispatch('chooseTeam', { team: 'babis' });
+    await tick();
+    expect(me().ai).toBe('alzak');
+    // Answer question 1
+    session.get('me').dispatch('answer', { answer: correctOf(currentItem(me())), round: me().phaseSeq });
+    await tick();
+    await tick(5000); // reveal 1 -> question 2
+    // Answer question 2
+    session.get('me').dispatch('answer', { answer: correctOf(currentItem(me())), round: me().phaseSeq });
+    await tick();
+    await tick(5000); // reveal 2 -> shop
+    expect(me().phase).toBe('shop');
+    expect(me().shield.alzak).toBe(50); // hard AI shield
+    expect(me().boost.alzak).toBe(true); // hard AI boost
+    expect(me().dialogue.lines.length).toBe(2); // both characters speak in shop
+  });
 });
