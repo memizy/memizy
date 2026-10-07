@@ -1166,7 +1166,7 @@
     const SHOP_MS = 30000;
     const TEAM_MS = 20000;
     const BASE_DMG = 30;
-    const HP_PER_SAILOR = 510;
+    const HP_PER_PLAYER = 510;
     /** Everyone gets this at each shop, so even a slow start can buy something. */
     const SUBSIDY = 200;
 
@@ -1203,7 +1203,7 @@
     }
 
     function hullFor(state, ctx) {
-      return Math.max(HP_PER_SAILOR, HP_PER_SAILOR * Math.max(teamSize(state, ctx, 'babis'), teamSize(state, ctx, 'alzak')));
+      return Math.max(HP_PER_PLAYER, HP_PER_PLAYER * Math.max(teamSize(state, ctx, 'babis'), teamSize(state, ctx, 'alzak')));
     }
     /** Both teams get the same HP (from the bigger team); keeps the percentage when it changes. */
     function rescale(state, ctx) {
@@ -1785,7 +1785,7 @@
         if (!battleIds.length) battleIds = [...quizIds];
         const state = {
           stage: 'quiz', teams: {}, ai: null,
-          hp: { babis: HP_PER_SAILOR, alzak: HP_PER_SAILOR }, maxHp: { babis: HP_PER_SAILOR, alzak: HP_PER_SAILOR },
+          hp: { babis: HP_PER_PLAYER, alzak: HP_PER_PLAYER }, maxHp: { babis: HP_PER_PLAYER, alzak: HP_PER_PLAYER },
           shield: { babis: 0, alzak: 0 }, regen: { babis: { amount: 0, rounds: 0 }, alzak: { amount: 0, rounds: 0 } },
           boost: { babis: false, alzak: false }, weak: { babis: false, alzak: false },
           quizIds, battleIds, quizRound: 0, battleRound: 0, totalBattle,

@@ -240,6 +240,14 @@ výchozí `ui.local`, zvuky, upozornění Labu na `render` bez `ui.html`.
       verze; balíček `@memizy/oqse` 1.0.
 - [ ] **Průchod API host-sdk** (`LocalSession`, `mountPlugin`, `RelayHost`, `RelayPlayer`,
       `HostStorage`) – používá ho Play a platforma, i tam 1.0 slibuje stabilitu.
+- Návrhy z průchodu OQSE (A: rozhodnout teď, B: chyby ve specifikaci) čekají na vlastníka.
+- Vědomě **neměníme** (navrženo, vlastník se může ozvat):
+  - `numeric-input.correctAnswer` povinné i s `range`, `slider.step` povinné (hry na hodnoty
+    spoléhají; otevřené: zrušit `range`, které jen opakuje `correctAnswer` + `tolerance`);
+  - `trimWhitespace` (zbytečné, ale neškodí);
+  - názvy `lang` / `language` (přejmenování = jen práce);
+  - stupnice pokroku `bucket` 0–4 a `confidence` 1–4 (odpovídá `AnswerRecord`);
+  - všech 22 typů položek stabilních.
 
 ## 4. E–G
 
@@ -249,6 +257,13 @@ výchozí `ui.local`, zvuky, upozornění Labu na `render` bez `ui.html`.
 - [ ] **F. Návod pro AI** podle finálního API: jedna cesta pro každou věc (`ui.html`,
       `localActions`, fáze bez `tickMs`, `ui.question` s `counts`), pravidla 3D a toast
       v `onFallback`, „políčka nezmenšuj pod 16 px“, rezervovaná pole, stabilní třídy.
+      Výslovně jako součást kontraktu (zjištěno při převodu her):
+      1. pořadí potomků v `.mz-q-options` = pořadí možností (u pravda/nepravda: pravda,
+         nepravda) – hry barví přes `:nth-child`, protože paletu podle `--mz-q-index` CSS
+         vybrat neumí;
+      2. tvar akce z `ui.question`: `{ itemId, ...payload, answer }` (hry kontrolují `itemId`);
+      3. ve hrách s fázemi se zahazují **všechny** pozdní akce; výjimka pro akci, která má
+         projít i přes změnu fáze (např. reakce emoji), jde přidat v 1.x jako volitelná.
 - [ ] **G. Dokumentace:** changelog SDK, SPEC (pokud se dotkne), `CLAUDE.md`, tento plán.
 
 ## 5. Vydání
