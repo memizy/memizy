@@ -117,9 +117,10 @@ Dotčené soubory obvykle: `packages/oqse/oqse*.md` (spec), `src/oqse.ts` (typy)
 
 ### Část 6 – Veřejné položky
 
-- [ ] Spec OQSE: `solution` u vlastních typů `x-`; SPEC 4.4: skrývá se `solution`,
+- [x] Spec OQSE: `solution` u vlastních typů `x-`; SPEC 4.4: skrývá se `solution`,
       `sources[].quote`, `hints` jsou veřejné.
-- [ ] Kód: `publicItem` (`items.ts`); testy (`displayItems.test.ts`, `session.test.ts`).
+- [x] Kód: `publicItem` (`items.ts`); testy (`displayItems.test.ts`, `session.test.ts`).
+      Navíc: `x-` dostanou `answerHidden: true`; ze SPEC 4.4 zmizel zapomenutý `range`.
 
 ### Část 7 – Rich Content
 

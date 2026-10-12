@@ -128,14 +128,22 @@ const HIDDEN: Record<string, string[]> = {
 const CHOICE_LISTS = ['options', 'items', 'prompts', 'matches', 'leftItems', 'rightItems', 'categories', 'rows', 'columns', 'labels'];
 
 /**
- * The item without its answer. Custom (`x-`) types are passed unchanged: the
- * host cannot know which of their fields are answers.
+ * The item without its answer. Custom (`x-`) types lose only `solution` (where OQSE
+ * puts everything that gives their answer away) and the common fields. `hints` stay:
+ * a game may show them on any device while the player answers.
  */
 export function publicItem(item: OQSEAnyItem): OQSEAnyItem {
   const type = (item as { type: string }).type;
-  if (type.startsWith('x-')) return structuredClone(item);
   const it = structuredClone(item) as any;
-  for (const key of [...COMMON_HIDDEN, ...(HIDDEN[type] ?? [])]) delete it[key];
+  for (const key of COMMON_HIDDEN) delete it[key];
+  // A quote from a source often states the answer.
+  if (Array.isArray(it.sources)) for (const source of it.sources) if (source && typeof source === 'object') delete source.quote;
+  if (type.startsWith('x-')) {
+    delete it.solution;
+    it.answerHidden = true;
+    return it;
+  }
+  for (const key of HIDDEN[type] ?? []) delete it[key];
   for (const key of CHOICE_LISTS) {
     if (Array.isArray(it[key])) for (const choice of it[key]) if (choice && typeof choice === 'object') delete choice.explanation;
   }

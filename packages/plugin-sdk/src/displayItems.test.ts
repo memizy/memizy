@@ -25,7 +25,8 @@ const items = {
   flash: { id: 'f', type: 'flashcard', front: 'term', back: 'definition' },
   note: { id: 'nt', type: 'note', content: 'shown', hiddenContent: 'secret' },
   pin: { id: 'pi', type: 'pin-on-image', question: 'Q', targetAsset: 'img', hotspots: [{ type: 'circle', x: 50, y: 50, radius: 5 }] },
-  custom: { id: 'x', type: 'x-anything', secret: 42 },
+  custom: { id: 'x', type: 'x-anything', board: 42, solution: { move: 'e4' }, explanation: 'why-e4', incorrectFeedback: 'hint-e4' },
+  sourced: { id: 'src', type: 'short-answer', question: 'Q', correctAnswers: ['Brno'], hints: ['Second largest city'], sources: [{ id: 'wiki', location: 'p. 1', quote: 'Brno is the answer' }] },
   ancient: { id: 'anc', type: 'timeline', question: 'Q', events: [{ id: 'b', text: 'B', date: '-0044-03-15' }, { id: 'a', text: 'A', date: '-0480-08-01' }] },
 } as unknown as Record<string, OQSEAnyItem>;
 
@@ -93,6 +94,8 @@ describe('public items', () => {
     d: ['correctLabelId'],
     dt: ['srdce'],
     mx: ['correctCells'],
+    x: ['e4', 'solution'],
+    src: ['Brno', 'quote'],
     anc: ['-0044', 'date'],
     n: ['9.81'],
     f: ['definition'],
@@ -102,7 +105,6 @@ describe('public items', () => {
 
   it('contain nothing that gives the answer away', () => {
     for (const original of Object.values(items)) {
-      if ((original as any).type.startsWith('x-')) continue;
       const pub = publicItem(displayItem(original, seededRandom('x'))) as any;
       expect(pub.answerHidden).toBe(true);
       const text = JSON.stringify(pub);
@@ -122,7 +124,9 @@ describe('public items', () => {
     expect(pub('diagram').labels).toHaveLength(3);
     expect(pub('flash').front).toBe('term');
     expect(pub('note').content).toBe('shown');
-    expect(pub('custom').secret).toBe(42); // custom types pass unchanged
+    expect(pub('custom')).toMatchObject({ board: 42, answerHidden: true }); // custom types lose only solution and the common fields
+    expect(pub('sourced').hints).toEqual(['Second largest city']); // hints are public
+    expect(pub('sourced').sources).toEqual([{ id: 'wiki', location: 'p. 1' }]);
   });
 
   it('checkAnswer refuses an item without its answer', () => {

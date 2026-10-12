@@ -1355,6 +1355,13 @@ void _allItemTypesListed;
  */
 export interface OQSECustomItem extends BaseItem {
   type: `x-${string}`;
+
+  /**
+   * Everything that gives the answer away (any JSON value). Applications that hide
+   * answers from learners remove it (with `explanation` and `incorrectFeedback`).
+   */
+  solution?: unknown;
+
   [key: string]: unknown;
 }
 

@@ -525,7 +525,7 @@ This section defines what a learner's answer to each item type looks like and wh
 | `flashcard` | Self-rating: integer `1`–`4` on the [OQSEP confidence scale](./oqse-progress.md#confidence-scale) | The rating is `3` or `4` (recalled). Applications SHOULD offer all four ratings. |
 | `open-ended` | String | Not checked automatically (a teacher or an evaluator with the `rubric` decides). |
 | `note` | – (no answer) | – |
-| `x-…` (custom) | Defined by the application | Defined by the application. |
+| `x-…` (custom) | Defined by the application | Defined by the application (the answer data belongs in `solution`, see [Adding Custom Item Types](#adding-custom-item-types)). |
 
 **Tolerant reading:** applications reading answers MUST also accept: numbers written as strings (normalized as in [`numeric-input`](#type-numeric-input-numeric-input): decimal comma, spaces), `"true"` / `"false"` as strings for `true-false`, and a single point or name as well as an array of them for `pin-on-image` and `pin-on-model`. They write answers in the canonical form above.
 
@@ -1955,6 +1955,7 @@ Applications may define custom item types using `x-` prefix (e.g., `x-code-chall
   * MUST preserve all common properties from section 4
   * SHOULD be documented in `appSpecific` object in `meta`
   * MUST NOT collide with future official types
+  * SHOULD put everything that gives the answer away (correct answers, solutions) into the reserved field `solution` (any JSON value). Applications that hide answers from learners (e.g., from other players' devices in a multiplayer game) remove `solution`, together with `explanation` and `incorrectFeedback`. Validators preserve `solution` unchanged.
 
 ### Versioning and Compatibility
 
@@ -2198,6 +2199,7 @@ The first stable version. From now on, 1.x versions only add (see [Versioning an
 * Version rules for sets, manifests and progress files: applications read the MAJOR versions they support and never read another MAJOR version (including the pre-release 0.x drafts) silently as a supported one.
 * Schema URLs: `https://cdn.jsdelivr.net/npm/@memizy/oqse@1/schemas/oqse-v1.0.json` (and `oqse-manifest-v1.0.json`, `oqse-progress-v1.0.json`, `oqse-header-v1.0.json`).
 * `timeline`: years before the Common Era in historical numbering (`-0480` = 480 BC, no year 0); a normative comparison of two events (the coarser precision; without `precision`, `datetime` if the date has a time, otherwise `day`; a time without a time zone is UTC) and a correct order defined over every pair of events.
+* Custom `x-` item types: the reserved field `solution` holds everything that gives the answer away, so applications can hide it from learners.
 * [Answer Formats](#answer-formats): a normative table of the answer of every item type and when it is correct. `flashcard` answers are a self-rating `1`–`4` on the OQSEP confidence scale (correct when `3` or `4`).
 * `chess-puzzle`: a sequence alternates both sides starting with the side to move (the learner plays the even positions), SHOULD end with the learner's move; moves are normalized before comparing (check/annotation marks, `0-0`, `e8Q`).
 * `numeric-input`: `range` is removed; an interval is `correctAnswer` ± `tolerance` (e.g., 100–120 = `correctAnswer: 110, tolerance: 10`). Comparisons allow for floating-point rounding.
