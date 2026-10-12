@@ -50,7 +50,7 @@ In this specification, the keywords **MUST**, **MUST NOT**, **SHOULD**, **SHOULD
     * For HTTP `Content-Type` header, use the appropriate MIME type
   * **Text Encoding:** UTF-8 (REQUIRED, without BOM)
   * **Validation:** Every OQSE file SHOULD be valid according to the JSON Schema at the URI specified in `$schema`
-  * **Unique IDs:** All `id` values MUST be generated as **UUIDv7** to ensure global uniqueness and native temporal ordering of records in databases. Applications MUST accept UUID versions 4 and 7 when loading existing sets. Applications MAY accept other versions (1-6), but this is not required. Applications creating new items MUST use UUIDv7. When re-exporting an existing set, the original UUID MUST be preserved regardless of version. Validation checks only the format (8-4-4-4-12 hex characters), not the specific UUID version. Exception: `SourceMaterial.id` MAY be an alphanumeric string unique only within that file, and `id` within internal item objects such as `TimelineEvent` or `CategorizeEntry` MAY also be an alphanumeric string.
+  * **Unique IDs:** Every `id` MUST be a valid UUID (format 8-4-4-4-12 hexadecimal; the version is not checked). New IDs SHOULD be **UUIDv7** (time-ordered, good for database indexes); applications MUST accept any UUID version. When re-exporting an existing set, the original UUID MUST be preserved. See [UUID Validation Rules](#uuid-validation-rules). Exception: `SourceMaterial.id` MAY be an alphanumeric string unique only within that file, and `id` within internal item objects such as `TimelineEvent` or `CategorizeEntry` MAY also be an alphanumeric string.
   * **Text Formatting:** The specification distinguishes two types of text fields:
     * **Plain Text:** Fields intended for metadata and identifiers (e.g., titles, tags, alt texts). Interpreted as plain text without any formatting.
     * **Rich Content:** Fields intended for educational content. Always written as **GitHub Flavored Markdown (GFM)** (plain text is valid Markdown), with media references using Media Tag syntax `<asset:key />` and the tags `<sub>`, `<sup>`, `<br>` without attributes. **LaTeX** mathematics compatible with KaTeX/MathJax (inline `$x^2$` and blocks `$$...$$` rendered as display style on a separate line) only when the `latex` feature is declared, otherwise `$` is a literal character. Raw HTML only with the `html` feature. See the [Official Feature Registry](#official-feature-registry).
@@ -361,7 +361,7 @@ Standardized object for embedding media. Used:
 | `type` | string | Yes | Media type from selection (`image`, `audio`, `video`, `model`). The specific allowed file formats are negotiated via the [OQSEM (`capabilities.assets`)](./oqse-manifest.md#capabilities-object-extends-featureprofile). For the `model` type, the glTF format (`model/gltf-binary` for `.glb` or `model/gltf+json` for `.gltf`) is highly RECOMMENDED as the universal baseline for interoperability. However, applications and sets MAY use other formats (like `.obj` or `.fbx`) provided they are explicitly declared and matched during the capability handshake. |
 | `value` | string | Yes | URI of the resource. Can be **absolute URL** (e.g., `https://.../image.png`) or **relative path** to file in package (e.g., `assets/diagram.png`). |
 | `mimeType` | string | Recommended | MIME type of file (e.g., `image/png`, `audio/mpeg`, `video/mp4`, `model/gltf-binary`). |
-| `altText` | string | **REQUIRED for images**, optional for audio/video/model | **Plain Text.** Alternative text for accessibility. Must be plain text without formatting for screen readers. |
+| `altText` | string | **Required for images** (on save), optional for audio/video/model | **Plain Text.** Alternative text for accessibility. Must be plain text without formatting for screen readers. A set with an image without `altText` MUST NOT be saved or exported; on import it is a warning and the application derives the text from the file name (e.g., `cell-diagram.png` → "cell diagram") or uses a placeholder. |
 | `transcript` | string | No | **Rich Content.** Verbatim transcript of spoken word (for audio/video). For time codes, use WebVTT format (time codes MUST be on separate line, e.g., `00:00:15.000`). For inline formatting, use Markdown. MAY contain mathematical formulas in LaTeX. If present, enables fulltext search and indexing by AI agents without need to download and analyze binary file. Takes precedence over external subtitles. **Accessibility note:** Applications MUST remove all formatting when processing for screen readers and leave only plain text. |
 | `caption` | string | No | **Rich Content.** Media caption displayed below/next to media. |
 | `width` | number | No | Preferred width in pixels (rendering hint). |
@@ -372,7 +372,7 @@ Standardized object for embedding media. Used:
 | `subtitles` | array | No | For audio/video only. Array of objects defining subtitles. Each object contains: `lang` (string, required): Language code (BCP 47, e.g., `cs`, `en`), `value` (string, required): URI to `.vtt` or `.srt` file (absolute URL or relative path in `.oqse` package), `label` (string, optional): Display name (e.g., "Czech", "English"), `kind` (string, optional): Subtitle type - `captions`, `subtitles`, or `descriptions` per WebVTT specification (default: `subtitles`). Example: `[{"lang": "cs", "value": "assets/subtitles/cs.vtt", "label": "Czech", "kind": "captions"}, {"lang": "en", "value": "assets/subtitles/en.vtt", "label": "English"}]`. **Validation rules:** File format MUST be `.vtt` (recommended) or `.srt`. Value `kind` MUST be one of: `captions`, `subtitles`, `descriptions`. If `label` is missing, use value of `lang`. Application MUST ignore invalid formats with warning. |
 | `license` | string | No | SPDX license for this specific media (if different from set). |
 | `attribution` | string | No | **Plain Text.** Media author/source attribution (e.g., "Photo: NASA"). |
-| `checksums` | object | No | Object for file integrity verification. Key is algorithm name (`"sha256"`, `"sha512"`, `"md5"`, etc.) and value is hexadecimal hash. Example: `{"sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "md5": "098f6bcd4621d373cade4e832627b4f6"}`. Hash is calculated from original **binary data** of file (not from URI string). **Security rules:** For files in `.oqse` package, Application MUST calculate hash after unpacking and compare with values in object. Application MUST support at minimum the `sha256` algorithm. For external URLs: If file is small (< 10 MB), Application MAY download and verify. If file is large (>= 10 MB), Application MAY skip validation and display warning. Application SHOULD allow user to disable checksum validation for streaming media. If hash does not match, Application MUST reject asset and display security warning. If `checksums` is missing, Application MAY use file but SHOULD display warning about unverified integrity. |
+| `checksums` | object | No | Object for file integrity verification. Key is algorithm name (`"sha256"`, `"sha512"`, `"md5"`, etc.) and value is hexadecimal hash. Example: `{"sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "md5": "098f6bcd4621d373cade4e832627b4f6"}`. Hash is calculated from original **binary data** of file (not from URI string). **Security rules:** For files in `.oqse` package, Application MUST calculate hash after unpacking and compare with values in object. Application MUST support at minimum the `sha256` algorithm. For external URLs: If file is small (< 10 MB), Application MAY download and verify. If file is large (>= 10 MB), Application MAY skip validation and display warning. Application SHOULD allow user to disable checksum validation for streaming media. If hash does not match, Application MUST reject asset and display security warning. If `checksums` is missing, Application MAY use file and MAY display warning about unverified integrity. |
 
 **Note:** To use different segments of the same file in one set, define multiple assets in `assets` with the same `value` but different `start` and `end` values.
 
@@ -1707,14 +1707,11 @@ To ensure consistency and practical implementability, the specification defines 
 
 ### UUID Validation Rules
 
-The standard for OQSE v0.3 is **UUIDv7**. For applications simplification, it is recommended to support only **UUIDv7** (preferred) and **UUIDv4** (fallback).
-
 **Rules for Applications:**
-1. **Import:** Application MUST accept UUID versions 4 and 7 when loading existing sets. Application MAY accept other versions (1-6), but this is not required.
-2. **Export of new items:** Application MUST generate new items with UUIDv7 to ensure chronological ordering and optimal indexing in databases.
+1. **Format:** Every `id` MUST be a valid UUID. Applications check only the format (8-4-4-4-12 hexadecimal characters), not the version, and MUST accept any version.
+2. **New IDs:** SHOULD be UUIDv7 (time-ordered, good for database indexes). Any other version is valid.
 3. **Re-export:** Existing UUID MUST be preserved unchanged regardless of version (due to referential integrity).
-4. **Validation:** Application checks only syntactic UUID format (8-4-4-4-12 hex characters), not specific version.
-5. **Uniqueness:** All UUIDs in file MUST be globally unique.
+4. **Uniqueness:** All UUIDs in file MUST be globally unique.
 
 **Exception:** `SourceMaterial.id` MAY be alphanumeric string unique only within that file, and `id` within internal item objects such as `TimelineEvent` or `CategorizeEntry` MAY also be alphanumeric string.
 
@@ -1829,7 +1826,7 @@ Applications processing `.oqse` packages (ZIP) MUST implement following protecti
 
 ### Key Order for Optimization (Streaming)
 
-Although JSON standard doesn't require key order, for memory efficiency optimization when parsing large sets (High Performance Parsing), OQSE file generators MUST write root object in this order:
+Although JSON standard doesn't require key order, for memory efficiency optimization when parsing large sets (High Performance Parsing), OQSE file generators SHOULD write root object in this order:
 
 1. **Identifiers** (`$schema`, `version`)
 2. **Metadata** (`meta`)
@@ -2222,6 +2219,7 @@ OQSE is an open standard. Suggestions for improvements:
 The first stable version. From now on, 1.x versions only add (see [Versioning and Compatibility](#versioning-and-compatibility)).
 * Version rules for sets, manifests and progress files: applications read the MAJOR versions they support and never read another MAJOR version (including the pre-release 0.x drafts) silently as a supported one.
 * Schema URLs: `https://cdn.jsdelivr.net/npm/@memizy/oqse@1/schemas/oqse-v1.0.json` (and `oqse-manifest-v1.0.json`, `oqse-progress-v1.0.json`, `oqse-header-v1.0.json`).
+* Fewer strict rules that nobody needs: IDs MUST be valid UUIDs of any version (new ones SHOULD be UUIDv7); a missing image `altText` is a warning on import (derived from the file name) and an error on save; a missing `checksums` MAY be reported; the root key order is a SHOULD.
 * OQSEM: `capabilities` (default `{}`) and `capabilities.actions` (default `["render"]`) may be omitted; an application without `types` processes no items (e.g., a game without study sets) and is compatible only with sets without items.
 * [Detecting Features from Content](#detecting-features-from-content): the effective requirements are the declared and the detected features (blocks, `html`, `markdown`, `rtl` from the language); validators warn about undeclared features and about text that looks like a formula without `latex`.
 * Rich Content and features: no more tiers. Rich Content is always Markdown; `<sub>`, `<sup>`, `<br>` without attributes are allowed without the `html` feature; every feature has a defined [fallback](#fallbacks) (a missing feature means simplified display, never unusable content); unknown unprefixed feature and property values are ignored with a warning (forward compatibility); rendered HTML is always sanitized.

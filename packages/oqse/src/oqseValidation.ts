@@ -18,7 +18,7 @@ import type { OQSEAnyItem } from './oqse';
 // ============================================================================
 
 /**
- * UUID validation (accepts UUIDv4 and UUIDv7)
+ * UUID validation: any valid UUID (new IDs should be UUIDv7, not required)
  */
 export const UUIDSchema = z.string().uuid({ message: 'Invalid UUID format' });
 
@@ -176,19 +176,8 @@ export const MediaObjectSchema = z.looseObject({
     message: 'Start time must be less than end time',
     path: ['end'],
   }
-).refine(
-  (data) => {
-    // Require altText for images (not required for audio/video/model)
-    if (data.type === 'image' && !data.altText) {
-      return false;
-    }
-    return true;
-  },
-  {
-    message: 'Images must have alternative text (altText) defined for accessibility',
-    path: ['altText'],
-  }
 );
+// Images without `altText`: loadOQSEFile warns (and derives one), validateOQSEFile fails.
 
 /**
  * Asset dictionary

@@ -13,7 +13,7 @@
  */
 
 import type { z } from 'zod';
-import type { OQSEAnyItem, OQSEFile, OQSEMeta } from './oqse';
+import type { MediaObject, OQSEAnyItem, OQSEFile, OQSEMeta } from './oqse';
 import { OQSEMetaSchema, getItemSchema } from './oqseValidation';
 import { OFFICIAL_ITEM_TYPES } from './oqse';
 import { OFFICIAL_FEATURE_KEYS, OFFICIAL_ITEM_PROPERTIES, OFFICIAL_META_PROPERTIES } from './manifest';
@@ -51,6 +51,7 @@ export type OQSEIssueCode =
   | 'NOTE_HEADING_LEVEL'
   | 'CHESS_SEQUENCE_LENGTH'
   | 'UNKNOWN_FEATURE'
+  | 'MISSING_ALT_TEXT'
   | 'UNDECLARED_FEATURE'
   | 'LOOKS_LIKE_LATEX'
   | 'SECURITY_LIMIT';
@@ -121,8 +122,8 @@ export const OQSE_VERSION = '1.0';
  * - Critical errors (invalid root, `version` or `meta`, a pre-release 0.x set) → `success: false`.
  * - Invalid items, unknown item types, duplicate IDs, missing target assets and
  *   raw HTML without the `html` feature → the item is skipped (error).
- * - Dangling references, a missing thumbnail and uppercase asset keys → fixed in
- *   the returned copy (warning). The input is never mutated.
+ * - Dangling references, a missing thumbnail, images without `altText` and uppercase
+ *   asset keys → fixed in the returned copy (warning). The input is never mutated.
  */
 export function loadOQSEFile(data: unknown): OQSELoadResult {
   return analyze(data, 'load');
@@ -239,6 +240,7 @@ function analyze(input: unknown, mode: Mode): OQSELoadResult {
   const htmlAllowed = features.has('html');
   const latex = features.has('latex');
 
+  checkAltTexts(meta.assets, ['meta', 'assets'], log, mode);
   if (meta.thumbnail && !meta.assets?.[meta.thumbnail]) {
     log.add(recoverable, 'MISSING_THUMBNAIL_ASSET', `Thumbnail references non-existent asset "${meta.thumbnail}".`, ['meta', 'thumbnail']);
     if (mode === 'load') delete meta.thumbnail;
@@ -279,6 +281,7 @@ function analyze(input: unknown, mode: Mode): OQSELoadResult {
     }
     seenIds.add(item.id);
 
+    checkAltTexts(item.assets, [...path, 'assets'], log, mode, item.id);
     if (!checkItem(item, path, meta, htmlAllowed, latex, log)) return;
     kept.push({ item, index });
   });
@@ -401,6 +404,24 @@ function checkItem(
   }
 
   return ok;
+}
+
+/**
+ * Images need `altText`: on import a missing one is derived from the file name
+ * (warning); when saving it is an error.
+ */
+function checkAltTexts(assets: Record<string, MediaObject> | undefined, path: Path, log: IssueLog, mode: Mode, itemId?: string): void {
+  for (const [key, media] of Object.entries(assets ?? {})) {
+    if (media.type !== 'image' || media.altText?.trim()) continue;
+    log.add(mode === 'strict' ? 'error' : 'warning', 'MISSING_ALT_TEXT', `Image "${key}" has no altText (alternative text for screen readers).`, [...path, key, 'altText'], itemId);
+    if (mode === 'load') media.altText = altTextFromFileName(media.value) || key;
+  }
+}
+
+/** `assets/img/cell-diagram.png?v=2` → "cell diagram". */
+function altTextFromFileName(value: string): string {
+  const name = value.split(/[?#]/)[0].split('/').pop() ?? '';
+  return name.replace(/\.[a-z0-9]+$/i, '').replace(/[-_]+/g, ' ').trim();
 }
 
 /**

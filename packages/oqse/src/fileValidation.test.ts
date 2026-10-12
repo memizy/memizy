@@ -271,3 +271,23 @@ describe('detected features', () => {
     expect(codes(loadOQSEFile(file([note(1, { content: 'It costs $5 and $10.' })])).warnings)).not.toContain('LOOKS_LIKE_LATEX');
   });
 });
+
+describe('altText', () => {
+  it('is derived from the file name on import (warning) and required when saving', () => {
+    const assets = { cell_diagram: { type: 'image', value: 'https://example.com/img/cell-diagram.png?v=2' } };
+    const loaded = loadOQSEFile(file([note(1, { assets })], { assets: { cover: { type: 'image', value: 'https://example.com/cover_photo.jpg' } } }));
+    expect(loaded.success).toBe(true);
+    expect(loaded.data!.items).toHaveLength(1);
+    expect((loaded.data!.items[0].assets as any).cell_diagram.altText).toBe('cell diagram');
+    expect((loaded.data!.meta.assets as any).cover.altText).toBe('cover photo');
+    expect(codes(loaded.warnings).filter((c) => c === 'MISSING_ALT_TEXT')).toHaveLength(2);
+    const strict = safeValidateOQSEFile(file([note(1, { assets })]));
+    expect(strict.success).toBe(false);
+    expect(codes(strict.errors)).toEqual(['MISSING_ALT_TEXT']);
+  });
+
+  it('accepts any UUID version', () => {
+    const v4 = '3f0c2b9e-8a41-4d2c-9b7e-1a2b3c4d5e6f';
+    expect(safeValidateOQSEFile(file([{ id: v4, type: 'note', content: 'x' }])).success).toBe(true);
+  });
+});

@@ -159,9 +159,9 @@ Dotčené soubory obvykle: `packages/oqse/oqse*.md` (spec), `src/oqse.ts` (typy)
 
 ### Část 8 – Přísnost pravidel
 
-- [ ] Spec: UUID MUST platné, SHOULD v7; `altText` – při načtení varování a doplnění,
+- [x] Spec: UUID MUST platné, SHOULD v7; `altText` – při načtení varování a doplnění,
       při uložení chyba; `checksums` MAY varovat; pořadí klíčů SHOULD.
-- [ ] Kód: validace `altText` mimo schéma, komentář `generateUUID`, Play `aiSets.ts`
+- [x] Kód: validace `altText` mimo schéma, komentář `generateUUID`, Play `aiSets.ts`
       → `generateUUID`; testy.
 
 ### Část 9 – Opravy textu a changelog

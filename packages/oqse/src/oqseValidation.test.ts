@@ -30,16 +30,8 @@ describe('OQSE Validation Schemas', () => {
     expect(ISO8601DateTimeSchema.safeParse('11/21/2025').success).toBe(false);
   });
 
-  it('MediaObjectSchema: images MUST have altText defined', () => {
-    const validImage = { type: 'image', value: 'https://example.com/img.png', altText: 'An image' };
-    expect(MediaObjectSchema.safeParse(validImage).success).toBe(true);
-
-    const invalidImage = { type: 'image', value: 'https://example.com/img.png' };
-    const result = MediaObjectSchema.safeParse(invalidImage);
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('altText');
-    }
+  it('MediaObjectSchema: altText is checked by the file validation, not the schema', () => {
+    expect(MediaObjectSchema.safeParse({ type: 'image', value: 'https://example.com/img.png' }).success).toBe(true);
   });
 
   it('MediaObjectSchema: start time must be less than end time', () => {

@@ -4,7 +4,7 @@
  * our own meta), so the model only has to get the questions right.
  */
 
-import { detectFeatures, type OQSEFile } from '@memizy/oqse';
+import { detectFeatures, generateUUID, type OQSEFile } from '@memizy/oqse';
 
 /** Item types an AI can write well without assets. */
 export const AI_TYPES = ['mcq-single', 'mcq-multi', 'true-false', 'short-answer', 'match-pairs', 'sort-items', 'flashcard'] as const;
@@ -106,7 +106,7 @@ export function normalizeAiAnswer(text: string, r: Pick<AiRequest, 'topic' | 'la
   const raw = Array.isArray(obj?.items) ? obj.items : [];
   const items = raw
     .filter((it): it is Record<string, unknown> => !!it && typeof it === 'object' && typeof (it as { type?: unknown }).type === 'string')
-    .map((it) => ({ ...upgradeItem(it), id: crypto.randomUUID() }));
+    .map((it) => ({ ...upgradeItem(it), id: generateUUID() }));
   if (!items.length) return { success: false, error: 'no-items' };
   const title = [obj.title, obj.meta?.title].find((t): t is string => typeof t === 'string' && t.trim().length > 0) ?? r.topic.trim();
   const now = new Date().toISOString();
@@ -114,7 +114,7 @@ export function normalizeAiAnswer(text: string, r: Pick<AiRequest, 'topic' | 'la
     $schema: 'https://cdn.jsdelivr.net/npm/@memizy/oqse@1/schemas/oqse-v1.0.json',
     version: '1.0',
     meta: {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       language: r.language,
       title: title.slice(0, 200),
       description: r.topic.trim().slice(0, 1000),
