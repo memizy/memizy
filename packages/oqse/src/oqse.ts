@@ -729,12 +729,13 @@ export interface TimelineEvent {
   text: string;
 
   /**
-   * Event date in ISO 8601 format.
-   * MUST always contain full date, even if precision is only year or month.
+   * Event date: a full date `YYYY-MM-DD`, optionally with a time (without a time zone = UTC),
+   * even if precision is only year or month. Years before the Common Era in historical
+   * numbering: `-0480-08-01` is 480 BC; there is no year 0.
    */
   date: ISO8601DateTime;
 
-  /** Determines display format to user. Default: use full precision from date */
+  /** How precisely the date is known. Default: `datetime` if `date` has a time, otherwise `day` */
   precision?: TimelinePrecision;
 }
 

@@ -98,10 +98,10 @@ Dotčené soubory obvykle: `packages/oqse/oqse*.md` (spec), `src/oqse.ts` (typy)
 
 ### Část 4 – Časová osa
 
-- [ ] Spec: roky př. n. l. (`-0480-08-01`, rok 0 = 1 př. n. l.); pravidla porovnání:
+- [x] Spec: roky př. n. l. historicky (`-0480-08-01` = 480 př. n. l., rok 0000 neexistuje; jen v datech událostí); pravidla porovnání:
       hrubší z obou přesností, bez `precision` = `datetime` s časem, jinak `day`;
-      `datetime` jako okamžik včetně časového pásma.
-- [ ] Kód: schéma data události, sdílené porovnání, `checkAnswer`, míchání (`displayItem`
+      `datetime` jako okamžik včetně časového pásma (bez pásma = UTC); správné pořadí = všechny dvojice.
+- [x] Kód: schéma data události, sdílené porovnání, `checkAnswer`, míchání (`displayItem`
       nikdy neukáže seřazené); testy.
 
 ### Část 5 – Formáty odpovědí a šachy

@@ -15,6 +15,7 @@ import {
   OFFICIAL_META_PROPERTIES,
 } from './manifest';
 import { validateJsonDepth } from './utils';
+import { isTimelineDate } from './answers';
 import type { OQSEAnyItem } from './oqse';
 
 // ============================================================================
@@ -46,6 +47,15 @@ export const ISO8601DateTimeSchema = z.string().regex(
   /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d{3})?(Z|[+-]\d{2}:\d{2})?)?$/,
   'Invalid ISO 8601 format (e.g. "2025-11-21T14:30:00Z")'
 );
+
+/**
+ * Date of a timeline event: like {@link ISO8601DateTimeSchema}, plus years before the
+ * Common Era in historical numbering ("-0480-08-01" = 480 BC; there is no year 0).
+ */
+export const TimelineDateSchema = z.string().regex(
+  /^-?\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d{3})?(Z|[+-]\d{2}:\d{2})?)?$/,
+  'Invalid date (e.g. "1969-07-20", or "-0480-08-01" for 480 BC)'
+).refine(isTimelineDate, 'Year 0000 does not exist (1 BC is "-0001", AD 1 is "0001")');
 
 /**
  * Absolute URL validation
@@ -517,7 +527,7 @@ export const TimelinePrecisionSchema = z.enum(['year', 'month', 'day', 'datetime
 export const TimelineEventSchema = z.looseObject({
   id: PlainTextSchema,
   text: RichContentSchema,
-  date: ISO8601DateTimeSchema,
+  date: TimelineDateSchema,
   precision: TimelinePrecisionSchema.optional(),
 });
 

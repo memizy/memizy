@@ -26,6 +26,7 @@ const items = {
   note: { id: 'nt', type: 'note', content: 'shown', hiddenContent: 'secret' },
   pin: { id: 'pi', type: 'pin-on-image', question: 'Q', targetAsset: 'img', hotspots: [{ type: 'circle', x: 50, y: 50, radius: 5 }] },
   custom: { id: 'x', type: 'x-anything', secret: 42 },
+  ancient: { id: 'anc', type: 'timeline', question: 'Q', events: [{ id: 'b', text: 'B', date: '-0044-03-15' }, { id: 'a', text: 'A', date: '-0480-08-01' }] },
 } as unknown as Record<string, OQSEAnyItem>;
 
 /** The right answer (IDs do not change with the order). */
@@ -67,6 +68,7 @@ describe('display order (SPEC 4.4)', () => {
       positions.add(ids((displayItem(items.mcq, random) as any).options).indexOf('c'));
       expect(ids((displayItem(items.sort, random) as any).items)).not.toEqual(['i1', 'i2', 'i3', 'i4']);
       expect(ids((displayItem(items.timeline, random) as any).events)).not.toEqual(['e1', 'e2', 'e3']);
+      expect(ids((displayItem(items.ancient, random) as any).events)).not.toEqual(['a', 'b']);
       expect(ids((displayItem(items.fixed, random) as any).options)).toEqual(['a', 'b', 'all']);
     }
     expect(positions.size).toBe(4);
@@ -91,6 +93,7 @@ describe('public items', () => {
     d: ['correctLabelId'],
     dt: ['srdce'],
     mx: ['correctCells'],
+    anc: ['-0044', 'date'],
     n: ['9.81'],
     f: ['definition'],
     nt: ['secret'],

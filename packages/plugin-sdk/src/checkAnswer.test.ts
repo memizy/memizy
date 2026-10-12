@@ -90,6 +90,29 @@ describe('checkAnswer', () => {
     expect(checkAnswer(timeline, ['e1', 'e3', 'e2'])).toBe(true);
     expect(checkAnswer(timeline, ['e2', 'e1', 'e3'])).toBe(false);
     expect(checkAnswer(timeline, ['e1', 'e2'])).toBe(false);
+    // Before the Common Era (historical numbering) and every pair, not only neighbours.
+    const ancient = item({
+      type: 'timeline',
+      question: 'Q',
+      events: [
+        { id: 'caesar', text: 'Caesar', date: '-0044-03-15' },
+        { id: 'thermopylae', text: 'Thermopylae', date: '-0480-08-01', precision: 'year' },
+        { id: 'augustus', text: 'Augustus', date: '0014-08-19' },
+      ],
+    });
+    expect(checkAnswer(ancient, ['thermopylae', 'caesar', 'augustus'])).toBe(true);
+    expect(checkAnswer(ancient, ['caesar', 'thermopylae', 'augustus'])).toBe(false);
+    const mixed = item({
+      type: 'timeline',
+      question: 'Q',
+      events: [
+        { id: 'year', text: '1969', date: '1969-01-01', precision: 'year' },
+        { id: 'dec', text: 'December', date: '1969-12-01' },
+        { id: 'mar', text: 'March', date: '1969-03-01' },
+      ],
+    });
+    expect(checkAnswer(mixed, ['mar', 'year', 'dec'])).toBe(true);
+    expect(checkAnswer(mixed, ['dec', 'year', 'mar'])).toBe(false);
   });
 
   it('blanks and categories', () => {

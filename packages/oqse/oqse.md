@@ -869,7 +869,7 @@ In the example above, `BE-4` has no connection: it is a distractor.
 ### `type: "timeline"` (Timeline)
 
   * `question` (string, required): **Rich Content.** Instructions.
-  * `events` (TimelineEvent[], required): Events in any order; the correct order is the order of their `date`s (events with the same date may come in any order). Must contain at least 2 events. [See TimelineEvent](#timelineevent-for-timeline) for detail on date handling.
+  * `events` (TimelineEvent[], required): Events in any order; the correct order is the chronological order of their `date`s, where simultaneous events may come in any order ([see TimelineEvent](#timelineevent-for-timeline) for dates and comparison). Must contain at least 2 events.
   * `shuffle` (boolean, optional): Determines whether application should shuffle events before displaying to user. Default: `true`. Set to `false` to show the events in the listed order (e.g., as study material).
 
 **Example:**
@@ -1173,10 +1173,14 @@ Defines clickable zone on image or named mesh in a 3D model. For `pin-on-image`,
 | :--- | :--- | :--- | :--- |
 | `id` | string | Yes | **Plain Text.** Unique ID of event (within question, doesn't have to be UUIDv7). |
 | `text` | string | Yes | **Rich Content.** Event description. |
-| `date` | string | Yes | **Plain Text.** Event date in strict format per Date Handling Format. Field `date` MUST always contain full date in ISO 8601 format (e.g., `1969-01-01` or `1969-01-01T12:00:00Z`), even if `precision` is set to only `year` or `month`. Field `precision` determines only display format to user, but for internal sorting and machine processing, complete date is always required. MUST NOT be displayed to user before answering. Event without `date` is invalid and application MUST reject import. |
-| `precision` | string | No | **Plain Text.** Determines mask for displaying date to user. Possible values: `year`, `month`, `day`, `datetime`. If not specified, full precision defined in `date` field is used. This field is key for displaying "imprecise" historical dates (e.g., "year 1969" stored technically as `1969-01-01`).
+| `date` | string | Yes | **Plain Text.** A full calendar date `YYYY-MM-DD`, optionally with a time `THH:MM:SS` (optionally `.sss`) and a time zone (`Z` or `±HH:MM`); a time without a time zone is read as UTC. The full date is required even if `precision` is only `year` or `month` (e.g., "year 1969" is stored as `1969-01-01`). **Years before the Common Era** are written with a minus sign as they are named (historical numbering): `-0480-08-01` is 480 BC, `-0001` is 1 BC, and the next year is `0001` (AD 1). Year `0000` does not exist and is invalid. Note that this differs from the astronomical numbering of ISO 8601 (where 480 BC is `-0479`); an application converting to ISO 8601 adds 1 to negative years. Dates are compared as written, without calendar conversion (e.g., Julian dates of antiquity stay Julian). The date MUST NOT be displayed to the user before answering. |
+| `precision` | string | No | **Plain Text.** How precisely the date is known and displayed: `year`, `month`, `day` or `datetime`. If not specified, the precision is `datetime` when `date` contains a time, otherwise `day`. |
 
-**Rules for sorting events:** (1) If two events have same date base corresponding to lower precision (e.g., both have year `1969`, one with `precision: "year"` and other with `precision: "month"` or more precise), both orders are considered correct. (2) Events with same precision and same date are considered simultaneous (any order is correct). (3) For comparison purposes, least precise value from pair is used. Example: `{"date": "1969-01-01", "precision": "year"}` and `{"date": "1969-07-20", "precision": "day"}` are considered concurrent (both in year 1969). |
+**Comparing two events.** Two events are compared at the coarser of their precisions (`year` < `month` < `day` < `datetime`): `year` compares the years (as signed numbers), `month` the year and month, `day` the calendar date, and `datetime` the moment in time (time zones applied). Events that are equal at this precision are **simultaneous**. Example: `{"date": "1969-01-01", "precision": "year"}` and `{"date": "1969-07-20"}` are simultaneous (both in 1969).
+
+**Correct order.** An order of the events is correct if, for **every pair** of events, the one placed first is earlier than or simultaneous with the other. (Checking only neighbours is not enough: with "1969" (year), "1969-12-01" and "1969-03-01", the order December, 1969, March has simultaneous neighbours, but December comes before March.)
+
+**Reference implementation:** `compareTimelineEvents` and `isTimelineOrderCorrect` in `@memizy/oqse`.
 
 **Example:**
 ```json
@@ -1698,9 +1702,7 @@ To ensure maximum application compatibility and correct chronological ordering, 
 * **Time zones:**
     * For machine times (`createdAt`, `updatedAt`), it is **RECOMMENDED** to use exclusively UTC marked with suffix `Z`.
     * Applications **MUST** also support numeric offsets (e.g., `+01:00`).
-* **Historical dates (negative years):**
-    * For years before Common Era (BC), use minus sign and year padded to 4 digits (e.g., Battle of Thermopylae: `-0480-08-01`).
-    * Year 0 in this format corresponds to 1 BC (astronomical numbering). Application SHOULD account for this when displaying to user.
+* **Years before the Common Era** are allowed only in [`TimelineEvent.date`](#timelineevent-for-timeline) (historical numbering: `-0480-08-01` is 480 BC, there is no year `0000`). All other dates (`createdAt`, `updatedAt`, `publishedDate`, …) use years `0001` and later.
 
 ### Security Rules for OQSE Container (ZIP)
 
@@ -2159,6 +2161,7 @@ OQSE is an open standard. Suggestions for improvements:
 The first stable version. From now on, 1.x versions only add (see [Versioning and Compatibility](#versioning-and-compatibility)).
 * Version rules for sets, manifests and progress files: applications read the MAJOR versions they support and never read another MAJOR version (including the pre-release 0.x drafts) silently as a supported one.
 * Schema URLs: `https://cdn.jsdelivr.net/npm/@memizy/oqse@1/schemas/oqse-v1.0.json` (and `oqse-manifest-v1.0.json`, `oqse-progress-v1.0.json`, `oqse-header-v1.0.json`).
+* `timeline`: years before the Common Era in historical numbering (`-0480` = 480 BC, no year 0); a normative comparison of two events (the coarser precision; without `precision`, `datetime` if the date has a time, otherwise `day`; a time without a time zone is UTC) and a correct order defined over every pair of events.
 * `numeric-input`: `range` is removed; an interval is `correctAnswer` ± `tolerance` (e.g., 100–120 = `correctAnswer: 110, tolerance: 10`). Comparisons allow for floating-point rounding.
 * [Comparing Typed Answers](#comparing-typed-answers): one normative algorithm for `short-answer`, `fill-in-blanks` and typed `diagram-label` (whitespace, case, diacritics, typos as optimal string alignment distance with fixed limits). `ignoreDiacritics` defaults to `true`; `fill-in-blanks` and `diagram-label` get `ignoreDiacritics` and `acceptPartial`; `trimWhitespace` is removed (whitespace is always trimmed).
 

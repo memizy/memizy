@@ -20,7 +20,7 @@
  * automatically; calling `checkAnswer` on them throws.
  */
 
-import { textAnswerMatches, type Hotspot2D, type OQSEAnyItem, type TimelineEvent } from '@memizy/oqse';
+import { isTimelineOrderCorrect, textAnswerMatches, type Hotspot2D, type OQSEAnyItem, type TimelineEvent } from '@memizy/oqse';
 
 export function checkAnswer(item: OQSEAnyItem, answer: unknown): boolean {
   if (!item || typeof item !== 'object') throw new Error('checkAnswer: missing item');
@@ -106,12 +106,11 @@ export function checkAnswer(item: OQSEAnyItem, answer: unknown): boolean {
     }
 
     case 'timeline': {
-      // Correct when every event is there once and the dates never go back (same date: any order).
+      // Every event once, in a chronological order (simultaneous events in any order).
       const ids = stringArray(answer);
       if (!ids || ids.length !== item.events.length || new Set(ids).size !== ids.length) return false;
       const events = ids.map((id) => item.events.find((event) => event.id === id));
-      if (events.some((event) => !event)) return false;
-      return events.every((event, i) => i === 0 || compareEventDates(events[i - 1]!, event!) <= 0);
+      return events.every((event) => !!event) && isTimelineOrderCorrect(events as TimelineEvent[]);
     }
 
     case 'pin-on-image': {
@@ -202,13 +201,6 @@ function pairArray(value: unknown): [string, string][] | null {
 }
 
 const pairKey = (a: string, b: string) => `${a}\u0000${b}`;
-
-/** Compares two timeline events at the coarser of their precisions (year < month < day < datetime). */
-function compareEventDates(a: TimelineEvent, b: TimelineEvent): number {
-  const length = { year: 4, month: 7, day: 10, datetime: Infinity } as const;
-  const cut = Math.min(length[a.precision ?? 'datetime'], length[b.precision ?? 'datetime']);
-  return a.date.slice(0, cut).localeCompare(b.date.slice(0, cut));
-}
 
 function record(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : null;

@@ -219,3 +219,15 @@ describe('resolveAsset', () => {
     expect(resolveAsset('none', undefined, undefined)).toBeUndefined();
   });
 });
+
+describe('timeline dates', () => {
+  const timeline = (dates: string[]) => ({ id: id(1), type: 'timeline', question: 'Sort', events: dates.map((date, i) => ({ id: `e${i}`, text: `E${i}`, date })) });
+
+  it('accepts years before the Common Era only in timeline events, and no year 0', () => {
+    expect(safeValidateOQSEFile(file([timeline(['-0480-08-01', '-0044-03-15'])])).success).toBe(true);
+    const zero = safeValidateOQSEFile(file([timeline(['0000-01-01', '0001-01-01'])]));
+    expect(zero.success).toBe(false);
+    expect(zero.errors[0].message).toMatch(/Year 0000 does not exist/);
+    expect(loadOQSEFile(file([], { createdAt: '-0480-01-01' })).success).toBe(false);
+  });
+});

@@ -11,7 +11,7 @@
  * Pure functions, so a future server-side authority can do exactly the same.
  */
 
-import type { OQSEAnyItem, OQSEMeta } from '@memizy/oqse';
+import { isTimelineOrderCorrect, type OQSEAnyItem, type OQSEMeta, type TimelineEvent } from '@memizy/oqse';
 
 /** Marks an item whose answer was removed (multiplayer, not the authority). */
 export interface PublicItemMark {
@@ -85,10 +85,8 @@ export function displayItem(item: OQSEAnyItem, random: () => number): OQSEAnyIte
       it.rightItems = shuffled(it.rightItems, random);
       return it;
     case 'timeline':
-      if (it.shuffle !== false) {
-        const chronological = [...it.events].sort((a: { date: string }, b: { date: string }) => a.date.localeCompare(b.date)).map((e: { id: string }) => e.id);
-        it.events = shuffled(it.events, random, byId(chronological));
-      }
+      // Never in an order that would already be correct.
+      if (it.shuffle !== false) it.events = shuffled(it.events, random, (order: TimelineEvent[]) => isTimelineOrderCorrect(order));
       return it;
     case 'categorize':
       it.items = shuffled(it.items, random);
