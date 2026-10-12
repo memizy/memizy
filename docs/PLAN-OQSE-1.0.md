@@ -122,11 +122,28 @@ Dotčené soubory obvykle: `packages/oqse/oqse*.md` (spec), `src/oqse.ts` (typy)
 - [x] Kód: `publicItem` (`items.ts`); testy (`displayItems.test.ts`, `session.test.ts`).
       Navíc: `x-` dostanou `answerHidden: true`; ze SPEC 4.4 zmizel zapomenutý `range`.
 
-### Část 7 – Rich Content
+### Část 7a – Rich Content a funkce
 
-- [ ] Spec: Markdown (GFM) v Rich Content vždy, funkce `markdown` jen údaj pro manifest;
-      bez funkce `html` povoleny `<sub>`, `<sup>`, `<br>` bez atributů.
-- [ ] Kód: `findRawHtml`; ověřit vykreslení v SDK (`richText.ts`); testy.
+- [x] Spec: bez úrovní (tier); Rich Content vždy Markdown; `<sub>`, `<sup>`, `<br>` bez atributů
+      vždy povolené; registr funkcí (formátování, bloky, zařízení) a záložní zobrazení pro
+      každou funkci; neznámé funkce a vlastnosti = varování (dopředná kompatibilita);
+      výstup se čistí vždy.
+- [x] Handshake: tři úrovně `full` / `simplified` / `incompatible` (chybějící funkce jen
+      zjednodušují, typy / média / verze jsou nekompatibilní).
+- [x] Kód: `findRawHtml`, `assertNoRawHtml` (dřív `validateTier1Markdown`),
+      `prepareRichTextForDisplay` vyžaduje a vždy spouští `htmlSanitizer`, tolerantní klíče
+      funkcí, varování `UNKNOWN_FEATURE`, `checkCompatibility().level`, `toPlainText`
+      (i v SDK); testy.
+- [x] Návod a hry: `features: ["markdown", "latex", "html", "mermaid"]` pro texty přes SDK,
+      jinak `[]` a `toPlainText`. Civhrad (texty kreslí sám) nechán na vlastníkovi.
+
+### Část 7b – Detekce funkcí z obsahu
+
+- [ ] Spec: pravidla detekce slovy (bloky kódu s jazykem → `mermaid` / `smiles` /
+      `abc-notation` / `syntax-highlighting`; HTML → `html`; Markdown konstrukce →
+      `markdown`; `latex` se nedetekuje, jen odhad „vypadá jako vzorec“).
+- [ ] `detectFeatures(set)`; `checkCompatibility` používá deklarované ∪ zjištěné;
+      varování při chybějící deklaraci; editory (Lab) doplní seznam při uložení; testy.
 
 ### Část 8 – Přísnost pravidel
 

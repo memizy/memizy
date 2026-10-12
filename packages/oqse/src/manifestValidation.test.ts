@@ -12,7 +12,8 @@ describe('Manifest Validation Schemas', () => {
   it('FeatureFlagSchema: allows official features and x- prefixes', () => {
     expect(FeatureFlagSchema.safeParse('markdown').success).toBe(true); // Official
     expect(FeatureFlagSchema.safeParse('x-experimental-feature').success).toBe(true); // Custom
-    expect(FeatureFlagSchema.safeParse('randomFeature').success).toBe(false); // Invalid
+    expect(FeatureFlagSchema.safeParse('future-feature').success).toBe(true); // From a newer 1.x: hosts ignore it
+    expect(FeatureFlagSchema.safeParse('randomFeature').success).toBe(false); // Not a key
   });
 
   it('ManifestCapabilitiesSchema: requires at least one action', () => {

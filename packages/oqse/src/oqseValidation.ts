@@ -9,11 +9,6 @@
  */
 
 import { z } from 'zod';
-import {
-  OFFICIAL_FEATURE_KEYS,
-  OFFICIAL_ITEM_PROPERTIES,
-  OFFICIAL_META_PROPERTIES,
-} from './manifest';
 import { validateJsonDepth } from './utils';
 import { isTimelineDate } from './answers';
 import type { OQSEAnyItem } from './oqse';
@@ -280,24 +275,25 @@ export const TagDefinitionDictionarySchema = z.record(z.string(), TagDefinitionS
 // ============================================================================
 
 /**
+ * A feature key: an official one, a newer one from a later 1.x version (ignored with a
+ * warning) or a custom `x-` key. Lowercase words joined by hyphens.
+ */
+export const FeatureKeySchema = z.string().regex(/^(x-)?[a-z0-9]+(-[a-z0-9]+)*$/, 'Feature must be lowercase words joined by hyphens (e.g. "latex", "x-my-feature")');
+
+/** An item or meta property key (official, newer or `x-` prefixed). */
+export const PropertyKeySchema = z.string().regex(/^(x-)?[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*$/, 'Property must be a key such as "hints" or "x-my-property"');
+
+/**
  * FeatureProfile declares which features, LaTeX packages, and item/meta
  * properties an application supports (Manifest) or a set requires (meta).
  * All arrays accept official values from the registry or custom `x-` prefixed keys.
  */
 export const FeatureProfileSchema = z.looseObject({
-  features: z.array(z.string().refine(
-    (v) => (OFFICIAL_FEATURE_KEYS as ReadonlyArray<string>).includes(v) || v.startsWith('x-'),
-    { message: 'Feature must be an official key or have prefix "x-"' }
-  )).optional(),
+  // Unknown unprefixed values (from a newer 1.x) are accepted; loadOQSEFile warns about them.
+  features: z.array(FeatureKeySchema).optional(),
   latexPackages: z.array(z.string().min(1, 'Package name must not be empty')).optional(),
-  itemProperties: z.array(z.string().refine(
-    (v) => (OFFICIAL_ITEM_PROPERTIES as ReadonlyArray<string>).includes(v) || v.startsWith('x-'),
-    { message: 'Item property must be an official key or have prefix "x-"' }
-  )).optional(),
-  metaProperties: z.array(z.string().refine(
-    (v) => (OFFICIAL_META_PROPERTIES as ReadonlyArray<string>).includes(v) || v.startsWith('x-'),
-    { message: 'Meta property must be an official key or have prefix "x-"' }
-  )).optional(),
+  itemProperties: z.array(PropertyKeySchema).optional(),
+  metaProperties: z.array(PropertyKeySchema).optional(),
 });
 
 // ============================================================================

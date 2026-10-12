@@ -204,6 +204,7 @@ describe('rich text tokens', () => {
     const markdownParser = (md: string) => md.replace(/__([^_]+)__/g, '<strong>$1</strong>');
     const html = prepareRichTextForDisplay('See <asset:Map />', undefined, {
       markdownParser,
+      htmlSanitizer: (h) => h,
       assetReplacer: (key) => `<img data-key="${key}">`,
     });
     expect(html).toBe('See <img data-key="map">');
@@ -237,5 +238,18 @@ describe('chess-puzzle', () => {
     const puzzle = (line: string[]) => ({ id: id(1), type: 'chess-puzzle', question: 'Mate', fen: '8/8/8/8/8/8/8/K6k w - - 0 1', correctAnswers: [line] });
     expect(codes(loadOQSEFile(file([puzzle(['Qh5', 'Kd7'])])).warnings)).toContain('CHESS_SEQUENCE_LENGTH');
     expect(codes(loadOQSEFile(file([puzzle(['Qh5', 'Kd7', 'Qe5'])])).warnings)).not.toContain('CHESS_SEQUENCE_LENGTH');
+  });
+});
+
+describe('requirements', () => {
+  it('ignores unknown feature and property values with a warning (a newer 1.x may add them)', () => {
+    const result = loadOQSEFile(file([note(1)], { requirements: { features: ['markdown', 'future-feature', 'x-mine'], itemProperties: ['newProperty'] } }));
+    expect(result.success).toBe(true);
+    expect(result.warnings.filter((w) => w.code === 'UNKNOWN_FEATURE').map((w) => w.message)).toEqual([
+      'Unknown feature "future-feature" in requirements.features (ignored).',
+      'Unknown property "newProperty" in requirements.itemProperties (ignored).',
+    ]);
+    expect(safeValidateOQSEFile(file([], { requirements: { features: ['future-feature'] } })).success).toBe(true);
+    expect(loadOQSEFile(file([], { requirements: { features: ['Not A Key'] } })).success).toBe(false);
   });
 });

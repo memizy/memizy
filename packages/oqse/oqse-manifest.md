@@ -155,19 +155,21 @@ Before an application attempts to process a set, it MUST perform a compatibility
 1.  **Item Type Check:** If the set contains an item of type `X`, the application MUST have `X` in its `types` array, or declare `["*"]` as `types`. This check applies equally to `x-` prefixed custom types.
 2.  **Asset Check:** For each asset used in the set, the application MUST either list its MIME type explicitly in the corresponding `capabilities.assets` category (e.g., `"image/webp"` in `capabilities.assets.image`) or declare `["*"]` for that asset category. If `capabilities.assets` is absent, or the relevant category key is `null` or `[]`, that asset category is not supported.
 3.  **OQSE Version Check:** If the application declares `minOqseVersion`, the host MUST verify that the OQSE file's `version` is greater than or equal to it. If `maxOqseVersion` is declared, the host MUST verify that the file's `version` does not exceed it. A host MUST NOT load the set into the application if the version check fails; it MUST inform the user of the incompatibility.
-4.  **Feature Profile Check:** If `meta.requirements` is present, the application MUST compare it with `capabilities`:
-    *   **Features:** Application MUST support all features listed in `meta.requirements.features`.
-    *   **LaTeX Packages:** Application MUST support all packages listed in `meta.requirements.latexPackages`.
-    *   **Properties:** Application SHOULD support all properties listed in `meta.requirements.itemProperties` and `meta.requirements.metaProperties`.
+4.  **Feature Profile Check:** If `meta.requirements` is present, it is compared with `capabilities`: features and LaTeX packages the application does not support are shown by the [fallbacks](./oqse.md#fallbacks); `itemProperties` and `metaProperties` the application does not support are only reported.
+
+**Result.** The compatibility check results in one of three levels:
+*   **incompatible** – an item type, an asset type or the OQSE version is not supported (steps 1–3). The host MUST NOT load the set into the application and MUST inform the user.
+*   **simplified** – steps 1–3 pass, but some features or LaTeX packages of `meta.requirements` are not supported; the application shows them by the fallbacks. The host MAY offer the application and SHOULD tell the user what will be simplified (e.g., "formulas are shown as text").
+*   **full** – everything is supported. Hosts SHOULD prefer fully compatible applications.
 
 ## Graceful Degradation
 
 If an application lacks a required capability:
 *   **Missing `types`:** The application MUST NOT crash. It MUST either ignore the unsupported items (allowing a partial study session), display a generic fallback message, or allow their raw editing as JSON to prevent data loss.
-*   **Missing `features` or `latexPackages`:** The application SHOULD warn the user.
+*   **Missing `features` or `latexPackages`:** The application shows the content by the [fallbacks](./oqse.md#fallbacks); the host SHOULD tell the user what is simplified.
 *   **Missing `itemProperties` or `metaProperties`:** The application MAY ignore these fields but MUST preserve them if editing/saving the set.
 *   **Missing `assets` capability:** The application declares no support for one or more asset categories (either `capabilities.assets` is absent, or the specific category is `null` or `[]`). The application SHOULD display a placeholder for the unsupported media and MUST NOT crash when encountering asset references for those categories.
-*   **Missing `x-` prefixed feature:** Treated identically to a missing official feature — the application SHOULD warn the user. Unlike official features, the application MAY additionally display a message identifying the specific proprietary extension that is not supported.
+*   **Missing `x-` prefixed feature:** Treated like a missing official feature (simplified display). The application MAY display a message identifying the proprietary extension that is not supported.
 *   **OQSE Version Mismatch:** If the set's `version` falls outside the application's declared `minOqseVersion`–`maxOqseVersion` range, the host MUST NOT load the set into the application. The host MUST display a clear error message indicating the version incompatibility and SHOULD suggest an alternative compatible application if one is available in the catalog.
 
 ## OQSEM Validation Rules
@@ -238,10 +240,8 @@ For the full semantics of the capabilities object, see [Capabilities Object](#ca
 - An unrecognized MIME type SHOULD trigger a warning but MUST NOT cause manifest rejection.
 
 **`capabilities.features`:**
-- Each value MUST either appear in the Official Feature Registry or carry the `x-` prefix.
-- A value without an `x-` prefix that is not in the registry is invalid; the host SHOULD warn and MAY reject the manifest.
-- The features `syntax-highlighting`, `mermaid`, `smiles`, and `abc-notation` are only meaningful when `markdown` is also declared. Declaring any of these without `markdown` SHOULD trigger a warning.
-- `html` is only meaningful when `markdown` is also declared. Declaring `html` without `markdown` SHOULD trigger a warning.
+- Each value SHOULD either appear in the Official Feature Registry or carry the `x-` prefix.
+- An unprefixed value that is not in the registry (e.g., from a newer 1.x version) MUST NOT cause manifest rejection; the host SHOULD ignore it and MAY warn.
 
 **`capabilities.latexPackages`:**
 - Only meaningful when `"latex"` is present in `capabilities.features`. Declaring `latexPackages` without `"latex"` SHOULD trigger a warning.

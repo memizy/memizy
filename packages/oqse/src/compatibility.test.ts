@@ -36,18 +36,22 @@ describe('checkCompatibility', () => {
       file,
       manifest({ types: ['*'], assets: { image: ['*'], audio: ['*'] }, features: ['markdown', 'latex'], latexPackages: ['mhchem'], itemProperties: ['hints'] }),
     );
-    expect(report).toMatchObject({ compatible: true, missingProperties: [], unverifiedAssets: [] });
+    expect(report).toMatchObject({ level: 'full', compatible: true, missingProperties: [], unverifiedAssets: [] });
   });
 
   it('reports every missing capability', () => {
     const report = checkCompatibility(file, manifest({ types: ['note'], assets: { image: ['image/png'] }, features: ['markdown'] }, { minOqseVersion: '1.1' }));
-    expect(report.compatible).toBe(false);
-    expect(report.versionCompatible).toBe(false);
+    expect(report).toMatchObject({ level: 'incompatible', compatible: false, versionCompatible: false });
     expect(report.unsupportedTypes).toEqual(['mcq-single']);
     expect(report.unsupportedAssets.map((a) => a.path)).toEqual(['meta.assets.map', 'items[1].assets.snd']);
     expect(report.missingFeatures).toEqual(['latex']);
     expect(report.missingLatexPackages).toEqual(['mhchem']);
     expect(report.missingProperties).toEqual(['hints']);
+  });
+
+  it('is simplified when only features or LaTeX packages are missing', () => {
+    const report = checkCompatibility(file, manifest({ types: ['*'], assets: { image: ['*'], audio: ['*'] } }));
+    expect(report).toMatchObject({ level: 'simplified', compatible: true, missingFeatures: ['markdown', 'latex'], missingLatexPackages: ['mhchem'] });
   });
 
   it('treats [] like null and cannot verify assets without mimeType', () => {

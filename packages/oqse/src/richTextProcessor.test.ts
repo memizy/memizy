@@ -1,57 +1,40 @@
 import { describe, it, expect } from 'vitest';
-import { prepareRichTextForDisplay, validateTier1Markdown } from './richTextProcessor';
+import { assertNoRawHtml, findRawHtml, prepareRichTextForDisplay } from './richTextProcessor';
 import type { FeatureProfile } from './oqse';
 
-describe('Rich Text Processor - Security & Tiers', () => {
-  it('Tier 1: Should throw an error if raw HTML is used', () => {
-    const maliciousText = "Here is a <strong>forbidden</strong> tag.";
-    expect(() => validateTier1Markdown(maliciousText)).toThrow(/Raw HTML tags are not allowed/);
+const sanitizer = (html: string) => `[SANITIZED] ${html}`;
+
+describe('Rich Text Processor - raw HTML and sanitizing', () => {
+  it('without the html feature, raw HTML is an error', () => {
+    expect(() => assertNoRawHtml('Here is a <strong>forbidden</strong> tag.')).toThrow(/raw HTML is not allowed/);
   });
 
-  it('Tier 1: Should NOT throw if HTML is inside a backtick code block', () => {
-    const validText = "Showing code: `<strong>hello</strong>`";
-    expect(() => validateTier1Markdown(validText)).not.toThrow();
+  it('allows <sub>, <sup> and <br> without attributes, and HTML in code', () => {
+    expect(findRawHtml('H<sub>2</sub>O, m<sup>2</sup><br>line<br/>x<br />')).toBeNull();
+    expect(findRawHtml('<sub class="x">2</sub>')).toBe('<sub class="x">');
+    expect(() => assertNoRawHtml('Showing code: `<strong>hello</strong>`')).not.toThrow();
+    expect(() => assertNoRawHtml("Here is a GFM block:\n~~~\n<div class='test'>\n~~~\n")).not.toThrow();
   });
 
-  it('Tier 1: Should NOT throw if HTML is inside a tilde (~~~) code block', () => {
-    const validText = "Here is a GFM block:\n~~~\n<div class='test'>\n~~~\n";
-    expect(() => validateTier1Markdown(validText)).not.toThrow();
-  });
-
-  it('Pipeline: Should correctly tokenize, parse, and detokenize OQSE tags', () => {
-    const rawInput = "Image: <asset:img_01 /> and a blank <blank:word1 />.";
-    
-    // Fake markdown parser for testing
-    const mockMarkdownParser = (text: string) => `<p>${text}</p>`;
-    
-    const result = prepareRichTextForDisplay(rawInput, undefined, {
-      markdownParser: mockMarkdownParser,
+  it('tokenizes, parses, sanitizes and detokenizes OQSE tags', () => {
+    const result = prepareRichTextForDisplay('Image: <asset:img_01 /> and a blank <blank:word1 />.', undefined, {
+      markdownParser: (text: string) => `<p>${text}</p>`,
+      htmlSanitizer: sanitizer,
       assetReplacer: (key) => `<img src="mock-${key}.jpg" />`,
-      blankReplacer: (key) => `<input data-key="${key}" />`
+      blankReplacer: (key) => `<input data-key="${key}" />`,
     });
-
-    expect(result).toContain('<img src="mock-img_01.jpg" />');
+    expect(result).toContain('[SANITIZED] <p>Image: <img src="mock-img_01.jpg" />');
     expect(result).toContain('<input data-key="word1" />');
-    expect(result).not.toContain('<asset:img_01 />'); // Original tags must disappear
+    expect(result).not.toContain('<asset:img_01 />');
   });
 
-  it('Tier 2: Should apply HTML Sanitizer if html feature is declared', () => {
-    const rawInput = "Safe <span style='color:red'>text</span>.";
-    const reqs: FeatureProfile = { features: ['html'] } as any;
-    
-    const result = prepareRichTextForDisplay(rawInput, reqs, {
-      markdownParser: (text) => text,
-      // Fake sanitizer that adds a prefix
-      htmlSanitizer: (html) => `[SANITIZED] ${html}`
-    });
-
-    expect(result).toContain('[SANITIZED] Safe');
+  it('always sanitizes, with and without the html feature', () => {
+    const reqs: FeatureProfile = { features: ['html'] };
+    expect(prepareRichTextForDisplay("Safe <span style='color:red'>text</span>.", reqs, { markdownParser: (t) => t, htmlSanitizer: sanitizer })).toContain('[SANITIZED] Safe');
+    expect(prepareRichTextForDisplay('[link](javascript:alert(1))', undefined, { markdownParser: (t) => t, htmlSanitizer: sanitizer })).toContain('[SANITIZED]');
   });
 
-  it('Tier 2: Should throw if html feature is declared but no sanitizer is provided', () => {
-    const reqs: FeatureProfile = { features: ['html'] } as any;
-    expect(() => {
-      prepareRichTextForDisplay("Text", reqs, { markdownParser: (t) => t });
-    }).toThrow(/no htmlSanitizer/);
+  it('requires a sanitizer', () => {
+    expect(() => prepareRichTextForDisplay('Text', undefined, { markdownParser: (t: string) => t } as never)).toThrow(/htmlSanitizer/);
   });
 });

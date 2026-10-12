@@ -49,7 +49,7 @@ Declare what the game supports. Adjust `id`, `appName`, `types` and `modes`.
   "capabilities": {
     "actions": ["render"],
     "types": ["mcq-single", "true-false"],
-    "features": ["markdown", "latex"]
+    "features": ["markdown", "latex", "html", "mermaid"]
   },
   "appSpecific": {
     "memizy": {
@@ -67,6 +67,7 @@ Declare what the game supports. Adjust `id`, `appName`, `types` and `modes`.
 ```
 
 * `"version": "1.0"` is the version of the manifest format (keep it). `types`: only item types your game can show (section 7). With `ui.question` that can be many of them. The app gives you only these.
+* `features`: what your game can show of the set's texts. If texts go through the SDK (`ui.text`, `ui.question`, `ui.renderNote`), keep `["markdown", "latex", "html", "mermaid"]` – the SDK renders them. If your game draws texts itself (e.g. on a canvas), write `[]` and use `toPlainText(text, { latex: true, item })` from the SDK (formatting removed, images replaced by their alt text). A missing feature never hides your game; the app only says that the set is shown simplified.
 * Remove `solo` or `multiplayer` if the game does not support it. In `hostAs` keep `"presenter"` only if you draw a `board` view, keep `"player"` only if the game works without a board.
 * `settings`: options of the game (types `number`, `boolean`, `select`, `text`). Read them as `ctx.settings.questionTime`.
   * **Multiplayer:** the teacher sets them in the lobby; the app generates a form automatically.
@@ -417,7 +418,7 @@ A quiz race: questions with a countdown, faster correct answers give more points
   "id": "https://memizy.com/plugins/quiz-race",
   "appName": "Quiz Race",
   "pluginVersion": "2.0.0",
-  "capabilities": { "actions": ["render"], "types": ["mcq-single", "true-false", "mcq-multi", "short-answer", "numeric-input"], "features": ["markdown", "latex"] },
+  "capabilities": { "actions": ["render"], "types": ["mcq-single", "true-false", "mcq-multi", "short-answer", "numeric-input"], "features": ["markdown", "latex", "html", "mermaid"] },
   "appSpecific": { "memizy": {
     "protocol": "1.0",
     "modes": { "solo": {}, "multiplayer": { "players": { "min": 1, "max": 40 }, "hostAs": ["presenter", "player"], "lateJoin": true } },

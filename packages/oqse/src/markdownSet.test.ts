@@ -214,7 +214,7 @@ describe('heading helpers', () => {
   });
 
   it('prepareRichTextForDisplay applies headingOffset', () => {
-    const html = prepareRichTextForDisplay('## Sekce', undefined, { markdownParser: (md) => md, headingOffset: 1 });
+    const html = prepareRichTextForDisplay('## Sekce', undefined, { markdownParser: (md) => md, htmlSanitizer: (html) => html, headingOffset: 1 });
     expect(html).toBe('### Sekce');
   });
 });

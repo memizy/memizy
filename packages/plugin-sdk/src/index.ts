@@ -5,5 +5,7 @@
 
 export { defineGame, SDK_VERSION, type GameHandle } from './game/defineGame';
 export { checkAnswer } from './checkAnswer';
+/** Rich Content as plain text, for games that draw text themselves (e.g. on a canvas). */
+export { toPlainText, type PlainTextOptions } from '@memizy/oqse';
 export type * from './types';
 export { createScene3d, nearestTarget, webglAvailable, type Scene3d, type Scene3dFallbackKind, type Scene3dOptions, type ScreenTarget } from './three/scene3d';

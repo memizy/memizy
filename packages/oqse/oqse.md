@@ -53,7 +53,7 @@ In this specification, the keywords **MUST**, **MUST NOT**, **SHOULD**, **SHOULD
   * **Unique IDs:** All `id` values MUST be generated as **UUIDv7** to ensure global uniqueness and native temporal ordering of records in databases. Applications MUST accept UUID versions 4 and 7 when loading existing sets. Applications MAY accept other versions (1-6), but this is not required. Applications creating new items MUST use UUIDv7. When re-exporting an existing set, the original UUID MUST be preserved regardless of version. Validation checks only the format (8-4-4-4-12 hex characters), not the specific UUID version. Exception: `SourceMaterial.id` MAY be an alphanumeric string unique only within that file, and `id` within internal item objects such as `TimelineEvent` or `CategorizeEntry` MAY also be an alphanumeric string.
   * **Text Formatting:** The specification distinguishes two types of text fields:
     * **Plain Text:** Fields intended for metadata and identifiers (e.g., titles, tags, alt texts). Interpreted as plain text without any formatting.
-    * **Rich Content:** Fields intended for educational content. Support **GitHub Flavored Markdown (GFM)**, **LaTeX** mathematics compatible with KaTeX/MathJax (inline `$x^2$` and blocks `$$...$$` rendered as display style on a separate line; only when the `latex` feature is declared, otherwise `$` is a literal character), and media references using Media Tag syntax `<asset:key />`.
+    * **Rich Content:** Fields intended for educational content. Always written as **GitHub Flavored Markdown (GFM)** (plain text is valid Markdown), with media references using Media Tag syntax `<asset:key />` and the tags `<sub>`, `<sup>`, `<br>` without attributes. **LaTeX** mathematics compatible with KaTeX/MathJax (inline `$x^2$` and blocks `$$...$$` rendered as display style on a separate line) only when the `latex` feature is declared, otherwise `$` is a literal character. Raw HTML only with the `html` feature. See the [Official Feature Registry](#official-feature-registry).
   * **Media Embedding System (Assets):** The format uses a centralized "assets" system for embedding media in Rich Content fields. Media are defined in `item.assets` and referenced using the special tag `<asset:key />`. **[(See Media Reference Syntax)](#media-reference-syntax-media-tags)**.
   * **Backward Compatibility:** Applications MUST ignore unknown keys (forward compatibility). New specification versions MUST NOT change the meaning of existing keys within the same MAJOR version.
   * **Case Sensitivity of Files:** All keys in `assets` and filenames within the OQSE container (ZIP) MUST be written in lowercase. Application MUST immediately convert all filenames and asset keys to lowercase during import (with a warning on change) and MUST reject colliding names that match after conversion. On export, only lowercase names may be generated. References `<asset:... />` are case-insensitive; applications MUST convert the token to lowercase before lookup to maintain consistency across platforms.
@@ -125,42 +125,53 @@ To avoid redundancy, OQSE defines a base object called **FeatureProfile**. This 
 
 | Key | Type | Description |
 | :--- | :--- | :--- |
-| `features` | string[] | Array of feature flags. MUST contain only values from the **Official Feature Registry** or custom `x-` prefixed values (e.g., `"x-my-feature"`). See [Extension Rules](#extension-rules). |
+| `features` | string[] | Array of feature flags: values from the **Official Feature Registry** or custom `x-` prefixed values (e.g., `"x-my-feature"`). In a set: the features its content uses; in a manifest: the features the application can render. See [Extension Rules](#extension-rules). |
 | `latexPackages` | string[] | Array of LaTeX packages (e.g., `["mhchem"]`). Relevant only if `features` includes `"latex"`. |
 | `itemProperties` | string[] | Array of item properties supported/required. [See **Registry of Properties**](#registry-of-properties-itemproperties--metaproperties). |
 | `metaProperties` | string[] | Array of metadata properties supported/required. [See **Registry of Properties**](#registry-of-properties-itemproperties--metaproperties). |
 
 #### Official Feature Registry
-To ensure clarity and modularity, the official feature registry is divided into three tiers based on dependencies and parsing complexity.
 
-**1. Base Formatting (Tier 1)**
-These features provide the foundational text processing capabilities. They do not depend on any other features.
+Feature flags describe how Rich Content is written (in a set's `meta.requirements`) and what an application can render (in a manifest's `capabilities`). Rich Content is always written as GitHub Flavored Markdown; plain text is valid Markdown, so content without formatting needs no flag. Always allowed, without any flag: the OQSE tags `<asset:… />` and `<blank:… />`, and `<sub>`, `<sup>`, `<br>` without attributes (e.g., H<sub>2</sub>O, m<sup>2</sup>, line breaks).
 
-| Feature Key | Category | Description |
-| :--- | :--- | :--- |
-| `markdown` | Formatting | Application MUST support parsing **GitHub Flavored Markdown (GFM)**. While the standard GFM specification permits raw HTML, this Base Tier (Tier 1) restricts authors to pure Markdown syntax (e.g., `**bold**`, tables, code blocks). Any raw HTML tags manually embedded in the text without declaring the `html` feature MUST cause a validation error. |
-| `latex` | Formatting | Application MUST detect `$` and `$$` delimiters in text and render them as LaTeX mathematical formulas. Without this feature, `$` MUST be treated as a literal character (e.g., currency), so authors never need to escape it. |
-| `rtl` | Typography | Application MUST support Right-to-Left text direction and alignment for languages like Arabic or Hebrew. |
+**Formatting**
 
-**2. Extended Formatting & Blocks (Tier 2)**
-These features are advanced extensions that **explicitly require** a Tier 1 feature (usually `markdown`).
+| Feature Key | Meaning |
+| :--- | :--- |
+| `markdown` | The text uses Markdown formatting (emphasis, headings, lists, tables, links, images, code). |
+| `latex` | `$…$` and `$$…$$` are LaTeX formulas. Without this flag `$` is an ordinary character (e.g., a price), so a set that contains formulas MUST declare it. Packages are listed in `latexPackages`. |
+| `html` | The author may write raw HTML (e.g., `<span>`, or `<ruby>`, `<rt>`, `<rp>` for furigana and pinyin). Without this flag, raw HTML other than the always-allowed tags is invalid ([see Security](#security)). |
+| `rtl` | Right-to-left text (e.g., Arabic, Hebrew). |
 
-| Feature Key | Category | Description |
-| :--- | :--- | :--- |
-| `html` | Formatting | **Requires `markdown`.** Application allows intentional raw HTML tags embedded in text fields. This includes standard typography, layout elements (e.g., `<span style="color:red">`), and phonetic guides (e.g., `<ruby>`, `<rt>`, `<rp>` for Furigana/Pinyin). The set MUST still be strictly sanitized (see Best Practices for Set Creators). **Optimization note:** This explicit flag allows applications to lazy-load heavy HTML sanitizers (like DOMPurify) only when required. |
-| `syntax-highlighting`| Blocks | **Requires `markdown`.** Application applies syntax coloring to the structural code blocks generated by the GFM parser (e.g., coloring Java keywords in ` ```java `). |
-| `mermaid` | Blocks | **Requires `markdown`.** Application can render Mermaid diagrams from code blocks (via ` ```mermaid `). |
-| `smiles` | Blocks | **Requires `markdown`.** Application can render 2D chemical structures from SMILES strings in code blocks (via ` ```smiles `). |
-| `abc-notation` | Blocks | **Requires `markdown`.** Application can render music notation from ABC syntax in code blocks (via ` ```abc `). |
+**Blocks** (fenced code blocks with a language identifier, [see Parsing Rules for Blocks](#parsing-rules-for-blocks))
 
-**3. Device & Interaction Features**
-These features describe hardware interactions or advanced application capabilities rather than text parsing.
+| Feature Key | Meaning |
+| :--- | :--- |
+| `syntax-highlighting` | Code blocks in a programming language (e.g., ` ```java `) are shown with syntax coloring. |
+| `mermaid` | Mermaid diagrams (` ```mermaid `). |
+| `smiles` | 2D chemical structures from SMILES strings (` ```smiles `). |
+| `abc-notation` | Music notation in ABC syntax (` ```abc `). |
 
-| Feature Key | Category | Description |
-| :--- | :--- | :--- |
-| `text-to-speech` | Interaction | Application supports reading text aloud (e.g., interpreting hidden pronunciation hints or generating voice from plain text). |
-| `voice-input` | Interaction | Application allows input via voice dictation. |
-| `handwriting-recognition` | Interaction | Application allows input via handwriting (useful for math/languages on tablets). |
+**Device and interaction**
+
+| Feature Key | Meaning |
+| :--- | :--- |
+| `text-to-speech` | Reading text aloud (e.g., pronunciation). |
+| `voice-input` | Answering by voice dictation. |
+| `handwriting-recognition` | Answering by handwriting (e.g., math or languages on tablets). |
+
+#### Fallbacks
+
+A missing feature never makes content unusable: an application that does not support a feature shows the content simplified.
+
+| Feature | Without support, the application shows |
+| :--- | :--- |
+| `markdown` | Plain text with the Markdown markup removed (reference implementation: `toPlainText` in `@memizy/oqse`). |
+| `latex` (and `latexPackages`) | The source of the formula as text, without the `$` delimiters. |
+| `html` | The text without tags. |
+| `rtl` | Left-to-right text. |
+| Blocks | The content as a plain code block. |
+| Device and interaction | The feature is not offered. |
 
 #### Registry of Properties (itemProperties & metaProperties)
 
@@ -209,7 +220,7 @@ For features `syntax-highlighting`, `mermaid`, `smiles`, and `abc-notation`, con
 #### Extension Rules
 
 To prevent fragmentation, the following rules apply to the `features` array:
-1.  **Official values only** (without prefix): Developers MUST NOT invent new unprefixed string values. Only values from the **Official Feature Registry** above are valid without a prefix.
+1.  **Official values only** (without prefix): Developers MUST NOT invent new unprefixed string values. Only values from the **Official Feature Registry** above are valid without a prefix. A newer 1.x version may add registry values, so applications MUST ignore unprefixed values they do not know (with a warning) instead of rejecting the set or manifest. The same applies to `itemProperties` and `metaProperties`.
 2.  **Custom features with `x-` prefix:** Developers MAY define proprietary feature flags using the `x-` prefix (e.g., `x-memizy-3d-voxel`, `x-spaced-repetition`). These values MUST NOT collide with future official registry entries and SHOULD be documented in the OQSEM's own `appSpecific` field.
 3.  **Proprietary Behavior (no feature contract):** Application-specific configurations or internal UI behaviors that do not need to be negotiated via the handshake MUST be placed inside the `appSpecific` object instead.
 4.  **New Data Structures:** If a completely new data structure is needed, a new `item.type` MUST be defined (following the same `x-` prefix convention per [Adding Custom Item Types](#adding-custom-item-types)).
@@ -2001,14 +2012,14 @@ These rules apply to OQSE sets and equally to [OQSEM manifests](./oqse-manifest.
 ### Security
   * **Strict HTML Validation and Sanitization:** To ensure security and interoperability, applications MUST enforce the following processing policy:
     * **What counts as raw HTML:** HTML tags written by the author. Not counted: content of code spans and fenced code blocks, LaTeX math (when `latex` is declared), Markdown autolinks (`<https://…>`, `<user@example.com>`), HTML comments and OQSE tags (`<asset:… />`, `<blank:… />`).
-    * **Tier 1 - Pure Markdown (Validation):** If the `html` feature is NOT declared in `meta.requirements`, the presence of any raw HTML tags in text fields (e.g., `<span>`, `<div>`) MUST cause a **Validation Error** of the affected item (Atomic Validation: the item is skipped on import, and the set MUST NOT be saved or exported in this state). Only structural HTML natively generated by the Markdown parser is permitted.
-    * **Tier 2 - Extended HTML (Sanitization):** If the `html` feature IS declared, raw HTML is permitted. However, the application MUST sanitize the resulting HTML (e.g., via DOMPurify) against a strict whitelist of safe typographic, semantic, and tabular elements (e.g., `span`, `div`, `ruby`, `rt`, `rp`, `sub`, `sup`, `table`).
-    * **FORBIDDEN Content (Global Sanitization Bans):** Regardless of the tier (even pure Markdown can generate unsafe `href` links), the application's markdown parser and sanitization steps MUST strip the following:
+    * **Without the `html` feature:** raw HTML in text fields, other than `<sub>`, `<sup>` and `<br>` without attributes, MUST cause a **Validation Error** of the affected item (Atomic Validation: the item is skipped on import, and the set MUST NOT be saved or exported in this state). Only structural HTML generated by the Markdown parser is permitted.
+    * **With the `html` feature:** raw HTML is permitted.
+    * **Always sanitize:** in both cases (even pure Markdown can produce unsafe links), the application MUST sanitize the rendered HTML (e.g., via DOMPurify) against a whitelist of safe typographic, semantic and tabular elements (e.g., `span`, `div`, `ruby`, `rt`, `rp`, `sub`, `sup`, `table`) and MUST strip the following:
         1. **Executable Content:** `<script>`, `<object>`, `<embed>`, `<applet>`.
         2. **Context Hijacking:** `<iframe>`, `<base>`, `<meta>`, `<link>`, `<form>`.
         3. **Event Handlers:** Any attribute starting with `on` (e.g., `onclick`, `onerror`).
         4. **Dangerous URIs:** Protocols like `javascript:`, `vbscript:`, or `data:` (for HTML/SVG) inside `href` or `src` attributes.
-        5. **CSS Injection:** The `style` attribute (if permitted in Tier 2) MUST be strictly parsed to prevent UI redressing (Clickjacking).
+        5. **CSS Injection:** The `style` attribute (with the `html` feature) MUST be strictly parsed to prevent UI redressing (Clickjacking).
     * **Protection of OQSE Tags:** Internal placeholders (`<asset:key />` and `<blank:token />`) MUST be protected via the Tokenization/Detokenization pipeline (Media Reference Syntax). Interactive elements (`<img>`, `<input>`) MUST be injected ONLY after all validation and sanitization steps are completely finished.
   * **Asset Sanitization:** The only HTML that gets into DOM is result of replacing `<asset:... />` tags. Application MUST ensure that attributes of generated elements (e.g., `src`, `alt`) are safe and don't contain injected code.
   * **NEVER** insert sensitive information (passwords, API keys)
@@ -2198,6 +2209,7 @@ OQSE is an open standard. Suggestions for improvements:
 The first stable version. From now on, 1.x versions only add (see [Versioning and Compatibility](#versioning-and-compatibility)).
 * Version rules for sets, manifests and progress files: applications read the MAJOR versions they support and never read another MAJOR version (including the pre-release 0.x drafts) silently as a supported one.
 * Schema URLs: `https://cdn.jsdelivr.net/npm/@memizy/oqse@1/schemas/oqse-v1.0.json` (and `oqse-manifest-v1.0.json`, `oqse-progress-v1.0.json`, `oqse-header-v1.0.json`).
+* Rich Content and features: no more tiers. Rich Content is always Markdown; `<sub>`, `<sup>`, `<br>` without attributes are allowed without the `html` feature; every feature has a defined [fallback](#fallbacks) (a missing feature means simplified display, never unusable content); unknown unprefixed feature and property values are ignored with a warning (forward compatibility); rendered HTML is always sanitized.
 * `timeline`: years before the Common Era in historical numbering (`-0480` = 480 BC, no year 0); a normative comparison of two events (the coarser precision; without `precision`, `datetime` if the date has a time, otherwise `day`; a time without a time zone is UTC) and a correct order defined over every pair of events.
 * Custom `x-` item types: the reserved field `solution` holds everything that gives the answer away, so applications can hide it from learners.
 * [Answer Formats](#answer-formats): a normative table of the answer of every item type and when it is correct. `flashcard` answers are a self-rating `1`–`4` on the OQSEP confidence scale (correct when `3` or `4`).

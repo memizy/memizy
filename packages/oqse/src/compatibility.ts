@@ -14,8 +14,18 @@ export interface UnsupportedAsset {
   mimeType?: string;
 }
 
+/**
+ * - `full`: everything is supported.
+ * - `simplified`: types, assets and version are supported, but some features or LaTeX
+ *   packages are not; the application shows them by the fallbacks.
+ * - `incompatible`: an item type, an asset type or the version is not supported.
+ */
+export type CompatibilityLevel = 'full' | 'simplified' | 'incompatible';
+
 export interface CompatibilityReport {
-  /** `true` when every MUST rule of the handshake passes. */
+  /** The result of the handshake. */
+  level: CompatibilityLevel;
+  /** `true` unless `level` is `incompatible` (the application can show the set). */
   compatible: boolean;
   /** The set's `version` is within `minOqseVersion`–`maxOqseVersion`. */
   versionCompatible: boolean;
@@ -25,11 +35,11 @@ export interface CompatibilityReport {
   unsupportedAssets: UnsupportedAsset[];
   /** Assets without `mimeType` in a category with an explicit MIME list (cannot be verified). */
   unverifiedAssets: UnsupportedAsset[];
-  /** `meta.requirements.features` not supported (MUST). */
+  /** `meta.requirements.features` not supported (shown by the fallbacks: `simplified`). */
   missingFeatures: string[];
-  /** `meta.requirements.latexPackages` not supported (MUST). */
+  /** `meta.requirements.latexPackages` not supported (formulas shown as source: `simplified`). */
   missingLatexPackages: string[];
-  /** `meta.requirements.itemProperties` / `metaProperties` not supported (SHOULD). */
+  /** `meta.requirements.itemProperties` / `metaProperties` not supported (only reported). */
   missingProperties: string[];
 }
 
@@ -71,14 +81,15 @@ export function checkCompatibility(file: OQSEFile, manifest: OQSEManifest): Comp
   ];
 
   const versionCompatible = isVersionCompatible(file.version, manifest);
-  const compatible =
-    versionCompatible &&
-    unsupportedTypes.length === 0 &&
-    unsupportedAssets.length === 0 &&
-    missingFeatures.length === 0 &&
-    missingLatexPackages.length === 0;
+  const compatible = versionCompatible && unsupportedTypes.length === 0 && unsupportedAssets.length === 0;
+  const level: CompatibilityLevel = !compatible
+    ? 'incompatible'
+    : missingFeatures.length > 0 || missingLatexPackages.length > 0
+      ? 'simplified'
+      : 'full';
 
   return {
+    level,
     compatible,
     versionCompatible,
     unsupportedTypes,

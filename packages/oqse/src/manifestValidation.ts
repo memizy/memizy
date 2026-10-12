@@ -13,12 +13,9 @@ import { z } from 'zod';
 import { OFFICIAL_ITEM_TYPES } from './oqse';
 import {
   OFFICIAL_ACTIONS,
-  OFFICIAL_FEATURE_KEYS,
-  OFFICIAL_ITEM_PROPERTIES,
-  OFFICIAL_META_PROPERTIES,
   type OQSEManifest,
 } from './manifest';
-import { FeatureProfileSchema, PersonObjectSchema } from './oqseValidation';
+import { FeatureKeySchema, FeatureProfileSchema, PersonObjectSchema, PropertyKeySchema } from './oqseValidation';
 
 // ============================================================================
 // Primitive helpers
@@ -102,38 +99,20 @@ export const OQSEQuestionDensitySchema = z.enum(['low', 'medium', 'high']);
 // ============================================================================
 
 /**
- * A feature flag: one of the official keys or a vendor-specific key prefixed
- * with `x-` (e.g. `x-acme-chemistry`).
+ * A feature flag: an official key, a newer one from a later 1.x version (hosts ignore
+ * it) or a vendor-specific key prefixed with `x-` (e.g. `x-acme-chemistry`).
  */
-export const FeatureFlagSchema = z
-  .string()
-  .refine(
-    (v) => (OFFICIAL_FEATURE_KEYS as ReadonlyArray<string>).includes(v) || v.startsWith('x-'),
-    {
-      message:
-        'Feature must be one of official keys or have prefix "x-"',
-    }
-  );
+export const FeatureFlagSchema = FeatureKeySchema;
 
 // ============================================================================
 // Property Key Schemas
 // ============================================================================
 
-/** Official item-level extension property keys (or vendor-prefixed). */
-export const ItemPropertyKeySchema = z
-  .string()
-  .refine(
-    (v) => (OFFICIAL_ITEM_PROPERTIES as ReadonlyArray<string>).includes(v) || v.startsWith('x-'),
-    { message: 'Item property must be an official key or have prefix "x-"' }
-  );
+/** Item-level property keys (official, newer or vendor-prefixed). */
+export const ItemPropertyKeySchema = PropertyKeySchema;
 
-/** Official meta-level extension property keys (or vendor-prefixed). */
-export const MetaPropertyKeySchema = z
-  .string()
-  .refine(
-    (v) => (OFFICIAL_META_PROPERTIES as ReadonlyArray<string>).includes(v) || v.startsWith('x-'),
-    { message: 'Meta property must be an official key or have prefix "x-"' }
-  );
+/** Meta-level property keys (official, newer or vendor-prefixed). */
+export const MetaPropertyKeySchema = PropertyKeySchema;
 
 // ============================================================================
 // WildcardOrExplicit pattern

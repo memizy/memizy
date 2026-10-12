@@ -16,6 +16,7 @@ import type { z } from 'zod';
 import type { MediaObject, OQSEAnyItem, OQSEFile, OQSEMeta } from './oqse';
 import { OQSEMetaSchema, getItemSchema } from './oqseValidation';
 import { OFFICIAL_ITEM_TYPES } from './oqse';
+import { OFFICIAL_FEATURE_KEYS, OFFICIAL_ITEM_PROPERTIES, OFFICIAL_META_PROPERTIES } from './manifest';
 import { findAssetKeys, findRawHtml } from './richTextProcessor';
 import { formatPath, validateJsonDepth } from './utils';
 import { resolveAsset } from './assets';
@@ -47,6 +48,7 @@ export type OQSEIssueCode =
   | 'RAW_HTML_NOT_ALLOWED'
   | 'NOTE_HEADING_LEVEL'
   | 'CHESS_SEQUENCE_LENGTH'
+  | 'UNKNOWN_FEATURE'
   | 'SECURITY_LIMIT';
 
 /** One entry of the structured error log (see "Structured Error Log" in the specification). */
@@ -216,6 +218,19 @@ function analyze(input: unknown, mode: Mode): OQSELoadResult {
     return critical();
   }
   const meta = metaResult.data as OQSEMeta;
+  // Values from a newer 1.x version (or typos): ignored, with a warning.
+  const known: Record<'features' | 'itemProperties' | 'metaProperties', readonly string[]> = {
+    features: OFFICIAL_FEATURE_KEYS,
+    itemProperties: OFFICIAL_ITEM_PROPERTIES,
+    metaProperties: OFFICIAL_META_PROPERTIES,
+  };
+  for (const [field, official] of Object.entries(known) as [keyof typeof known, readonly string[]][]) {
+    for (const value of meta.requirements?.[field] ?? []) {
+      if (!value.startsWith('x-') && !official.includes(value)) {
+        log.add('warning', 'UNKNOWN_FEATURE', `Unknown ${field === 'features' ? 'feature' : 'property'} "${value}" in requirements.${field} (ignored).`, ['meta', 'requirements', field]);
+      }
+    }
+  }
   const features = new Set(meta.requirements?.features ?? []);
   const htmlAllowed = features.has('html');
   const latex = features.has('latex');

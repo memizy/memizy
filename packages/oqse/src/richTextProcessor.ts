@@ -10,15 +10,14 @@ export interface TokenMap {
 }
 
 export interface RichTextProcessingOptions {
-  /** * Function to parse Markdown to HTML (e.g., `marked.parse`). 
-   * For Tier 1, this should ideally be configured to escape raw HTML.
-   */
+  /** Function to parse Markdown to HTML (e.g., `marked.parse`). */
   markdownParser: (markdown: string) => string;
   
-  /** * Function to sanitize HTML (e.g., `DOMPurify.sanitize`).
-   * REQUIRED if the set declares the 'html' feature (Tier 2).
+  /**
+   * Function to sanitize HTML (e.g., `DOMPurify.sanitize`). Always applied: even pure
+   * Markdown can produce unsafe links.
    */
-  htmlSanitizer?: (html: string) => string;
+  htmlSanitizer: (html: string) => string;
   
   /** Callback to render an <asset:key /> tag into HTML (e.g., <img src="...">) */
   assetReplacer?: (key: string) => string;
@@ -86,14 +85,18 @@ const DISPLAY_MATH_RE = /\$\$[\s\S]*?\$\$/g;
 const INLINE_MATH_RE = /\$[^$\n]+\$/g;
 const AUTOLINK_RE = /<(?:[a-zA-Z][a-zA-Z0-9+.-]{1,31}:[^\s<>]*|[^\s<>@]+@[^\s<>@]+)>/g;
 const HTML_TAG_RE = /<\/?[a-zA-Z][a-zA-Z0-9-]*(?:\s[^<>]*)?\/?>/;
+/** Tags allowed without the `html` feature, without attributes: sub- and superscripts, line breaks. */
+const ALWAYS_ALLOWED_HTML_RE = /<\/?(?:sub|sup)>|<br\s*\/?>/gi;
 
 /**
  * Finds the first raw HTML tag written by the author, ignoring code, math (when `latex` is on),
- * Markdown autolinks (`<https://...>`), HTML comments and OQSE tags. Returns `null` if there is none.
+ * Markdown autolinks (`<https://...>`), HTML comments, OQSE tags and the tags allowed without
+ * the `html` feature (`<sub>`, `<sup>`, `<br>` without attributes). Returns `null` if there is none.
  */
 export function findRawHtml(text: string, options: RawHtmlCheckOptions = {}): string | null {
   let stripped = text
     .replace(new RegExp(OQSE_TAG_PATTERN.source, 'gi'), '')
+    .replace(ALWAYS_ALLOWED_HTML_RE, '')
     .replace(FENCED_CODE_RE, '')
     .replace(INLINE_CODE_RE, '')
     .replace(AUTOLINK_RE, '');
@@ -102,14 +105,13 @@ export function findRawHtml(text: string, options: RawHtmlCheckOptions = {}): st
 }
 
 /**
- * Step 2 (Tier 1): Strict HTML Validation.
- * If 'html' is not allowed, any raw HTML tags written by the user must cause a validation error.
+ * Step 2: without the `html` feature, raw HTML (other than `<sub>`, `<sup>`, `<br>`) is an error.
  */
-export function validateTier1Markdown(textWithoutOqseTags: string, options: RawHtmlCheckOptions = {}): void {
+export function assertNoRawHtml(textWithoutOqseTags: string, options: RawHtmlCheckOptions = {}): void {
   const tag = findRawHtml(textWithoutOqseTags, options);
   if (tag) {
     throw new Error(
-      `OQSE Security Error: Raw HTML tags are not allowed in Tier 1 (Pure Markdown), found ${tag}. ` +
+      `OQSE Security Error: raw HTML is not allowed without the 'html' feature, found ${tag}. ` +
       "If the set requires HTML formatting, it MUST declare the 'html' feature in meta.requirements."
     );
   }
@@ -153,28 +155,19 @@ export function prepareRichTextForDisplay(
 ): string {
   if (!rawContent) return '';
 
-  const isTier2HtmlEnabled = requirements?.features?.includes('html') ?? false;
+  if (typeof options.htmlSanitizer !== 'function') {
+    throw new Error('OQSE Security Error: an htmlSanitizer (like DOMPurify) is required, the rendered HTML is always sanitized.');
+  }
+  const htmlAllowed = requirements?.features?.includes('html') ?? false;
 
   // 1. TOKENIZE (Protect internal tags)
   const { text: tokenizedMarkdown, tokens } = tokenizeOqseTags(shiftHeadings(rawContent, options.headingOffset ?? 0));
 
-  // 2. TIER 1 VALIDATION (Fail fast if raw HTML is present but not allowed)
-  if (!isTier2HtmlEnabled) {
-    validateTier1Markdown(tokenizedMarkdown, { latex: requirements?.features?.includes('latex') ?? false });
-  }
+  // 2. RAW HTML (fail fast when it is not allowed)
+  if (!htmlAllowed) assertNoRawHtml(tokenizedMarkdown, { latex: requirements?.features?.includes('latex') ?? false });
 
-  // 3. MARKDOWN TO HTML
-  let processedHtml = options.markdownParser(tokenizedMarkdown);
-
-  // 4. TIER 2 SANITIZATION
-  if (isTier2HtmlEnabled) {
-    if (!options.htmlSanitizer) {
-      throw new Error(
-        "OQSE Security Error: Set requires 'html' (Tier 2), but no htmlSanitizer (like DOMPurify) was provided to the options."
-      );
-    }
-    processedHtml = options.htmlSanitizer(processedHtml);
-  }
+  // 3. MARKDOWN TO HTML, 4. SANITIZATION (always)
+  const processedHtml = options.htmlSanitizer(options.markdownParser(tokenizedMarkdown));
 
   // 5. DETOKENIZE (Inject final interactive elements)
   return detokenizeOqseTags(processedHtml, tokens, options);

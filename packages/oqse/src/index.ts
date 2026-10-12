@@ -18,4 +18,5 @@ export * from './fileValidation';
 export * from './assets';
 export * from './answers';
 export * from './checkAnswer';
+export * from './plainText';
 export * from './compatibility';
