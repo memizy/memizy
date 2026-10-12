@@ -2,7 +2,8 @@
  * `checkAnswer(item, answer)` – evaluates a player's answer according to the
  * rules of the OQSE specification, so every plugin grades the same way.
  *
- * Answer formats (OQSE: choices are referenced by their `id`, also listed in the AI guide):
+ * Answer formats and when an answer is correct are normative: "Answer Formats" in the
+ * OQSE specification (choices are referenced by their `id`; also listed in the AI guide):
  *  mcq-single: option id · mcq-multi: array of option ids · true-false: boolean
  *  short-answer: text · numeric-input / slider: number (or numeric text)
  *  math-input: LaTeX text · sort-items: item ids in the player's order
@@ -11,12 +12,14 @@
  *  fill-in-select: { token: option id } · categorize: { entryId: categoryId }
  *  timeline: event ids in order · pin-on-image: { x, y } in % (array when multipleCorrect)
  *  diagram-label: { zoneId: labelId } (or { zoneId: text } with requireTyping)
- *  pin-on-model: mesh name (array when multipleCorrect) · chess-puzzle: array of SAN moves
+ *  pin-on-model: mesh name (array when multipleCorrect)
+ *  chess-puzzle: array of SAN moves (the player's moves and the replies)
+ *  flashcard: self-rating 1–4 (OQSEP confidence; correct when 3 or 4)
  *
  * Typed text is compared by "Comparing Typed Answers" in the OQSE specification
  * (`textAnswerMatches` from `@memizy/oqse`).
  *
- * `flashcard`, `note`, `open-ended` and custom `x-` types cannot be checked
+ * `note`, `open-ended` and custom `x-` types cannot be checked
  * automatically; calling `checkAnswer` on them throws.
  */
 
@@ -159,10 +162,15 @@ export function checkAnswer(item: OQSEAnyItem, answer: unknown): boolean {
       return item.correctAnswers.some((line) => line.length === given.length && line.every((move, i) => normalizeSan(move) === given[i]));
     }
 
-    case 'flashcard':
+    case 'flashcard': {
+      // A self-rating on the OQSEP confidence scale: 3 and 4 mean recalled.
+      const rating = toNumber(answer);
+      return rating === 3 || rating === 4;
+    }
+
     case 'note':
     case 'open-ended':
-      throw new Error(`checkAnswer: "${item.type}" items cannot be checked automatically (let the player rate themselves).`);
+      throw new Error(`checkAnswer: "${item.type}" items cannot be checked automatically.`);
 
     default:
       throw new Error(`checkAnswer: unsupported item type "${item.type}".`);
@@ -217,9 +225,13 @@ function normalizeLatex(text: string): string {
   return text.trim().replace(/^\$\$?|\$\$?$/g, '').replace(/\s+/g, '');
 }
 
-/** SAN without check/annotation marks. */
+/** SAN as the OQSE specification compares it: no check/annotation marks, `O-O` castling, `e8=Q` promotions. */
 function normalizeSan(move: string): string {
-  return move.trim().replace(/[+#!?]+$/g, '');
+  return move
+    .trim()
+    .replace(/[+#!?]+$/g, '')
+    .replace(/^0-0(-0)?$/, (castling) => castling.replace(/0/g, 'O'))
+    .replace(/^([a-h](?:x[a-h])?[18])([QRBN])$/, '$1=$2');
 }
 
 function toPoint(value: unknown): { x: number; y: number } | null {

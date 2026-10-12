@@ -59,8 +59,8 @@ export interface QuestionEvent {
 }
 
 const TEXTS = {
-  cs: { submit: 'Odeslat', truth: 'Pravda', lie: 'Nepravda', reset: 'Znovu', flip: 'Otočit', again: 'Nevím', good: 'Vím', easy: 'Snadné', read: 'Přečteno', pick: '— vyber —', pin: 'Klepni do obrázku', yours: 'Tvoje pořadí', unsupported: 'Tento typ otázky zatím nemá hotové ovládání.' },
-  en: { submit: 'Submit', truth: 'True', lie: 'False', reset: 'Reset', flip: 'Flip', again: 'Again', good: 'I know it', easy: 'Easy', read: 'Done', pick: '— choose —', pin: 'Tap the picture', yours: 'Your order', unsupported: 'This question type has no ready-made controls yet.' },
+  cs: { submit: 'Odeslat', truth: 'Pravda', lie: 'Nepravda', reset: 'Znovu', flip: 'Otočit', rate1: 'Nevím', rate2: 'Povědomé', rate3: 'S námahou', rate4: 'Hned vím', read: 'Přečteno', pick: '— vyber —', pin: 'Klepni do obrázku', yours: 'Tvoje pořadí', unsupported: 'Tento typ otázky zatím nemá hotové ovládání.' },
+  en: { submit: 'Submit', truth: 'True', lie: 'False', reset: 'Reset', flip: 'Flip', rate1: 'No idea', rate2: 'Familiar', rate3: 'With effort', rate4: 'Easy', read: 'Done', pick: '— choose —', pin: 'Tap the picture', yours: 'Your order', unsupported: 'This question type has no ready-made controls yet.' },
 };
 
 type Choice = { id: string; text: string };
@@ -199,7 +199,7 @@ export function renderQuestion(item: OQSEAnyItem, options: QuestionOptions, qc: 
     case 'flashcard': {
       const back = !it.answerHidden && local.flipped ? `<div class="mz-q-back">${qc.text(it.back, { item })}</div>` : '';
       const flip = it.answerHidden || local.flipped ? '' : `<button type="button" class="mz-q-reset" ${mzq({ op: 'flip' })}>${t.flip}</button>`;
-      const rate = local.flipped || it.answerHidden ? `<div class="mz-q-options mz-q-three">${(['again', 'good', 'easy'] as const).map((r, i) => `<button type="button" class="mz-q-opt${isChosen(r) ? ' mz-q-chosen' : ''}"${hook(r, i)} ${act(r)}><span class="mz-q-label">${t[r]}</span></button>`).join('')}</div>` : '';
+      const rate = local.flipped || it.answerHidden ? `<div class="mz-q-options mz-q-four">${([1, 2, 3, 4] as const).map((r, i) => `<button type="button" class="mz-q-opt${isChosen(r) ? ' mz-q-chosen' : ''}"${hook(r, i)} ${act(r)}><span class="mz-q-label">${t[`rate${r}`]}</span></button>`).join('')}</div>` : '';
       return `<div class="mz-q mz-q-flashcard" data-type="flashcard" data-mzq-root="${escapeHtml(item.id)}"><div class="mz-q-front">${qc.text(it.front, { item })}</div>${back}${flip}${rate}</div>`;
     }
 

@@ -231,3 +231,11 @@ describe('timeline dates', () => {
     expect(loadOQSEFile(file([], { createdAt: '-0480-01-01' })).success).toBe(false);
   });
 });
+
+describe('chess-puzzle', () => {
+  it("warns when a sequence does not end with the learner's move", () => {
+    const puzzle = (line: string[]) => ({ id: id(1), type: 'chess-puzzle', question: 'Mate', fen: '8/8/8/8/8/8/8/K6k w - - 0 1', correctAnswers: [line] });
+    expect(codes(loadOQSEFile(file([puzzle(['Qh5', 'Kd7'])])).warnings)).toContain('CHESS_SEQUENCE_LENGTH');
+    expect(codes(loadOQSEFile(file([puzzle(['Qh5', 'Kd7', 'Qe5'])])).warnings)).not.toContain('CHESS_SEQUENCE_LENGTH');
+  });
+});

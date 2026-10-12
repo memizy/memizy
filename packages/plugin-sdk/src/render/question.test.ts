@@ -24,7 +24,7 @@ async function play(item: OQSEAnyItem, interact: (root: HTMLElement) => Promise<
       answer(state, payload, ctx) {
         state.answer = payload.answer;
         state.done = true;
-        const correct = item.type === 'flashcard' || item.type === 'note' || item.type === 'open-ended' ? true : checkAnswer(ctx.item(item.id)!, payload.answer);
+        const correct = item.type === 'note' || item.type === 'open-ended' ? true : checkAnswer(ctx.item(item.id)!, payload.answer);
         ctx.recordAnswer(item.id, correct, { answer: payload.answer });
       },
     },
@@ -156,9 +156,10 @@ describe('ui.question', () => {
       expect(r.textContent).not.toContain('Přeměna světla');
       await click(r.querySelector('.mz-q-reset'));
       expect(r.textContent).toContain('Přeměna světla');
-      await click(byText(r, '.mz-q-opt', 'Vím'));
+      expect(r.querySelectorAll('.mz-q-four .mz-q-opt')).toHaveLength(4);
+      await click(byText(r, '.mz-q-opt', 'S námahou'));
     });
-    expect(flash.record).toMatchObject({ answer: 'good' });
+    expect(flash.record).toMatchObject({ answer: 3, isCorrect: true });
   });
 
   it('says so for a type without controls', async () => {

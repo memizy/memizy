@@ -29,6 +29,7 @@ In this specification, the keywords **MUST**, **MUST NOT**, **SHOULD**, **SHOULD
 *   [The `MediaObject` Object](#the-mediaobject-object)
 *   [Choices and Answers by ID](#choices-and-answers-by-id)
 *   [Comparing Typed Answers](#comparing-typed-answers)
+*   [Answer Formats](#answer-formats)
 *   [Item Types](#item-types-itemtype)
 *   [Helper Data Structures](#helper-data-structures)
 *   [Complete Example File](#complete-example-file)
@@ -495,6 +496,40 @@ The edit distance is the *optimal string alignment* distance (restricted Damerau
 **Spelling exercises:** when accents are what the learner practises, the author sets `ignoreDiacritics: false`.
 
 **Reference implementation:** `normalizeAnswerText` and `textAnswerMatches` in `@memizy/oqse`.
+
+## Answer Formats
+
+This section defines what a learner's answer to each item type looks like and when it is correct. Applications that store, exchange or analyse answers (e.g., which wrong option a class chose) MUST use these formats, so answers stay comparable across applications; because answers refer to IDs, they stay valid when an author edits the set.
+
+| Type | Answer | Correct when |
+| :--- | :--- | :--- |
+| `mcq-single` | Choice ID (string) | It is `correctId`. |
+| `mcq-multi` | Array of choice IDs (any order) | It contains every ID of `correctIds` and nothing else (no duplicates). |
+| `true-false` | Boolean | It equals `correctAnswer`. |
+| `short-answer` | String | It matches one of `correctAnswers` ([Comparing Typed Answers](#comparing-typed-answers)). |
+| `fill-in-blanks` | Object `{ token: string }` | For every token in `blanks`, the string matches one of its accepted answers ([Comparing Typed Answers](#comparing-typed-answers)). |
+| `fill-in-select` | Object `{ token: choiceId }` | For every token in `blanks`, the choice is its `correctId`. |
+| `match-pairs` | Object `{ promptId: matchId }` | Every prompt is mapped to its match in `pairs`. |
+| `match-complex` | Array of `[leftId, rightId]` pairs (oriented: left first) | It contains no pair outside `connections`, and at least `minCorrect` (default: all) different pairs of `connections`. |
+| `sort-items` | Array of item IDs in the learner's order | It equals `correctOrder`. |
+| `slider` | Number | `|answer − correctAnswer| <= tolerance`. |
+| `numeric-input` | Number | `|answer − correctAnswer| <= tolerance` (see [`numeric-input`](#type-numeric-input-numeric-input)). |
+| `pin-on-image` | Point `{ "x": number, "y": number }` in percent of the image; with `multipleCorrect`, an array of points | Without `multipleCorrect`: one point inside any hotspot. With `multipleCorrect`: every point lies inside some hotspot and the points hit at least `minCorrect` (default: all) different hotspots. Points and hotspots are compared in the percentage coordinates of the image (rectangle edges count as inside, a circle by its radius in these coordinates, a polygon by the even–odd rule). |
+| `pin-on-model` | Mesh name (string); with `multipleCorrect`, an array of names | A name hits a hotspot if it contains its `targetName`, ignoring letter case. Without `multipleCorrect`: one name that hits a hotspot. With `multipleCorrect`: every name hits some hotspot and at least `minCorrect` (default: all) different hotspots are hit. |
+| `categorize` | Object `{ entryId: categoryId }` | Every entry is mapped to its `correctCategoryId`. |
+| `timeline` | Array of event IDs in the learner's order | Every event appears exactly once and the order is correct ([see TimelineEvent](#timelineevent-for-timeline)). |
+| `matrix` | Array of `[rowId, columnId]` cells | It contains exactly the cells of `correctCells` (no duplicates). |
+| `math-input` | LaTeX string | It equals `correctAnswer` or one of `alternativeAnswers` by the string comparison rules of [`math-input`](#type-math-input-math-input) (`$` delimiters typed by the learner are ignored), or is mathematically equivalent when the application checks symbolically. |
+| `diagram-label` | Object `{ zoneId: labelId }`; with `requireTyping`, `{ zoneId: string }` | Every zone gets its `correctLabelId`; with `requireTyping`, every typed string matches the text of the zone's correct label ([Comparing Typed Answers](#comparing-typed-answers)). |
+| `chess-puzzle` | Array of moves in SAN: the learner's moves and the opponent's replies, as in `correctAnswers` | It equals one of `correctAnswers` move by move, after normalizing each move ([see chess-puzzle](#type-chess-puzzle-chess-puzzle)). |
+| `flashcard` | Self-rating: integer `1`–`4` on the [OQSEP confidence scale](./oqse-progress.md#confidence-scale) | The rating is `3` or `4` (recalled). Applications SHOULD offer all four ratings. |
+| `open-ended` | String | Not checked automatically (a teacher or an evaluator with the `rubric` decides). |
+| `note` | – (no answer) | – |
+| `x-…` (custom) | Defined by the application | Defined by the application. |
+
+**Tolerant reading:** applications reading answers MUST also accept: numbers written as strings (normalized as in [`numeric-input`](#type-numeric-input-numeric-input): decimal comma, spaces), `"true"` / `"false"` as strings for `true-false`, and a single point or name as well as an array of them for `pin-on-image` and `pin-on-model`. They write answers in the canonical form above.
+
+**Reference implementation:** `checkAnswer` in `@memizy/plugin-sdk`.
 
 ## Item Types (`item.type`)
 
@@ -1102,9 +1137,10 @@ Applications **MUST** normalize user input before evaluation to handle localizat
 
   * `question` (string, required): **Rich Content.** Instructions or puzzle description (e.g., "White to move and checkmate in 2").
   * `fen` (string, required): The board position in Forsyth–Edwards Notation (FEN).
-  * `correctAnswers` (string[][], required): Array of correct move sequences. Each sequence is an array of strings in Standard Algebraic Notation (SAN) (e.g., `["e4", "e5", "Nf3"]`). Supports multiple valid solutions.
+  * `correctAnswers` (string[][], required): Correct move sequences (alternative solutions) in Standard Algebraic Notation (SAN). A sequence alternates the moves of both sides, starting with the side to move in `fen`: the learner makes the moves at even positions (0, 2, …) and the application plays the opponent's replies from the sequence. A sequence SHOULD end with the learner's move (odd length); validators warn otherwise. Example: `[["Qxf7+", "Kd8", "Qf8#"]]`.
   * `elo` (number, optional): ELO rating of the puzzle difficulty.
-  * **Note:** Applications SHOULD provide an interactive chessboard. The user solves the puzzle by making moves on the board.
+  * **Comparing moves:** before comparing, each move is normalized: surrounding whitespace and trailing `+`, `#`, `!`, `?` are removed, castling written with zeros (`0-0`, `0-0-0`) becomes `O-O`, `O-O-O`, and a promotion without `=` (`e8Q`) becomes `e8=Q`.
+  * **Note:** Applications SHOULD provide an interactive chessboard. The user solves the puzzle by making moves on the board. Puzzle databases whose first move is the opponent's (e.g., Lichess) are converted by playing that move on `fen` and removing it from the sequence.
 
 **Example:**
 ```json
@@ -2162,6 +2198,8 @@ The first stable version. From now on, 1.x versions only add (see [Versioning an
 * Version rules for sets, manifests and progress files: applications read the MAJOR versions they support and never read another MAJOR version (including the pre-release 0.x drafts) silently as a supported one.
 * Schema URLs: `https://cdn.jsdelivr.net/npm/@memizy/oqse@1/schemas/oqse-v1.0.json` (and `oqse-manifest-v1.0.json`, `oqse-progress-v1.0.json`, `oqse-header-v1.0.json`).
 * `timeline`: years before the Common Era in historical numbering (`-0480` = 480 BC, no year 0); a normative comparison of two events (the coarser precision; without `precision`, `datetime` if the date has a time, otherwise `day`; a time without a time zone is UTC) and a correct order defined over every pair of events.
+* [Answer Formats](#answer-formats): a normative table of the answer of every item type and when it is correct. `flashcard` answers are a self-rating `1`–`4` on the OQSEP confidence scale (correct when `3` or `4`).
+* `chess-puzzle`: a sequence alternates both sides starting with the side to move (the learner plays the even positions), SHOULD end with the learner's move; moves are normalized before comparing (check/annotation marks, `0-0`, `e8Q`).
 * `numeric-input`: `range` is removed; an interval is `correctAnswer` ± `tolerance` (e.g., 100–120 = `correctAnswer: 110, tolerance: 10`). Comparisons allow for floating-point rounding.
 * [Comparing Typed Answers](#comparing-typed-answers): one normative algorithm for `short-answer`, `fill-in-blanks` and typed `diagram-label` (whitespace, case, diacritics, typos as optimal string alignment distance with fixed limits). `ignoreDiacritics` defaults to `true`; `fill-in-blanks` and `diagram-label` get `ignoreDiacritics` and `acceptPartial`; `trimWhitespace` is removed (whitespace is always trimmed).
 

@@ -165,10 +165,18 @@ describe('checkAnswer', () => {
     const chess = item({ type: 'chess-puzzle', question: 'Q', fen: '8/8/8/8/8/8/8/8 w - - 0 1', correctAnswers: [['Qh5+', 'Nc6', 'Qxf7#']] });
     expect(checkAnswer(chess, ['Qh5', 'Nc6', 'Qxf7'])).toBe(true);
     expect(checkAnswer(chess, ['Qh5'])).toBe(false);
+    const informal = item({ type: 'chess-puzzle', question: 'Q', fen: '8/8/8/8/8/8/8/8 w - - 0 1', correctAnswers: [['O-O', 'Kh8', 'exd8=Q#']] });
+    expect(checkAnswer(informal, ['0-0', 'Kh8', 'exd8Q'])).toBe(true);
+    expect(checkAnswer(informal, ['0-0-0', 'Kh8', 'exd8Q'])).toBe(false);
+
+    // A flashcard answer is the self-rating 1–4; 3 and 4 mean recalled.
+    const card = item({ type: 'flashcard', front: 'a', back: 'b' });
+    expect([1, 2, 3, 4].map((rating) => checkAnswer(card, rating))).toEqual([false, false, true, true]);
+    expect(checkAnswer(card, 'good')).toBe(false);
   });
 
   it('throws for types that cannot be checked', () => {
-    expect(() => checkAnswer(item({ type: 'flashcard', front: 'a', back: 'b' }), true)).toThrow(/rate themselves/);
+    expect(() => checkAnswer(item({ type: 'open-ended', question: 'Why?' }), 'Because')).toThrow(/cannot be checked/);
     expect(() => checkAnswer(item({ type: 'x-custom' }), 1)).toThrow(/unsupported/);
   });
 });

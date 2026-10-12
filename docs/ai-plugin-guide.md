@@ -391,7 +391,7 @@ Lists the player chooses from or arranges are **choices** `{ id, text }`: `optio
 | `categorize` | `question`, `categories[]`, `items[]` | `{ itemId: categoryId }` |
 | `fill-in-blanks` / `fill-in-select` | `text` with blanks | `{ token: text }` / `{ token: optionId }` |
 | `timeline` | `question`, `events[]` | array of event ids in order |
-| `flashcard` | `front`, `back` | no checking – let the player rate themselves |
+| `flashcard` | `front`, `back` | the player rates themselves 1–4 (1 no idea, 2 familiar, 3 with effort, 4 easy); `checkAnswer` → correct for 3 and 4; pass the rating also as `confidence` |
 | `note` | `title?`, `content`, `hiddenContent?` | no checking – show with `ui.renderNote` |
 
 * `checkAnswer(item, answer)` returns `true`/`false` and applies the rules of the set (case, tolerance, alternative answers). Call it in **actions** (on a player's device the item has no answer and `checkAnswer` throws).

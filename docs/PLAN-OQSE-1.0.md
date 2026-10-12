@@ -106,12 +106,14 @@ Dotčené soubory obvykle: `packages/oqse/oqse*.md` (spec), `src/oqse.ts` (typy)
 
 ### Část 5 – Formáty odpovědí a šachy
 
-- [ ] Spec: normativní oddíl „Answer formats“ (tabulka po typech, kanonický tvar, co čtečka
+- [x] Spec: normativní oddíl „Answer formats“ (tabulka po typech, kanonický tvar, co čtečka
       toleruje, které typy nejdou vyhodnotit automaticky).
-- [ ] Spec: `chess-puzzle` – sekvence střídá obě strany od strany na tahu ve FEN, hráč
+- [x] Spec: `chess-puzzle` – sekvence střídá obě strany od strany na tahu ve FEN, hráč
       hraje sudé pozice, aplikace odpovědi soupeře; SHOULD končit tahem hráče; odpověď =
       všechny odehrané tahy v SAN, `+ # ! ?` na konci se ignorují; poznámka k Lichess.
-- [ ] Kód: varování u sudé délky sekvence, komentář `checkAnswer`, odkaz ze SPEC 5.1; testy.
+- [x] Kód: varování u sudé délky sekvence, komentář `checkAnswer`, odkaz ze SPEC 5.1; testy.
+- [x] Navíc: sloupec „Correct when“; kartička = sebehodnocení 1–4 (OQSEP, správně 3–4),
+      `ui.question` 4 tlačítka (`.mz-q-four`); šachy tolerují `0-0` a `e8Q`.
 
 ### Část 6 – Veřejné položky
 

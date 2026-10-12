@@ -46,6 +46,7 @@ export type OQSEIssueCode =
   | 'ASSET_SHADOWED'
   | 'RAW_HTML_NOT_ALLOWED'
   | 'NOTE_HEADING_LEVEL'
+  | 'CHESS_SEQUENCE_LENGTH'
   | 'SECURITY_LIMIT';
 
 /** One entry of the structured error log (see "Structured Error Log" in the specification). */
@@ -334,6 +335,11 @@ function checkItem(
       log.add('error', 'DUPLICATE_ID', 'Internal IDs must be unique within the item.', [...path, item.type === 'timeline' ? 'events' : 'items'], item.id);
       ok = false;
     }
+  }
+
+  // A chess solution should end with the learner's move (odd number of moves).
+  if (item.type === 'chess-puzzle' && item.correctAnswers.some((line) => line.length % 2 === 0)) {
+    log.add('warning', 'CHESS_SEQUENCE_LENGTH', "Each move sequence should end with the learner's move (an odd number of moves; the application plays the replies).", [...path, 'correctAnswers'], item.id);
   }
 
   // Headings inside a note are relative to it: the title is level 1, content starts at level 2.

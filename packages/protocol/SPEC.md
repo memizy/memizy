@@ -294,7 +294,7 @@ Two ways to write it:
 
 RC4 additions to `recordAnswer`:
 
-* `answer` – what the player answered, in the `checkAnswer` format of the item type (OQSE choice IDs, text, numbers). Teachers see which wrong answers were chosen; because answers use IDs, the statistics survive edits of the set.
+* `answer` – what the player answered, in the format of the item type defined in [OQSE Answer Formats](../oqse/oqse.md#answer-formats) (the format `checkAnswer` takes: choice IDs, text, numbers; a flashcard's self-rating 1–4). Teachers see which wrong answers were chosen; because answers use IDs, the statistics survive edits of the set.
 * **Generated items** (from a service or a generator in the plugin) are not in the set. The plugin attaches the item (`item`, at least `id` and `type`; answer fields may be left out; max 32 KB). The host counts such answers in statistics (per `skills` and `tags`) but not in the repetition schedule, because the item never comes back.
 * Progress for teachers is aggregated per OQSE `skills` (and their parents, `chess.tactics` for `chess.tactics.fork`), which come from the content, never from the plugin. A game's own model of the player (rating, level, unlocked chapters) belongs to plugin data (section 5.2).
 
@@ -476,7 +476,7 @@ What was decided and why, and what is **reserved** (name and intent fixed, not i
 
 ## Changelog
 
-* **1.0 (unreleased):** OQSE 1.0 sets and OQSEM 1.0 manifests (`"version": "1.0"`; other MAJOR versions are not read as 1.x). A host may support several protocol MAJOR versions at once (4.3); supporting older ones is a SHOULD instead of a MUST.
+* **1.0 (unreleased):** `recordAnswer.answer` follows OQSE Answer Formats (a flashcard answer is a self-rating 1–4; `ui.question` offers four ratings). OQSE 1.0 sets and OQSEM 1.0 manifests (`"version": "1.0"`; other MAJOR versions are not read as 1.x). A host may support several protocol MAJOR versions at once (4.3); supporting older ones is a SHOULD instead of a MUST.
 * **RC1 (2026-10-04):** first release candidate.
 * **RC2 (2026-10-06):** `SettingDefinition.modes`; the host may show solo settings before the start (section 3.3). Additive: RC1 plugins and hosts keep working.
 * **RC4 (2026-10-07):** OQSE 0.3 sets (choices with IDs; the RC3 `correctOrder` / `correctMatches` display fields are gone because answers refer to IDs); `recordAnswer.answer` and generated items (5.1); services (5.3, `service`, `InitPayload.services`, `SERVICE_UNAVAILABLE`); pauses (`SessionClock`); `permissions` with a Content Security Policy and device grants (8.4); decisions and reservations (section 10). Additive for the protocol except the OQSE version: plugins must read choices (`option.text`, `option.id`).
