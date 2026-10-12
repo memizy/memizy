@@ -1,13 +1,23 @@
 # Plán: OQSE 1.0 a zbytek cesty k 1.0 (workshop 22. 10. 2026)
 
-Sepsáno 2026-10-07 po průchodu formátu OQSE. Navazuje na „Cestu k 1.0“ v
-[`PLAN-RC4.md`](./PLAN-RC4.md) (kroky 1 a 2 jsou hotové). Práce na větvi `oqse-1.0`.
-Hotové body se odškrtávají.
+Sepsáno 2026-10-07 po průchodu formátu OQSE, přepracováno 2026-10-12. Navazuje na „Cestu
+k 1.0“ v [`PLAN-RC4.md`](./PLAN-RC4.md) (kroky 1 a 2 jsou hotové). Práce na větvi `oqse-1.0`.
 
 **Termíny:** zkouška s hrami od AI 19.–20. 10. (SPEC), vydání 1.0.0 pár dní před
 workshopem po ručním testu na telefonech.
 
-## Rozhodnutí vlastníka (2026-10-07)
+## Jak pracujeme (dohoda s vlastníkem 2026-10-12)
+
+- **Svisle po částech.** Pro každou část: nejdřív navrhnout změny **textu specifikace** a
+  probrat je s vlastníkem → pak upravit specifikaci, kód a testy (včetně míst v protokolu,
+  SDK a hrách, která na změnu přímo navazují, aby build prošel) → všechny testy → jeden
+  commit → zaškrtnout → navrhnout další část.
+- **Specifikace je zdroj pravdy** a nezávisí na jazyce: algoritmy (porovnání textu, data)
+  popisuje slovy a kroky, referenční implementace `@memizy/oqse` je jen odkaz.
+- Bod se zaškrtne, až je hotový text specifikace i kód s testy.
+- Kód napsaný před specifikací leží na větvi `oqse-1.0-draft` (jen jako zdroj, nemergovat).
+
+## Rozhodnutí vlastníka
 
 | Bod | Rozhodnutí |
 | :--- | :--- |
@@ -16,189 +26,125 @@ workshopem po ručním testu na telefonech.
 | `numeric-input.range` | **zrušit** – jen `correctAnswer` (povinné) + `tolerance` |
 | Formáty odpovědí | normativní oddíl ve specifikaci OQSE |
 | Vlastní typy `x-` | rezervované pole `solution`, veřejná kopie ho odstraní |
-| Verze | všechny formáty `1.0`; 1.0 načte i 0.3 |
+| Verze | všechny formáty `1.0`, **čistý start**: knihovna čte jen 1.x, starší verze = chyba, žádné převody ani převodní skripty (0.3 nikdo mimo engine nepoužil) |
 | Roky př. n. l. v `timeline` | **podporovat** |
 | HTML bez funkce `html` | `sub`, `sup`, `br` povoleny vždy; Markdown v Rich Content platí vždy |
 | UUID | **SHOULD v7, MUST platné UUID** (libovolná verze) |
 | Přísná pravidla | chybějící `altText` při načtení jen varování; `checksums` a pořadí klíčů jen doporučení |
 | `chess-puzzle` | upřesnit, čí tahy sekvence obsahuje |
 | Veřejné položky | odstranit `sources[].quote`; `hints` výslovně veřejné |
-| Opravy textu (B) | všechny |
-| Beze změny (C) | `numeric-input.correctAnswer` a `slider.step` povinné, `lang` / `language`, `bucket` 0–4, `confidence` 1–4, všech 22 typů |
+| Opravy textu | všechny nalezené chyby (část 9) |
+| Beze změny | viz „Vědomě beze změny“ |
+| Sady mimo engine | teď ne (na workshop nejsou potřeba); `scripts/migrate-oqse-0.3.ts` zůstává jako nástroj pro pozdější převod |
+
+## Hotovo mimo části
+
+- [x] Relay: `ROOMS_PER_IP_PER_HOUR` (výchozí 1000, celá škola má jednu IP) – `958a0d4`.
 
 ---
 
-## 1. Formát OQSE 1.0 (`packages/oqse`)
+## 1. OQSE 1.0 po částech
 
-U každého bodu: specifikace (`oqse.md`), typy (`oqse.ts`), validace (`oqseValidation.ts`,
-`fileValidation.ts`), testy, JSON schéma (generuje se), changelog specifikace.
+Dotčené soubory obvykle: `packages/oqse/oqse*.md` (spec), `src/oqse.ts` (typy),
+`src/oqseValidation.ts` a `src/fileValidation.ts` (validace), testy, JSON schémata
+(generují se buildem) a navazující `packages/protocol`, `packages/plugin-sdk`, `apps/play`.
 
-### 1.1 Porovnávání textu
+### Část 0 – Úklid
 
-- [ ] Normativní algoritmus ve specifikaci (nový pododdíl „Text comparison“), stejný pro
-      `short-answer`, `fill-in-blanks` a `diagram-label` s `requireTyping`:
-      1. Unicode NFC;
-      2. vždy: ořez mezer na začátku a konci, mezery uvnitř sloučit do jedné;
-      3. bez `caseSensitive: true`: malá písmena (nezávisle na jazyce);
-      4. s `ignoreDiacritics` (výchozí `true`): NFD, odstranit znaky kategorie `M`, NFC;
-      5. `acceptPartial`: Levenshteinova vzdálenost od očekávané odpovědi (po normalizaci)
-         nejvýš 0 do 3 znaků, 1 do 7 znaků, jinak 2.
-- [ ] `ignoreDiacritics` výchozí `true` (`short-answer`); nově pole `ignoreDiacritics`
-      a `acceptPartial` i u `fill-in-blanks` a `diagram-label`.
-- [ ] Zrušit `trimWhitespace` (`short-answer`, `fill-in-blanks`) z typů, validace a textu.
-      Starý klíč v datech je neznámý klíč (ignoruje se).
-- [ ] Rada pro autory: pravopisná cvičení (háčky, čárky) nastaví `ignoreDiacritics: false`.
+- [x] Rozpracovaný kód odložen na větev `oqse-1.0-draft`, `oqse-1.0` čistá.
+- [x] Plán přepsán na části se zaškrtáváním.
 
-### 1.2 `numeric-input` bez `range`
+### Část 1 – Verze 1.0
 
-- [ ] Odebrat `range` (typy, validace, spec včetně oddílu „For `range` in `numeric-input`“,
-      typ `NumericRange`, pokud ho nic jiného nepoužívá).
-- [ ] Text: správně je `|hodnota − correctAnswer| ≤ tolerance`; interval 100–120 se zapíše
-      jako `correctAnswer: 110, tolerance: 10`.
-- [ ] Tolerantní načtení 0.3 převede `range` v paměti (viz 1.11).
+- [ ] Spec: sady `"version": "1.0"`, `$schema` `https://cdn.jsdelivr.net/npm/@memizy/oqse@1/schemas/oqse-v1.0.json`;
+      OQSEM, OQSEP a OQSEH také `1.0` (nadpisy, příklady, URL schémat).
+- [ ] Spec: čtení verzí – 1.x normálně, vyšší MAJOR varování a „best effort“, 0.x chyba
+      (bez převodu); Markdown frontmatter `oqse: "1.0"`.
+- [ ] Kód: `OQSE_VERSION`, kontrola verze v loaderu a v Markdownu, názvy schémat
+      (`generate-schemas.ts`), `package.json` (`files` se specifikacemi).
+- [ ] Manifest: verze `1.0`; co host udělá se starší verzí (rozhodnout v části).
+- [ ] Sady v enginu na 1.0: `apps/play/src/data/sets/*`, `sampleSet.ts`, sady v testech,
+      prompt AI sad (`aiSets.ts`); manifesty her (Babiš, Piráti, civhrad) a návodu.
 
-### 1.3 Formáty odpovědí (normativně)
+### Část 2 – Porovnání textu
 
-- [ ] Nový oddíl „Answer formats“ v `oqse.md`: tabulka podle typu (dnes komentář v
-      `packages/plugin-sdk/src/checkAnswer.ts`), kanonický tvar a co musí čtečka tolerovat
-      (číslo jako text s desetinnou čárkou, `"true"` / `"false"`, `pin-on-image` jeden bod
-      nebo pole bodů podle `multipleCorrect`, totéž u `pin-on-model`).
-- [ ] Které typy nejdou vyhodnotit automaticky (`note`, `flashcard`, `open-ended`, `x-`).
-- [ ] Odkaz z SPEC (`recordAnswer.answer`) a z komentáře `checkAnswer` na tento oddíl.
+- [ ] Spec: nový oddíl „Text comparison“ (slovy): NFC; ořez a sloučení bílých znaků;
+      malá písmena podle výchozího převodu Unicode (nezávisle na jazyce); diakritika =
+      rozklad NFD, odebrat znaky kategorie M, zpět NFC (`ł`, `ø`, `đ` zůstávají);
+      `acceptPartial` = Levenshteinova vzdálenost po znacích Unicode z normalizovaných
+      textů, nejvýš 0 do 3 znaků očekávané odpovědi, 1 do 7, jinak 2.
+- [ ] Spec: `ignoreDiacritics` výchozí `true`; pole `ignoreDiacritics` a `acceptPartial`
+      i u `fill-in-blanks` a `diagram-label` (psaní); `trimWhitespace` zrušeno; rada pro
+      pravopisná cvičení (`ignoreDiacritics: false`).
+- [ ] Kód: sdílené funkce v `@memizy/oqse`, typy, validace, `checkAnswer`; testy.
 
-### 1.4 Vlastní typy `x-`: pole `solution`
+### Část 3 – `numeric-input` bez `range`
 
-- [ ] Spec („Adding Custom Item Types“): vše, co prozrazuje odpověď, patří do `solution`
-      (libovolná hodnota JSON). Validátor ho nekontroluje, jen zachová.
-- [ ] Veřejná kopie (`publicItem`) u `x-` odstraní `solution`, `explanation` a
-      `incorrectFeedback` a nastaví `answerHidden: true` (dnes posílá položku beze změny).
+- [ ] Spec: typ a validační pravidla (interval 100–120 = `correctAnswer: 110, tolerance: 10`).
+- [ ] Kód: typy (bez `NumericRange`), validace, `checkAnswer`, veřejné položky
+      (`items.ts`), `ui.question`, Piráti (`item.range`); testy.
 
-### 1.5 `timeline`: roky před naším letopočtem
+### Část 4 – Časová osa
 
-- [ ] Regex data: volitelné znaménko `-` před čtyřmístným rokem (`-0480-08-01`); rok 0 = 1 př. n. l.
-- [ ] Sdílená funkce v `@memizy/oqse`, např. `compareTimelineDates(a, b)`: rok jako celé
-      číslo se znaménkem, pak zbytek; přesnost (`year` / `month` / `day` / `datetime`) podle
-      hrubší z obou událostí. **Nepoužívat `new Date`** (záporné roky v tomto tvaru neumí).
-- [ ] Použít ji v `checkAnswer` (`timeline`) i v `displayItem` (kontrola „není seřazeno“).
-- [ ] Testy: `-0480` < `-0031` < `0001`, `-0001` < `0001`, rok vs. den se stejným rokem = souběžné.
+- [ ] Spec: roky př. n. l. (`-0480-08-01`, rok 0 = 1 př. n. l.); pravidla porovnání:
+      hrubší z obou přesností, bez `precision` = `datetime` s časem, jinak `day`;
+      `datetime` jako okamžik včetně časového pásma.
+- [ ] Kód: schéma data události, sdílené porovnání, `checkAnswer`, míchání (`displayItem`
+      nikdy neukáže seřazené); testy.
 
-### 1.6 HTML a Markdown
+### Část 5 – Formáty odpovědí a šachy
 
-- [ ] Rich Content je vždy GFM; funkce `markdown` je jen údaj pro manifest (aplikace umí
-      Markdown). Vyjasnit v „Text Formatting“, registru funkcí a tabulce úrovní (Tier 1/2).
-- [ ] Bez funkce `html` povolit `<sub>`, `<sup>`, `<br>` (bez atributů). Upravit hledání
-      syrového HTML (`findRawHtml`) a text v „Security“. Ověřit, že `richText.ts` v SDK
-      (DOMPurify) je propustí (výchozí nastavení ano).
+- [ ] Spec: normativní oddíl „Answer formats“ (tabulka po typech, kanonický tvar, co čtečka
+      toleruje, které typy nejdou vyhodnotit automaticky).
+- [ ] Spec: `chess-puzzle` – sekvence střídá obě strany od strany na tahu ve FEN, hráč
+      hraje sudé pozice, aplikace odpovědi soupeře; SHOULD končit tahem hráče; odpověď =
+      všechny odehrané tahy v SAN, `+ # ! ?` na konci se ignorují; poznámka k Lichess.
+- [ ] Kód: varování u sudé délky sekvence, komentář `checkAnswer`, odkaz ze SPEC 5.1; testy.
 
-### 1.7 UUID a zbytečně přísná pravidla
+### Část 6 – Veřejné položky
 
-- [ ] Globální pravidla a oddíl „UUID Validation Rules“: ID MUST být platné UUID (kontroluje
-      se tvar), nová ID SHOULD být UUIDv7. Zachování ID při re-exportu zůstává MUST.
-- [ ] Komentář `generateUUID` v `utils.ts` („required“ → „recommended“).
-- [ ] Play: `apps/play/src/lib/aiSets.ts` místo `crypto.randomUUID()` → `generateUUID`
-      z `@memizy/oqse`. Projít i další místa, kde Play vytváří ID.
-- [ ] Obrázek bez `altText`: tolerantní načtení = varování (položka zůstane), přísné
-      uložení = chyba (dnes načtení zahodí celou položku, spec v „Fallback“ říká opak).
-- [ ] Chybějící `checksums`: aplikace MAY varovat (dnes SHOULD).
-- [ ] Pořadí klíčů v kořeni (`$schema`, `version`, `meta`, `items`): SHOULD (dnes MUST).
+- [ ] Spec OQSE: `solution` u vlastních typů `x-`; SPEC 4.4: skrývá se `solution`,
+      `sources[].quote`, `hints` jsou veřejné.
+- [ ] Kód: `publicItem` (`items.ts`); testy (`displayItems.test.ts`, `session.test.ts`).
 
-### 1.8 `chess-puzzle`
+### Část 7 – Rich Content
 
-- [ ] Každá sekvence střídá tahy obou stran, začíná strana na tahu podle `fen`. Hráč hraje
-      tahy na sudých pozicích (0, 2, …), aplikace odehraje odpovědi soupeře ze sekvence.
-      Sekvence SHOULD končit tahem hráče (lichá délka; jinak varování).
-- [ ] Odpověď (`checkAnswer`) = všechny odehrané tahy včetně odpovědí soupeře, v SAN;
-      znaky `+ # ! ?` na konci se ignorují.
-- [ ] Poznámka pro službu s úlohami z Lichess: tam je první tah soupeřův; služba ho použije
-      na FEN a sekvenci zkrátí.
+- [ ] Spec: Markdown (GFM) v Rich Content vždy, funkce `markdown` jen údaj pro manifest;
+      bez funkce `html` povoleny `<sub>`, `<sup>`, `<br>` bez atributů.
+- [ ] Kód: `findRawHtml`; ověřit vykreslení v SDK (`richText.ts`); testy.
 
-### 1.9 Veřejné položky (SPEC 4.4, `packages/protocol/src/items.ts`)
+### Část 8 – Přísnost pravidel
 
-- [ ] Odstraňovat `sources[].quote` (citace často obsahuje odpověď).
-- [ ] `hints` zůstávají veřejné – zapsat výslovně (hra je smí ukázat i na telefonu).
-- [ ] Z `HIDDEN['numeric-input']` odebrat `range`; `x-` podle 1.4.
-- [ ] Testy (`displayItems.test.ts`, `session.test.ts`).
+- [ ] Spec: UUID MUST platné, SHOULD v7; `altText` – při načtení varování a doplnění,
+      při uložení chyba; `checksums` MAY varovat; pořadí klíčů SHOULD.
+- [ ] Kód: validace `altText` mimo schéma, komentář `generateUUID`, Play `aiSets.ts`
+      → `generateUUID`; testy.
 
-### 1.10 Verze 1.0
+### Část 9 – Opravy textu a changelog
 
-- [ ] Sady `"version": "1.0"`, `$schema` `https://cdn.jsdelivr.net/npm/@memizy/oqse@1/schemas/oqse-v1.0.json`.
-- [ ] OQSEM (manifest), OQSEP (pokrok) a OQSEH (hlavička) také `1.0`; nadpisy a příklady
-      ve všech čtyřech dokumentech, názvy schémat (`generate-schemas.ts`), README.
-- [ ] Konstanta `OQSE_VERSION` a texty chyb.
-- [ ] Markdown sady: frontmatter `oqse: "1.0"`, parser přijme i `"0.3"`.
-- [ ] `@memizy/oqse` verze `1.0.0`; v `package.json` opravit `files` (`SPECIFICATION.md`
-      neexistuje, specifikace `*.md` se do balíčku nedostanou).
-
-### 1.11 Načítání starších verzí
-
-- [ ] Sady 1.x: normálně; vyšší MAJOR: varování a „best effort“ (jako dnes).
-- [ ] Sady 0.3: načíst s varováním a převést v paměti (`range` → `correctAnswer` +
-      `tolerance`, verze `1.0`). Uložení zapíše 1.0.
-- [ ] Sady 0.2 a starší: chyba `UNSUPPORTED_VERSION` s odkazem na převodní skript.
-- [ ] Manifesty: struktura se nemění, host přijme `0.2` i `1.x` (hry z RC i studentské hry
-      píšou `"version": "0.2"`). Nové hry a návod píšou `1.0`.
-- [ ] Pokrok (OQSEP) `0.2` i `1.0` se načte stejně.
-
-### 1.12 Opravy textu specifikace
-
-- [ ] Kompletní příklad: `match-complex.connections` obsahuje `[1, 1], [2, 2]` → ID.
+- [ ] Kompletní příklad: `match-complex.connections` `[1, 1], [2, 2]` → ID.
 - [ ] Příklad `math-input`: `"$2*x + 2$"` v `alternativeAnswers` → bez `$`.
-- [ ] Tabulka limitů: `prompts` / `matches` „must have equal length“ → `matches` mohou mít
-      navíc rušivé možnosti.
+- [ ] Tabulka limitů: `prompts` / `matches` „must have equal length“ → rušivé možnosti.
 - [ ] `HotspotObject`: výčet `type` doplnit o `mesh`.
 - [ ] „Optimization for AI Generation“: příklad `options: ["A…"]` je zápis 0.2.
-- [ ] Zbytky starých verzí: „OQSE v0.2 uses …“ (manifest), „standard for OQSE v0.3“ (UUID),
-      „(in section 4)“ u `difficulty`, verze v příkladech manifestu (`minOqseVersion`).
-- [ ] Škrtnout pravidlo „`ageMin == ageMax == 0` = neuvedeno“.
-- [ ] Oddíl „Validation Rules for Choices“, `minCorrect` apod. zkontrolovat proti validátoru.
-- [ ] README balíčku: odkaz na webový validátor (`memizy.github.io/oqse-specification`,
-      staré repo), adresy schémat `@1`; webový validátor `packages/oqse/docs/index.html`.
-- [ ] Odkaz na `github.com/memizy/set-test-suite`: aktualizovat sady na 1.0, nebo odkaz odebrat.
+- [ ] Zbytky starých verzí („OQSE v0.2 uses …“, „standard for OQSE v0.3“, „(in section 4)“).
+- [ ] Škrtnout „`ageMin == ageMax == 0` = neuvedeno“.
+- [ ] Oddíl „Validation Rules for Choices“, `minCorrect` apod. proti validátoru.
+- [ ] README balíčku (webový validátor, adresy `@1`), `docs/index.html`, odkaz na
+      `memizy/set-test-suite` (aktualizovat nebo odebrat).
+- [ ] Changelog specifikace „Version 1.0“ (první stabilní verze; historie 0.x zkrátit).
 
-### 1.13 Vědomě beze změny (proč)
+### Vědomě beze změny (proč)
 
 - `numeric-input.correctAnswer` povinné: hra po odpovědi ukazuje „správně bylo …“.
 - `slider.step` povinné: výchozí 1 by bylo špatně u posuvníku 0–1.
 - `lang` / `language`: přejmenování by se dotklo sad, Markdownu i platformy a nic nepřineslo.
 - `bucket` 0–4 a `confidence` 1–4: dobře navržené, sedí na `AnswerRecord`.
 - Všech 22 typů stabilních: tvary prošly kontrolou, odebrat typ později by bylo rozbíjející.
+- Markdownový zápis sad (jen poznámky): beze změny kromě verze; otázky v Markdownu
+  případně v 1.x jako rozšíření.
 
----
-
-## 2. Převod sad
-
-- [ ] Skript `scripts/migrate-oqse-1.0.ts` (z `migrate-oqse-0.3.ts`): vstup 0.2 i 0.3,
-      výstup 1.0. Kroky: verze a `$schema`, z 0.2 vše jako dnes (ID možností),
-      `range` → `correctAnswer = (min + max) / 2`, `tolerance = (max − min) / 2`,
-      zahodit `trimWhitespace`.
-- [ ] Skript **vypíše k ruční kontrole** (nic sám nemění): položky bez výslovného
-      `ignoreDiacritics`, kde se přijímané odpovědi liší jen diakritikou (např. „byt“ a
-      „být“) – nové výchozí chování je spojí.
-- [ ] Sady v enginu: `apps/play/src/data/sets/*.oqse.json` (4) a `web-app-notes.oqse.md`,
-      `packages/plugin-sdk/src/standalone/sampleSet.ts`, sady v testech všech balíčků a Play.
-- [ ] Lab: prompt AI sad v `aiSets.ts` (verze, vzory bez `range` / `trimWhitespace`),
-      `upgradeItem` převede i `range` z odpovědi chatu.
-- [ ] Po převodu: `safeValidateOQSEFile` na všech sadách bez chyb.
-- [ ] **Mimo engine** (24 souborů, dnes ještě 0.2 – rovnou na 1.0, každý repozitář na větvi):
-      `../courses/course-mff-informatika/**`, `../courses/course-standalone-sets/**`,
-      `../registries/open-library` (sady + odkazy v `official.json` / `community.json`).
-      Doplnit `skills`, kde dávají smysl.
-
-## 3. Protokol, SDK a hry kvůli OQSE 1.0
-
-- [ ] `packages/protocol/src/items.ts`: body 1.4, 1.5 (pořadí timeline), 1.9.
-- [ ] `packages/plugin-sdk/src/checkAnswer.ts`: porovnávání podle 1.1 (diakritika,
-      `fill-in-blanks` / `diagram-label` s novými poli), bez `range` a `trimWhitespace`,
-      timeline podle 1.5, `chess-puzzle` podle 1.8; testy.
-- [ ] `ui.question` (`render/question.ts`): `numeric-input` a odkrytá odpověď bez `range`;
-      projít, že nic dalšího nečte zrušená pole.
-- [ ] Hry: Piráti (`pirates-of-memizy.html`, zobrazení `item.range`), Babiš, příklad
-      v návodu, šablony Labu, `chaosPlayer.ts` – projít pole OQSE.
-- [ ] Manifesty her a šablon: `"version": "1.0"` (dnes 5× `0.2`).
-- [ ] SPEC 4.4 (seznam skrytých polí), 5.1 (`answer` → odkaz na formáty odpovědí),
-      zmínky „OQSE 0.3“ → 1.0.
-
-## 4. Průchod API host-sdk (z PLAN-RC4, krok 3)
+## 2. Průchod API host-sdk (z PLAN-RC4, krok 3)
 
 Používá ho Play i platforma; po 1.0 jen přidávat. U každé části: názvy, volitelná pole,
 typy událostí, chyby, co je veřejné a co vnitřní (`src/index.ts` dnes exportuje `*` ze
@@ -218,14 +164,14 @@ všech modulů – vnitřní věci neexportovat nebo označit `@internal`).
       („Using the engine from the platform“).
 - [ ] README host-sdk s přehledem API.
 
-## 5. E – test 3D se skutečným WebGL (z PLAN-RC4)
+## 3. E – test 3D se skutečným WebGL (z PLAN-RC4)
 
 - [ ] Skript v repu (Playwright, Edge, SwiftShader): vykreslení, přepnutí 2D ↔ 3D, ztráta
       kontextu → 2D s hláškou, pomalá scéna → 2D jen jednou a po návratu hráče zůstane 3D,
       bez WebGL → 2D bez tlačítka 3D, výstřel ve 2D i 3D (Piráti).
 - [ ] Spouštění popsat v `CLAUDE.md` (není součást `bun run test`, pokud je pomalý).
 
-## 6. F – Návod pro AI (`docs/ai-plugin-guide.md`)
+## 4. F – Návod pro AI (`docs/ai-plugin-guide.md`)
 
 Musí pokrýt **vše od RC4**, ne jen poslední změny: kroky A–D, krok 1 (API SDK) a OQSE 1.0.
 Pro každou věc jen jedna cesta.
@@ -252,7 +198,7 @@ Pro každou věc jen jedna cesta.
 - [ ] Test `guideExample` odpovídá návodu; Lab kopíruje aktuální návod do promptů.
 - [ ] Zkouška s hrami od AI (19.–20. 10.): několik her podle návodu, Lab + zlobivý hráč.
 
-## 7. G – Dokumentace
+## 5. G – Dokumentace
 
 - [ ] SPEC: stav „1.0“, changelog 1.0 (všechno od RC4 včetně kroku 1: `phaseSeq` a
       `actedAt` ve zprávách, pravidlo kompatibility mezi verzemi SDK), oddíl 10.
@@ -264,7 +210,7 @@ Pro každou věc jen jedna cesta.
 - [ ] `ARCHITEKTURA-A-PLAN.md` a `docs/presentation/` – zmínky o verzích a formátu.
 - [ ] `PLAN-RC4.md` a tento plán odškrtat.
 
-## 8. Vydání
+## 6. Vydání
 
 - [ ] `bun run test`, `cd apps/play && bun run typecheck`, `bun run build:packages`,
       vygenerovaná schémata v commitu.
@@ -274,9 +220,13 @@ Pro každou věc jen jedna cesta.
       host-sdk; ověřit, že CDN `@1` vrací bundle SDK a schémata.
 - [ ] Merge do `main` → nasazení Play (Workers); relay nasadit (`deploy.sh`), pokud se
       změnily jeho zprávy. Tag `v1.0.0`.
+- [ ] Publikovat na npm **nejpozději 1–2 dny před workshopem** (návod importuje
+      `@memizy/plugin-sdk@1` z CDN) a nasadit relay s novým limitem místností.
+- [ ] Den před workshopem už nic nenasazovat; během workshopu otevřené logy relay
+      (`ssh memizy-vps`), natištěný QR kód a adresa.
 - [ ] Platforma: závislosti na 1.0.0, ukládání odpovědí podle formátů odpovědí.
 
-## 9. Po workshopu (1.x, kontrakt nemění)
+## 7. Po workshopu (1.x, kontrakt nemění)
 
 Odeslání akce na `pointerdown` (`data-act`), ochrana pozdních akcí i pro hry bez fází,
 výjimka pro akce, které mají projít přes změnu fáze, pomocná funkce na kontrolu formátu
@@ -285,6 +235,5 @@ zvuky, upozornění Labu na `render` bez `ui.html`; rezervované věci ze SPEC 1
 
 ## Pořadí práce
 
-1. OQSE 1.0 (oddíl 1) s testy → 2. převod sad v enginu → 3. protokol, SDK, hry →
-4. host-sdk → 5. E → 6. F → 7. G → 8. vydání. Sady mimo engine (oddíl 2) kdykoli po
-dokončení skriptu, nejpozději před vydáním (registr je načítá).
+1. OQSE 1.0 po částech 0–9 → 2. host-sdk → 3. E → 4. F (návod) → 5. G (dokumentace) →
+6. vydání. Souběžně (vlastník): Astro landing na `memizy.com`, Play na `/play/`, prezentace.
