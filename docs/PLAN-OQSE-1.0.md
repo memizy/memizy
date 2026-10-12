@@ -139,11 +139,13 @@ Dotčené soubory obvykle: `packages/oqse/oqse*.md` (spec), `src/oqse.ts` (typy)
 
 ### Část 7b – Detekce funkcí z obsahu
 
-- [ ] Spec: pravidla detekce slovy (bloky kódu s jazykem → `mermaid` / `smiles` /
+- [x] Spec: pravidla detekce slovy (bloky kódu s jazykem → `mermaid` / `smiles` /
       `abc-notation` / `syntax-highlighting`; HTML → `html`; Markdown konstrukce →
       `markdown`; `latex` se nedetekuje, jen odhad „vypadá jako vzorec“).
-- [ ] `detectFeatures(set)`; `checkCompatibility` používá deklarované ∪ zjištěné;
+- [x] `detectFeatures(set)`; `checkCompatibility` používá deklarované ∪ zjištěné;
       varování při chybějící deklaraci; editory (Lab) doplní seznam při uložení; testy.
+- [x] Navíc: `rtl` z jazyka; Civhrad `features: []`; ukázková sada poznámek deklaruje
+      `syntax-highlighting` (detekce našla blok ` ```bash `).
 
 ### Část 8 – Přísnost pravidel
 

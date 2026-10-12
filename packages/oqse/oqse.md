@@ -173,6 +173,19 @@ A missing feature never makes content unusable: an application that does not sup
 | Blocks | The content as a plain code block. |
 | Device and interaction | The feature is not offered. |
 
+#### Detecting Features from Content
+
+The **effective requirements** of a set are its declared `meta.requirements.features` together with the features detected in its Rich Content, so a forgotten declaration does not change which applications can show the set. Applications MAY detect features; validators SHOULD warn when a detected feature is not declared. Editors SHOULD add the detected features to `meta.requirements.features` when the user saves a set, and MUST NOT change a file only by opening it. Detection rules (applied to every Rich Content field):
+
+* `mermaid`, `smiles`, `abc-notation`: a fenced code block whose language identifier (the first word after the fence, ignoring case) is `mermaid`, `smiles` or `abc`.
+* `syntax-highlighting`: a fenced code block with any other language identifier.
+* `html`: raw HTML as defined in [Security](#security) (without the declaration it is already an error).
+* `markdown`: a heading, emphasis (`*x*`, `**x**`, `_x_`, `__x__`; underscores not inside words), strikethrough, a list item, a block quote, a link or an image, inline code or a code block, a table or a horizontal rule. With the `latex` feature, formulas are not considered.
+* `rtl`: the language of the set (`meta.language`) or of an item (`lang`) is written right to left (primary language subtag `ar`, `he`, `fa`, `ur`, `yi`, `ps`, `sd`, `dv` or `ug`).
+* `latex` is **not** detected, because `$` may be an ordinary character (a price). Validators SHOULD warn (never fail) when, without the `latex` feature, text between two `$` looks like a formula (it contains `\`, `^`, `_`, `{` or `}`).
+
+**Reference implementation:** `detectFeatures` and `effectiveFeatures` in `@memizy/oqse`.
+
 #### Registry of Properties (itemProperties & metaProperties)
 
 Values in `itemProperties` and `metaProperties` indicate support for specific fields or complex behaviors.
@@ -2209,6 +2222,7 @@ OQSE is an open standard. Suggestions for improvements:
 The first stable version. From now on, 1.x versions only add (see [Versioning and Compatibility](#versioning-and-compatibility)).
 * Version rules for sets, manifests and progress files: applications read the MAJOR versions they support and never read another MAJOR version (including the pre-release 0.x drafts) silently as a supported one.
 * Schema URLs: `https://cdn.jsdelivr.net/npm/@memizy/oqse@1/schemas/oqse-v1.0.json` (and `oqse-manifest-v1.0.json`, `oqse-progress-v1.0.json`, `oqse-header-v1.0.json`).
+* [Detecting Features from Content](#detecting-features-from-content): the effective requirements are the declared and the detected features (blocks, `html`, `markdown`, `rtl` from the language); validators warn about undeclared features and about text that looks like a formula without `latex`.
 * Rich Content and features: no more tiers. Rich Content is always Markdown; `<sub>`, `<sup>`, `<br>` without attributes are allowed without the `html` feature; every feature has a defined [fallback](#fallbacks) (a missing feature means simplified display, never unusable content); unknown unprefixed feature and property values are ignored with a warning (forward compatibility); rendered HTML is always sanitized.
 * `timeline`: years before the Common Era in historical numbering (`-0480` = 480 BC, no year 0); a normative comparison of two events (the coarser precision; without `precision`, `datetime` if the date has a time, otherwise `day`; a time without a time zone is UTC) and a correct order defined over every pair of events.
 * Custom `x-` item types: the reserved field `solution` holds everything that gives the answer away, so applications can hide it from learners.

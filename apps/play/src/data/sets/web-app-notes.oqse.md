@@ -7,7 +7,7 @@ updatedAt: 2026-10-04T12:00:00Z
 license: CC-BY-4.0
 subject: Informatika
 requirements:
-  features: [markdown, latex, mermaid]
+  features: [markdown, latex, mermaid, syntax-highlighting]
 tags: [web, architektura, poznámky]
 ---
 # Jak funguje webová aplikace

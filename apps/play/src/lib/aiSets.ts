@@ -4,6 +4,8 @@
  * our own meta), so the model only has to get the questions right.
  */
 
+import { detectFeatures, type OQSEFile } from '@memizy/oqse';
+
 /** Item types an AI can write well without assets. */
 export const AI_TYPES = ['mcq-single', 'mcq-multi', 'true-false', 'short-answer', 'match-pairs', 'sort-items', 'flashcard'] as const;
 export type AiType = (typeof AI_TYPES)[number];
@@ -122,5 +124,8 @@ export function normalizeAiAnswer(text: string, r: Pick<AiRequest, 'topic' | 'la
     },
     items,
   };
+  // AI chats forget requirements: declare what the content uses (a new set, so it is ours to fill).
+  const features = detectFeatures(file as unknown as OQSEFile);
+  if (features.length) Object.assign(file.meta, { requirements: { features } });
   return { success: true, json: JSON.stringify(file, null, 2), count: items.length, dropped: raw.length - items.length };
 }

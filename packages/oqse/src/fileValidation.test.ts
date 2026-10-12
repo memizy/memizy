@@ -172,13 +172,13 @@ describe('strict validation', () => {
 
 describe('note heading convention', () => {
   it('warns when note content uses level-1 headings', () => {
-    const result = safeValidateOQSEFile(file([note(1, { content: '# Title again' }), note(2, { content: '## Section' })]));
+    const result = safeValidateOQSEFile(file([note(1, { content: '# Title again' }), note(2, { content: '## Section' })], { requirements: { features: ['markdown'] } }));
     expect(result.success).toBe(true);
     expect(result.warnings.map((w) => [w.code, w.path])).toEqual([['NOTE_HEADING_LEVEL', 'items[0].content']]);
   });
 });
 
-describe('raw HTML (Tier 1)', () => {
+describe('raw HTML without the html feature', () => {
   it('rejects raw HTML unless the html feature is declared', () => {
     const html = note(1, { content: 'Hello <span style="color:red">red</span>' });
     expect(codes(safeValidateOQSEFile(file([html])).errors)).toEqual(['RAW_HTML_NOT_ALLOWED']);
@@ -251,5 +251,23 @@ describe('requirements', () => {
     ]);
     expect(safeValidateOQSEFile(file([], { requirements: { features: ['future-feature'] } })).success).toBe(true);
     expect(loadOQSEFile(file([], { requirements: { features: ['Not A Key'] } })).success).toBe(false);
+  });
+});
+
+describe('detected features', () => {
+  it('warns about features the content uses but requirements do not declare', () => {
+    const result = loadOQSEFile(file([note(1, { content: '**bold**\n\n```mermaid\ngraph LR\n```' })]));
+    expect(result.warnings.filter((w) => w.code === 'UNDECLARED_FEATURE').map((w) => w.message)).toEqual([
+      'The content uses "markdown", but meta.requirements.features does not declare it.',
+      'The content uses "mermaid", but meta.requirements.features does not declare it.',
+    ]);
+    expect(safeValidateOQSEFile(file([note(1, { content: '**bold**' })], { requirements: { features: ['markdown'] } })).warnings).toEqual([]);
+  });
+
+  it('warns (never fails) when text looks like a formula without the latex feature', () => {
+    const result = safeValidateOQSEFile(file([note(1, { content: 'Area $\\pi r^2$' })]));
+    expect(result.success).toBe(true);
+    expect(result.warnings.map((w) => [w.code, w.path])).toContainEqual(['LOOKS_LIKE_LATEX', 'items[0].content']);
+    expect(codes(loadOQSEFile(file([note(1, { content: 'It costs $5 and $10.' })])).warnings)).not.toContain('LOOKS_LIKE_LATEX');
   });
 });

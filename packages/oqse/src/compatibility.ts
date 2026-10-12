@@ -6,6 +6,7 @@
 import type { MediaObject, OQSEFile } from './oqse';
 import type { OQSEManifest } from './manifest';
 import { isVersionCompatible } from './manifest';
+import { effectiveFeatures } from './features';
 
 export interface UnsupportedAsset {
   /** `meta.assets` key, or `items[i].assets` key prefixed with the item path. */
@@ -35,7 +36,7 @@ export interface CompatibilityReport {
   unsupportedAssets: UnsupportedAsset[];
   /** Assets without `mimeType` in a category with an explicit MIME list (cannot be verified). */
   unverifiedAssets: UnsupportedAsset[];
-  /** `meta.requirements.features` not supported (shown by the fallbacks: `simplified`). */
+  /** Features of the set (declared or detected) not supported (shown by the fallbacks: `simplified`). */
   missingFeatures: string[];
   /** `meta.requirements.latexPackages` not supported (formulas shown as source: `simplified`). */
   missingLatexPackages: string[];
@@ -73,7 +74,8 @@ export function checkCompatibility(file: OQSEFile, manifest: OQSEManifest): Comp
   const req = file.meta.requirements;
   const missing = (required: readonly string[] | undefined, supported: readonly string[] | undefined) =>
     (required ?? []).filter((value) => !(supported ?? []).includes(value));
-  const missingFeatures = missing(req?.features, caps.features);
+  // Declared features together with the detected ones, so a forgotten declaration does not matter.
+  const missingFeatures = missing(effectiveFeatures(file), caps.features);
   const missingLatexPackages = missing(req?.latexPackages, caps.latexPackages);
   const missingProperties = [
     ...missing(req?.itemProperties, caps.itemProperties),

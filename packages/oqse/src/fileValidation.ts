@@ -13,7 +13,7 @@
  */
 
 import type { z } from 'zod';
-import type { MediaObject, OQSEAnyItem, OQSEFile, OQSEMeta } from './oqse';
+import type { OQSEAnyItem, OQSEFile, OQSEMeta } from './oqse';
 import { OQSEMetaSchema, getItemSchema } from './oqseValidation';
 import { OFFICIAL_ITEM_TYPES } from './oqse';
 import { OFFICIAL_FEATURE_KEYS, OFFICIAL_ITEM_PROPERTIES, OFFICIAL_META_PROPERTIES } from './manifest';
@@ -21,6 +21,8 @@ import { findAssetKeys, findRawHtml } from './richTextProcessor';
 import { formatPath, validateJsonDepth } from './utils';
 import { resolveAsset } from './assets';
 import { findHeadings, splitLines } from './markdownUtils';
+import { itemRichText, metaRichText } from './richTextFields';
+import { detectFeatures, looksLikeLatex } from './features';
 
 // ============================================================================
 // Issues
@@ -49,6 +51,8 @@ export type OQSEIssueCode =
   | 'NOTE_HEADING_LEVEL'
   | 'CHESS_SEQUENCE_LENGTH'
   | 'UNKNOWN_FEATURE'
+  | 'UNDECLARED_FEATURE'
+  | 'LOOKS_LIKE_LATEX'
   | 'SECURITY_LIMIT';
 
 /** One entry of the structured error log (see "Structured Error Log" in the specification). */
@@ -303,6 +307,21 @@ function analyze(input: unknown, mode: Mode): OQSELoadResult {
     }
   }
 
+  // Features the content uses but requirements do not declare (`html` is an error above).
+  for (const feature of detectFeatures({ meta, items })) {
+    if (feature !== 'html' && !features.has(feature)) {
+      log.add('warning', 'UNDECLARED_FEATURE', `The content uses "${feature}", but meta.requirements.features does not declare it.`, ['meta', 'requirements', 'features']);
+    }
+  }
+  if (!latex) {
+    for (const { item, index } of kept) {
+      const field = itemRichText(item).find(([, text]) => looksLikeLatex(text));
+      if (field) {
+        log.add('warning', 'LOOKS_LIKE_LATEX', 'The text looks like a LaTeX formula; if it is one, declare the "latex" feature (otherwise $ is an ordinary character).', ['items', index, ...field[0]], item.id);
+      }
+    }
+  }
+
   const file = { ...root, meta, items } as OQSEFile;
   return { success: true, data: file, errors: log.errors, warnings: log.warnings };
 }
@@ -406,106 +425,6 @@ function normalizeAssetKeys(owner: Record<string, unknown>, path: Path, log: Iss
     if (typeof owner[field] === 'string') owner[field] = (owner[field] as string).toLowerCase();
   }
   return true;
-}
-
-// ============================================================================
-// Rich Content field extraction
-// ============================================================================
-
-type TextEntry = [Path, string];
-
-function pushText(out: TextEntry[], path: Path, value: unknown) {
-  if (typeof value === 'string') out.push([path, value]);
-}
-
-function pushTexts(out: TextEntry[], path: Path, values: unknown) {
-  if (Array.isArray(values)) values.forEach((value, i) => pushText(out, [...path, i], value));
-}
-
-/** Texts (and explanations) of a list of choices. */
-function pushChoices(out: TextEntry[], path: Path, choices: unknown) {
-  if (!Array.isArray(choices)) return;
-  choices.forEach((choice, i) => {
-    if (!isRecord(choice)) return;
-    pushText(out, [...path, i, 'text'], choice.text);
-    pushText(out, [...path, i, 'explanation'], choice.explanation);
-  });
-}
-
-function pushMediaTexts(out: TextEntry[], path: Path, assets: Record<string, MediaObject> | undefined) {
-  for (const [key, media] of Object.entries(assets ?? {})) {
-    pushText(out, [...path, key, 'transcript'], media.transcript);
-    pushText(out, [...path, key, 'caption'], media.caption);
-  }
-}
-
-function metaRichText(meta: OQSEMeta): TextEntry[] {
-  const out: TextEntry[] = [];
-  pushText(out, ['meta', 'description'], meta.description);
-  pushMediaTexts(out, ['meta', 'assets'], meta.assets);
-  return out;
-}
-
-/** All Rich Content fields of an item, as `[path relative to the item, text]`. */
-export function itemRichText(item: OQSEAnyItem): TextEntry[] {
-  const out: TextEntry[] = [];
-  pushTexts(out, ['hints'], item.hints);
-  pushText(out, ['explanation'], item.explanation);
-  pushText(out, ['incorrectFeedback'], item.incorrectFeedback);
-  item.sources?.forEach((source, i) => pushText(out, ['sources', i, 'quote'], source.quote));
-  pushMediaTexts(out, ['assets'], item.assets);
-  if ('question' in item) pushText(out, ['question'], item.question);
-
-  switch (item.type) {
-    case 'note':
-      pushText(out, ['content'], item.content);
-      pushText(out, ['hiddenContent'], item.hiddenContent);
-      break;
-    case 'flashcard':
-      pushText(out, ['front'], item.front);
-      pushText(out, ['back'], item.back);
-      break;
-    case 'mcq-single':
-    case 'mcq-multi':
-      pushChoices(out, ['options'], item.options);
-      break;
-    case 'fill-in-blanks':
-      pushText(out, ['text'], item.text);
-      break;
-    case 'fill-in-select':
-      pushText(out, ['text'], item.text);
-      for (const [token, blank] of Object.entries(item.blanks)) pushChoices(out, ['blanks', token, 'options'], blank.options);
-      break;
-    case 'match-pairs':
-      pushChoices(out, ['prompts'], item.prompts);
-      pushChoices(out, ['matches'], item.matches);
-      break;
-    case 'match-complex':
-      pushChoices(out, ['leftItems'], item.leftItems);
-      pushChoices(out, ['rightItems'], item.rightItems);
-      break;
-    case 'sort-items':
-      pushChoices(out, ['items'], item.items);
-      break;
-    case 'categorize':
-      pushChoices(out, ['categories'], item.categories);
-      item.items.forEach((entry, i) => pushText(out, ['items', i, 'text'], entry.text));
-      break;
-    case 'timeline':
-      item.events.forEach((event, i) => pushText(out, ['events', i, 'text'], event.text));
-      break;
-    case 'diagram-label':
-      pushChoices(out, ['labels'], item.labels);
-      break;
-    case 'matrix':
-      pushChoices(out, ['rows'], item.rows);
-      pushChoices(out, ['columns'], item.columns);
-      break;
-    case 'open-ended':
-      pushText(out, ['sampleAnswer'], item.sampleAnswer);
-      break;
-  }
-  return out;
 }
 
 // ============================================================================
