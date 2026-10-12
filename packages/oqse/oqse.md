@@ -1007,7 +1007,7 @@ In the example above, `BE-4` has no connection: it is a distractor.
   "question": "Simplify the following expression: $2(x+1)$",
   "correctAnswer": "2x + 2",
   "alternativeAnswers": [
-    "$2*x + 2$"
+    "2*x + 2"
   ]
 }
 ```
@@ -1198,7 +1198,7 @@ Applications **MUST** normalize user input before evaluation to handle localizat
 
 Defines clickable zone on image or named mesh in a 3D model. For `pin-on-image`, all coordinates and dimensions are in **percentages** (0.0 to 100.0) relative to the image. For `pin-on-model`, the `mesh` type is used instead (no coordinates).
 
-  * `type` (string, required): Zone shape (`rect`, `circle`, `polygon`).
+  * `type` (string, required): Zone shape (`rect`, `circle`, `polygon` for images; `mesh` for 3D models).
   * `label` (string, optional): **Plain Text.** Zone label.
 
 **For `type: "rect"` (rectangle):**
@@ -1371,7 +1371,7 @@ This optional object (`item.pedagogy`) serves to store advanced metadata about d
     "estimatedTime": 20,
     "tags": ["Physics", "Rocket Engine"],
     "requirements": {
-      "features": ["markdown", "html", "syntax-highlighting"],
+      "features": ["markdown"],
       "itemProperties": ["hints", "explanation"]
     },
     "tagDefinitions": {
@@ -1476,8 +1476,8 @@ This optional object (`item.pedagogy`) serves to store advanced metadata about d
       "rightItems": [{ "id": "cape", "text": "Cape Canaveral" }, { "id": "kourou", "text": "Kourou" }, { "id": "baikonur", "text": "Baikonur" }, { "id": "cornwall", "text": "Spaceport Cornwall" }],
       "connections": [
         ["usa", "cape"],
-        [1, 1],
-        [2, 2]
+        ["france", "kourou"],
+        ["kz", "baikonur"]
       ]
     },
     {
@@ -1633,7 +1633,7 @@ To ensure consistency and practical implementability, the specification defines 
 | `options[]` (one option) | 2,000 characters | For MCQ and similar types |
 | `items[]` (items array) | 10,000 items | Maximum count in one set |
 | `options[]` (options array) | 100 options | For MCQ types |
-| `prompts[]` / `matches[]` (match-pairs) | 100 items each | Both arrays must have equal length |
+| `prompts[]` / `matches[]` (match-pairs) | 100 items each | `matches` may contain more choices than `prompts` (distractors) |
 | `hints[]` (hints array) | 20 hints | Per one item |
 | File in `assets/` (.oqse) | 25 MB | Host larger media externally (set fragmentation is not recommended and not supported, [see Performance](#performance)) |
 | `customData` / `appSpecific` | 10 levels depth | Prevention of stack overflows |
@@ -1652,7 +1652,6 @@ To ensure consistency and practical implementability, the specification defines 
 - `ageMin >= 0` (value 0 = preschool age, but recommended is >= 3)
 - `ageMax >= 0`
 - If both values are present, must hold: `ageMin <= ageMax`
-- If `ageMin == ageMax == 0`, considered "unspecified" (same as omission)
 - Recommended minimum range is 2 years (e.g., `ageMin: 6, ageMax: 8`)
 
 **For `irtDifficulty` (in `pedagogy`):**
@@ -1661,7 +1660,7 @@ To ensure consistency and practical implementability, the specification defines 
 - Values outside range [-3.0, +3.0] SHOULD trigger warning (extreme difficulty)
 - Values outside range [-5.0, +5.0] MAY be considered maximum or minimum value of allowed interval
 
-**For `difficulty` (in section 4):**
+**For `difficulty` ([common item property](#common-item-properties-in-items)):**
 - Must be in range 1-5 (integer)
 - Values outside range are invalid
 - Used for simple categorization; for advanced psychometric models use `pedagogy.irtDifficulty`
@@ -1671,7 +1670,7 @@ To ensure consistency and practical implementability, the specification defines 
 - Recommended: `timeLimit >= 5` (less than 5 seconds is unrealistic)
 - No max value (some tasks may take hours)
 
-**For `minCorrect` (in `match-complex` and `pin-on-image`):**
+**For `minCorrect` (in `match-complex`, `pin-on-image` and `pin-on-model`):**
 - Must hold: `0 < minCorrect <= number_of_correct_answers`
 - If `minCorrect` is missing, user must find all correct answers
 
@@ -2013,7 +2012,7 @@ These rules apply to OQSE sets and equally to [OQSEM manifests](./oqse-manifest.
   * **Centralize media**: Define media in `assets` (at item or `meta` level) and reference them with Media Tags. A Markdown image `![alt](https://…)` is fine for a simple picture from the web.
   * **Use Media Tags**: Reference media exclusively using `<asset:key />`. AI prompt can explicitly request this format: "Add image as `<asset:diagram1 />`".
   * **Reusability without duplication**: Place shared resources in `meta.assets` and reference from multiple items using same key. AI thus doesn't have to repeatedly generate identical `MediaObject`.
-  * **Prompt minimally**: "Create 5 questions with options A, B, C, D" → AI returns `options: ["A...", "B...", "C...", "D..."]`. Fewer descriptive words, more consistent structures.
+  * **Prompt minimally and show the shape**: give the model one example item (e.g., `"options": [{ "id": "a", "text": "…" }, …], "correctId": "b"`) and ask for more of the same. Fewer descriptive words, more consistent structures.
   * **Prepare asset dictionary**: If AI generates references to `<asset:img1 />`, pre-fill `assets` and let AI just add descriptions (`altText`, `caption`).
 
 ### Localization
@@ -2064,11 +2063,6 @@ The JSON Schema describes the structure only; cross-item rules (unique IDs, refe
   * **Validators:** Ajv, JSON Schema Validator
   * **Editing:** VS Code with JSON Schema support
   * **Conversion:** Planned CLI tools for import from Quizlet, Anki, etc.
-
-### Test Suite
-Reference test files including all item types are available at:
-
-[https://github.com/memizy/set-test-suite](https://github.com/memizy/set-test-suite)
 
 ### Common Pitfalls
 
@@ -2126,7 +2120,7 @@ No `europe_map` is defined in `item.assets` nor `meta.assets`.
 }
 ```
 
-#### **Error: Answers by position instead of choice ID (OQSE 0.2 style)**
+#### **Error: Answers by position instead of choice ID**
 ```json
 {
   "type": "mcq-single",
@@ -2233,28 +2227,6 @@ The first stable version. From now on, 1.x versions only add (see [Versioning an
 * `numeric-input`: `range` is removed; an interval is `correctAnswer` ± `tolerance` (e.g., 100–120 = `correctAnswer: 110, tolerance: 10`). Comparisons allow for floating-point rounding.
 * [Comparing Typed Answers](#comparing-typed-answers): one normative algorithm for `short-answer`, `fill-in-blanks` and typed `diagram-label` (whitespace, case, diacritics, typos as optimal string alignment distance with fixed limits). `ignoreDiacritics` defaults to `true`; `fill-in-blanks` and `diagram-label` get `ignoreDiacritics` and `acceptPartial`; `trimWhitespace` is removed (whitespace is always trimmed).
 
-### Version 0.3 (October 2026)
-* **Choices with IDs.** Lists the learner selects from or arranges are lists of [choices](#choices-and-answers-by-id) (`{ id, text, explanation? }`), and answers refer to choice IDs instead of positions: `correctIndex` → `correctId`, `correctIndices` → `correctIds`, `sort-items` gets `correctOrder` (items may be listed in any order), `match-pairs` gets `pairs` (and may have distractor matches), `match-complex.connections`, `matrix.correctCells`, `categorize` (`correctCategoryId`) and `diagram-label` (zone `id`, `correctLabelId`) use IDs. `optionExplanations` is replaced by `explanation` on each choice. Answers and progress survive edits of a set, and shuffling needs no remapping.
-* `timeline`: the correct order is the order of the dates; events may be listed in any order.
-* `fill-in-select` blanks have an optional `shuffle` flag.
-* New item property [`skills`](#common-item-properties-in-items): hierarchical skill IDs for progress tracking across applications.
-* No conversion: OQSE 0.2 files are not loaded (`UNSUPPORTED_VERSION`) and must be converted once.
-
-### Version 0.2 (October 2026)
-* Renamed the `math` feature to `latex` (consistent with `latexPackages`). Without the `latex` feature, `$` is a literal character.
-* Added [OQSE Markdown](#oqse-markdown-note-sets): a set of notes as one Markdown document (`#` set title, `##` chapters = `topic`, `###` notes, metadata in HTML comments, `> [!hidden]-` callout = `hiddenContent`).
-* Headings inside note content are relative to the note: content headings start at level 2.
-* Schema URLs now point to the versioned npm package (`https://cdn.jsdelivr.net/npm/@memizy/oqse@0.2/schemas/…`).
-* Consistent naming of correct answers: `true-false.answer` → `correctAnswer`, `numeric-input.value` → `correctAnswer`, `short-answer.answers` → `correctAnswers`, `chess-puzzle.answers` → `correctAnswers`.
-* Consistent shuffle flag: `shuffleOptions` (MCQ) and `randomize` (timeline) → `shuffle`.
-* `math-input` answers are raw LaTeX without `$` delimiters.
-* `slider.tolerance` is optional (default `0`).
-* `note.content` and `note.hiddenContent` allow up to 100,000 characters.
-* The `categorize` sub-object is renamed from `CategorizeItem` to `CategorizeEntry`.
-* Added the [Import vs. Save](#import-vs-save) distinction; duplicate IDs are explicitly rejected; raw HTML without the `html` feature is an item-level error; custom `x-` item types are validated only by their common properties.
-* OQSE tag placeholders during rendering must be alphanumeric; the `<asset:key />` pattern is unified.
-* No backward-compatibility aliases: v0.1 files must be migrated by the consuming application.
-
-### Version 0.1 (April 18, 2026 )
-#### First version of this specification created
+### Before 1.0
+Versions 0.1–0.3 (April–October 2026) were pre-release drafts. OQSE 1.0 is not compatible with them ([see Versioning and Compatibility](#versioning-and-compatibility)); their history is kept in the repository.
 

@@ -174,18 +174,23 @@ Dotčené soubory obvykle: `packages/oqse/oqse*.md` (spec), `src/oqse.ts` (typy)
 
 ### Část 9 – Opravy textu a changelog
 
-- [ ] Kompletní příklad: `match-complex.connections` `[1, 1], [2, 2]` → ID.
-- [ ] Příklad `math-input`: `"$2*x + 2$"` v `alternativeAnswers` → bez `$`.
-- [ ] Tabulka limitů: `prompts` / `matches` „must have equal length“ → rušivé možnosti.
-- [ ] `HotspotObject`: výčet `type` doplnit o `mesh`.
-- [ ] „Optimization for AI Generation“: příklad `options: ["A…"]` je zápis 0.2.
-- [ ] Zbytky starých verzí („OQSE v0.2 uses …“, „standard for OQSE v0.3“, „(in section 4)“).
-- [ ] Škrtnout „`ageMin == ageMax == 0` = neuvedeno“.
-- [ ] Oddíl „Validation Rules for Choices“, `minCorrect` apod. proti validátoru.
-- [ ] README balíčku (webový validátor, adresy `@1`), `docs/index.html`, odkaz na
+- [x] Kompletní příklad: `match-complex.connections` `[1, 1], [2, 2]` → ID.
+- [x] Příklad `math-input`: `"$2*x + 2$"` v `alternativeAnswers` → bez `$`.
+- [x] Tabulka limitů: `prompts` / `matches` „must have equal length“ → rušivé možnosti.
+- [x] `HotspotObject`: výčet `type` doplnit o `mesh`.
+- [x] „Optimization for AI Generation“: příklad `options: ["A…"]` je zápis 0.2.
+- [x] Zbytky starých verzí („OQSE v0.2 uses …“, „standard for OQSE v0.3“, „(in section 4)“).
+- [x] Škrtnout „`ageMin == ageMax == 0` = neuvedeno“.
+- [x] Oddíl „Validation Rules for Choices“, `minCorrect` apod. proti validátoru.
+- [x] README balíčku (webový validátor, adresy `@1`), `docs/index.html`, odkaz na
       `memizy/set-test-suite` (aktualizovat nebo odebrat).
-- [ ] Changelog specifikace „Version 1.0“ dokončit (historie 0.x zkrátit).
-- [ ] Projít [`old-plan-oqse.md`](./old-plan-oqse.md) (původní plán) a ověřit, že nic nechybí.
+- [x] Changelog specifikace „Version 1.0“ dokončit (historie 0.x zkrátit).
+- [x] Projít [`old-plan-oqse.md`](./old-plan-oqse.md) (původní plán) a ověřit, že nic nechybí.
+- [x] Navíc: kompletní příklad má `features: ["markdown"]` a test (`specExamples.test.ts`)
+      hlídá, že je přísně platný a deklaruje přesně zjištěné funkce; validátor na `@1`,
+      escapuje hlášky, vzorová sada = `test-suite.oqse.json` z enginu; workflow
+      `.github/workflows/oqse-pages.yml` → https://memizy.github.io/memizy/ (vlastník zapne
+      Pages „Source: GitHub Actions“; stránka funguje až po vydání `@memizy/oqse@1`).
 
 ### Část 10 – Převodní skript (jen v repu, ne v balíčku)
 

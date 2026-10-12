@@ -2,7 +2,7 @@
 
 Official TypeScript SDK for the Open Quiz & Study Exchange ecosystem, published as @memizy/oqse.
 
-🚀 **[OQSE Web Validator](https://memizy.github.io/oqse-specification/)** - Online tool for easy testing and debugging of OQSE JSON structures in the browser.
+🚀 **[OQSE Web Validator](https://memizy.github.io/memizy/)** - Online tool for easy testing and debugging of OQSE JSON structures in the browser (source: [`docs/`](./docs/), published by GitHub Pages).
 
 This repository contains:
 - The human-readable specifications split into four standalone documents:

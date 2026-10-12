@@ -143,8 +143,8 @@
 
     <!-- Ensure module matches library export syntax -->
     <script type="module">
-        // Import from unpkg to support local development and browser environments immediately
-        import { safeValidateOQSEFile, safeValidateOQSEManifest, safeValidateOQSEProgress, safeValidateOQSEHeader, formatOQSEErrors } from 'https://esm.sh/@memizy/oqse@latest';
+        // OQSE 1.x reference implementation from a CDN (no build needed).
+        import { safeValidateOQSEFile, safeValidateOQSEManifest, safeValidateOQSEProgress, safeValidateOQSEHeader, formatOQSEErrors, formatOQSEIssues } from 'https://esm.sh/@memizy/oqse@1';
 
         const tabs = document.querySelectorAll('.tab');
         const tabContents = document.querySelectorAll('.tab-content');
@@ -165,7 +165,8 @@
         const loadSampleSetBtn = document.getElementById('loadSampleSetBtn');
         const sampleSetStatus = document.getElementById('sampleSetStatus');
 
-        const OQSE_SAMPLE_SET_URL = 'https://cdn.jsdelivr.net/gh/memizy/set-test-suite@main/data.oqse.json';
+        // A set with every item type (OQSE 1.0), from the engine repository.
+        const OQSE_SAMPLE_SET_URL = 'https://cdn.jsdelivr.net/gh/memizy/memizy@main/apps/play/src/data/sets/test-suite.oqse.json';
 
         let currentValidationErrors = [];
         let lastSetState = '';
@@ -173,19 +174,19 @@
         const validatorLabels = {
             oqse: {
                 jsonLabel: 'OQSE JSON content:',
-                jsonPlaceholder: '{\n  "meta": { ... },\n  "items": [ ... ]\n}',
+                jsonPlaceholder: '{\n  "version": "1.0",\n  "meta": { ... },\n  "items": [ ... ]\n}',
                 urlLabel: 'URL with OQSE JSON (CORS allowed):',
                 urlPlaceholder: 'https://example.com/dataset.json'
             },
             manifest: {
                 jsonLabel: 'OQSEM JSON content:',
-                jsonPlaceholder: '{\n  "meta": { ... },\n  "permissions": [ ... ]\n}',
+                jsonPlaceholder: '{\n  "version": "1.0",\n  "id": "https://example.com/app",\n  "appName": "...",\n  "capabilities": { ... }\n}',
                 urlLabel: 'URL with OQSEM JSON (CORS allowed):',
                 urlPlaceholder: 'https://example.com/manifest.json'
             },
             progress: {
                 jsonLabel: 'OQSEP JSON content:',
-                jsonPlaceholder: '{\n  "meta": { ... },\n  "state": { ... }\n}',
+                jsonPlaceholder: '{\n  "version": "1.0",\n  "meta": { ... },\n  "records": { ... }\n}',
                 urlLabel: 'URL with OQSEP JSON (CORS allowed):',
                 urlPlaceholder: 'https://example.com/progress.json'
             },
@@ -267,6 +268,9 @@
             }
         });
 
+        /** Messages quote the checked data (URLs, tags), so they are escaped before display. */
+        const esc = (text) => String(text).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+
         function showResult(success, message, errors = []) {
             currentValidationErrors = errors;
             resultArea.className = success 
@@ -277,15 +281,15 @@
             resultTitle.innerHTML = success ? '✅ Validation Successful!' : '<svg class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> Validation Failed';
             
             if (success) {
-                resultContent.innerHTML = `<p class="text-lg">${message}</p>`;
+                resultContent.innerHTML = `<p class="text-lg">${message}</p>`; // message: fixed text, or escaped above
                 llmPrompt.classList.add('hidden');
                 llmPrompt.classList.remove('block');
             } else {
-                let errorHtml = `<p class="text-lg mb-4 text-text-dark font-medium">${message}</p>`;
+                let errorHtml = `<p class="text-lg mb-4 text-text-dark font-medium">${esc(message)}</p>`;
                 if (errors.length > 0) {
                     errorHtml += `<ul class="error-list list-none pl-0 font-mono text-sm space-y-2 bg-white p-5 rounded border border-gray-200 overflow-x-auto max-w-[calc(100vw-6rem)] shadow-sm">`;
                     errors.forEach(err => {
-                        errorHtml += `<li class="break-words w-full whitespace-pre-wrap text-text-gray flex"><span class="text-red-500 mr-2 font-bold">•</span><span>${err}</span></li>\n`;
+                        errorHtml += `<li class="break-words w-full whitespace-pre-wrap text-text-gray flex"><span class="text-red-500 mr-2 font-bold">•</span><span>${esc(err)}</span></li>\n`;
                     });
                     errorHtml += `</ul>`;
                 }
@@ -375,8 +379,18 @@
                 let typeName = '';
                 
                 if (type === 'oqse') {
-                    result = safeValidateOQSEFile(parsed);
-                    typeName = 'OQSE Dataset';
+                    // Sets: errors and warnings of the strict (save/export) validation.
+                    const set = safeValidateOQSEFile(parsed);
+                    const warnings = formatOQSEIssues(set.warnings).map((w) => `Warning: ${w}`);
+                    if (set.success) {
+                        showResult(true, warnings.length
+                            ? `The OQSE set is valid, with ${warnings.length} warning(s):<br>${warnings.map(esc).join('<br>')}`
+                            : 'The OQSE set is fully valid according to the specification.');
+                    } else {
+                        const errors = formatOQSEIssues(set.errors);
+                        showResult(false, `Found ${errors.length} error(s) in the OQSE set:`, [...errors, ...warnings]);
+                    }
+                    return;
                 } else if (type === 'manifest') {
                     result = safeValidateOQSEManifest(parsed);
                     typeName = 'OQSE Manifest';
