@@ -147,6 +147,16 @@ Dotčené soubory obvykle: `packages/oqse/oqse*.md` (spec), `src/oqse.ts` (typy)
 - [x] Navíc: `rtl` z jazyka; Civhrad `features: []`; ukázková sada poznámek deklaruje
       `syntax-highlighting` (detekce našla blok ` ```bash `).
 
+### Část 7.5 – Hry bez otázek
+
+- [x] OQSEM: `capabilities` (výchozí `{}`) a `actions` (výchozí `["render"]`) nepovinné;
+      bez `types` aplikace nezpracovává položky (kompatibilní jen s prázdnou sadou).
+      Pravidlo: co se v čase mění (`version`, `protocol`), zůstává povinné.
+- [x] Memizy: `appSpecific.memizy.set` = `required` / `optional` / `none`; bez sady hra dostane
+      prázdnou sadu (`createEmptySet`); `required` / `optional` bez `types` = chyba.
+- [x] Play: hostitel i Lab přeskočí výběr sady (`none`) nebo nabídnou „Bez otázek“
+      (`optional`); Civhrad `set: "none"`; návod; testy.
+
 ### Část 8 – Přísnost pravidel
 
 - [ ] Spec: UUID MUST platné, SHOULD v7; `altText` – při načtení varování a doplnění,

@@ -219,17 +219,18 @@ describe('Manifest Validation Schemas', () => {
     expect(wildcardOnly.success).toBe(true);
   });
 
-  it('ManifestCapabilitiesSchema: requires non-empty types for render action', () => {
-    const missingTypes = ManifestCapabilitiesSchema.safeParse({
-      actions: ['render'],
-    });
-    expect(missingTypes.success).toBe(false);
+  it('ManifestCapabilitiesSchema: without types the application processes no items; actions default to render', () => {
+    expect(ManifestCapabilitiesSchema.safeParse({ actions: ['render'] }).success).toBe(true);
+    expect(ManifestCapabilitiesSchema.safeParse({ actions: ['render'], types: [] }).success).toBe(true);
+    const defaults = ManifestCapabilitiesSchema.safeParse({});
+    expect(defaults.success && defaults.data.actions).toEqual(['render']);
+    expect(ManifestCapabilitiesSchema.safeParse({ actions: [] }).success).toBe(false);
+  });
 
-    const emptyTypes = ManifestCapabilitiesSchema.safeParse({
-      actions: ['render'],
-      types: [],
-    });
-    expect(emptyTypes.success).toBe(false);
+  it('OQSEManifestSchema: capabilities may be omitted (a game without study sets)', () => {
+    const result = OQSEManifestSchema.safeParse({ version: '1.0', id: 'https://example.com/game', appName: 'Game' });
+    expect(result.success).toBe(true);
+    expect(result.success && result.data.capabilities.actions).toEqual(['render']);
   });
 
   it('ManifestCapabilitiesSchema: allows missing types for validate-only action', () => {

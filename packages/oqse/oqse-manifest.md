@@ -98,14 +98,14 @@ Applications MUST declare their capabilities in a standardized JSON format, know
 | `studyMode` | string | No | Enum indicating the application's primary experience type. MUST be one of: `"game"` (entertainment-first; gameplay mechanics take priority over traditional study), `"fun"` (balanced blend of interactivity and learning), `"drill"` (maximally focused, distraction-free repetition). Helps host environments and users choose an appropriate plugin for their goals. If absent, no assumption is made. See `questionDensity` for a complementary signal about quiz frequency within the experience. |
 | `questionDensity` | string | No | Enum describing the ratio of quiz items relative to non-question game elements. MUST be one of: `"low"` (questions appear rarely, gameplay dominates), `"medium"` (questions and gameplay are roughly balanced), `"high"` (nearly every interaction is a question). Primarily meaningful for plugins with `studyMode: "game"` or `"fun"`. If the plugin declares `studyMode: "drill"`, host environments SHOULD treat `questionDensity` as `"high"` regardless of the declared value. If absent, no assumption is made. See `studyMode` for the primary classification. |
 | `appSpecific` | object | No | Object for application-specific metadata not covered by the standard fields. Top-level keys in this object MUST be namespaced by the application identifier (e.g., `"memizy"`) to prevent collisions between applications (e.g., `{ "memizy": { "editorState": {...} } }`). Applications declaring custom `x-` features SHOULD document their semantics here so that host environments can surface that information. Other applications MUST ignore this object. |
-| `capabilities` | object | Yes | Object defining application's capabilities. Extends **FeatureProfile** (adds `types` and `assets`). |
+| `capabilities` | object | No | Object defining application's capabilities. Extends **FeatureProfile** (adds `actions`, `types` and `assets`). Default: `{}` (with the defaults of its fields). |
 
 ### Capabilities Object (extends FeatureProfile)
 
 | Key | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
-| `actions` | string[] | Yes | Array of actions the application can perform on supported types (e.g., `["render", "edit"]`). MUST contain at least one action from the [Action Registry](#action-registry). Custom actions MAY be declared using the `x-` prefix (e.g., `"x-preview"`). |
-| `types` | string[] | Conditional | Array of OQSE item types the application supports (e.g., `["flashcard", "mcq-single"]`). Use `["*"]` to declare support for all item types. **Required** (at least one type or `["*"]`) when `actions` includes `render` or `edit`; MAY be omitted for `validate`, `import`, or `export`-only applications (though declaring `["*"]` is recommended). An empty array `[]` MUST be treated as `null` (no types declared); such a manifest would fail the `render`/`edit` rule above. See [Wildcard and Null Semantics](#wildcard-and-null-semantics). |
+| `actions` | string[] | No | Array of actions the application can perform on supported types (e.g., `["render", "edit"]`). If present, it MUST contain at least one action from the [Action Registry](#action-registry). Custom actions MAY be declared using the `x-` prefix (e.g., `"x-preview"`). Default: `["render"]`. |
+| `types` | string[] | No | Array of OQSE item types the application supports (e.g., `["flashcard", "mcq-single"]`). Use `["*"]` to declare support for all item types. An application that processes no items (e.g., a game that does not use study sets) omits `types` or declares `[]` (treated as `null`, see [Wildcard and Null Semantics](#wildcard-and-null-semantics)); it is then compatible only with sets without items. |
 | `assets` | object | No | Map of asset categories (`image`, `audio`, `video`, `model`) to arrays of supported MIME types. If `assets` is omitted entirely, the application declares no media support (equivalent to all categories being `null`). See [Wildcard and Null Semantics](#wildcard-and-null-semantics). |
 | `features` | string[] | No | **(Inherited)** Array of supported features from the **Official Feature Registry** and/or custom `x-` prefixed extensions. See [Extension Rules](#extension-rules). |
 | `latexPackages` | string[] | No | **(Inherited)** Array of supported LaTeX packages. |
@@ -152,7 +152,7 @@ Properties defined in `itemProperties` and `metaProperties` are interpreted cont
 
 Before an application attempts to process a set, it MUST perform a compatibility check (reference implementation: `checkCompatibility` in `@memizy/oqse`):
 
-1.  **Item Type Check:** If the set contains an item of type `X`, the application MUST have `X` in its `types` array, or declare `["*"]` as `types`. This check applies equally to `x-` prefixed custom types.
+1.  **Item Type Check:** If the set contains an item of type `X`, the application MUST have `X` in its `types` array, or declare `["*"]` as `types`. This check applies equally to `x-` prefixed custom types. An application without `types` is compatible only with a set without items.
 2.  **Asset Check:** For each asset used in the set, the application MUST either list its MIME type explicitly in the corresponding `capabilities.assets` category (e.g., `"image/webp"` in `capabilities.assets.image`) or declare `["*"]` for that asset category. If `capabilities.assets` is absent, or the relevant category key is `null` or `[]`, that asset category is not supported.
 3.  **OQSE Version Check:** If the application declares `minOqseVersion`, the host MUST verify that the OQSE file's `version` is greater than or equal to it. If `maxOqseVersion` is declared, the host MUST verify that the file's `version` does not exceed it. A host MUST NOT load the set into the application if the version check fails; it MUST inform the user of the incompatibility.
 4.  **Feature Profile Check:** The set's [effective requirements](./oqse.md#detecting-features-from-content) (declared and detected features) are compared with `capabilities`: features and LaTeX packages the application does not support are shown by the [fallbacks](./oqse.md#fallbacks); `itemProperties` and `metaProperties` the application does not support are only reported.
@@ -178,8 +178,8 @@ This section is the single reference for all constraints on OQSEM fields. For th
 
 ### Required Fields
 
-- `version`, `id`, `appName`, and `capabilities` MUST be present. A manifest missing any of these MUST be rejected.
-- `capabilities.actions` MUST be present and non-empty. A manifest with no declared actions is inoperable.
+- `version`, `id` and `appName` MUST be present. A manifest missing any of these MUST be rejected.
+- `capabilities` and `capabilities.actions` MAY be omitted (defaults: `{}` and `["render"]`). If `capabilities.actions` is present, it MUST NOT be empty.
 
 ### Root Field Constraints
 
@@ -224,13 +224,11 @@ This section is the single reference for all constraints on OQSEM fields. For th
 For the full semantics of the capabilities object, see [Capabilities Object](#capabilities-object-extends-featureprofile) and [Wildcard and Null Semantics](#wildcard-and-null-semantics).
 
 **`capabilities.actions`:**
-- MUST contain at least one value from the [Action Registry](#action-registry).
+- If present, MUST contain at least one value from the [Action Registry](#action-registry). If absent, the application renders items (`["render"]`).
 - Values that are not in the Action Registry and do not carry an `x-` prefix SHOULD trigger a warning; a host MAY reject the manifest.
-- If `render` or `edit` is declared in `actions`, then `types` MUST also be declared and non-null (see below).
 
 **`capabilities.types`:**
-- If `render` or `edit` is in `actions`, at least one type or `["*"]` MUST be declared; a null or empty result makes the manifest inoperable for its declared purpose and MUST be reported as an error.
-- `[]` MUST be treated identically to `null` per [Wildcard and Null Semantics](#wildcard-and-null-semantics).
+- If absent, `null` or `[]` (see [Wildcard and Null Semantics](#wildcard-and-null-semantics)), the application processes no items: it is compatible only with sets without items (e.g., a game that does not use study sets).
 - `["*"]` is valid and declares support for all item types.
 - Custom type values MUST use the `x-` prefix.
 

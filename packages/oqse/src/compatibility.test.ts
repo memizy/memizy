@@ -54,6 +54,12 @@ describe('checkCompatibility', () => {
     expect(report).toMatchObject({ level: 'simplified', compatible: true, missingFeatures: ['markdown', 'latex'], missingLatexPackages: ['mhchem'] });
   });
 
+  it('an application without types is compatible only with a set without items', () => {
+    const game = { version: '1.0', id: 'https://example.com/game', appName: 'Game' } as unknown as OQSEManifest;
+    expect(checkCompatibility(file, game).level).toBe('incompatible');
+    expect(checkCompatibility({ ...file, items: [], meta: { ...file.meta, assets: undefined, requirements: undefined } }, game).level).toBe('full');
+  });
+
   it('treats [] like null and cannot verify assets without mimeType', () => {
     const report = checkCompatibility(file, manifest({ types: ['*'], assets: { image: [], audio: ['audio/mpeg'] }, features: ['markdown', 'latex'], latexPackages: ['mhchem'] }));
     expect(report.unsupportedAssets.map((a) => a.path)).toEqual(['meta.assets.map']);

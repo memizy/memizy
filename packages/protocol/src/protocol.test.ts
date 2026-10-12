@@ -157,6 +157,7 @@ describe('plugin manifest', () => {
     const solo = safeParsePluginManifest(manifest({ protocol: '1.0', modes: { solo: {} } }));
     expect(solo.success && solo.runtime).toEqual({
       protocol: '1.0',
+      set: 'required',
       solo: true,
       multiplayer: null,
       settings: [],
@@ -179,7 +180,9 @@ describe('plugin manifest', () => {
   it('keeps unknown keys of the original manifest', () => {
     const data = manifest({ protocol: '1.0', modes: { solo: {} }, futureKey: 1 }, { registry: { isStandaloneFile: true } });
     const result = safeParsePluginManifest(data);
-    expect(result.success && result.manifest).toBe(data);
+    // A copy with the OQSEM defaults applied; every key of the original is kept.
+    expect(result.success && result.manifest).toEqual(data);
+    expect(result.success && (result.manifest as unknown as { registry: unknown }).registry).toEqual({ isStandaloneFile: true });
   });
 
   it.each([
@@ -256,5 +259,29 @@ describe('setting modes (RC2)', () => {
     const defs = [solo, both] as { id: string; modes?: string[] }[];
     expect(settingsForMode(defs, 'solo').map((d) => d.id)).toEqual(['enemy', 'time']);
     expect(settingsForMode(defs, 'multiplayer').map((d) => d.id)).toEqual(['time']);
+  });
+});
+
+describe('games without study sets (appSpecific.memizy.set)', () => {
+  const base = { version: '1.0', id: 'https://example.com/game', appName: 'Game' };
+  const memizy = (extra: Record<string, unknown> = {}) => ({ protocol: '1.0', modes: { solo: {} }, ...extra });
+
+  it('a game with set "none" needs no capabilities', () => {
+    const result = safeParsePluginManifest({ ...base, appSpecific: { memizy: memizy({ set: 'none' }) } });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.runtime.set).toBe('none');
+      expect(result.manifest.capabilities.actions).toEqual(['render']);
+    }
+  });
+
+  it('a game that needs a set must declare its item types', () => {
+    for (const set of [undefined, 'required', 'optional']) {
+      const result = safeParsePluginManifest({ ...base, appSpecific: { memizy: memizy(set ? { set } : {}) } });
+      expect(result.success).toBe(false);
+      if (!result.success) expect(result.errors.join(' ')).toMatch(/"set": "none"/);
+    }
+    const quiz = safeParsePluginManifest({ ...base, capabilities: { types: ['mcq-single'] }, appSpecific: { memizy: memizy() } });
+    expect(quiz.success && quiz.runtime.set).toBe('required');
   });
 });

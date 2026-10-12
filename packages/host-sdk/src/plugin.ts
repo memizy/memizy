@@ -10,7 +10,7 @@ import {
   type PluginManifest,
   type PluginRuntime,
 } from '@memizy/protocol';
-import { checkCompatibility, type CompatibilityReport, type OQSEFile, type OQSEAnyItem, type OQSEMeta } from '@memizy/oqse';
+import { OQSE_VERSION, checkCompatibility, generateUUID, type CompatibilityReport, type OQSEFile, type OQSEAnyItem, type OQSEMeta } from '@memizy/oqse';
 
 export interface LoadedPlugin {
   /** The plugin HTML (rendered with `srcdoc`). */
@@ -55,9 +55,9 @@ export interface PreparedSet {
  * and orders are shuffled once for the session (SPEC 4.4).
  */
 export function prepareSetForPlugin(file: OQSEFile, manifest: PluginManifest, options: { seed?: string } = {}): PreparedSet {
-  const types = manifest.capabilities.types;
-  const all = !types || types.includes('*');
-  const items = all ? file.items : file.items.filter((item) => (types as string[]).includes(item.type));
+  // Without `types` the plugin processes no items (a game without questions).
+  const types = (manifest.capabilities?.types ?? []) as string[];
+  const items = types.includes('*') ? file.items : file.items.filter((item) => types.includes(item.type));
   const display = prepareDisplaySet({ meta: file.meta, items }, options.seed);
   return {
     set: display.set,
@@ -65,4 +65,13 @@ export function prepareSetForPlugin(file: OQSEFile, manifest: PluginManifest, op
     compatibility: checkCompatibility(file, manifest),
     skippedItems: file.items.length - items.length,
   };
+}
+
+/**
+ * An empty study set for a plugin that plays without one (`appSpecific.memizy.set` is
+ * `"none"`, or `"optional"` and the host chose no set). The plugin gets `items: []`.
+ */
+export function createEmptySet(meta: { title: string; language: string }): OQSEFile {
+  const now = new Date().toISOString();
+  return { version: OQSE_VERSION, meta: { id: generateUUID(), title: meta.title, language: meta.language, createdAt: now, updatedAt: now }, items: [] };
 }

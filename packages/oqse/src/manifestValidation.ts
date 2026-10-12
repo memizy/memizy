@@ -186,29 +186,22 @@ export const ManifestAssetsSchema = z.object({
  */
 export const ManifestCapabilitiesSchema = FeatureProfileSchema.extend({
   /**
-   * Supported OQSE actions (at least one required).
-   * Either official action names or `x-` vendor prefixes.
+   * Supported OQSE actions (if present, at least one). Official action names or `x-`
+   * vendor prefixes. Default: `["render"]`.
    */
   actions: z
     .array(OQSEActionSchema)
-    .min(1, 'Application must support at least one action'),
+    .min(1, 'Application must support at least one action')
+    .default(['render']),
 
-  /** Item types supported by this application. Uses `['*']` for all types. */
+  /**
+   * Item types supported by this application (`['*']` for all). Absent, `null` or `[]`:
+   * the application processes no items (e.g. a game without study sets).
+   */
   types: wildcardOrExplicit(OQSEItemTypeSchema).optional(),
 
   /** Media asset categories and MIME types the application can handle. */
   assets: ManifestAssetsSchema.optional(),
-}).superRefine((data, ctx) => {
-  const needsTypes = data.actions.includes('render') || data.actions.includes('edit');
-  if (needsTypes) {
-    if (!Array.isArray(data.types) || data.types.length === 0) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'types array MUST be declared and non-empty when actions include "render" or "edit"',
-        path: ['types'],
-      });
-    }
-  }
 });
 
 // ============================================================================
@@ -221,7 +214,7 @@ export const ManifestCapabilitiesSchema = FeatureProfileSchema.extend({
  * Validated constraints beyond syntax:
  * - `minOqseVersion` <= `maxOqseVersion` when both are present
  * - `version` is an OQSEM 1.x version (MAJOR.MINOR)
- * - `capabilities.actions` is non-empty (enforced by inner schema)
+ * - `capabilities` (default `{}`) and `capabilities.actions` (default `["render"]`) may be omitted
  */
 export const OQSEManifestSchema = z
   .object({
@@ -254,7 +247,7 @@ export const OQSEManifestSchema = z
     // --- Capabilities ---
 
     /** Declares all features, item types, and media assets the app handles. */
-    capabilities: ManifestCapabilitiesSchema,
+    capabilities: ManifestCapabilitiesSchema.prefault({}),
 
     // --- Plugin / Embedding ---
 

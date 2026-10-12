@@ -6,6 +6,7 @@
 
 import { createStore, del, entries, set as idbSet } from 'idb-keyval';
 import { loadOQSEFile, parseMarkdownSet, formatOQSEIssues, type OQSEFile, type OQSEIssue } from '@memizy/oqse';
+import { createEmptySet } from '@memizy/host-sdk';
 import animals from '@/data/sets/animals.oqse.json';
 import workshop from '@/data/sets/workshop.oqse.json';
 import generalKnowledge from '@/data/sets/general-knowledge.oqse.json';
@@ -109,4 +110,20 @@ export async function importSetFromUrl(url: string): Promise<LoadSetResult> {
 
 export async function removeStoredSet(key: string): Promise<void> {
   await del(key, store).catch(() => {});
+}
+
+/** Key of the empty set: a game without questions (`set: "none"`) or "play without questions". */
+export const NO_SET_KEY = 'none';
+
+const emptySets = new Map<string, StudySet>();
+
+/** The empty set (one per title and language, so it stays the same object). */
+export function noSet(title: string, language: string): StudySet {
+  const key = `${title}|${language}`;
+  let set = emptySets.get(key);
+  if (!set) {
+    set = { key: NO_SET_KEY, source: 'builtin', title, file: createEmptySet({ title, language }), warnings: [] };
+    emptySets.set(key, set);
+  }
+  return set;
 }

@@ -648,3 +648,13 @@ export function isVersionCompatible(fileVersion: string, manifest: OQSEManifest)
 }
 
 
+
+/**
+ * A manifest with the defaults of the specification applied (`capabilities` → `{}`,
+ * `capabilities.actions` → `["render"]`). Other keys, also unknown ones, are kept.
+ */
+export function withManifestDefaults<T extends { capabilities?: Partial<ManifestCapabilities> }>(manifest: T): T & { capabilities: ManifestCapabilities } {
+  const capabilities = { ...(manifest.capabilities ?? {}) } as ManifestCapabilities;
+  if (!Array.isArray(capabilities.actions) || capabilities.actions.length === 0) capabilities.actions = ['render'];
+  return { ...manifest, capabilities };
+}

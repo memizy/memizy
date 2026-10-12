@@ -692,7 +692,8 @@ function readManifest(doc: Document): ManifestInfo {
     id: typeof data?.id === 'string' ? data.id : fallback.id,
     version: typeof data?.pluginVersion === 'string' ? data.pluginVersion : '0.0.0',
     runtime,
-    types: Array.isArray(data?.capabilities?.types) ? data.capabilities.types : null,
+    // A game without questions gets no sample items.
+    types: Array.isArray(data?.capabilities?.types) ? data.capabilities.types : runtime?.set === 'none' ? [] : null,
   };
 }
 

@@ -58,6 +58,9 @@ const en: typeof cs = {
       sdkCdn: 'CDN (published)',
     },
     data: {
+      noSet: 'Without questions',
+      noSetNeeded: 'This game uses no questions, no set to choose.',
+      withoutSet: 'Without a set',
       builtin: 'Sample sets',
       mine: 'My sets',
       compatible: 'The game handles {usable} of {total} items',
@@ -131,6 +134,8 @@ const en: typeof cs = {
     },
   },
   host: {
+    noSet: 'Without questions',
+    noSetNeeded: 'This game uses no questions, no set to choose.',
     title: 'Host a game',
     replaced: 'The room is open in another window',
     replacedText: 'Another tab or device controls the game now. You can take it over here.',

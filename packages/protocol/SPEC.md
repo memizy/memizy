@@ -71,6 +71,7 @@ The OQSEM part describes **content** (item types, assets, features) and is used 
 | Key | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
 | `protocol` | string | Yes | Minimum protocol version the plugin needs, `MAJOR.MINOR` (e.g. `"1.0"`). |
+| `set` | `"required"` \| `"optional"` \| `"none"` | No | Whether the plugin uses a study set. Default `"required"`: the host offers sets and checks compatibility. `"optional"`: the host also offers playing without a set. `"none"`: a game without questions – the host offers no set, checks nothing and reports no incompatibility. Without a set, the plugin gets an empty set (`items: []`, `meta` made by the host, e.g. with the plugin's name). `"required"` and `"optional"` need `capabilities.types`; `"none"` needs none. |
 | `modes` | object | Yes | At least one of `solo`, `multiplayer`. |
 | `modes.solo` | object | No | Present = the plugin supports single-player. Empty object for now. |
 | `modes.multiplayer.players` | `{min, max, recommended?}` | Yes (in multiplayer) | Player count limits (players, not counting a presenter). `1 ≤ min ≤ max ≤ 200`; `recommended` is a hint for the lobby. |
@@ -476,7 +477,7 @@ What was decided and why, and what is **reserved** (name and intent fixed, not i
 
 ## Changelog
 
-* **1.0 (unreleased):** public items (4.4) also lose `sources[].quote`; custom `x-` items lose `solution`, `explanation` and `incorrectFeedback` and get `answerHidden: true` (they were passed unchanged); `hints` stay public. `recordAnswer.answer` follows OQSE Answer Formats (a flashcard answer is a self-rating 1–4; `ui.question` offers four ratings). OQSE 1.0 sets and OQSEM 1.0 manifests (`"version": "1.0"`; other MAJOR versions are not read as 1.x). A host may support several protocol MAJOR versions at once (4.3); supporting older ones is a SHOULD instead of a MUST.
+* **1.0 (unreleased):** `appSpecific.memizy.set` (`required` / `optional` / `none`): games without questions; OQSEM `capabilities` and `actions` may be omitted. Public items (4.4) also lose `sources[].quote`; custom `x-` items lose `solution`, `explanation` and `incorrectFeedback` and get `answerHidden: true` (they were passed unchanged); `hints` stay public. `recordAnswer.answer` follows OQSE Answer Formats (a flashcard answer is a self-rating 1–4; `ui.question` offers four ratings). OQSE 1.0 sets and OQSEM 1.0 manifests (`"version": "1.0"`; other MAJOR versions are not read as 1.x). A host may support several protocol MAJOR versions at once (4.3); supporting older ones is a SHOULD instead of a MUST.
 * **RC1 (2026-10-04):** first release candidate.
 * **RC2 (2026-10-06):** `SettingDefinition.modes`; the host may show solo settings before the start (section 3.3). Additive: RC1 plugins and hosts keep working.
 * **RC4 (2026-10-07):** OQSE 0.3 sets (choices with IDs; the RC3 `correctOrder` / `correctMatches` display fields are gone because answers refer to IDs); `recordAnswer.answer` and generated items (5.1); services (5.3, `service`, `InitPayload.services`, `SERVICE_UNAVAILABLE`); pauses (`SessionClock`); `permissions` with a Content Security Policy and device grants (8.4); decisions and reservations (section 10). Additive for the protocol except the OQSE version: plugins must read choices (`option.text`, `option.id`).

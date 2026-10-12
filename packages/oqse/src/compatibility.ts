@@ -5,7 +5,7 @@
 
 import type { MediaObject, OQSEFile } from './oqse';
 import type { OQSEManifest } from './manifest';
-import { isVersionCompatible } from './manifest';
+import { isVersionCompatible, withManifestDefaults } from './manifest';
 import { effectiveFeatures } from './features';
 
 export interface UnsupportedAsset {
@@ -49,7 +49,7 @@ export interface CompatibilityReport {
  * A host can use `unsupportedTypes` for graceful degradation (e.g., a partial session).
  */
 export function checkCompatibility(file: OQSEFile, manifest: OQSEManifest): CompatibilityReport {
-  const caps = manifest.capabilities;
+  const caps = withManifestDefaults(manifest).capabilities;
   const supports = (list: readonly string[] | null | undefined, value: string) =>
     !!list && list.length > 0 && (list.includes('*') || list.includes(value));
 

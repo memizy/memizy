@@ -13,6 +13,8 @@ export type PluginView = 'solo' | 'board' | 'controller' | 'settings';
 /** The runtime part with all defaults applied – what hosts work with. */
 export interface PluginRuntime {
   protocol: string;
+  /** Whether the plugin uses a study set: `none` = a game without questions. */
+  set: 'required' | 'optional' | 'none';
   solo: boolean;
   multiplayer: null | {
     players: { min: number; max: number; recommended?: number };
@@ -65,6 +67,7 @@ export function toRuntime(memizy: MemizyRuntimeManifest): PluginRuntime {
 
   return {
     protocol: memizy.protocol,
+    set: memizy.set ?? 'required',
     solo: memizy.modes.solo !== undefined,
     multiplayer,
     settings: memizy.settings ?? [],

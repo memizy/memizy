@@ -118,9 +118,11 @@ export async function runLabTests(options: LabTestOptions): Promise<LabTestResul
   const usable = prepareSetForPlugin(options.set, options.plugin.manifest).set.items.length;
 
   results.push(
-    usable > 0
-      ? result('data', `The study set has ${usable} items the plugin declares.`, [])
-      : result('data', 'The study set has no items of the types the plugin declares.', ['Choose another set or declare more item types in the manifest.'], 'warn'),
+    runtime.set === 'none'
+      ? result('data', 'The game uses no study set ("set": "none").', [])
+      : usable > 0
+        ? result('data', `The study set has ${usable} items the plugin declares.`, [])
+        : result('data', 'The study set has no items of the types the plugin declares.', ['Choose another set or declare more item types in the manifest.'], 'warn'),
   );
 
   if (runtime.solo) {

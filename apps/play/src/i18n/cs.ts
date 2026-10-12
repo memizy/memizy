@@ -56,6 +56,9 @@ export default {
       sdkCdn: 'CDN (publikované)',
     },
     data: {
+      noSet: 'Bez otázek',
+      noSetNeeded: 'Tahle hra nepoužívá otázky, sadu nevybíráš.',
+      withoutSet: 'Bez sady',
       builtin: 'Ukázkové sady',
       mine: 'Moje sady',
       compatible: '{usable} z {total} položek tahle hra umí',
@@ -129,6 +132,8 @@ export default {
     },
   },
   host: {
+    noSet: 'Bez otázek',
+    noSetNeeded: 'Tahle hra nepoužívá otázky, sadu nevybíráš.',
     title: 'Hostit hru',
     replaced: 'Místnost je otevřená v jiném okně',
     replacedText: 'Hru teď řídí jiná karta nebo jiné zařízení. Můžeš ji převzít sem.',

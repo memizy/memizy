@@ -37,7 +37,7 @@ import { RELAY_URL } from '@/lib/config';
 import { generateName } from '@/lib/names';
 import { persisted } from '@/lib/persisted';
 import { EXAMPLE_PLUGINS, fetchPluginHtml, withSdkSource } from '@/lib/plugins';
-import { BUILTIN_SETS, loadStoredSets, type StudySet } from '@/lib/sets';
+import { BUILTIN_SETS, NO_SET_KEY, loadStoredSets, noSet, type StudySet } from '@/lib/sets';
 import { PersistentSnapshotStorage, clearHostGame, loadHostGame, saveHostGame } from '@/lib/hostGame';
 import type { OQSEFile } from '@memizy/oqse';
 
@@ -110,7 +110,14 @@ function endSession(): void {
 const sets = shallowRef<StudySet[]>(BUILTIN_SETS);
 const setKey = persisted('host-set', typeof route.query.set === 'string' ? route.query.set : BUILTIN_SETS[0].key);
 if (typeof route.query.set === 'string') setKey.value = route.query.set;
-const studySet = computed(() => sets.value.find((s) => s.key === setKey.value) ?? null);
+/** Whether the chosen game uses a set (`appSpecific.memizy.set`); `none` = a game without questions. */
+const setMode = computed(() => plugin.value?.runtime.set ?? 'required');
+const emptySet = computed(() => noSet(t('host.noSet'), locale.value));
+const studySet = computed(() =>
+  setMode.value === 'none' || (setMode.value === 'optional' && setKey.value === NO_SET_KEY)
+    ? emptySet.value
+    : (sets.value.find((s) => s.key === setKey.value) ?? null),
+);
 
 const choice = persisted<PluginChoice>('host-plugin', { kind: 'example', key: EXAMPLE_PLUGINS[0].key });
 if (route.query.plugin === 'lab') choice.value = { kind: 'lab' };
@@ -288,7 +295,7 @@ const playerCount = computed(() => connectedPlayers.value.length + (hostAs.value
 const blocker = computed(() => {
   if (!room.value || roomStatus.value !== 'online') return t('host.status.connecting');
   if (!plugin.value || !studySet.value || !multi.value) return t('host.needSetup');
-  if (!prepared.value?.set.items.length) return t('host.noItems', { types: (plugin.value.manifest.capabilities.types as string[] | undefined)?.join(', ') ?? '' });
+  if (!prepared.value?.set.items.length && studySet.value.key !== NO_SET_KEY) return t('host.noItems', { types: (plugin.value.manifest.capabilities.types as string[] | undefined)?.join(', ') ?? '' });
   const { min, max } = multi.value.players;
   if (playerCount.value < min || playerCount.value > max) return t('host.playerCount', { min, max, n: playerCount.value });
   if (!settingsValid.value) return t('settingsForm.invalid');
@@ -566,10 +573,12 @@ const statusClass = computed(() =>
         <div class="flex flex-col gap-5">
           <section class="card p-5">
             <h2 class="card-title"><BookOpenIcon class="size-4 text-text-gray" /> {{ t('host.set') }}</h2>
-            <select v-model="setKey" class="input mt-3">
+            <p v-if="setMode === 'none'" class="mt-3 text-sm text-text-gray">{{ t('host.noSetNeeded') }}</p>
+            <select v-else v-model="setKey" class="input mt-3">
+              <option v-if="setMode === 'optional'" :value="NO_SET_KEY">{{ t('host.noSet') }}</option>
               <option v-for="s in sets" :key="s.key" :value="s.key">{{ s.title }}</option>
             </select>
-            <p v-if="studySet" class="mt-2 flex flex-wrap gap-x-3 text-xs">
+            <p v-if="studySet && studySet.key !== NO_SET_KEY" class="mt-2 flex flex-wrap gap-x-3 text-xs">
               <span class="text-emerald-700">✓ {{ t('host.setSummary', { total: studySet.file.items.length }) }}</span>
               <span v-if="prepared" :class="prepared.set.items.length ? 'text-emerald-700' : 'text-accent-orange-dark'">
                 {{ t('host.compatible', { n: prepared.set.items.length }) }}

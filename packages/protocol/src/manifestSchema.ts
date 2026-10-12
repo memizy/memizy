@@ -5,7 +5,7 @@
  */
 
 import { z } from 'zod';
-import { OQSEManifestSchema, formatOQSEErrors, type OQSEManifest } from '@memizy/oqse';
+import { OQSEManifestSchema, formatOQSEErrors, withManifestDefaults, type OQSEManifest } from '@memizy/oqse';
 import { SettingDefinitionSchema } from './settingsSchema';
 import { extractManifestFromHtml, toRuntime, type PluginRuntime } from './pluginRuntime';
 
@@ -57,6 +57,8 @@ export const PluginPermissionsSchema = z.looseObject({
 export const MemizyRuntimeSchema = z
   .looseObject({
     protocol: ProtocolVersionSchema,
+    /** Whether the plugin uses a study set (default "required"; "none" = a game without questions). */
+    set: z.enum(['required', 'optional', 'none']).optional(),
     modes: z.looseObject({
       solo: z.looseObject({}).optional(),
       multiplayer: MultiplayerModeSchema.optional(),
@@ -123,8 +125,13 @@ export function safeParsePluginManifest(data: unknown): PluginManifestResult {
   }
 
   if (errors.length > 0) return { success: false, errors };
-  const manifest = data as PluginManifest;
-  return { success: true, manifest, runtime: toRuntime(manifest.appSpecific.memizy) };
+  const manifest = withManifestDefaults(data as PluginManifest);
+  const runtime = toRuntime(manifest.appSpecific.memizy);
+  const types = manifest.capabilities.types;
+  if (runtime.set !== 'none' && (!Array.isArray(types) || types.length === 0)) {
+    return { success: false, errors: ['capabilities.types: Declare the item types the game shows, or "set": "none" in appSpecific.memizy for a game without questions.'] };
+  }
+  return { success: true, manifest, runtime };
 }
 
 /** Error thrown by {@link parsePluginManifest}. */

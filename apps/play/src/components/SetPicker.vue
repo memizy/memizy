@@ -1,15 +1,15 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, shallowRef } from 'vue';
+import { computed, onMounted, ref, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { ArrowUpTrayIcon, TrashIcon } from '@heroicons/vue/20/solid';
 import type { LoadedPlugin } from '@memizy/host-sdk';
 import AiSetMaker from '@/components/AiSetMaker.vue';
-import { BUILTIN_SETS, importSetFile, importSetFromUrl, loadStoredSets, removeStoredSet, type LoadSetResult, type StudySet } from '@/lib/sets';
+import { BUILTIN_SETS, NO_SET_KEY, importSetFile, importSetFromUrl, loadStoredSets, noSet, removeStoredSet, type LoadSetResult, type StudySet } from '@/lib/sets';
 
 const props = defineProps<{ plugin: LoadedPlugin | null }>();
 const selected = defineModel<string>({ required: true });
 const emit = defineEmits<{ change: [StudySet | null] }>();
-const { t } = useI18n();
+const { t, locale } = useI18n();
 
 // shallowRef: a reactive proxy of a set could not be sent to the game (structuredClone)
 const stored = shallowRef<StudySet[]>([]);
@@ -17,7 +17,10 @@ const url = ref('');
 const errors = ref<string[]>([]);
 const busy = ref(false);
 
-const all = computed(() => [...BUILTIN_SETS, ...stored.value]);
+/** Whether the game uses a set (`appSpecific.memizy.set`). */
+const mode = computed(() => props.plugin?.runtime.set ?? 'required');
+const empty = computed(() => noSet(t('lab.data.noSet'), locale.value));
+const all = computed(() => [...(mode.value === 'required' ? [] : [empty.value]), ...BUILTIN_SETS, ...stored.value]);
 const current = computed(() => all.value.find((s) => s.key === selected.value) ?? null);
 
 function select(key: string): void {
@@ -27,8 +30,15 @@ function select(key: string): void {
 
 onMounted(async () => {
   stored.value = await loadStoredSets();
-  if (!current.value) select(BUILTIN_SETS[0].key);
+  if (mode.value === 'none') select(NO_SET_KEY);
+  else if (!current.value) select(BUILTIN_SETS[0].key);
   else emit('change', current.value);
+});
+
+// A game without questions plays the empty set; back to a real set when the game needs one.
+watch(mode, (now) => {
+  if (now === 'none') select(NO_SET_KEY);
+  else if (!current.value) select(BUILTIN_SETS[0].key);
 });
 
 async function finish(result: LoadSetResult): Promise<void> {
@@ -79,13 +89,15 @@ function coverage(set: StudySet): { usable: number; total: number; unsupported: 
 }
 
 const groups = computed(() => [
+  { label: t('lab.data.withoutSet'), sets: mode.value === 'optional' ? [empty.value] : [] },
   { label: t('lab.data.builtin'), sets: BUILTIN_SETS },
   { label: t('lab.data.mine'), sets: stored.value },
 ]);
 </script>
 
 <template>
-  <div class="flex flex-col gap-3">
+  <p v-if="mode === 'none'" class="text-sm text-text-gray">{{ t('lab.data.noSetNeeded') }}</p>
+  <div v-else class="flex flex-col gap-3">
     <template v-for="group in groups" :key="group.label">
       <div v-if="group.sets.length" class="flex flex-col gap-1.5">
         <div class="section-label">{{ group.label }}</div>
