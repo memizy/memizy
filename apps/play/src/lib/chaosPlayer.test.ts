@@ -12,14 +12,14 @@ afterEach(() => {
 });
 
 const manifest = {
-  version: '0.2',
+  version: '1.0',
   id: 'https://example.com/plugins/chaos-test',
   appName: 'Chaos test',
   capabilities: { actions: ['render'], types: ['mcq-single'] },
   appSpecific: { memizy: { protocol: '1.0', modes: { multiplayer: { players: { min: 1, max: 4 }, hostAs: ['presenter'] } } } },
 };
 const set = loadOQSEFile({
-  version: '0.3',
+  version: '1.0',
   meta: { id: '0192f0c4-7a1e-7c3b-9a52-2f1d8e4b6c00', language: 'cs', title: 'S', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
   items: [{ id: '0192f0c4-7a1e-7c3b-9a52-2f1d8e4b6c01', type: 'mcq-single', question: 'Q', options: [{ id: 'a', text: 'A' }, { id: 'b', text: 'B' }], correctId: 'b' }],
 }).data as OQSEFile;

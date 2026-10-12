@@ -11,7 +11,7 @@ describe('checkAnswer', () => {
     const mcq = item({ type: 'mcq-single', question: 'Q', options: ch('a', 'b'), correctId: 'b' });
     expect(checkAnswer(mcq, 'b')).toBe(true);
     expect(checkAnswer(mcq, 'a')).toBe(false);
-    expect(checkAnswer(mcq, 1)).toBe(false); // positions are not answers in OQSE 0.3
+    expect(checkAnswer(mcq, 1)).toBe(false); // positions are not answers in OQSE
     expect(checkAnswer(mcq, undefined)).toBe(false);
 
     const multi = item({ type: 'mcq-multi', question: 'Q', options: ch('a', 'b', 'c'), correctIds: ['a', 'c'] });

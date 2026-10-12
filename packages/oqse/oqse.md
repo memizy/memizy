@@ -1,4 +1,4 @@
-# OQSE v0.3 Specification (Open Quiz & Study Exchange)
+# OQSE v1.0 Specification (Open Quiz & Study Exchange)
 
 **OQSE** (Open Quiz & Study Exchange) is an open, JSON-based format designed for easy creation, sharing, and importing of study sets. It is designed with emphasis on flexibility, extensibility, semantic interoperability, legal clarity, and backward compatibility.
 
@@ -101,15 +101,15 @@ The root object of an OQSE file consists of 4 keys:
 
 ```json
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@memizy/oqse@0.3/schemas/oqse-v0.3.json",
-  "version": "0.3",
+  "$schema": "https://cdn.jsdelivr.net/npm/@memizy/oqse@1/schemas/oqse-v1.0.json",
+  "version": "1.0",
   "meta": { ... },
   "items": [ ... ]
 }
 ```
 
   * `$schema` (string): **Recommended.** URL reference to the JSON Schema specification for automatic validation.
-  * `version` (string): **Required.** Version of the OQSE specification in `MAJOR.MINOR` format. The current version is `"0.3"`.
+  * `version` (string): **Required.** Version of the OQSE specification in `MAJOR.MINOR` format. The current version is `"1.0"`. See [Versioning and Compatibility](#versioning-and-compatibility).
   * `meta` (object): **Required.** Object containing metadata about the entire set. [See The `meta` Object](#the-meta-object).
   * `items` (array): **Required.** Array containing individual study items. May be empty (e.g., for a template or work-in-progress set). [See Common Item Properties](#common-item-properties-in-items).
 
@@ -1235,8 +1235,8 @@ This optional object (`item.pedagogy`) serves to store advanced metadata about d
 
 ```json
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@memizy/oqse@0.3/schemas/oqse-v0.3.json",
-  "version": "0.3",
+  "$schema": "https://cdn.jsdelivr.net/npm/@memizy/oqse@1/schemas/oqse-v1.0.json",
+  "version": "1.0",
   "meta": {
     "id": "019aa606-cbb5-7b2e-9e61-ac335db1eb4b",
     "title": "Rocket Science Basics 🚀",
@@ -1443,7 +1443,7 @@ A set that contains only `note` items MAY be written as a single Markdown docume
 **Example** (default `noteHeadingLevel: 3`):
 ````markdown
 ---
-oqse: "0.3"
+oqse: "1.0"
 id: 019aa5ec-3daa-796f-9289-01c6214ec2b0
 language: en
 createdAt: 2026-10-01T12:00:00Z
@@ -1490,7 +1490,7 @@ Headings with a level above the set title level are not allowed.
 **Structure:**
 
 1. **YAML frontmatter** (REQUIRED). The file MUST start with a line `---`; the frontmatter ends with the next line `---`. It is a YAML 1.2 mapping:
-    * `oqse` (REQUIRED): the OQSE version (`file.version`), written as a quoted string (e.g., `"0.3"`).
+    * `oqse` (REQUIRED): the OQSE version (`file.version`), written as a quoted string (e.g., `"1.0"`). The [version rules](#versioning-and-compatibility) apply.
     * `noteHeadingLevel` (OPTIONAL): the note heading level `L`, an integer 1–6. Default: `3`.
     * All other keys are the `meta` object, except `description`, which MUST NOT appear in the frontmatter.
 2. **Set title heading** (only when `L ≥ 3`, OPTIONAL): at most one heading of level `L - 2`. It MUST come before all chapters and notes, and only blank lines may precede it. Its text is `meta.title`; if `title` is also in the frontmatter, both MUST be equal. When serializing with `L ≥ 3`, applications MUST write the title as this heading (not in the frontmatter).
@@ -1754,8 +1754,8 @@ This order ensures that:
 **Example of correct order:**
 ```json
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@memizy/oqse@0.3/schemas/oqse-v0.3.json",
-  "version": "0.3",
+  "$schema": "https://cdn.jsdelivr.net/npm/@memizy/oqse@1/schemas/oqse-v1.0.json",
+  "version": "1.0",
   "meta": { ... },
   "items": [ ... ]
 }
@@ -1804,7 +1804,7 @@ To ensure consistent behavior across implementations, specification defines foll
 
 1. **Invalid JSON syntax:** Immediate failure with error message about error position.
 2. **Missing required field in `meta`:** Error with list of all missing fields (`id`, `title`, `language`, `createdAt`, `updatedAt`).
-3. **Invalid `version` value:** If version is not supported or missing.
+3. **Missing, malformed or unsupported `version`:** a missing or malformed value, or a MAJOR version the application does not support (an application MAY offer best-effort loading instead, see [Versioning and Compatibility](#versioning-and-compatibility)).
 
 ### Recoverable Errors (Application continues with warning)
 
@@ -1850,8 +1850,8 @@ To ensure consistent behavior across implementations, specification defines foll
 - Missing `altText` for image: generate from filename or use placeholder
 
 **For versions:**
-- Higher MAJOR version: display warning and offer to continue in "best effort" mode
-- Higher MINOR version: safely ignore new keys
+- Unsupported MAJOR version (including pre-release 0.x): see [Versioning and Compatibility](#versioning-and-compatibility)
+- Higher MINOR version: ignore unknown keys and preserve them
 
 ### Structured Error Log
 
@@ -1892,16 +1892,21 @@ Applications may define custom item types using `x-` prefix (e.g., `x-code-chall
 
 ### Versioning and Compatibility
 
-**Semantic Versioning:** OQSE uses format `MAJOR.MINOR` (e.g., `1.0`, `2.0`, `2.1`).
+These rules apply to OQSE sets and equally to [OQSEM manifests](./oqse-manifest.md) and [OQSEP progress files](./oqse-progress.md). ([OQSEH headers](./oqse-header.md) carry no version of their own.)
 
-  * **MAJOR change:** Fundamental breaking changes (e.g., change of required fields, type removal).
-  * **MINOR change:** Addition of new optional fields or types (backward compatible).
+**Version format:** `MAJOR.MINOR` (regex `^\d+\.\d+$`, e.g., `1.0`, `1.3`, `2.0`). Both parts are non-negative integers and are compared numerically (`1.10` is greater than `1.9`).
+
+  * **MINOR change** (e.g., 1.0 → 1.1): only additions – new optional fields, item types, feature flags or registry values. The meaning of existing keys and their defaults never changes, so every 1.x application can read every 1.y file.
+  * **MAJOR change** (e.g., 1.x → 2.0): anything that changes the meaning of existing data (removed or renamed fields, other defaults, other rules for checking answers).
+  * **Versions 0.x** were pre-release drafts. Their fields may mean something else than in 1.0 (e.g., other defaults), so they are treated like any other unsupported MAJOR version.
 
 **Rules for applications:**
-  * Application MUST ignore unknown keys (forward compatibility)
-  * Application MUST check the `version` field and apply version-specific handling; the value MUST conform to `MAJOR.MINOR` format (see [OQSEM Root Field Constraints](./oqse-manifest.md#root-field-constraints) for format rules applied equally to OQSE file version and all manifest version fields)
-  * When importing higher MAJOR version: display warning to user
-  * When importing higher MINOR version: safely ignore new keys
+  1. An application supports one or more MAJOR versions and reads files of these versions. Keys it does not know (e.g., from a newer MINOR version) it MUST ignore and, when re-exporting, preserve.
+  2. A file of a MAJOR version the application does not support MUST NOT be read silently as if it were a supported version. The application SHOULD refuse it with a clear message that names the version. Instead, it MAY offer a best-effort load after warning the user, or convert the file if it knows that version.
+  3. A missing or malformed `version` is a critical error.
+  4. An application writes files only in a version it fully supports.
+
+**Reference implementation:** `@memizy/oqse` 1.x reads OQSE 1.x, refuses 0.x sets, and loads sets of a higher MAJOR version in best-effort mode with a warning. Manifests and progress files of a MAJOR version other than 1 are refused.
 
 -----
 
@@ -1963,7 +1968,7 @@ The `@memizy/oqse` npm package provides TypeScript types, `loadOQSEFile` (tolera
 ### JSON Schema
 The JSON Schema describes the structure only; cross-item rules (unique IDs, references, assets, raw HTML) are checked by the reference implementation. Official JSON Schema is available at:
 
-[https://cdn.jsdelivr.net/npm/@memizy/oqse@0.3/schemas/oqse-v0.3.json](https://cdn.jsdelivr.net/npm/@memizy/oqse@0.3/schemas/oqse-v0.3.json)
+[https://cdn.jsdelivr.net/npm/@memizy/oqse@1/schemas/oqse-v1.0.json](https://cdn.jsdelivr.net/npm/@memizy/oqse@1/schemas/oqse-v1.0.json)
 
 ### Recommended Tools
   * **Validators:** Ajv, JSON Schema Validator
@@ -2116,11 +2121,16 @@ OQSE is an open standard. Suggestions for improvements:
 
 -----
 
-**Document Version:** 0.3  
+**Document Version:** 1.0  
 **Last Updated:** October 2026  
 **Documentation License:** CC-BY-SA-4.0
 
 -----
+
+### Version 1.0 (October 2026)
+The first stable version. From now on, 1.x versions only add (see [Versioning and Compatibility](#versioning-and-compatibility)).
+* Version rules for sets, manifests and progress files: applications read the MAJOR versions they support and never read another MAJOR version (including the pre-release 0.x drafts) silently as a supported one.
+* Schema URLs: `https://cdn.jsdelivr.net/npm/@memizy/oqse@1/schemas/oqse-v1.0.json` (and `oqse-manifest-v1.0.json`, `oqse-progress-v1.0.json`, `oqse-header-v1.0.json`).
 
 ### Version 0.3 (October 2026)
 * **Choices with IDs.** Lists the learner selects from or arranges are lists of [choices](#choices-and-answers-by-id) (`{ id, text, explanation? }`), and answers refer to choice IDs instead of positions: `correctIndex` → `correctId`, `correctIndices` → `correctIds`, `sort-items` gets `correctOrder` (items may be listed in any order), `match-pairs` gets `pairs` (and may have distractor matches), `match-complex.connections`, `matrix.correctCells`, `categorize` (`correctCategoryId`) and `diagram-label` (zone `id`, `correctLabelId`) use IDs. `optionExplanations` is replaced by `explanation` on each choice. Answers and progress survive edits of a set, and shuffling needs no remapping.

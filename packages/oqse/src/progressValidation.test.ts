@@ -28,9 +28,16 @@ describe('Progress Validation Schemas', () => {
     }
   });
 
+  it('OQSEProgressSchema: reads OQSEP 1.x only', () => {
+    const progress = (version: string) => ({ version, meta: { setId: '123e4567-e89b-12d3-a456-426614174000', exportedAt: '2025-01-01T00:00:00Z' }, records: {} });
+    expect(OQSEProgressSchema.safeParse(progress('1.0')).success).toBe(true);
+    expect(OQSEProgressSchema.safeParse(progress('0.2')).success).toBe(false);
+    expect(OQSEProgressSchema.safeParse(progress('2.0')).success).toBe(false);
+  });
+
   it('OQSEProgressSchema: rejects non-UUID record keys', () => {
     const invalidFile = {
-      version: "0.2",
+      version: "1.0",
       meta: {
         setId: "123e4567-e89b-12d3-a456-426614174000",
         exportedAt: "2025-01-01T00:00:00Z"
@@ -60,7 +67,7 @@ describe('Progress Validation Schemas', () => {
 
   it('safeValidateOQSEProgress + formatOQSEErrors: returns readable issue list', () => {
     const result = safeValidateOQSEProgress({
-      version: '0.2',
+      version: '1.0',
       meta: {
         setId: '123e4567-e89b-12d3-a456-426614174000',
       },

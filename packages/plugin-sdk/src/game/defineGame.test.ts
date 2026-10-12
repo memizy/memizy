@@ -14,7 +14,7 @@ beforeAll(() => {
   const manifest = document.createElement('script');
   manifest.type = 'application/oqse-manifest+json';
   manifest.textContent = JSON.stringify({
-    version: '0.2',
+    version: '1.0',
     id: 'https://example.com/plugins/e2e',
     appName: 'E2E',
     pluginVersion: '1.0.0',

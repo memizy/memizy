@@ -1,5 +1,5 @@
 /**
- * OQSE v0.3 Type Definitions
+ * OQSE v1.0 Type Definitions
  * (Open Quiz & Study Exchange)
  *
  * Type-safe TypeScript definitions for the OQSE specification.
@@ -1386,7 +1386,7 @@ export interface OQSEFile {
   /** URL reference to the JSON Schema specification */
   $schema?: string;
 
-  /** Version of the OQSE specification ("0.3") */
+  /** Version of the OQSE specification ("1.0") */
   version: string;
 
   /** Metadata about the entire set */

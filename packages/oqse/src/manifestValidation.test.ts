@@ -27,6 +27,17 @@ describe('Manifest Validation Schemas', () => {
     }
   });
 
+  it('OQSEManifestSchema: reads OQSEM 1.x manifests only', () => {
+    const manifest = (version: string) => ({ version, id: 'https://example.com/app', appName: 'App', capabilities: { actions: ['validate'] } });
+    expect(OQSEManifestSchema.safeParse(manifest('1.0')).success).toBe(true);
+    expect(OQSEManifestSchema.safeParse(manifest('1.4')).success).toBe(true);
+    for (const version of ['0.2', '2.0']) {
+      const result = OQSEManifestSchema.safeParse(manifest(version));
+      expect(result.success).toBe(false);
+      if (!result.success) expect(result.error.issues[0].message).toMatch(/OQSEM 1\.x/);
+    }
+  });
+
   it('OQSEManifestSchema: fails when minOqseVersion > maxOqseVersion', () => {
     const invalidManifest = {
       version: "1.0",

@@ -96,10 +96,13 @@ export function formatOQSEIssues(issues: OQSEIssue[]): string[] {
 }
 
 /** OQSE MAJOR version supported by this library. */
-export const SUPPORTED_OQSE_MAJOR_VERSION = 0;
+export const SUPPORTED_OQSE_MAJOR_VERSION = 1;
 
-/** The OQSE version this library reads and writes. Older 0.x files are not loaded (no conversion). */
-export const OQSE_VERSION = '0.3';
+/**
+ * The OQSE version this library writes. It reads 1.x; a higher MAJOR is loaded in
+ * best-effort mode with a warning, pre-release 0.x sets are refused (no conversion).
+ */
+export const OQSE_VERSION = '1.0';
 
 // ============================================================================
 // Public API
@@ -108,7 +111,7 @@ export const OQSE_VERSION = '0.3';
 /**
  * Tolerant import of an OQSE set (Best Effort).
  *
- * - Critical errors (invalid root, `version` or `meta`) → `success: false`.
+ * - Critical errors (invalid root, `version` or `meta`, a pre-release 0.x set) → `success: false`.
  * - Invalid items, unknown item types, duplicate IDs, missing target assets and
  *   raw HTML without the `html` feature → the item is skipped (error).
  * - Dangling references, a missing thumbnail and uppercase asset keys → fixed in
@@ -190,10 +193,10 @@ function analyze(input: unknown, mode: Mode): OQSELoadResult {
     log.add('error', 'INVALID_VERSION', `Version must be in MAJOR.MINOR format (e.g. "${OQSE_VERSION}").`, ['version']);
     return critical();
   }
-  const [major, minor] = root.version.split('.').map(Number);
-  if (major === SUPPORTED_OQSE_MAJOR_VERSION && minor < 3) {
-    // 0.3 replaced indices with choice IDs; older sets must be converted once (no automatic conversion).
-    log.add('error', 'UNSUPPORTED_VERSION', `OQSE ${root.version} is no longer supported: convert the set to ${OQSE_VERSION} (choices with IDs).`, ['version']);
+  const major = Number(root.version.split('.')[0]);
+  if (major === 0) {
+    // Pre-release drafts: their fields mean other things, so they must not be read as 1.x.
+    log.add('error', 'UNSUPPORTED_VERSION', `OQSE ${root.version} is a pre-release version; this library reads OQSE ${SUPPORTED_OQSE_MAJOR_VERSION}.x (convert the set to ${OQSE_VERSION}).`, ['version']);
     return critical();
   }
   if (major !== SUPPORTED_OQSE_MAJOR_VERSION) {

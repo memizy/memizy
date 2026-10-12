@@ -1,5 +1,5 @@
 /**
- * OQSE v0.2 - Application Manifest Type Definitions
+ * OQSEM v1.0 - Application Manifest Type Definitions
  * (Open Quiz & Study Exchange)
  *
  * Type-safe TypeScript definitions for the OQSE Application Manifest (Section 2).
@@ -392,8 +392,8 @@ export interface ManifestCapabilities extends FeatureProfile {
  * @example
  * ```json
  * {
- *   "$schema": "https://cdn.jsdelivr.net/npm/@memizy/oqse@0.2/schemas/oqse-manifest-v0.2.json",
- *   "version": "0.2",
+ *   "$schema": "https://cdn.jsdelivr.net/npm/@memizy/oqse@1/schemas/oqse-manifest-v1.0.json",
+ *   "version": "1.0",
  *   "pluginVersion": "2.1.0",
  *   "id": "https://memizy.com/universal-player",
  *   "appName": "Memizy Universal Player",
@@ -409,16 +409,16 @@ export interface OQSEManifest {
   /**
    * URL reference to the JSON Schema for automatic validation.
    * Recommended but not required.
-  * @example `"https://cdn.jsdelivr.net/npm/@memizy/oqse@0.2/schemas/oqse-manifest-v0.2.json"`
+  * @example `"https://cdn.jsdelivr.net/npm/@memizy/oqse@1/schemas/oqse-manifest-v1.0.json"`
    */
   $schema?: string;
 
   /**
    * Version of the Application Manifest format (REQUIRED).
-   * MUST follow `"MAJOR.MINOR"` format. The current version is `"0.2"`.
+   * MUST follow `"MAJOR.MINOR"` format. The current version is `"1.0"`. Hosts read the MAJOR versions they support.
    * Malformed values MUST cause the host to reject this manifest.
    *
-   * @example `"0.2"`
+   * @example `"1.0"`
    */
   version: string;
 
@@ -436,7 +436,7 @@ export interface OQSEManifest {
    * If malformed, treat as absent and SHOULD warn.
    * MUST be \u2264 `maxOqseVersion` when both are declared.
    *
-   * @example `"0.2"`
+   * @example `"1.0"`
    */
   minOqseVersion?: string;
 
@@ -629,7 +629,7 @@ export function isOQSEManifest(value: unknown): value is OQSEManifest {
  * Checks whether an OQSE file's version is within the application's
  * declared min/max OQSE version range.
  *
- * @param fileVersion   - The `version` field of the OQSE study set file (e.g., `"0.2"`).
+ * @param fileVersion   - The `version` field of the OQSE study set file (e.g., `"1.0"`).
  * @param manifest      - The Application Manifest to check against.
  * @returns `true` if the file is compatible, `false` if the host MUST NOT load it.
  */

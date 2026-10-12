@@ -1,5 +1,5 @@
 /**
- * OQSEP v0.2 Type Definitions
+ * OQSEP v1.0 Type Definitions
  * (Open Quiz & Study Exchange - Progress)
  *
  * @see ../oqse-progress.md#data-model

@@ -1,6 +1,6 @@
 /**
  * @file manifestValidation.ts
- * @description OQSE v0.2 Zod validation schemas for the OQSE Application Manifest (section 2.1.1).
+ * @description OQSEM v1.0 Zod validation schemas for the OQSE Application Manifest (section 2.1.1).
  *
  * Mirrors every type defined in `manifest.ts` and exposes helper functions for
  * validating manifest objects received from plugins, presets, or remote sources.
@@ -48,10 +48,18 @@ const URNUUIDSchema = z
     'Must be a valid URN UUID (urn:uuid:...)'
   );
 
-/** Semver version string in MAJOR.MINOR format (e.g. "0.1", "2.3"). */
+/** Version string in MAJOR.MINOR format (e.g. "1.0", "2.3"). */
 const ManifestVersionSchema = z
   .string()
-  .regex(/^\d+\.\d+$/, 'Version must be in MAJOR.MINOR format (e.g. "0.1")');
+  .regex(/^\d+\.\d+$/, 'Version must be in MAJOR.MINOR format (e.g. "1.0")');
+
+/**
+ * Version of the manifest format this library reads: OQSEM 1.x. Other MAJOR versions
+ * are refused rather than read as 1.x (see "Versioning" in the specification).
+ */
+const SupportedManifestVersionSchema = z
+  .string()
+  .regex(/^1\.\d+$/, 'Unsupported manifest version: this library reads OQSEM 1.x manifests (write "version": "1.0")');
 
 
 const OQSEItemTypeSchema = NonEmptyStringSchema.refine(
@@ -233,12 +241,12 @@ export const ManifestCapabilitiesSchema = FeatureProfileSchema.extend({
  *
  * Validated constraints beyond syntax:
  * - `minOqseVersion` <= `maxOqseVersion` when both are present
- * - `version` adheres to MAJOR.MINOR format
+ * - `version` is an OQSEM 1.x version (MAJOR.MINOR)
  * - `capabilities.actions` is non-empty (enforced by inner schema)
  */
 export const OQSEManifestSchema = z
   .object({
-    // Recommended schema URL for draft v0.2: https://cdn.jsdelivr.net/npm/@memizy/oqse@0.2/schemas/oqse-manifest-v0.2.json
+    // Recommended schema URL: https://cdn.jsdelivr.net/npm/@memizy/oqse@1/schemas/oqse-manifest-v1.0.json
     $schema: AbsoluteURLSchema.optional(),
     // --- Identity ---
 
@@ -249,10 +257,10 @@ export const OQSEManifestSchema = z
     appName: NonEmptyStringSchema.max(200, 'Name must not be longer than 200 characters'),
 
     /**
-     * Application version string. Follows MAJOR.MINOR format (manifest version
-     * !== OQSE spec version).
+     * Version of the manifest format (OQSEM), MAJOR.MINOR. Not the version of the
+     * application (`pluginVersion`) nor of the OQSE sets it reads.
      */
-    version: ManifestVersionSchema,
+    version: SupportedManifestVersionSchema,
 
     pluginVersion: z.string().optional(),
 

@@ -33,7 +33,7 @@ const root = resolve(import.meta.dirname, '../../..');
 
 function manifest(memizy: Record<string, unknown>, extra: Record<string, unknown> = {}) {
   return {
-    version: '0.2',
+    version: '1.0',
     id: 'https://example.com/plugins/test',
     appName: 'Test',
     capabilities: { actions: ['render'], types: ['mcq-single'] },
@@ -52,12 +52,17 @@ describe('version negotiation', () => {
     expect(negotiateProtocolVersion('1.4', '1.2')).toBe('1.2');
     expect(negotiateProtocolVersion('2.0', '1.9')).toBeNull();
     expect(negotiateProtocolVersion('1', '1.0')).toBeNull();
+    // A host may support several MAJOR versions (one version per MAJOR).
+    expect(negotiateProtocolVersion('2.3', ['1.4', '2.1'])).toBe('2.1');
+    expect(negotiateProtocolVersion('1.2', ['1.4', '2.1'])).toBe('1.2');
+    expect(negotiateProtocolVersion('3.0', ['1.4', '2.1'])).toBeNull();
   });
 
   it('checks whether a host can run a plugin before loading it', () => {
     expect(isProtocolSupported('1.0')).toBe(true);
     expect(isProtocolSupported('1.1', '1.0')).toBe(false);
     expect(isProtocolSupported('2.0', '1.5')).toBe(false);
+    expect(isProtocolSupported('2.0', ['1.5', '2.0'])).toBe(true);
     expect(PROTOCOL_VERSION).toBe('1.0');
     expect(compareProtocolVersions('1.10', '1.9')).toBeGreaterThan(0);
   });

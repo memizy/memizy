@@ -3,7 +3,7 @@ import { injectContentPolicy, pluginAllowAttribute, pluginContentPolicy } from '
 import { safeParsePluginManifest } from './manifestSchema';
 
 const manifest = (memizy: Record<string, unknown>) => ({
-  version: '0.2',
+  version: '1.0',
   id: 'https://example.com/plugins/chess',
   appName: 'Chess',
   capabilities: { actions: ['render'], types: ['chess-puzzle'] },

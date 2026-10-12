@@ -18,7 +18,7 @@ import { PLUGIN_SANDBOX, createPluginFrame } from './frame';
 const id = (n: number) => `0192f0c4-7a1e-7c3b-9a52-2f1d8e4b6a${String(n).padStart(2, '0')}`;
 
 const manifest = {
-  version: '0.2',
+  version: '1.0',
   id: 'https://example.com/plugins/race',
   appName: 'Race',
   pluginVersion: '1.0.0',
@@ -35,7 +35,7 @@ const manifest = {
 const pluginHtml = `<!doctype html><script type="application/oqse-manifest+json">${JSON.stringify(manifest)}</script>`;
 
 const setFile = loadOQSEFile({
-  version: '0.3',
+  version: '1.0',
   meta: { id: id(0), language: 'cs', title: 'Set', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
   items: [
     { id: id(1), type: 'mcq-single', question: 'A?', options: [{ id: 'x', text: 'x' }, { id: 'y', text: 'y' }], correctId: 'y', skills: ['geo.capitals'], tags: ['eu'] },

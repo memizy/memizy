@@ -1,8 +1,8 @@
-# OQSEH v0.2 Specification (Open Quiz & Study Exchange Header)
+# OQSEH v1.0 Specification (Open Quiz & Study Exchange Header)
 
 OQSEH defines a lightweight projection of the OQSE `meta` object.
 
-It acts as a standalone header (a "library card") that can be used by directories and APIs to list OQSE study sets without hosting full `.oqse.json` payloads.
+It acts as a standalone header (a "library card") that can be used by directories and APIs to list OQSE study sets without hosting full `.oqse.json` payloads. A header has no version of its own; it describes the set at `url`, whose `version` follows the [version rules](./oqse.md#versioning-and-compatibility).
 
 ## OQSEHeader Root Object
 
@@ -12,7 +12,7 @@ An OQSEHeader represents one catalog entry that points to a full OQSE set.
 
 ```json
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@memizy/oqse@0.2/schemas/oqse-header-v0.2.json",
+  "$schema": "https://cdn.jsdelivr.net/npm/@memizy/oqse@1/schemas/oqse-header-v1.0.json",
   "id": "123e4567-e89b-12d3-a456-426614174000",
   "title": "Biology - Cell Basics",
   "language": "en",

@@ -1,5 +1,5 @@
 /**
- * OQSE v0.3 Zod Validation Schemas
+ * OQSE v1.0 Zod Validation Schemas
  * 
  * Runtime validation schemas for OQSE (Open Quiz & Study Exchange) format.
  * Uses Zod for type-safe runtime validation with detailed error messages.
@@ -1113,7 +1113,7 @@ export function getItemSchema(data: unknown): typeof OQSEItemSchema | typeof Cus
  */
 export const OQSEFileSchema = z.looseObject({
   $schema: z.string().url().optional(),
-  version: z.string().regex(/^\d+\.\d+$/, 'Version must be in MAJOR.MINOR format (e.g. "0.3")'),
+  version: z.string().regex(/^\d+\.\d+$/, 'Version must be in MAJOR.MINOR format (e.g. "1.0")'),
   meta: OQSEMetaSchema,
   items: z.array(AnyOQSEItemSchema).max(10000, 'Maximum 10000 items per set'),
 });

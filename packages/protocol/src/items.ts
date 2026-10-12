@@ -2,7 +2,7 @@
  * Study items as the instances of a session see them (SPEC section 4.4).
  *
  * 1. Display order: the host shuffles options, items to sort, pairs, events… once per
- *    session (the same order on every device, so a board and the phones agree). OQSE 0.3
+ *    session (the same order on every device, so a board and the phones agree). OQSE
  *    answers refer to choice IDs, so shuffling never changes an answer.
  * 2. Public items: in multiplayer, the other instances get the same items without
  *    anything that gives the answer away (`answerHidden: true`). The authority shows

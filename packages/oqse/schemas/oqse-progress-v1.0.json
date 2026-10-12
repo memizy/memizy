@@ -8,7 +8,7 @@
     },
     "version": {
       "type": "string",
-      "pattern": "^\\d+\\.\\d+$"
+      "pattern": "^1\\.\\d+$"
     },
     "meta": {
       "type": "object",

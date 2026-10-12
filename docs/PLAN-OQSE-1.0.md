@@ -56,24 +56,24 @@ Dotčené soubory obvykle: `packages/oqse/oqse*.md` (spec), `src/oqse.ts` (typy)
 
 ### Část 1 – Verze 1.0
 
-- [ ] Spec: sady `"version": "1.0"`, `$schema` `https://cdn.jsdelivr.net/npm/@memizy/oqse@1/schemas/oqse-v1.0.json`;
+- [x] Spec: sady `"version": "1.0"`, `$schema` `https://cdn.jsdelivr.net/npm/@memizy/oqse@1/schemas/oqse-v1.0.json`;
       OQSEM, OQSEP a OQSEH také `1.0` (nadpisy, příklady, URL schémat).
-- [ ] Spec: obecné pravidlo pro verze všech čtyř formátů – aplikace čte MAJOR verze, které
+- [x] Spec: obecné pravidlo pro verze všech čtyř formátů – aplikace čte MAJOR verze, které
       podporuje (neznámé klíče novější MINOR ignoruje); nepodporovanou MAJOR (0.x i 2.x)
       MUST NOT potichu vykládat jako známou verzi, SHOULD odmítnout s jasnou zprávou, MAY
       „best effort“ po varování nebo převod. Knihovna: 0.x odmítne, 2.x načte s varováním.
       Markdown frontmatter `oqse: "1.0"`.
-- [ ] Kód: `OQSE_VERSION`, kontrola verze v loaderu a v Markdownu, názvy schémat
+- [x] Kód: `OQSE_VERSION`, kontrola verze v loaderu a v Markdownu, názvy schémat
       (`generate-schemas.ts`), `package.json` (`files` se specifikacemi).
-- [ ] Manifest: verze `1.0`; host načte hru, když podporuje MAJOR verzi formátu manifestu
+- [x] Manifest: verze `1.0`; host načte hru, když podporuje MAJOR verzi formátu manifestu
       (`version`) i protokolu (`appSpecific.memizy.protocol`); Play a knihovna 1.x podporují
       OQSEM 1 a protokol 1, manifest 0.x dostane jasnou zprávu.
-- [ ] SPEC 4.3: host podporuje **sadu verzí** (jednu na MAJOR, např. 1.4 a 2.1), ne právě
+- [x] SPEC 4.3: host podporuje **sadu verzí** (jednu na MAJOR, např. 1.4 a 2.1), ne právě
       jednu; `negotiateProtocolVersion` přijme i seznam verzí hosta (aby host mohl později
       podporovat hry s protokolem 1 i 2 zároveň); testy.
-- [ ] Sady v enginu na 1.0: `apps/play/src/data/sets/*`, `sampleSet.ts`, sady v testech,
+- [x] Sady v enginu na 1.0: `apps/play/src/data/sets/*`, `sampleSet.ts`, sady v testech,
       prompt AI sad (`aiSets.ts`); manifesty her (Babiš, Piráti, Civhrad) a příkladu v návodu.
-- [ ] Changelog specifikace „Version 1.0“ založit; každá další část do něj přidá svůj řádek.
+- [x] Changelog specifikace „Version 1.0“ založit; každá další část do něj přidá svůj řádek.
 
 ### Část 2 – Porovnání textu
 

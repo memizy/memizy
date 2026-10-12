@@ -63,7 +63,7 @@ const letter = (i: number) => String.fromCharCode(97 + i);
 const toChoices = (list: unknown, id: (i: number) => string): Raw[] | null =>
   Array.isArray(list) && list.every((x) => typeof x === 'string') ? list.map((text, i) => ({ id: id(i), text })) : null;
 
-/** Accepts the older shape (texts and positions) and turns it into OQSE 0.3 (choices and IDs). */
+/** Accepts the older shape (texts and positions) and turns it into OQSE (choices and IDs). */
 function upgradeItem(it: Raw): Raw {
   const out = { ...it };
   const opts = toChoices(it.options, letter);
@@ -87,7 +87,7 @@ function upgradeItem(it: Raw): Raw {
   return out;
 }
 
-/** Turns what the chat answered into an OQSE 0.3 file (as JSON text). */
+/** Turns what the chat answered into an OQSE file (as JSON text). */
 export function normalizeAiAnswer(text: string, r: Pick<AiRequest, 'topic' | 'language'>): NormalizeResult {
   let body = text.trim().replace(/^```[a-z]*\s*/i, '').replace(/```\s*$/, '');
   const start = body.search(/[[{]/);
@@ -109,8 +109,8 @@ export function normalizeAiAnswer(text: string, r: Pick<AiRequest, 'topic' | 'la
   const title = [obj.title, obj.meta?.title].find((t): t is string => typeof t === 'string' && t.trim().length > 0) ?? r.topic.trim();
   const now = new Date().toISOString();
   const file = {
-    $schema: 'https://cdn.jsdelivr.net/npm/@memizy/oqse@0.3/schemas/oqse-v0.3.json',
-    version: '0.3',
+    $schema: 'https://cdn.jsdelivr.net/npm/@memizy/oqse@1/schemas/oqse-v1.0.json',
+    version: '1.0',
     meta: {
       id: crypto.randomUUID(),
       language: r.language,

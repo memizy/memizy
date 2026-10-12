@@ -48,7 +48,7 @@ export const ProgressMetaSchema: z.ZodType<ProgressMeta> = z.object({
 
 export const OQSEProgressSchema: z.ZodType<OQSEProgress> = z.object({
     $schema: z.url().optional(), 
-    version: z.string().regex(/^\d+\.\d+$/, 'Version must be in MAJOR.MINOR format'),
+    version: z.string().regex(/^1\.\d+$/, 'Unsupported progress version: this library reads OQSEP 1.x (write "version": "1.0")'),
     meta: ProgressMetaSchema,
     records: z.record(UUIDSchema, ProgressRecordSchema),
 });

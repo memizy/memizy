@@ -18,7 +18,10 @@
     "dist",
     "schemas",
     "README.md",
-    "SPECIFICATION.md",
+    "oqse.md",
+    "oqse-manifest.md",
+    "oqse-progress.md",
+    "oqse-header.md",
     "LICENSE"
   ],
   "scripts": {

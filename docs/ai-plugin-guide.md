@@ -1,6 +1,6 @@
 # Memizy Plugin Guide for AI Assistants
 
-> Status: **Release Candidate 4** (2026-10-07) – describes `@memizy/plugin-sdk@1` and OQSE 0.3 study sets.
+> Status: **Release Candidate 4** (2026-10-07) – describes `@memizy/plugin-sdk@1` and OQSE 1.0 study sets.
 > Paste this whole document into your AI assistant together with your idea for a game.
 
 You are writing a **Memizy plugin**: a learning game in **one HTML file**. Memizy (the host app) gives the game a study set (questions, notes) and runs it alone (**solo**) or with a whole class (**multiplayer**). You write only the game rules and the screens. The SDK handles connection, synchronization between devices, reconnecting, timers, pauses, rendering of formatted text, ready-made answer controls and saving learning progress.
@@ -42,7 +42,7 @@ Declare what the game supports. Adjust `id`, `appName`, `types` and `modes`.
 
 ```json
 {
-  "version": "0.2",
+  "version": "1.0",
   "id": "https://memizy.com/plugins/my-game",
   "appName": "My Game",
   "pluginVersion": "1.0.0",
@@ -66,7 +66,7 @@ Declare what the game supports. Adjust `id`, `appName`, `types` and `modes`.
 }
 ```
 
-* `"version": "0.2"` is the version of the manifest format (keep it). `types`: only item types your game can show (section 7). With `ui.question` that can be many of them. The app gives you only these.
+* `"version": "1.0"` is the version of the manifest format (keep it). `types`: only item types your game can show (section 7). With `ui.question` that can be many of them. The app gives you only these.
 * Remove `solo` or `multiplayer` if the game does not support it. In `hostAs` keep `"presenter"` only if you draw a `board` view, keep `"player"` only if the game works without a board.
 * `settings`: options of the game (types `number`, `boolean`, `select`, `text`). Read them as `ctx.settings.questionTime`.
   * **Multiplayer:** the teacher sets them in the lobby; the app generates a form automatically.
@@ -372,7 +372,7 @@ const game = defineGame({
 
 ---
 
-## 7. Study Set Items (OQSE 0.3)
+## 7. Study Set Items (OQSE 1.0)
 
 Every item has `id` and `type`. Common optional fields: `hints`, `explanation`, `tags`, `topic`, `skills`.
 
@@ -413,7 +413,7 @@ A quiz race: questions with a countdown, faster correct answers give more points
 <title>Quiz Race</title>
 <script type="application/oqse-manifest+json">
 {
-  "version": "0.2",
+  "version": "1.0",
   "id": "https://memizy.com/plugins/quiz-race",
   "appName": "Quiz Race",
   "pluginVersion": "2.0.0",

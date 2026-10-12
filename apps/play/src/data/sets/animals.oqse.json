@@ -1,6 +1,6 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@memizy/oqse@0.3/schemas/oqse-v0.3.json",
-  "version": "0.3",
+  "$schema": "https://cdn.jsdelivr.net/npm/@memizy/oqse@1/schemas/oqse-v1.0.json",
+  "version": "1.0",
   "meta": {
     "id": "0192f0c4-a001-7000-8000-000000000000",
     "language": "en",

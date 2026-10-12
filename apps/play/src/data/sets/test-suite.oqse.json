@@ -1,6 +1,6 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@memizy/oqse@0.3/schemas/oqse-v0.3.json",
-  "version": "0.3",
+  "$schema": "https://cdn.jsdelivr.net/npm/@memizy/oqse@1/schemas/oqse-v1.0.json",
+  "version": "1.0",
   "meta": {
     "id": "019da5a2-013c-7728-8a1f-fcf579822022",
     "title": "Memizy OQSE Test Set",

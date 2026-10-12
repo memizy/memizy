@@ -1,7 +1,7 @@
 
-# OQSEM v0.2 Specification (Open Quiz & Study Exchange Manifest)
+# OQSEM v1.0 Specification (Open Quiz & Study Exchange Manifest)
 
-OQSE v0.2 uses a **capability-based negotiation system**. Every application, micro-frontend, or plugin MUST declare exactly what it can do using an **OQSEM**. Interoperability is achieved by matching the **Requirements** of a study set with the **Capabilities** of the application.
+OQSE uses a **capability-based negotiation system**. Every application, micro-frontend, or plugin MUST declare exactly what it can do using an **OQSEM**. Interoperability is achieved by matching the **Requirements** of a study set with the **Capabilities** of the application.
 
 ## Table of Contents
 
@@ -20,11 +20,10 @@ Applications MUST declare their capabilities in a standardized JSON format, know
 
 ```json
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@memizy/oqse@0.2/schemas/oqse-manifest-v0.2.json",
-  "version": "0.2",
+  "$schema": "https://cdn.jsdelivr.net/npm/@memizy/oqse@1/schemas/oqse-manifest-v1.0.json",
+  "version": "1.0",
   "pluginVersion": "2.1.0",
-  "minOqseVersion": "0.2",
-  "maxOqseVersion": "1.99",
+  "minOqseVersion": "1.0",
   "id": "https://memizy.com/universal-player",
   "appName": "Memizy Universal Player",
   "description": "A universal flashcard and quiz player with spaced repetition.",
@@ -82,10 +81,10 @@ Applications MUST declare their capabilities in a standardized JSON format, know
 | Key | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
 | `$schema` | string | No | **Recommended.** URL reference to the JSON Schema specification for automatic validation. |
-| `version` | string | Yes | Version of the OQSEM format. MUST follow `"MAJOR.MINOR"` format. The current OQSEM format version is `"0.2"`. |
+| `version` | string | Yes | Version of the OQSEM format. MUST follow `"MAJOR.MINOR"` format. The current OQSEM format version is `"1.0"`. Hosts read manifests of the MAJOR versions they support ([version rules](./oqse.md#versioning-and-compatibility)). |
 | `pluginVersion` | string | No | Version of the application/plugin itself using SemVer (e.g., `"2.1.0"`). Independent of the manifest format version. |
 | `minOqseVersion` | string | No | Minimum OQSE spec version this application requires. MUST follow `"MAJOR.MINOR"` format (e.g., `"1.0"`). Version comparison is performed numerically field-by-field. Host environments MAY use this for compatibility filtering. |
-| `maxOqseVersion` | string | No | Maximum OQSE spec version this application is compatible with. MUST follow `"MAJOR.MINOR"` format (e.g., `"1.99"`). Version comparison is performed numerically field-by-field. Host environments MAY use this to prevent loading a plugin with a newer, potentially incompatible OQSE version. If absent, no upper bound is assumed. |
+| `maxOqseVersion` | string | No | Maximum OQSE spec version this application is compatible with. MUST follow `"MAJOR.MINOR"` format (e.g., `"1.99"`). Version comparison is performed numerically field-by-field. Host environments MAY use this to prevent loading a plugin with a newer, potentially incompatible OQSE version. If absent, no upper bound is assumed. Rarely needed: MINOR versions only add, so an application that reads 1.0 can read every 1.x set. |
 | `id` | string | Yes | Unique identifier for the application. MUST be either a controlled URL (preferred — MAY lead to the official page of the plugin, e.g., `"https://memizy.com/player"`) or a URN-format UUID (e.g., `"urn:uuid:019cba2f-7ea1-7607-8f16-be10714d790e"`). |
 | `appName` | string | Yes | Human-readable name of the application. MUST NOT exceed 200 characters. |
 | `description` | string | No | **Rich Content.** Human-readable description of what the application does. Displayed in host environments and plugin catalogs. MUST NOT exceed 5000 characters. |
@@ -186,6 +185,7 @@ This section is the single reference for all constraints on OQSEM fields. For th
 - MUST match the pattern `^\d+\.\d+$` (e.g., `"1.0"`, `"1.99"`, `"2.0"`). Both components MUST be non-negative integers.
 - Version comparison is performed numerically field-by-field: `"1.10"` is greater than `"1.9"`.
 - A malformed `version` value MUST cause manifest rejection (it is a required field). A malformed `minOqseVersion` or `maxOqseVersion` SHOULD be treated as absent; the host SHOULD warn.
+- A `version` whose MAJOR the host does not support follows the [version rules](./oqse.md#versioning-and-compatibility): it MUST NOT be read as a supported version, and the host SHOULD reject the manifest with a clear message.
 - If both `minOqseVersion` and `maxOqseVersion` are present, `minOqseVersion` MUST be less than or equal to `maxOqseVersion`. A manifest violating this MUST be rejected.
 
 **`pluginVersion`:**

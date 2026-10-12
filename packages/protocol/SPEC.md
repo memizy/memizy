@@ -37,7 +37,7 @@ The manifest is an [OQSEM](../oqse/oqse-manifest.md) document embedded in the pl
 ```html
 <script type="application/oqse-manifest+json">
 {
-  "version": "0.2",
+  "version": "1.0",
   "id": "https://example.com/plugins/quiz-race",
   "appName": "Quiz Race",
   "pluginVersion": "1.0.0",
@@ -179,7 +179,7 @@ interface Handshake {
 interface InitPayload {
   protocol: string;                     // negotiated version: same MAJOR, MIN of the MINORs
   host: { name: string; version: string };
-  oqseVersion: string;                  // "0.3"
+  oqseVersion: string;                  // "1.0"
   features: string[];                   // host features, see 8.3
 
   session: {
@@ -228,16 +228,16 @@ interface Player {
 
 ### 4.3 Version negotiation
 
-* The MAJOR versions must match. Otherwise the host rejects with `ProtocolError { code: 'UNSUPPORTED_PROTOCOL' }` and shows the user a clear message ("this plugin needs a newer Memizy" or "this plugin is too old").
-* The negotiated MINOR is the lower of both. Neither side uses a method, field or feature introduced in a higher minor than the negotiated one.
-* `manifest.appSpecific.memizy.protocol` is checked **before** loading the iframe (the host does not offer plugins it cannot run).
-* A host implementing `2.x` MUST keep supporting plugins speaking `1.x` (adapter in `@memizy/host-sdk`).
+* A host supports a set of protocol versions, one per MAJOR version (e.g. `1.4` and `2.1`). The plugin's MAJOR version must be one of them. Otherwise the host rejects with `ProtocolError { code: 'UNSUPPORTED_PROTOCOL' }` and shows the user a clear message ("this plugin needs a newer Memizy" or "this plugin is too old").
+* The negotiated version has the plugin's MAJOR and the lower of both MINOR versions. Neither side uses a method, field or feature introduced in a higher minor than the negotiated one.
+* `manifest.appSpecific.memizy.protocol` is checked **before** loading the iframe (the host does not offer plugins it cannot run). The manifest itself (`version`, the OQSEM format) follows the [OQSE version rules](../oqse/oqse.md#versioning-and-compatibility): the host reads the OQSEM MAJOR versions it supports.
+* A host SHOULD keep supporting older MAJOR versions as long as practical (e.g. an adapter in `@memizy/host-sdk`), so older plugins keep working.
 
 ### 4.4 Display order and hidden answers
 
 The host prepares the set once per session (`prepareDisplaySet` in `@memizy/protocol`; a future server authority does the same):
 
-1. **Display order.** With a seed (normally the session id), the host shuffles `options` (mcq, unless `shuffle: false`), the options of `fill-in-select` blanks (unless `shuffle: false`), `items` of `sort-items` (never left in the correct order), `prompts` and `matches` of `match-pairs`, the sides of `match-complex`, `events` of `timeline` (unless `shuffle: false`; never left in chronological order), the entries of `categorize` and the `labels` of `diagram-label` (unless `requireTyping`). OQSE 0.3 answers refer to choice IDs, so shuffling never changes an answer. Every instance sees the same order.
+1. **Display order.** With a seed (normally the session id), the host shuffles `options` (mcq, unless `shuffle: false`), the options of `fill-in-select` blanks (unless `shuffle: false`), `items` of `sort-items` (never left in the correct order), `prompts` and `matches` of `match-pairs`, the sides of `match-complex`, `events` of `timeline` (unless `shuffle: false`; never left in chronological order), the entries of `categorize` and the `labels` of `diagram-label` (unless `requireTyping`). OQSE answers refer to choice IDs, so shuffling never changes an answer. Every instance sees the same order.
 2. **Public items.** In multiplayer, every instance except the authority gets the items without the fields that give the answer away and with `answerHidden: true`: `explanation`, `incorrectFeedback`, the `explanation` of every choice, `correctId`, `correctIds`, `correctAnswer(s)`, `alternativeAnswers`, `range`, `correctOrder`, `pairs`, `connections`, `correctCells`, `correctCategoryId`, zone `correctLabelId` (and the labels when `requireTyping`), the accepted texts of `fill-in-blanks`, the `correctId` of select blanks, event `date`s, `hotspots` of pin items, `back` of a flashcard, `hiddenContent` of a note, `sampleAnswer` and `rubric`. Custom `x-` types are passed unchanged. In relay multiplayer the bundle on the server holds only public items.
 3. **Revealing.** The authority sends full items to the other instances in its own messages (the plugin SDK's `ctx.reveal`); the host does not take part.
 
@@ -294,7 +294,7 @@ Two ways to write it:
 
 RC4 additions to `recordAnswer`:
 
-* `answer` – what the player answered, in the `checkAnswer` format of the item type (OQSE 0.3 choice IDs, text, numbers). Teachers see which wrong answers were chosen; because answers use IDs, the statistics survive edits of the set.
+* `answer` – what the player answered, in the `checkAnswer` format of the item type (OQSE choice IDs, text, numbers). Teachers see which wrong answers were chosen; because answers use IDs, the statistics survive edits of the set.
 * **Generated items** (from a service or a generator in the plugin) are not in the set. The plugin attaches the item (`item`, at least `id` and `type`; answer fields may be left out; max 32 KB). The host counts such answers in statistics (per `skills` and `tags`) but not in the repetition schedule, because the item never comes back.
 * Progress for teachers is aggregated per OQSE `skills` (and their parents, `chess.tactics` for `chess.tactics.fork`), which come from the content, never from the plugin. A game's own model of the player (rating, level, unlocked chapters) belongs to plugin data (section 5.2).
 
@@ -455,7 +455,7 @@ What was decided and why, and what is **reserved** (name and intent fixed, not i
 3. **Shared data of a class is a service**, not a new data scope: every write is a request the server can validate (a plugin on a student's device is not trusted).
 4. **"Always new" exercises come from generators** that return ordinary OQSE items (in the plugin with `ctx.random()`, or as a service with a database or AI behind it). Everything else – rendering, `checkAnswer`, recording – works the same; answers are recorded as generated items.
 5. **Progress for teachers** = `recordAnswer` + OQSE `skills` from the content (hierarchical IDs from a shared vocabulary); a game's own model of the player stays in plugin data.
-6. **Choices have IDs** (OQSE 0.3): answers and statistics survive edits of a set; the host shuffles freely.
+6. **Choices have IDs** (OQSE): answers and statistics survive edits of a set; the host shuffles freely.
 7. **`playerView`** (per-player views of the state) is an optional SDK feature, not a protocol requirement: games without secrets need nothing.
 
 **Reserved**
@@ -476,6 +476,7 @@ What was decided and why, and what is **reserved** (name and intent fixed, not i
 
 ## Changelog
 
+* **1.0 (unreleased):** OQSE 1.0 sets and OQSEM 1.0 manifests (`"version": "1.0"`; other MAJOR versions are not read as 1.x). A host may support several protocol MAJOR versions at once (4.3); supporting older ones is a SHOULD instead of a MUST.
 * **RC1 (2026-10-04):** first release candidate.
 * **RC2 (2026-10-06):** `SettingDefinition.modes`; the host may show solo settings before the start (section 3.3). Additive: RC1 plugins and hosts keep working.
 * **RC4 (2026-10-07):** OQSE 0.3 sets (choices with IDs; the RC3 `correctOrder` / `correctMatches` display fields are gone because answers refer to IDs); `recordAnswer.answer` and generated items (5.1); services (5.3, `service`, `InitPayload.services`, `SERVICE_UNAVAILABLE`); pauses (`SessionClock`); `permissions` with a Content Security Policy and device grants (8.4); decisions and reservations (section 10). Additive for the protocol except the OQSE version: plugins must read choices (`option.text`, `option.id`).

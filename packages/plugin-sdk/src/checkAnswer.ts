@@ -2,7 +2,7 @@
  * `checkAnswer(item, answer)` – evaluates a player's answer according to the
  * rules of the OQSE specification, so every plugin grades the same way.
  *
- * Answer formats (OQSE 0.3: choices are referenced by their `id`, also listed in the AI guide):
+ * Answer formats (OQSE: choices are referenced by their `id`, also listed in the AI guide):
  *  mcq-single: option id · mcq-multi: array of option ids · true-false: boolean
  *  short-answer: text · numeric-input / slider: number (or numeric text)
  *  math-input: LaTeX text · sort-items: item ids in the player's order

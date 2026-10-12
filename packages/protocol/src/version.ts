@@ -27,22 +27,39 @@ export function compareProtocolVersions(a: string, b: string): number {
 }
 
 /**
- * Negotiates the version both sides use: same MAJOR, the lower MINOR.
- * Returns `null` when the versions are incompatible (different MAJOR or invalid).
+ * The protocol versions a host supports: one version, or one per MAJOR it supports
+ * (e.g. `['1.4', '2.1']`, SPEC 4.3).
  */
-export function negotiateProtocolVersion(plugin: string, host: string): string | null {
+export type HostProtocolVersions = string | readonly string[];
+
+/** The host's version for the given MAJOR, or `null` when the host does not support it. */
+function hostVersionFor(major: number, host: HostProtocolVersions): ProtocolVersion | null {
+  for (const version of typeof host === 'string' ? [host] : host) {
+    const parsed = parseProtocolVersion(version);
+    if (parsed?.major === major) return parsed;
+  }
+  return null;
+}
+
+/**
+ * Negotiates the version both sides use: the plugin's MAJOR (which the host must
+ * support), the lower MINOR. Returns `null` when the host does not support that MAJOR
+ * or a version is invalid.
+ */
+export function negotiateProtocolVersion(plugin: string, host: HostProtocolVersions): string | null {
   const vp = parseProtocolVersion(plugin);
-  const vh = parseProtocolVersion(host);
-  if (!vp || !vh || vp.major !== vh.major) return null;
+  const vh = vp && hostVersionFor(vp.major, host);
+  if (!vp || !vh) return null;
   return `${vp.major}.${Math.min(vp.minor, vh.minor)}`;
 }
 
 /**
  * Checks before loading the iframe whether a host can run a plugin whose
- * manifest requires `required` (SPEC 4.3): same MAJOR and host MINOR ≥ required MINOR.
+ * manifest requires `required` (SPEC 4.3): the host supports its MAJOR with a MINOR ≥
+ * the required one.
  */
-export function isProtocolSupported(required: string, host: string = PROTOCOL_VERSION): boolean {
+export function isProtocolSupported(required: string, host: HostProtocolVersions = PROTOCOL_VERSION): boolean {
   const vr = parseProtocolVersion(required);
-  const vh = parseProtocolVersion(host);
-  return !!vr && !!vh && vr.major === vh.major && vh.minor >= vr.minor;
+  const vh = vr && hostVersionFor(vr.major, host);
+  return !!vr && !!vh && vh.minor >= vr.minor;
 }
