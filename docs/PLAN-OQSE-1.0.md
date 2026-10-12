@@ -35,7 +35,8 @@ workshopem po ručním testu na telefonech.
 | Veřejné položky | odstranit `sources[].quote`; `hints` výslovně veřejné |
 | Opravy textu | všechny nalezené chyby (část 9) |
 | Beze změny | viz „Vědomě beze změny“ |
-| Sady mimo engine | teď ne (na workshop nejsou potřeba); `scripts/migrate-oqse-0.3.ts` zůstává jako nástroj pro pozdější převod |
+| Sady mimo engine | teď ne (na workshop nejsou potřeba); převod jen skriptem v repu (část 10), knihovna nic nepřevádí |
+| Sady uložené v Play (IndexedDB) | nic nedělat – nejsou tam důležité sady, znovu se naimportují |
 
 ## Hotovo mimo části
 
@@ -144,6 +145,16 @@ Dotčené soubory obvykle: `packages/oqse/oqse*.md` (spec), `src/oqse.ts` (typy)
 - [ ] Changelog specifikace „Version 1.0“ dokončit (historie 0.x zkrátit).
 - [ ] Projít [`old-plan-oqse.md`](./old-plan-oqse.md) (původní plán) a ověřit, že nic nechybí.
 
+### Část 10 – Převodní skript (jen v repu, ne v balíčku)
+
+- [ ] `scripts/migrate-oqse.ts` nahradí `migrate-oqse-0.3.ts`: převod po krocích
+      (0.2 → 0.3 = dnešní ID možností, 0.3 → 1.0), každý krok malá funkce; JSON i `.oqse.md`.
+- [ ] Krok 0.3 → 1.0 podle changelogu „Version 1.0“ (verze a `$schema`, bez `trimWhitespace`,
+      `range` → `correctAnswer` + `tolerance`, … co přinesou části 2–8).
+- [ ] Výsledek ověří `safeValidateOQSEFile`; skript vypíše změny a co zkontrolovat ručně
+      (např. přijímané odpovědi lišící se jen diakritikou → `ignoreDiacritics: false`).
+- [ ] Bez `--write` jen vypíše, co by udělal; test na ukázkových souborech 0.2 a 0.3.
+
 ### Vědomě beze změny (proč)
 
 - `numeric-input.correctAnswer` povinné: hra po odpovědi ukazuje „správně bylo …“.
@@ -245,5 +256,5 @@ zvuky, upozornění Labu na `render` bez `ui.html`; rezervované věci ze SPEC 1
 
 ## Pořadí práce
 
-1. OQSE 1.0 po částech 0–9 → 2. host-sdk → 3. E → 4. F (návod) → 5. G (dokumentace) →
+1. OQSE 1.0 po částech 0–10 → 2. host-sdk → 3. E → 4. F (návod) → 5. G (dokumentace) →
 6. vydání. Souběžně (vlastník): Astro landing na `memizy.com`, Play na `/play/`, prezentace.
