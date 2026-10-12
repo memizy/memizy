@@ -14,7 +14,7 @@
     "build:packages": "bun run --filter \"@memizy/oqse\" build && bun run --filter \"@memizy/protocol\" build && bun run --filter \"@memizy/plugin-sdk\" build && bun run --filter \"@memizy/host-sdk\" build",
     "build": "bun run build:packages && bun run --filter \"@memizy/play\" build",
     "dev:play": "bun run --filter \"@memizy/plugin-sdk\" build && bun run --filter \"@memizy/play\" dev",
-    "test": "bun run build:packages && bun run --filter \"*\" test",
+    "test": "bun run build:packages && bun run --filter \"*\" test && bun test scripts",
     "typecheck": "bun run build:packages && bun run --filter \"*\" typecheck",
     "dev:server": "bun run --filter \"@memizy/multiplayer-server\" dev"
   }

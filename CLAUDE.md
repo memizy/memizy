@@ -71,8 +71,8 @@ After changing a package, rebuild it (`bun run build:packages`) before testing t
   authority shows answers with `ctx.reveal(itemId, { to? })`. `checkAnswer` runs in
   actions and understands `correctOrder` / `correctMatches`. Upload `prepared.publicSet`
   to the relay, never the full set.
-- OQSE 0.3: choices `{ id, text }`, answers by ID, `skills`; 0.2 files are refused
-  (`scripts/migrate-oqse-0.3.ts` converts them once).
+- OQSE 1.0: choices `{ id, text }`, answers by ID, `skills`; pre-release 0.x files are refused
+  (the repo-only tool `bun scripts/migrate-oqse/cli.ts <dir> [--apply]` converts 0.1–0.3).
 - RC4 protocol: `recordAnswer.answer` and generated items, pauses (`SessionClock`),
   `permissions` (CSP + device grants), `service()` + `InitPayload.services`; SPEC §10
   lists decisions and reserved names – read it before extending the contract.

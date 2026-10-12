@@ -194,13 +194,17 @@ Dotčené soubory obvykle: `packages/oqse/oqse*.md` (spec), `src/oqse.ts` (typy)
 
 ### Část 10 – Převodní skript (jen v repu, ne v balíčku)
 
-- [ ] `scripts/migrate-oqse.ts` nahradí `migrate-oqse-0.3.ts`: převod po krocích
+- [x] `scripts/migrate-oqse.ts` nahradí `migrate-oqse-0.3.ts`: převod po krocích
       (0.2 → 0.3 = dnešní ID možností, 0.3 → 1.0), každý krok malá funkce; JSON i `.oqse.md`.
-- [ ] Krok 0.3 → 1.0 podle changelogu „Version 1.0“ (verze a `$schema`, bez `trimWhitespace`,
+- [x] Krok 0.3 → 1.0 podle changelogu „Version 1.0“ (verze a `$schema`, bez `trimWhitespace`,
       `range` → `correctAnswer` + `tolerance`, … co přinesou části 2–8).
-- [ ] Výsledek ověří `safeValidateOQSEFile`; skript vypíše změny a co zkontrolovat ručně
+- [x] Výsledek ověří `safeValidateOQSEFile`; skript vypíše změny a co zkontrolovat ručně
       (např. přijímané odpovědi lišící se jen diakritikou → `ignoreDiacritics: false`).
-- [ ] Bez `--write` jen vypíše, co by udělal; test na ukázkových souborech 0.2 a 0.3.
+- [x] Bez `--write` jen vypíše, co by udělal; test na ukázkových souborech 0.2 a 0.3.
+- [x] Navíc: krok 0.1 → 0.2 (v kurzech jsou sady 0.1: `math` → `latex`, `answer` → …),
+      manifesty her v `.html`, test v `bun run test` (`bun test scripts`).
+      Zkouška nanečisto na `../courses`: 58 souborů, 34× `otazky_*.json` bez `meta.id`
+      (nejsou to úplné sady), 1× HTML nadpisy v `set-ceska-historie-zabavne` – ručně.
 
 ### Vědomě beze změny (proč)
 
