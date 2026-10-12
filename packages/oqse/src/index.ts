@@ -17,4 +17,5 @@ export { shiftHeadings } from './markdownUtils';
 export * from './fileValidation';
 export * from './assets';
 export * from './answers';
+export * from './checkAnswer';
 export * from './compatibility';

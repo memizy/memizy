@@ -529,7 +529,7 @@ This section defines what a learner's answer to each item type looks like and wh
 
 **Tolerant reading:** applications reading answers MUST also accept: numbers written as strings (normalized as in [`numeric-input`](#type-numeric-input-numeric-input): decimal comma, spaces), `"true"` / `"false"` as strings for `true-false`, and a single point or name as well as an array of them for `pin-on-image` and `pin-on-model`. They write answers in the canonical form above.
 
-**Reference implementation:** `checkAnswer` in `@memizy/plugin-sdk`.
+**Reference implementation:** `checkAnswer` in `@memizy/oqse`.
 
 ## Item Types (`item.type`)
 
@@ -2029,7 +2029,7 @@ These rules apply to OQSE sets and equally to [OQSEM manifests](./oqse-manifest.
 ## Validation and Tools
 
 ### Reference Implementation
-The `@memizy/oqse` npm package provides TypeScript types, `loadOQSEFile` (tolerant import), `validateOQSEFile` / `safeValidateOQSEFile` (strict save/export), `resolveAsset` (asset lookup: item first, then meta), `checkCompatibility` (the [OQSEM handshake](./oqse-manifest.md#the-handshake-matching-process)), and the OQSE Markdown parser/serializer.
+The `@memizy/oqse` npm package provides TypeScript types, `loadOQSEFile` (tolerant import), `validateOQSEFile` / `safeValidateOQSEFile` (strict save/export), `resolveAsset` (asset lookup: item first, then meta), `checkCompatibility` (the [OQSEM handshake](./oqse-manifest.md#the-handshake-matching-process)), `checkAnswer` ([Answer Formats](#answer-formats)) with `textAnswerMatches` and `compareTimelineEvents`, and the OQSE Markdown parser/serializer.
 
 ### JSON Schema
 The JSON Schema describes the structure only; cross-item rules (unique IDs, references, assets, raw HTML) are checked by the reference implementation. Official JSON Schema is available at:

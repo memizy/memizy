@@ -26,6 +26,7 @@ import {
   loadOQSEFile,          // tolerant import: skips invalid items, returns errors + warnings
   validateOQSEFile,      // strict save/export validation (throws OQSEValidationError)
   resolveAsset,          // <asset:key /> lookup: item.assets first, then meta.assets
+  checkAnswer,           // is a learner's answer correct? (Answer Formats in the specification)
   parseMarkdownSet,      // OQSE Markdown (.oqse.md) -> OQSE file
   serializeMarkdownSet,  // OQSE file of notes -> OQSE Markdown
 } from '@memizy/oqse';

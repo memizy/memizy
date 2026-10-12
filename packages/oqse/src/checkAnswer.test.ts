@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { OQSEAnyItem } from '@memizy/oqse';
+import type { OQSEAnyItem } from './oqse';
 import { checkAnswer } from './checkAnswer';
 
 const item = (data: Record<string, unknown>) => ({ id: 'x', ...data }) as unknown as OQSEAnyItem;

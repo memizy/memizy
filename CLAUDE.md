@@ -25,9 +25,9 @@ its library (see "Using the engine from the platform").
 
 | Path | What |
 | :--- | :--- |
-| `packages/oqse` | OQSE 0.2 types, Zod validation (`loadOQSEFile` tolerant, `safeValidateOQSEFile` strict), Markdown sets, compatibility. |
+| `packages/oqse` | OQSE 1.0 types, Zod validation (`loadOQSEFile` tolerant, `safeValidateOQSEFile` strict), Markdown sets, compatibility, `checkAnswer` (Answer Formats) and its helpers (`textAnswerMatches`, timeline comparison). |
 | `packages/protocol` | The plugin protocol: `SPEC.md` (normative), manifest/settings schemas, limits, errors, relay wire types, `prepareDisplaySet` (display order + public items). |
-| `packages/plugin-sdk` | What plugins import: `defineGame` (state, actions, timers, sync, snapshots, `ui.pending`, `ctx.reveal`), morph renderer, `checkAnswer`, standalone mode. Bundle served as `/sdk/memizy-sdk.js` by Play. |
+| `packages/plugin-sdk` | What plugins import: `defineGame` (state, actions, timers, sync, snapshots, `ui.pending`, `ctx.reveal`), morph renderer, `checkAnswer` (the OQSE one, refusing public items), standalone mode. Bundle served as `/sdk/memizy-sdk.js` by Play. |
 | `packages/host-sdk` | What hosts use: `loadPluginFromHtml`, `prepareSetForPlugin`, `LocalSession` (validates every call, routing, start barrier, authority, storage), `mountPlugin` (sandboxed iframe + Penpal), `RelayHost` / `RelayPlayer` (multiplayer over the relay). |
 | `services/multiplayer-server` | Relay: rooms by PIN, host token, bundle store, WebSocket routing, rate limits. Bun; deployed with Docker + Cloudflare Tunnel (`deploy/`). |
 | `apps/play` | Memizy Play (Vue 3 + Tailwind + vue-i18n): Lab (write/test plugins, AI question sets), host and join pages. Example plugins in `src/data/plugins`, sample sets in `src/data/sets`. |
