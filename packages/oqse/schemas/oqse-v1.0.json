@@ -7269,22 +7269,6 @@
                     "type": "number",
                     "minimum": 0
                   },
-                  "range": {
-                    "type": "object",
-                    "properties": {
-                      "min": {
-                        "type": "number"
-                      },
-                      "max": {
-                        "type": "number"
-                      }
-                    },
-                    "required": [
-                      "min",
-                      "max"
-                    ],
-                    "additionalProperties": {}
-                  },
                   "unit": {
                     "type": "string"
                   }

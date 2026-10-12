@@ -771,17 +771,6 @@ export interface Rubric {
   criteria: RubricCriterion[];
 }
 
-/**
- * Range object for numeric-input
- */
-export interface NumericRange {
-  /** Minimum value (inclusive) */
-  min: number;
-
-  /** Maximum value (inclusive) */
-  max: number;
-}
-
 // ============================================================================
 // Item Types (Discriminated Unions)
 // ============================================================================
@@ -1195,17 +1184,14 @@ export interface NumericInputItem extends BaseItem {
   /** Question text (Rich Content) */
   question: string;
 
-  /** Correct numeric value (float) */
+  /** The correct value (shown as the correct answer) */
   correctAnswer: number;
 
-  /** Absolute allowed deviation. Default: 0 */
-  tolerance?: number;
-
   /**
-   * Alternative to correctAnswer+tolerance.
-   * If specified, takes precedence over correctAnswer.
+   * Allowed absolute deviation (>= 0). Default: 0.
+   * An interval 100–120 is `correctAnswer: 110, tolerance: 10`.
    */
-  range?: NumericRange;
+  tolerance?: number;
 
   /** Unit displayed after input field (Plain Text) */
   unit?: string;

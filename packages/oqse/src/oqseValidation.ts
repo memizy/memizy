@@ -553,20 +553,6 @@ export const RubricSchema = z.looseObject({
   }
 );
 
-/**
- * Numeric range
- */
-export const NumericRangeSchema = z.looseObject({
-  min: z.number(),
-  max: z.number(),
-}).refine(
-  (data) => data.min <= data.max,
-  {
-    message: 'Minimum value must be less than or equal to maximum value',
-    path: ['max'],
-  }
-);
-
 // ============================================================================
 // Item Types (Discriminated Union)
 // ============================================================================
@@ -994,8 +980,7 @@ export const NumericInputItemSchema = BaseItemSchema.extend({
   type: z.literal('numeric-input'),
   question: RichContentSchema.max(10000, 'Question must not be longer than 10000 characters'),
   correctAnswer: z.number(),
-  tolerance: z.number().nonnegative().optional(),
-  range: NumericRangeSchema.optional(),
+  tolerance: z.number().nonnegative('Tolerance must be non-negative').optional(),
   unit: z.string().optional(),
 });
 

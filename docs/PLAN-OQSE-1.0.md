@@ -90,9 +90,11 @@ Dotčené soubory obvykle: `packages/oqse/oqse*.md` (spec), `src/oqse.ts` (typy)
 
 ### Část 3 – `numeric-input` bez `range`
 
-- [ ] Spec: typ a validační pravidla (interval 100–120 = `correctAnswer: 110, tolerance: 10`).
-- [ ] Kód: typy (bez `NumericRange`), validace, `checkAnswer`, veřejné položky
+- [x] Spec: typ a validační pravidla (interval 100–120 = `correctAnswer: 110, tolerance: 10`).
+- [x] Kód: typy (bez `NumericRange`), validace, `checkAnswer`, veřejné položky
       (`items.ts`), `ui.question`, Piráti (`item.range`); testy.
+      Bez `ui.question` (s `range` nepočítal). Navíc: rezerva na zaokrouhlení (SHOULD, 1e-9),
+      ukázat jen `correctAnswer` (SHOULD).
 
 ### Část 4 – Časová osa
 

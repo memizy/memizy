@@ -119,7 +119,7 @@ const HIDDEN: Record<string, string[]> = {
   'match-pairs': ['pairs'],
   'match-complex': ['connections'],
   slider: ['correctAnswer'],
-  'numeric-input': ['correctAnswer', 'range'],
+  'numeric-input': ['correctAnswer'],
   'math-input': ['correctAnswer', 'alternativeAnswers'],
   matrix: ['correctCells'],
   'open-ended': ['sampleAnswer', 'rubric'],

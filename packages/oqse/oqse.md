@@ -786,7 +786,7 @@ In the example above, `BE-4` has no connection: it is a distractor.
   * `max` (number, required): Maximum value on slider.
   * `step` (number, required): Slider step (e.g., 1, 0.1). Must be > 0. RECOMMENDED: `step` SHOULD be such that `(max - min) / step` gives whole number (e.g., `max: 100, min: 0, step: 5` → 20 steps).
   * `correctAnswer` (number, required): Correct value. MUST be reachable by slider: `(correctAnswer - min) % step === 0` and `correctAnswer` MUST lie in interval `<min, max>`.
-  * `tolerance` (number, optional): Allowed deviation. Default: `0`. **Validation rules:** `tolerance >= 0` and `tolerance <= (max - min) / 2`. RECOMMENDED: `tolerance` should be multiple of `step` (e.g., `step: 5, tolerance: 10`), otherwise inconsistent answer evaluation may occur. If `tolerance % step != 0`, Application MUST issue warning about possible inconsistency.
+  * `tolerance` (number, optional): Allowed deviation; the answer is correct if `|answer − correctAnswer| <= tolerance` (with a margin for floating-point rounding as in [`numeric-input`](#type-numeric-input-numeric-input)). Default: `0`. **Validation rules:** `tolerance >= 0` and `tolerance <= (max - min) / 2`. RECOMMENDED: `tolerance` should be multiple of `step` (e.g., `step: 5, tolerance: 10`), otherwise inconsistent answer evaluation may occur. If `tolerance % step != 0`, Application MUST issue warning about possible inconsistency.
   * `unit` (string, optional): **Plain Text.** Unit (e.g., "year", "m", "°C").
 
 **Example:**
@@ -1036,9 +1036,8 @@ Intended for questions requiring free text answer that cannot be easily machine-
 Intended for physics, chemistry, statistics, or math problems where answer is specific number (integer or float), not algebraic expression (for that use `math-input`). This type ensures numeric keyboard display on mobile devices.
 
   * `question` (string, required): **Rich Content.** Question text.
-  * `correctAnswer` (number, required): Correct numeric value (float). Used for evaluation when `range` is not specified. If `range` is present, `correctAnswer` is not used for evaluation; it SHOULD nonetheless be set to a representative value within the range (e.g., the midpoint) to keep the field consistently populated.
-  * `tolerance` (number, optional): Absolute allowed deviation. Default: `0`. Answer is correct if: `|user_value - correctAnswer| <= tolerance`. Ignored when `range` is specified.
-  * `range` (object, optional): Alternative to `correctAnswer`+`tolerance`. Object `{ "min": number, "max": number }`. If specified, overrides `correctAnswer`+`tolerance`. Answer is correct if it lies in closed interval `<min, max>`.
+  * `correctAnswer` (number, required): The correct value. Applications SHOULD show this value (not the tolerance) as the correct answer.
+  * `tolerance` (number, optional): Allowed absolute deviation, `>= 0`. Default: `0`. The answer is correct if `|answer − correctAnswer| <= tolerance`. An interval, e.g. 100–120, is written as `correctAnswer: 110, tolerance: 10`.
   * `unit` (string, optional): **Plain Text.** Unit displayed after input field (e.g., "kg", "m/s", "%"). Serves only for visual context, not compared.
 
 **Implementation rules for applications:**
@@ -1047,6 +1046,7 @@ Applications **MUST** normalize user input before evaluation to handle localizat
 1.  Replace decimal comma `,` with period `.`.
 2.  Remove spaces (e.g., from `1 000` to `1000`).
 3.  Applications SHOULD accept input formatting per device locale, but internally always compare with `correctAnswer` as type `number` (float).
+4.  Applications SHOULD allow for floating-point rounding when comparing (e.g., a margin of `1e-9`), so that an answer exactly at the edge of the tolerance is correct.
 
 **Example:**
 
@@ -1619,9 +1619,8 @@ To ensure consistency and practical implementability, the specification defines 
 - Value MUST be reachable: `(correctAnswer - min) % step === 0`. Otherwise Application MUST reject import.
 - If `tolerance > 0`, it SHOULD also be a multiple of `step`, otherwise a warning about inconsistent evaluation is expected ([see Type: Slider](#type-slider-slider--numeric-answer)).
 
-**For `range` in `numeric-input`:**
-- If `range` is present, `range.min <= range.max` MUST hold. Application MUST reject import if `range.min > range.max`.
-- If `range` is present, `correctAnswer` SHOULD lie within `<range.min, range.max>` (consistency recommendation).
+**For `tolerance` in `numeric-input`:**
+- `tolerance >= 0` MUST hold.
 
 **For `correctCells` in `matrix`:**
 - Cells are `[rowId, columnId]` of existing rows and columns
@@ -2160,6 +2159,7 @@ OQSE is an open standard. Suggestions for improvements:
 The first stable version. From now on, 1.x versions only add (see [Versioning and Compatibility](#versioning-and-compatibility)).
 * Version rules for sets, manifests and progress files: applications read the MAJOR versions they support and never read another MAJOR version (including the pre-release 0.x drafts) silently as a supported one.
 * Schema URLs: `https://cdn.jsdelivr.net/npm/@memizy/oqse@1/schemas/oqse-v1.0.json` (and `oqse-manifest-v1.0.json`, `oqse-progress-v1.0.json`, `oqse-header-v1.0.json`).
+* `numeric-input`: `range` is removed; an interval is `correctAnswer` ± `tolerance` (e.g., 100–120 = `correctAnswer: 110, tolerance: 10`). Comparisons allow for floating-point rounding.
 * [Comparing Typed Answers](#comparing-typed-answers): one normative algorithm for `short-answer`, `fill-in-blanks` and typed `diagram-label` (whitespace, case, diacritics, typos as optimal string alignment distance with fixed limits). `ignoreDiacritics` defaults to `true`; `fill-in-blanks` and `diagram-label` get `ignoreDiacritics` and `acceptPartial`; `trimWhitespace` is removed (whitespace is always trimmed).
 
 ### Version 0.3 (October 2026)

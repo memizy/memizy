@@ -44,8 +44,11 @@ describe('checkAnswer', () => {
     expect(checkAnswer(numeric, '9,75')).toBe(true);
     expect(checkAnswer(numeric, 10)).toBe(false);
     expect(checkAnswer(numeric, 'abc')).toBe(false);
-    const ranged = item({ type: 'numeric-input', question: 'Q', correctAnswer: 5, range: { min: 1000, max: 2000 } });
-    expect(checkAnswer(ranged, '1 500')).toBe(true);
+    // An interval 1000–2000 is 1500 ± 500; the edges count, despite floating-point rounding.
+    const interval = item({ type: 'numeric-input', question: 'Q', correctAnswer: 1500, tolerance: 500 });
+    expect(checkAnswer(interval, '1 000')).toBe(true);
+    expect(checkAnswer(interval, 2001)).toBe(false);
+    expect(checkAnswer(item({ type: 'numeric-input', question: 'Q', correctAnswer: 0.3, tolerance: 0.1 }), 0.1 + 0.1)).toBe(true);
     const slider = item({ type: 'slider', question: 'Q', min: 0, max: 100, step: 1, correctAnswer: 50 });
     expect(checkAnswer(slider, 50)).toBe(true);
     expect(checkAnswer(slider, 51)).toBe(false);

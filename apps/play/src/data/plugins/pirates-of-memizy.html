@@ -930,7 +930,7 @@ function answerText(item, ui) {
     case 'short-answer': return item.correctAnswers.slice(0, 3).join(' / ');
     case 'sort-items': return joined(item.correctOrder.map((id) => inline(choiceText(item.items, id))), ' → ');
     case 'match-pairs': return joined(item.prompts.map((p) => ui.html`${inline(p.text)} = ${inline(choiceText(item.matches, item.pairs[p.id]))}`), '; ');
-    case 'numeric-input': return `${item.range ? `${item.range.min}–${item.range.max}` : item.correctAnswer}${item.unit ? ` ${item.unit}` : ''}`;
+    case 'numeric-input': return `${item.correctAnswer}${item.unit ? ` ${item.unit}` : ''}`;
     case 'categorize': return joined(item.items.map((e) => ui.html`${inline(e.text)} → ${inline(choiceText(item.categories, e.correctCategoryId))}`), '; ');
     case 'fill-in-select': return joined(Object.values(item.blanks).map((b) => inline(choiceText(b.options, b.correctId))), ', ');
     case 'fill-in-blanks': return Object.values(item.blanks).map((b) => b[0]).join(', ');

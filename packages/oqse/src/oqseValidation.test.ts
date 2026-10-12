@@ -271,6 +271,14 @@ describe('OQSE 1.0 item shape', () => {
     expect(OQSEItemSchema.safeParse({ ...base, correctAnswer: '2x', alternativeAnswers: ['$$2x$$'] }).success).toBe(false);
   });
 
+  it('numeric-input: an interval is correctAnswer ± tolerance (no range)', () => {
+    const base = { id, type: 'numeric-input', question: 'Q', correctAnswer: 110 };
+    expect(OQSEItemSchema.safeParse({ ...base, tolerance: 10 }).success).toBe(true);
+    expect(OQSEItemSchema.safeParse({ ...base, tolerance: -1 }).success).toBe(false);
+    const withRange = OQSEItemSchema.safeParse({ ...base, range: { min: 100, max: 120 } });
+    expect(withRange.success).toBe(true); // an unknown key, kept but not used
+  });
+
   it('slider tolerance is optional', () => {
     expect(OQSEItemSchema.safeParse({ id, type: 'slider', question: 'Q', min: 0, max: 10, step: 1, correctAnswer: 5 }).success).toBe(true);
   });

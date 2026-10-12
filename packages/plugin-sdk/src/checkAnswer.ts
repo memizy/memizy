@@ -47,9 +47,7 @@ export function checkAnswer(item: OQSEAnyItem, answer: unknown): boolean {
 
     case 'numeric-input': {
       const value = toNumber(answer);
-      if (value === null) return false;
-      if (item.range) return value >= item.range.min && value <= item.range.max;
-      return Math.abs(value - item.correctAnswer) <= (item.tolerance ?? 0) + 1e-9;
+      return value !== null && Math.abs(value - item.correctAnswer) <= (item.tolerance ?? 0) + 1e-9;
     }
 
     case 'slider': {
