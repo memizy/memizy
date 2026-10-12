@@ -714,7 +714,6 @@
         "Cold"
       ],
       "caseSensitive": false,
-      "trimWhitespace": true,
       "hints": [
         "Think about temperature opposites.",
         "It starts with C."
@@ -737,7 +736,6 @@
         "seven"
       ],
       "caseSensitive": false,
-      "trimWhitespace": true,
       "hints": [
         "Count Monday through Sunday.",
         "Numeric and word forms are both accepted."
@@ -759,7 +757,6 @@
         "H2O"
       ],
       "caseSensitive": false,
-      "trimWhitespace": true,
       "hints": [
         "It contains two hydrogen atoms and one oxygen atom.",
         "Starts with H and ends with O."

@@ -13,11 +13,14 @@
  *  diagram-label: { zoneId: labelId } (or { zoneId: text } with requireTyping)
  *  pin-on-model: mesh name (array when multipleCorrect) · chess-puzzle: array of SAN moves
  *
+ * Typed text is compared by "Comparing Typed Answers" in the OQSE specification
+ * (`textAnswerMatches` from `@memizy/oqse`).
+ *
  * `flashcard`, `note`, `open-ended` and custom `x-` types cannot be checked
  * automatically; calling `checkAnswer` on them throws.
  */
 
-import type { Hotspot2D, OQSEAnyItem, TimelineEvent } from '@memizy/oqse';
+import { textAnswerMatches, type Hotspot2D, type OQSEAnyItem, type TimelineEvent } from '@memizy/oqse';
 
 export function checkAnswer(item: OQSEAnyItem, answer: unknown): boolean {
   if (!item || typeof item !== 'object') throw new Error('checkAnswer: missing item');
@@ -38,13 +41,8 @@ export function checkAnswer(item: OQSEAnyItem, answer: unknown): boolean {
       return toBoolean(answer) === item.correctAnswer;
 
     case 'short-answer': {
-      if (typeof answer !== 'string') return false;
-      const opts = { caseSensitive: item.caseSensitive ?? false, trim: item.trimWhitespace ?? true, diacritics: item.ignoreDiacritics ?? false };
-      const given = normalizeText(answer, opts);
-      return item.correctAnswers.some((correct) => {
-        const expected = normalizeText(correct, opts);
-        return given === expected || (!!item.acceptPartial && withinTypoTolerance(given, expected));
-      });
+      const typed = answer;
+      return typeof typed === 'string' && item.correctAnswers.some((accepted) => textAnswerMatches(typed, accepted, item));
     }
 
     case 'numeric-input': {
@@ -93,10 +91,9 @@ export function checkAnswer(item: OQSEAnyItem, answer: unknown): boolean {
     case 'fill-in-blanks': {
       const values = record(answer);
       if (!values) return false;
-      const opts = { caseSensitive: item.caseSensitive ?? false, trim: item.trimWhitespace ?? true, diacritics: false };
       return Object.entries(item.blanks).every(([token, accepted]) => {
-        const given = values[token];
-        return typeof given === 'string' && accepted.some((a) => normalizeText(a, opts) === normalizeText(given, opts));
+        const typed = values[token];
+        return typeof typed === 'string' && accepted.some((a) => textAnswerMatches(typed, a, item));
       });
     }
 
@@ -135,13 +132,11 @@ export function checkAnswer(item: OQSEAnyItem, answer: unknown): boolean {
     case 'diagram-label': {
       const values = record(answer);
       if (!values) return false;
-      const caseSensitive = item.caseSensitive ?? false;
       return item.zones.every((zone) => {
         const given = values[zone.id];
         if (item.requireTyping) {
           const label = item.labels.find((l) => l.id === zone.correctLabelId);
-          const opts = { caseSensitive, trim: true, diacritics: false };
-          return !!label && typeof given === 'string' && normalizeText(given, opts) === normalizeText(label.text, opts);
+          return !!label && typeof given === 'string' && textAnswerMatches(given, label.text, item);
         }
         return given === zone.correctLabelId;
       });
@@ -225,33 +220,6 @@ function sameSet<T>(a: T[], b: T[]): boolean {
   const sa = new Set(a);
   const sb = new Set(b);
   return sa.size === a.length && sa.size === sb.size && [...sa].every((x) => sb.has(x));
-}
-
-function normalizeText(text: string, opts: { caseSensitive: boolean; trim: boolean; diacritics: boolean }): string {
-  let result = text.normalize('NFC');
-  if (opts.trim) result = result.trim().replace(/\s+/g, ' ');
-  if (!opts.caseSensitive) result = result.toLowerCase();
-  if (opts.diacritics) result = result.normalize('NFD').replace(/\p{M}/gu, '').normalize('NFC');
-  return result;
-}
-
-/** Typo tolerance for `acceptPartial`: exact up to 3 characters, 1 edit up to 7, otherwise 2. */
-function withinTypoTolerance(given: string, expected: string): boolean {
-  const allowed = expected.length <= 3 ? 0 : expected.length <= 7 ? 1 : 2;
-  return allowed > 0 && levenshtein(given, expected, allowed) <= allowed;
-}
-
-function levenshtein(a: string, b: string, max: number): number {
-  if (Math.abs(a.length - b.length) > max) return max + 1;
-  let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
-  for (let i = 1; i <= a.length; i++) {
-    const row = [i];
-    for (let j = 1; j <= b.length; j++) {
-      row[j] = Math.min(prev[j] + 1, row[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
-    }
-    prev = row;
-  }
-  return prev[b.length];
 }
 
 /** Whitespace-insensitive, without `$` delimiters (OQSE math-input string comparison). */

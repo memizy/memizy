@@ -78,15 +78,15 @@ Dotčené soubory obvykle: `packages/oqse/oqse*.md` (spec), `src/oqse.ts` (typy)
 
 ### Část 2 – Porovnání textu
 
-- [ ] Spec: nový oddíl „Text comparison“ (slovy): NFC; ořez a sloučení bílých znaků;
+- [x] Spec: nový oddíl „Text comparison“ (slovy): NFC; ořez a sloučení bílých znaků;
       malá písmena podle výchozího převodu Unicode (nezávisle na jazyce); diakritika =
       rozklad NFD, odebrat znaky kategorie M, zpět NFC (`ł`, `ø`, `đ` zůstávají);
-      `acceptPartial` = Levenshteinova vzdálenost po znacích Unicode z normalizovaných
+      `acceptPartial` = Damerau–Levenshtein (OSA, prohození sousedních = 1 úprava) po znacích Unicode z normalizovaných
       textů, nejvýš 0 do 3 znaků očekávané odpovědi, 1 do 7, jinak 2.
-- [ ] Spec: `ignoreDiacritics` výchozí `true`; pole `ignoreDiacritics` a `acceptPartial`
+- [x] Spec: `ignoreDiacritics` výchozí `true`; pole `ignoreDiacritics` a `acceptPartial`
       i u `fill-in-blanks` a `diagram-label` (psaní); `trimWhitespace` zrušeno; rada pro
       pravopisná cvičení (`ignoreDiacritics: false`).
-- [ ] Kód: sdílené funkce v `@memizy/oqse`, typy, validace, `checkAnswer`; testy.
+- [x] Kód: sdílené funkce v `@memizy/oqse`, typy, validace, `checkAnswer`; testy.
 
 ### Část 3 – `numeric-input` bez `range`
 

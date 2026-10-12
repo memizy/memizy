@@ -655,9 +655,8 @@ export const ShortAnswerItemSchema = BaseItemSchema.extend({
   question: RichContentSchema.max(10000, 'Question must not be longer than 10000 characters'),
   correctAnswers: z.array(PlainTextSchema).min(1, 'Must have at least 1 correct answer'),
   caseSensitive: z.boolean().optional(),
-  trimWhitespace: z.boolean().optional(),
-  acceptPartial: z.boolean().optional(),
   ignoreDiacritics: z.boolean().optional(),
+  acceptPartial: z.boolean().optional(),
 });
 
 /**
@@ -669,7 +668,8 @@ export const FillInBlanksItemSchema = BaseItemSchema.extend({
   text: RichContentSchema.max(10000, 'Text must not be longer than 10000 characters'),
   blanks: z.record(BlankTokenSchema, z.array(PlainTextSchema).min(1, 'Each blank must have at least 1 correct answer')),
   caseSensitive: z.boolean().optional(),
-  trimWhitespace: z.boolean().optional(),
+  ignoreDiacritics: z.boolean().optional(),
+  acceptPartial: z.boolean().optional(),
 }).refine(
   (data) => Object.keys(data.blanks).length > 0,
   {
@@ -952,6 +952,8 @@ export const DiagramLabelItemSchema = BaseItemSchema.extend({
   /** Labels to assign: all correct ones, may contain distractors. */
   labels: choiceList(1, 'labels'),
   caseSensitive: z.boolean().optional(),
+  ignoreDiacritics: z.boolean().optional(),
+  acceptPartial: z.boolean().optional(),
   requireTyping: z.boolean().optional(),
   zones: z.array(DiagramZoneSchema).min(1, 'Must have at least 1 zone'),
 }).refine(

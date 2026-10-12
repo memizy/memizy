@@ -29,9 +29,11 @@ describe('checkAnswer', () => {
     const base = { type: 'short-answer', question: 'Q', correctAnswers: ['Praha', 'Prague'] };
     expect(checkAnswer(item(base), '  praha ')).toBe(true);
     expect(checkAnswer(item({ ...base, caseSensitive: true }), 'praha')).toBe(false);
-    expect(checkAnswer(item({ ...base, correctAnswers: ['citrón'] }), 'citron')).toBe(false);
-    expect(checkAnswer(item({ ...base, correctAnswers: ['citrón'], ignoreDiacritics: true }), 'Citron')).toBe(true);
+    // Diacritics are ignored by default; spelling exercises turn it off.
+    expect(checkAnswer(item({ ...base, correctAnswers: ['citrón'] }), 'Citron')).toBe(true);
+    expect(checkAnswer(item({ ...base, correctAnswers: ['citrón'], ignoreDiacritics: false }), 'citron')).toBe(false);
     expect(checkAnswer(item({ ...base, acceptPartial: true }), 'Prahha')).toBe(true);
+    expect(checkAnswer(item({ ...base, acceptPartial: true }), 'Parha')).toBe(true); // swapped letters
     expect(checkAnswer(item({ ...base, acceptPartial: true }), 'Brno')).toBe(false);
     expect(checkAnswer(item({ ...base, correctAnswers: ['cat'], acceptPartial: true }), 'car')).toBe(false);
   });
@@ -91,6 +93,11 @@ describe('checkAnswer', () => {
     const blanks = item({ type: 'fill-in-blanks', text: '<blank:a /> <blank:b />', blanks: { a: ['Praha'], b: ['Brno', 'brno city'] } });
     expect(checkAnswer(blanks, { a: 'praha', b: 'BRNO' })).toBe(true);
     expect(checkAnswer(blanks, { a: 'praha' })).toBe(false);
+    const accents = item({ type: 'fill-in-blanks', text: '<blank:a />', blanks: { a: ['Plzeň'] } });
+    expect(checkAnswer(accents, { a: ' plzen ' })).toBe(true);
+    expect(checkAnswer(item({ ...(accents as object), ignoreDiacritics: false }), { a: 'plzen' })).toBe(false);
+    expect(checkAnswer(accents, { a: 'plzne' })).toBe(false);
+    expect(checkAnswer(item({ ...(accents as object), acceptPartial: true }), { a: 'plzne' })).toBe(true);
     const select = item({ type: 'fill-in-select', text: '<blank:a />', blanks: { a: { options: ch('x', 'y'), correctId: 'y' } } });
     expect(checkAnswer(select, { a: 'y' })).toBe(true);
     expect(checkAnswer(select, { a: 'x' })).toBe(false);
@@ -120,7 +127,10 @@ describe('checkAnswer', () => {
     const label = item({ type: 'diagram-label', question: 'Q', targetAsset: 'd', labels: [{ id: 'heart', text: 'Heart' }, { id: 'lung', text: 'Lung' }], zones: [{ id: 'z1', type: 'circle', x: 1, y: 1, radius: 1, correctLabelId: 'lung' }] });
     expect(checkAnswer(label, { z1: 'lung' })).toBe(true);
     expect(checkAnswer(label, { z1: 'heart' })).toBe(false);
-    expect(checkAnswer(item({ ...(label as object), requireTyping: true }), { z1: ' lung ' })).toBe(true);
+    const typed = item({ ...(label as object), requireTyping: true, labels: [{ id: 'heart', text: 'Srdce' }, { id: 'lung', text: 'Plíce' }] });
+    expect(checkAnswer(typed, { z1: ' plice ' })).toBe(true);
+    expect(checkAnswer(item({ ...(typed as object), ignoreDiacritics: false }), { z1: 'plice' })).toBe(false);
+    expect(checkAnswer(item({ ...(typed as object), acceptPartial: true }), { z1: 'plcie' })).toBe(true);
 
     const model = item({ type: 'pin-on-model', question: 'Q', targetAsset: 'm', hotspots: [{ type: 'mesh', targetName: 'Femur' }] });
     expect(checkAnswer(model, 'femur_left')).toBe(true);

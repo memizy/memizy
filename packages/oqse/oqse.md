@@ -28,6 +28,7 @@ In this specification, the keywords **MUST**, **MUST NOT**, **SHOULD**, **SHOULD
 *   [Common Item Properties](#common-item-properties-in-items)
 *   [The `MediaObject` Object](#the-mediaobject-object)
 *   [Choices and Answers by ID](#choices-and-answers-by-id)
+*   [Comparing Typed Answers](#comparing-typed-answers)
 *   [Item Types](#item-types-itemtype)
 *   [Helper Data Structures](#helper-data-structures)
 *   [Complete Example File](#complete-example-file)
@@ -468,6 +469,33 @@ Lists that the learner selects from or arranges are lists of **choices**: option
 
 **Answers always refer to choice IDs, never to positions** (`correctId`, `correctIds`, `correctOrder`, `pairs`, `connections`, `correctCategoryId`, `correctCells`, `correctLabelId`). Answers, statistics and learning progress therefore stay valid when an author reorders, adds or edits choices, and applications can shuffle lists freely without remapping anything. Choice IDs are local to their list; the same ID may appear in another list of the same item.
 
+## Comparing Typed Answers
+
+Typed answers (`short-answer`, `fill-in-blanks` and `diagram-label` with `requireTyping`) are compared with each accepted answer in the same way, so every application grades them alike. Both the typed text and the accepted answer are first normalized:
+
+1. **Unicode normalization** to form NFC.
+2. **Whitespace:** leading and trailing whitespace is removed and every run of whitespace inside the text (characters with the Unicode property `White_Space`) is replaced by a single space.
+3. **Letter case:** unless `caseSensitive` is `true`, the text is converted to lowercase with the default Unicode lowercase mapping (not language-specific; no case folding, so e.g. `ß` stays `ß`).
+4. **Diacritics:** unless `ignoreDiacritics` is `false`, the text is decomposed (form NFD), all characters of the Unicode general category Mark (`M`) are removed, and the text is composed again (form NFC). Letters that do not decompose into a base letter and a mark (e.g. `ł`, `ø`, `đ`, `ß`) stay as they are.
+
+The typed answer is **correct** if, after normalization, it equals one of the accepted answers.
+
+With `acceptPartial: true` it is also correct if the **edit distance** between the normalized typed answer and a normalized accepted answer is at most:
+
+| Length of the accepted answer (code points, after normalization) | Allowed edits |
+| :--- | :--- |
+| 1–3 | 0 |
+| 4–7 | 1 |
+| 8 or more | 2 |
+
+The edit distance is the *optimal string alignment* distance (restricted Damerau–Levenshtein) counted in Unicode code points: the minimal number of insertions, deletions and substitutions of one code point and transpositions of two adjacent code points (e.g. `Plzne` → `Plzen` is one edit), where no part of the text is edited more than once.
+
+**Examples:** `" Plzen "` matches `Plzeň`; `PRAHA` matches `Praha`; with `acceptPartial`, `Prahha` matches `Praha` and `Mississipi` matches `Mississippi`, but `car` does not match `cat`.
+
+**Spelling exercises:** when accents are what the learner practises, the author sets `ignoreDiacritics: false`.
+
+**Reference implementation:** `normalizeAnswerText` and `textAnswerMatches` in `@memizy/oqse`.
+
 ## Item Types (`item.type`)
 
 The specification in the current version defines **22 official item types**. Each application MUST clearly identify the type using the `type` key, which determines what other processing logic is applied.
@@ -587,9 +615,9 @@ A set consisting only of notes can also be written as one Markdown document, see
   * `question` (string, required): **Rich Content.** Question text.
   * `correctAnswers` (string[], required): **Plain Text.** Array of acceptable text answers (for checking variants). Must contain at least 1 item.
   * `caseSensitive` (boolean, optional): Distinguish letter case. Default: `false`.
-  * `trimWhitespace` (boolean, optional): Ignore spaces at beginning/end. Default: `true`.
-  * `acceptPartial` (boolean, optional): Accept approximate match (fuzzy matching). Allows answers with minor typos using Levenshtein distance (max. 1-2 edit operations: insertion, deletion, character substitution). Default: `false`.
-  * `ignoreDiacritics` (boolean, optional): If `true`, application removes diacritics from user input and from `correctAnswers` array before comparison (e.g., "citron" will match "citrón"). Default: `false`.
+  * `ignoreDiacritics` (boolean, optional): Ignore diacritics (e.g., "citron" matches "citrón"). Default: `true`.
+  * `acceptPartial` (boolean, optional): Accept small typos. Default: `false`.
+  * Answers are compared as described in [Comparing Typed Answers](#comparing-typed-answers).
 
 **Example:**
 ```json
@@ -597,9 +625,8 @@ A set consisting only of notes can also be written as one Markdown document, see
   "id": "019aa5f1-7cb7-7f8a-a085-98ae208b25ec",
   "type": "short-answer",
   "question": "What is the capital of the Czech Republic?",
-  "correctAnswers": ["Prague", "praha"],
-  "caseSensitive": false,
-  "trimWhitespace": true,
+  "correctAnswers": ["Prague", "Praha"],
+  "acceptPartial": true,
   "hints": ["City on the Vltava River", "Starts with letter P"]
 }
 ```
@@ -609,8 +636,10 @@ A set consisting only of notes can also be written as one Markdown document, see
   * `question` (string, optional): **Rich Content.** Heading or instructions.
   * `text` (string, required): **Rich Content.** Text with blanks marked using blank tags `<blank:token />` (e.g., `<blank:1 />`). **Token rules:** Token MUST be alphanumeric identifier (`a-z`, `A-Z`, `0-9`, `_`, `-`). Tokens are case-sensitive (`<blank:A />` ≠ `<blank:a />`). Maximum length: 64 characters. Regex: `^[a-zA-Z0-9_-]{1,64}$`. **Valid token examples:** `<blank:1 />`, `<blank:q1 />`, `<blank:answer_A />`, `<blank:first-name />`. Syntax is consistent with Media Tag (`<asset:key />`) for easier parsing. **Duplicate tokens:** If same token (e.g., `<blank:1 />`) occurs multiple times in text, all its occurrences represent **the same** input field. Application SHOULD ensure that when one occurrence is filled, other occurrences with same token are automatically filled as well.
   * `blanks` (object, required): Dictionary (map), where key is `token` and value is array `string[]` (**Plain Text**) of correct answers. Must contain at least 1 `token`.
-  * `caseSensitive` (boolean, optional): Distinguish letter case when checking answers. Default: `false`.
-  * `trimWhitespace` (boolean, optional): Ignore spaces at beginning and end of answer. Default: `true`.
+  * `caseSensitive` (boolean, optional): Distinguish letter case. Default: `false`.
+  * `ignoreDiacritics` (boolean, optional): Ignore diacritics. Default: `true`.
+  * `acceptPartial` (boolean, optional): Accept small typos. Default: `false`.
+  * Each blank is compared with its accepted answers as described in [Comparing Typed Answers](#comparing-typed-answers).
 
 **Validation rules:**
 - All keys in `blanks` object MUST exist as blank tags `<blank:key />` in `text` field
@@ -927,8 +956,8 @@ In the example above, `BE-4` has no connection: it is a distractor.
   * `question` (string, required): **Rich Content.** Instructions.
   * `targetAsset` (string, required): **Key from `assets`**, which determines the diagram image.
   * `labels` (Choice[], required): Labels to assign. Must contain all correct ones and may contain distractors.
-  * `caseSensitive` (boolean, optional): Distinguish letter case when comparing typed labels. Default: `false`.
-  * `requireTyping` (boolean, optional): Default `false`. If `true`, application MUST NOT display the labels; it renders a text field for each zone and compares the input with the text of the zone's correct label (respects `caseSensitive`, trims whitespace).
+  * `requireTyping` (boolean, optional): Default `false`. If `true`, application MUST NOT display the labels; it renders a text field for each zone and compares the input with the text of the zone's correct label as described in [Comparing Typed Answers](#comparing-typed-answers).
+  * `caseSensitive`, `ignoreDiacritics`, `acceptPartial` (boolean, optional): Used with `requireTyping`, as in `short-answer`. Defaults: `false`, `true`, `false`.
   * `zones` (object[], required): Zones on the image: a 2D `HotspotObject` ([see HotspotObject](#hotspotobject-for-pin-on-image)) with `id` (unique within the item) and `correctLabelId`.
 
 **Example:**
@@ -2131,6 +2160,7 @@ OQSE is an open standard. Suggestions for improvements:
 The first stable version. From now on, 1.x versions only add (see [Versioning and Compatibility](#versioning-and-compatibility)).
 * Version rules for sets, manifests and progress files: applications read the MAJOR versions they support and never read another MAJOR version (including the pre-release 0.x drafts) silently as a supported one.
 * Schema URLs: `https://cdn.jsdelivr.net/npm/@memizy/oqse@1/schemas/oqse-v1.0.json` (and `oqse-manifest-v1.0.json`, `oqse-progress-v1.0.json`, `oqse-header-v1.0.json`).
+* [Comparing Typed Answers](#comparing-typed-answers): one normative algorithm for `short-answer`, `fill-in-blanks` and typed `diagram-label` (whitespace, case, diacritics, typos as optimal string alignment distance with fixed limits). `ignoreDiacritics` defaults to `true`; `fill-in-blanks` and `diagram-label` get `ignoreDiacritics` and `acceptPartial`; `trimWhitespace` is removed (whitespace is always trimmed).
 
 ### Version 0.3 (October 2026)
 * **Choices with IDs.** Lists the learner selects from or arranges are lists of [choices](#choices-and-answers-by-id) (`{ id, text, explanation? }`), and answers refer to choice IDs instead of positions: `correctIndex` → `correctId`, `correctIndices` → `correctIds`, `sort-items` gets `correctOrder` (items may be listed in any order), `match-pairs` gets `pairs` (and may have distractor matches), `match-complex.connections`, `matrix.correctCells`, `categorize` (`correctCategoryId`) and `diagram-label` (zone `id`, `correctLabelId`) use IDs. `optionExplanations` is replaced by `explanation` on each choice. Answers and progress survive edits of a set, and shuffling needs no remapping.

@@ -887,17 +887,11 @@ export interface ShortAnswerItem extends BaseItem {
   /** Distinguish letter case. Default: false */
   caseSensitive?: boolean;
 
-  /** Ignore spaces at beginning/end. Default: true */
-  trimWhitespace?: boolean;
-
-  /** Accept approximate match (fuzzy matching). Default: false */
-  acceptPartial?: boolean;
-
-  /**
-   * Remove diacritics before comparison.
-   * Default: false
-   */
+  /** Ignore diacritics ("Plzen" matches "Plzeň"). Default: true */
   ignoreDiacritics?: boolean;
+
+  /** Accept small typos (see "Comparing Typed Answers" in the specification). Default: false */
+  acceptPartial?: boolean;
 }
 
 /**
@@ -921,11 +915,14 @@ export interface FillInBlanksItem extends BaseItem {
    */
   blanks: Record<string, string[]>;
 
-  /** Distinguish letter case when checking answers. Default: false */
+  /** Distinguish letter case. Default: false */
   caseSensitive?: boolean;
 
-  /** Ignore spaces at beginning and end of answer. Default: true */
-  trimWhitespace?: boolean;
+  /** Ignore diacritics. Default: true */
+  ignoreDiacritics?: boolean;
+
+  /** Accept small typos. Default: false */
+  acceptPartial?: boolean;
 }
 
 /**
@@ -1148,8 +1145,14 @@ export interface DiagramLabelItem extends BaseItem {
   /** Labels to assign: all correct ones, may contain distractors. */
   labels: Choice[];
 
-  /** Distinguish letter case when comparing labels. Default: false */
+  /** With `requireTyping`: distinguish letter case. Default: false */
   caseSensitive?: boolean;
+
+  /** With `requireTyping`: ignore diacritics. Default: true */
+  ignoreDiacritics?: boolean;
+
+  /** With `requireTyping`: accept small typos. Default: false */
+  acceptPartial?: boolean;
 
   /**
    * If true, application MUST render text fields instead of draggable labels.
