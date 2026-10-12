@@ -164,6 +164,14 @@ Dotčené soubory obvykle: `packages/oqse/oqse*.md` (spec), `src/oqse.ts` (typy)
 - [x] Kód: validace `altText` mimo schéma, komentář `generateUUID`, Play `aiSets.ts`
       → `generateUUID`; testy.
 
+### Část 8.5 – Obrázky v Markdownu a místo pro mezery
+
+- [x] Spec: `![alt](https://…)` výslovně povolené pro obrázky z webu (absolutní URL, `http`
+      jen s varováním, jinak `<asset:… />`); `<blank:… />` jen v `text` u `fill-in-blanks` a
+      `fill-in-select`, jinde varování a zobrazení jako prázdná čára.
+- [x] Kód: `INVALID_IMAGE_URL` (relativní adresa = chyba při uložení), `BLANK_OUTSIDE_TEXT`;
+      SDK už mezeru mimo doplňovačku kreslí jako čáru; testy.
+
 ### Část 9 – Opravy textu a changelog
 
 - [ ] Kompletní příklad: `match-complex.connections` `[1, 1], [2, 2]` → ID.

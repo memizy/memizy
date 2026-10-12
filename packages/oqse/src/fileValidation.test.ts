@@ -291,3 +291,22 @@ describe('altText', () => {
     expect(safeValidateOQSEFile(file([{ id: v4, type: 'note', content: 'x' }])).success).toBe(true);
   });
 });
+
+describe('Markdown images and blank tags', () => {
+  it('allows Markdown images with an absolute https URL', () => {
+    expect(safeValidateOQSEFile(file([note(1, { content: 'A cat: ![A sleeping cat](https://example.com/cat.png)' })], { requirements: { features: ['markdown'] } })).success).toBe(true);
+    const http = loadOQSEFile(file([note(1, { content: '![Cat](http://example.com/cat.png)' })]));
+    expect(codes(http.warnings)).toContain('INVALID_IMAGE_URL');
+    const relative = safeValidateOQSEFile(file([note(1, { content: '![Cat](images/cat.png)' })]));
+    expect(codes(relative.errors)).toContain('INVALID_IMAGE_URL');
+    expect(loadOQSEFile(file([note(1, { content: '![Cat](images/cat.png)' })])).data!.items).toHaveLength(1);
+  });
+
+  it('warns about blank tags outside the text of fill-in items', () => {
+    const blanks = { id: id(2), type: 'fill-in-blanks', text: 'Prague is the capital of <blank:1 />.', blanks: { '1': ['Czechia'] } };
+    expect(codes(loadOQSEFile(file([blanks])).warnings)).not.toContain('BLANK_OUTSIDE_TEXT');
+    const mcq = { id: id(3), type: 'mcq-single', question: 'Fill <blank:1 />', options: [{ id: 'a', text: 'a' }, { id: 'b', text: 'b' }], correctId: 'a' };
+    const result = loadOQSEFile(file([mcq]));
+    expect(result.warnings.find((w) => w.code === 'BLANK_OUTSIDE_TEXT')?.path).toBe('items[0].question');
+  });
+});

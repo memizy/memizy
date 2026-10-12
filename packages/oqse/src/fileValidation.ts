@@ -52,6 +52,8 @@ export type OQSEIssueCode =
   | 'CHESS_SEQUENCE_LENGTH'
   | 'UNKNOWN_FEATURE'
   | 'MISSING_ALT_TEXT'
+  | 'INVALID_IMAGE_URL'
+  | 'BLANK_OUTSIDE_TEXT'
   | 'UNDECLARED_FEATURE'
   | 'LOOKS_LIKE_LATEX'
   | 'SECURITY_LIMIT';
@@ -282,7 +284,7 @@ function analyze(input: unknown, mode: Mode): OQSELoadResult {
     seenIds.add(item.id);
 
     checkAltTexts(item.assets, [...path, 'assets'], log, mode, item.id);
-    if (!checkItem(item, path, meta, htmlAllowed, latex, log)) return;
+    if (!checkItem(item, path, meta, htmlAllowed, latex, log, recoverable)) return;
     kept.push({ item, index });
   });
   const items = kept.map((entry) => entry.item);
@@ -337,6 +339,7 @@ function checkItem(
   htmlAllowed: boolean,
   latex: boolean,
   log: IssueLog,
+  recoverable: OQSEIssueSeverity,
 ): boolean {
   let ok = true;
 
@@ -389,6 +392,19 @@ function checkItem(
     }
   }
 
+  // Markdown images: an absolute URL (http only with a warning); blank tags only in fill-in texts.
+  const fillIn = item.type === 'fill-in-blanks' || item.type === 'fill-in-select';
+  for (const [fieldPath, text] of itemRichText(item)) {
+    for (const url of findMarkdownImageUrls(text)) {
+      if (/^https:\/\//i.test(url)) continue;
+      const http = /^http:\/\//i.test(url);
+      log.add(http ? 'warning' : recoverable, 'INVALID_IMAGE_URL', http ? `Image "${url}" uses http:// (prefer https://).` : `Image "${url}" needs an absolute https:// URL (use <asset:key /> for other media).`, [...path, ...fieldPath], item.id);
+    }
+    if (!(fillIn && fieldPath.length === 1 && fieldPath[0] === 'text') && /<blank:[a-zA-Z0-9_-]+\s*\/>/i.test(text)) {
+      log.add('warning', 'BLANK_OUTSIDE_TEXT', 'Blank tags belong only in the text of fill-in-blanks and fill-in-select (shown here as an empty line).', [...path, ...fieldPath], item.id);
+    }
+  }
+
   // Missing <asset:key /> references and shadowed global assets (recoverable in both modes).
   for (const [fieldPath, text] of itemRichText(item)) {
     for (const key of findAssetKeys(text)) {
@@ -416,6 +432,12 @@ function checkAltTexts(assets: Record<string, MediaObject> | undefined, path: Pa
     log.add(mode === 'strict' ? 'error' : 'warning', 'MISSING_ALT_TEXT', `Image "${key}" has no altText (alternative text for screen readers).`, [...path, key, 'altText'], itemId);
     if (mode === 'load') media.altText = altTextFromFileName(media.value) || key;
   }
+}
+
+/** URLs of Markdown images (`![alt](url)`) outside code. */
+function findMarkdownImageUrls(text: string): string[] {
+  const prose = text.replace(/^ {0,3}(`{3,}|~{3,})[^\n]*\n[\s\S]*?(?:^ {0,3}\1[`~]*[ \t]*$|(?![\s\S]))/gm, '').replace(/`[^`\n]+`/g, '');
+  return [...prose.matchAll(/!\[[^\]\n]*\]\(\s*<?([^)\s>]+)/g)].map((m) => m[1]);
 }
 
 /** `assets/img/cell-diagram.png?v=2` → "cell diagram". */

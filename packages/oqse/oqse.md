@@ -405,8 +405,9 @@ Given support for GFM (which allows HTML) and custom `<asset />` tags, applicati
 
 * Application MUST search text for strings matching pattern `<asset:([a-zA-Z0-9_-]+)\s*/>` (the tag name is case-insensitive; the key is converted to lowercase before lookup).
 * Tag functions as placeholder. Application MUST completely replace it with corresponding HTML element according to `MediaObject.type` (e.g., `<img>`, `<audio>`, `<video>`).
-* Rich Content fields therefore never contain direct HTML tags for media – only these references.
-* Application MUST NOT support alternative syntaxes (e.g., Markdown links `[...](asset://...)`).
+* Rich Content fields never contain direct HTML tags for media – only these references, or Markdown images (below).
+* Application MUST NOT support other syntaxes for assets (e.g., Markdown links `[...](asset://...)`).
+* **Markdown images:** an image from the web MAY also be written as a Markdown image `![alternative text](https://…)`. The text in brackets is the alternative text (it SHOULD NOT be empty), and the URL MUST be absolute (`https://`; `http://` only with a warning, see [URI and Path Security Validation Rules](#uri-and-path-security-validation-rules)). Files in an `.oqse` container, audio, video, 3D models and media with a license, attribution, caption or subtitles use `<asset:key />`.
 * Visible media caption is rendered from `MediaObject.caption`, alternative text from `MediaObject.altText`.
 * **Time parameters:** If `start` or `end` parameters are defined for YouTube/Vimeo videos, Application **SHOULD** attempt to project them into embed URL (e.g., `?start=30`), since standard HTML attributes for `<iframe>` don't handle this.
 
@@ -705,6 +706,7 @@ A set consisting only of notes can also be written as one Markdown document, see
 - All blank tags `<blank:key />` in `text` field MUST have corresponding key in `blanks` object
 - Application MUST declare error on mismatch
 - Application MUST search for blank tags using regex pattern `<blank:([a-zA-Z0-9_-]{1,64})\s*/>`
+- Blank tags belong only in the `text` of `fill-in-blanks` and `fill-in-select`. In any other field validators SHOULD warn, and applications show the tag as an empty line (e.g., `____`).
 
 **Example:**
 ```json
@@ -2008,7 +2010,7 @@ These rules apply to OQSE sets and equally to [OQSEM manifests](./oqse-manifest.
 
 ### Optimization for AI Generation
   * **Prefer simple structures**: AI models work better with flat arrays (`string[]`, `number[]`) than deep nesting. Conversion to JSON is then deterministic.
-  * **Centralize media**: Define all media in `assets` (at item or `meta` level). Content should contain only text and Media Tags, never direct URLs.
+  * **Centralize media**: Define media in `assets` (at item or `meta` level) and reference them with Media Tags. A Markdown image `![alt](https://…)` is fine for a simple picture from the web.
   * **Use Media Tags**: Reference media exclusively using `<asset:key />`. AI prompt can explicitly request this format: "Add image as `<asset:diagram1 />`".
   * **Reusability without duplication**: Place shared resources in `meta.assets` and reference from multiple items using same key. AI thus doesn't have to repeatedly generate identical `MediaObject`.
   * **Prompt minimally**: "Create 5 questions with options A, B, C, D" → AI returns `options: ["A...", "B...", "C...", "D..."]`. Fewer descriptive words, more consistent structures.
@@ -2070,7 +2072,7 @@ Reference test files including all item types are available at:
 
 ### Common Pitfalls
 
-#### **Error: Embedding HTML/Markdown media instead of Media Tag**
+#### **Error: Embedding HTML media instead of a Media Tag (or a Markdown image)**
 ```json
 "question": "Look at the image: <img src=\"https://example.com/img.png\" alt=\"Engine\">"
 ```
@@ -2219,6 +2221,7 @@ OQSE is an open standard. Suggestions for improvements:
 The first stable version. From now on, 1.x versions only add (see [Versioning and Compatibility](#versioning-and-compatibility)).
 * Version rules for sets, manifests and progress files: applications read the MAJOR versions they support and never read another MAJOR version (including the pre-release 0.x drafts) silently as a supported one.
 * Schema URLs: `https://cdn.jsdelivr.net/npm/@memizy/oqse@1/schemas/oqse-v1.0.json` (and `oqse-manifest-v1.0.json`, `oqse-progress-v1.0.json`, `oqse-header-v1.0.json`).
+* Markdown images `![alt](https://…)` are explicitly allowed for pictures from the web (absolute URL; `<asset:key />` for everything else). Blank tags belong only in the `text` of `fill-in-blanks` and `fill-in-select` (elsewhere a warning; shown as an empty line).
 * Fewer strict rules that nobody needs: IDs MUST be valid UUIDs of any version (new ones SHOULD be UUIDv7); a missing image `altText` is a warning on import (derived from the file name) and an error on save; a missing `checksums` MAY be reported; the root key order is a SHOULD.
 * OQSEM: `capabilities` (default `{}`) and `capabilities.actions` (default `["render"]`) may be omitted; an application without `types` processes no items (e.g., a game without study sets) and is compatible only with sets without items.
 * [Detecting Features from Content](#detecting-features-from-content): the effective requirements are the declared and the detected features (blocks, `html`, `markdown`, `rtl` from the language); validators warn about undeclared features and about text that looks like a formula without `latex`.
