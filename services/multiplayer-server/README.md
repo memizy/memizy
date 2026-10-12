@@ -23,7 +23,8 @@ the same network can join through the computer's LAN address. Set
 | `PORT` | `8787` | HTTP/WebSocket port |
 | `HOST` | `0.0.0.0` | Bind address (`127.0.0.1` behind a reverse proxy) |
 | `ALLOWED_ORIGINS` | `http://localhost:5180,http://127.0.0.1:5180` | Comma-separated origins of the apps; `*` = any (development only) |
-| `TRUST_PROXY` | – | `1`: take the client IP from `X-Forwarded-For` (behind Caddy) |
+| `TRUST_PROXY` | – | `1`: take the client IP from `CF-Connecting-IP` / `X-Forwarded-For` (behind a proxy) |
+| `ROOMS_PER_IP_PER_HOUR` | `1000` | Rooms one IP may create per hour (a whole school shares one IP) |
 
 ## Deployment (Netcup, Docker, Cloudflare Tunnel)
 

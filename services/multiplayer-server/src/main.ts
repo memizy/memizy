@@ -8,6 +8,8 @@
  * - TRUST_PROXY=1: take the client IP from CF-Connecting-IP (Cloudflare Tunnel) or
  *   X-Forwarded-For (other reverse proxies). Only when the server is reachable
  *   through the proxy alone (otherwise clients could fake their IP).
+ * - ROOMS_PER_IP_PER_HOUR (default 1000): rooms one IP may create per hour. A whole
+ *   school shares one public IP, so keep it high.
  */
 
 import { RELAY_LIMITS } from '@memizy/protocol';
@@ -18,8 +20,9 @@ const hostname = process.env.HOST ?? '0.0.0.0';
 const origins = process.env.ALLOWED_ORIGINS ?? 'http://localhost:5180,http://127.0.0.1:5180';
 const allowedOrigins = origins.trim() === '*' ? '*' : origins.split(',').map((o) => o.trim()).filter(Boolean);
 const trustProxy = process.env.TRUST_PROXY === '1';
+const roomsPerIpPerHour = Number(process.env.ROOMS_PER_IP_PER_HOUR ?? 1000);
 
-const relay = new RelayServer({ allowedOrigins, log: (m) => console.log(`[relay] ${m}`) });
+const relay = new RelayServer({ allowedOrigins, roomsPerIpPerHour, log: (m) => console.log(`[relay] ${m}`) });
 
 interface SocketData {
   conn: RelayConnection | null;

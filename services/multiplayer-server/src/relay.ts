@@ -177,7 +177,7 @@ export class RelayServer {
   }
 
   private allowRoomCreation(ip: string): boolean {
-    const limit = this.options.roomsPerIpPerHour ?? 60;
+    const limit = this.options.roomsPerIpPerHour ?? 1000;
     const hourAgo = this.now() - 3_600_000;
     const recent = (this.roomsByIp.get(ip) ?? []).filter((t) => t > hourAgo);
     if (recent.length >= limit) return false;
