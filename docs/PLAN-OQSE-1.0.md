@@ -216,25 +216,75 @@ Dotčené soubory obvykle: `packages/oqse/oqse*.md` (spec), `src/oqse.ts` (typy)
 - Markdownový zápis sad (jen poznámky): beze změny kromě verze; otázky v Markdownu
   případně v 1.x jako rozšíření.
 
-## 2. Průchod API host-sdk (z PLAN-RC4, krok 3)
+## 2. host-sdk a plugin-sdk před 1.0 (průchod 2026-10-13)
 
-Používá ho Play i platforma; po 1.0 jen přidávat. U každé části: názvy, volitelná pole,
-typy událostí, chyby, co je veřejné a co vnitřní (`src/index.ts` dnes exportuje `*` ze
-všech modulů – vnitřní věci neexportovat nebo označit `@internal`).
+Průchod API host-sdk (`plugin`, `session`, `frame`, `storage`, `learning`, relay), typů
+protokolu, SPEC 3–10, veřejného API plugin-sdk a sestavení SDK; porovnáno s Play a platformou
+(platforma host-sdk zatím nepoužívá – běží na starém `plugin-sdk 0.3` a `multiplayer-sdk`).
+Stejný postup jako u OQSE: návrh → schválení → spec + kód + testy → commit → zaškrtnout.
+Práce na větvi `sdk-1.0`. **Nic se neodkládá kvůli termínu** (rozhodnutí vlastníka).
 
-- [ ] `loadPluginFromHtml`, `prepareSetForPlugin` (návratové tvary, `seed`).
-- [ ] `LocalSession`: volby konstruktoru (`shuffleSeed`, úložiště, služby, hodiny), metody
-      (start, pauza, konec, hráči), událost `answer` (`record`, `generated`, `skills`,
-      `tags`), chybové kódy.
-- [ ] `mountPlugin`: volby, vrácený objekt, atributy iframu (oprávnění, CSP), úklid.
-- [ ] `RelayHost` / `RelayPlayer` / socket: životní cyklus, opětovné připojení, události,
-      zamčení místnosti a vyhození hráče, nahrání balíčku (`publicSet` + stejný seed).
-- [ ] Zprávy relay (`relay/messages.ts`, `protocol/src/relay.ts`): neznámé typy zpráv a
-      pole se ignorují (server i klienti 1.x se smí lišit), případně pole s verzí.
-- [ ] `HostStorage`: metody, klíče, asynchronnost; `MemoryStorage` / IndexedDB jako vzor.
-- [ ] Porovnat s tím, co importuje platforma (`../platform`), a s pokyny v `CLAUDE.md`
-      („Using the engine from the platform“).
-- [ ] README host-sdk s přehledem API.
+### Část A – Adresa SDK a pravidla kontraktu
+
+- [ ] Hry importují náš samostatný balíček: `https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1`
+      (pole `"jsdelivr"` / `"unpkg"` v `package.json` → `dist/bundle/memizy-sdk.bundle.js`).
+      `/+esm` přestat používat všude (návod, šablony Labu, příklady, hry, `CDN_SDK_URL`,
+      přepisování adresy v Labu); staré hry s `/+esm` poběží dál. Důvod: `/+esm` načte
+      `@memizy/oqse` a `@memizy/protocol` celé (Zod, YAML…), náš balíček má 66 kB gzip.
+- [ ] SPEC: transport v rámci MAJOR 1 je pevný (Penpal 7 přes `postMessage`); formát zpráv
+      mezi instancemi SDK (včetně patchů stavu) je v 1.x pevný; hra, která používá pole nebo
+      hodnoty z 1.x, deklaruje `protocol: "1.x"` (starší hostitel ji čistě odmítne).
+      Knihovny uvnitř SDK (DOMPurify, marked…) se smí aktualizovat (i bezpečnostní opravy).
+- [ ] Zkušební vydání `1.0.0-rc.5` se značkou `next` (vlastník publikuje): ověřit novou adresu
+      v prohlížeči (modul, CSP iframu, Penpal spojení).
+
+### Část B – Veřejné API host-sdk
+
+- [ ] Explicitní seznam exportů v `src/index.ts`; vnitřní věci (zprávy mezi aplikacemi,
+      `RelaySocket`, `createPluginFrame`, převody blobů) neexportovat.
+- [ ] `RelayHost.uploadBundle(plugin, prepared)` nahraje jen `prepared.publicSet` (dnes
+      bere libovolnou sadu a komentář chybně radí `prepared.set` s odpověďmi).
+- [ ] `HOST_SDK_VERSION` z buildu místo napevno `'1.0.0-rc.4'`; výchozí jazyk `'en'`
+      (`LocalSession`, `mountPlugin`, relay).
+
+### Část C – Snímky a učení
+
+- [ ] Snímek dokončené hry (`end` s výsledkem / důvod `finished`) se smaže
+      (`HostStorage.deleteSnapshot?`); zavřená hra (`closed`) si ho nechá, aby šlo pokračovat.
+- [ ] `LearningAlgorithm.apply(previous, answer, now, item)` – i položka (pro FSRS).
+- Vědomě ne: automatické ukončení při nedostupné autoritě (autorita běží ve stránce
+  hostitele, relay zavře místnost sám); mazání pokroku v `HostStorage` (věc aplikace).
+
+### Část C2 – Uložení a načtení hry (sólo i multiplayer)
+
+- [ ] Návrh ke schválení: co se ukládá (snímek, hra, sada, nastavení, semínko míchání,
+      seznam hráčů), kde (úložiště Play / `HostStorage`), seznam rozehraných her, jejich
+      jména a mazání.
+- [ ] Sólo: „Pokračovat“ v Play (hra + sada + `sessionId`, `resume`).
+- [ ] Multiplayer: nová místnost, přiřazení hráčů k původním místům (hráč si vybere / učitel
+      přiřadí), chybějící hráči (odpojení), noví hráči (`lateJoin`); mapování ID v host-sdk.
+- [ ] Testy (host-sdk, Play) a ruční zkouška.
+
+### Část D – Relay mezi aplikacemi hostitele a hráče
+
+- [ ] Pravidla kompatibility zpráv (`HostToPlayer` / `PlayerToHost`): neznámé druhy a pole
+      se ignorují; nepovinná verze v `hello` a `mount`; neznámá metoda → vlastní chyba
+      (dnes zavádějící `SESSION_ENDED`).
+- [ ] Rezervace nepovinného `auth` při připojení (server ho předá hostiteli) – přihlášení
+      žáci na platformě; implementace s Classroomem.
+
+### Část E – SDK pro hry
+
+- [ ] Odkazy v Rich Content: `target="_blank" rel="noopener noreferrer"` a sandbox
+      `allow-popups allow-popups-to-escape-sandbox` (dnes odkaz přepne iframe a hra zmizí).
+- [ ] `allow-modals` zůstává; návod: nepoužívat `alert` / `confirm`.
+- [ ] Opravit zastaralý příklad `data-payload` u `ui.html` (zápis s objektem).
+
+### Část F – Soulad SPEC s rozhodnutími
+
+- [ ] SPEC 3.3: náhodné přezdívky (hráči se v lobby nepřejmenovávají, pokud to host nedovolí).
+- [ ] `setChanged` zůstává (volitelné, žádný host ho zatím nevolá) – zapsat výslovně.
+- [ ] Rezervovat přehrání hry (záznam akcí a deterministické přehrání) v SPEC 10.
 
 ## 3. E – test 3D se skutečným WebGL (z PLAN-RC4)
 
@@ -287,6 +337,8 @@ Pro každou věc jen jedna cesta.
 - [ ] `bun run test`, `cd apps/play && bun run typecheck`, `bun run build:packages`,
       vygenerovaná schémata v commitu.
 - [ ] Ruční test vlastníka na telefonech (iPhone: zoom, 3D; slabé zařízení).
+- [ ] Druhé zkušební vydání `1.0.0-rc.6` (`next`): celý test hotových balíčků z CDN, jak je
+      budou používat studenti.
 - [ ] Verze **1.0.0** všech čtyř balíčků (`oqse`, `protocol`, `plugin-sdk`, `host-sdk`)
       a závislostí mezi nimi; publikace na npm v pořadí oqse → protocol → plugin-sdk →
       host-sdk; ověřit, že CDN `@1` vrací bundle SDK a schémata.
@@ -307,5 +359,5 @@ zvuky, upozornění Labu na `render` bez `ui.html`; rezervované věci ze SPEC 1
 
 ## Pořadí práce
 
-1. OQSE 1.0 po částech 0–10 → 2. host-sdk → 3. E → 4. F (návod) → 5. G (dokumentace) →
+1. OQSE 1.0 po částech 0–10 → 2. host-sdk a SDK po částech A, B, C, C2, D, E, F → 3. E → 4. F (návod) → 5. G (dokumentace) →
 6. vydání. Souběžně (vlastník): Astro landing na `memizy.com`, Play na `/play/`, prezentace.
