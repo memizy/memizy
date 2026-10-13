@@ -262,11 +262,13 @@ Práce na větvi `sdk-1.0`. **Nic se neodkládá kvůli termínu** (rozhodnutí 
 
 ### Část C – Snímky a učení
 
-- [ ] Snímek dokončené hry (`end` s výsledkem / důvod `finished`) se smaže
+- [x] Snímek dokončené hry (`end` s výsledkem / důvod `finished`) se smaže
       (`HostStorage.deleteSnapshot?`); zavřená hra (`closed`) si ho nechá, aby šlo pokračovat.
-- [ ] `LearningAlgorithm.apply(previous, answer, now, item)` – i položka (pro FSRS).
+- [x] `LearningAlgorithm.apply(previous, answer, now, item)` – i položka (pro FSRS).
 - Vědomě ne: automatické ukončení při nedostupné autoritě (autorita běží ve stránce
   hostitele, relay zavře místnost sám); mazání pokroku v `HostStorage` (věc aplikace).
+      Hotovo: pozdní `saveSnapshot` po konci host neukládá; poslední snímek drží jen v paměti
+      relace (znovu načtená autorita ukáže konec), SPEC 5 a changelog.
 
 ### Část C2 – Uložení a načtení hry (sólo i multiplayer)
 

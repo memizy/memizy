@@ -173,6 +173,10 @@ export class LocalSession {
   private startPromise: Promise<void> | null = null;
   private resumeStartPending = false;
   private pendingSnapshot: unknown = undefined;
+  /** The game has a result (`end(result)` or `end('finished')`): its snapshot is gone for good. */
+  private finished = false;
+  /** After the end, snapshots live only here: a reloaded authority still shows the end screen. */
+  private finishedSnapshot: unknown = null;
   private snapshotTimer: ReturnType<typeof setTimeout> | undefined;
   private readonly pendingData = new Map<string, { playerId: string; scope: DataScope; value: unknown; timer: ReturnType<typeof setTimeout> }>();
 
@@ -455,7 +459,8 @@ export class LocalSession {
   async end(reason: SessionEndReason = 'closed'): Promise<void> {
     if (this.ended) return;
     this.ended = true;
-    await this.flushSnapshot();
+    if (reason === 'finished') await this.discardSnapshot();
+    else await this.flushSnapshot(); // a closed game can be continued later
     await this.flushData();
     await Promise.all([...this.instances.keys()].map((address) => this.callPlugin(address, (p) => p.sessionEnded(reason))));
   }
@@ -549,6 +554,11 @@ export class LocalSession {
           const [snapshot] = parseHostCall('saveSnapshot', args);
           requireAuthority('saveSnapshot');
           assertJsonWithin(snapshot, LIMITS.snapshotBytes, 'SNAPSHOT_TOO_LARGE', 'snapshot');
+          if (this.finished) {
+            // A late (debounced) save after end(result): kept for this session only, not stored.
+            this.finishedSnapshot = structuredClone(snapshot);
+            return;
+          }
           this.pendingSnapshot = structuredClone(snapshot);
           this.snapshotTimer ??= setTimeout(() => void this.flushSnapshot(), 1000 / LIMITS.snapshotsPerSecond);
         }),
@@ -575,7 +585,7 @@ export class LocalSession {
           const setId = this.prepared.set.meta.id;
           const progress = await this.storage.loadProgress(userKey, setId);
           const { item: _attached, ...stored } = answer;
-          const record = this.algorithm.apply(progress[answer.itemId], stored, new Date());
+          const record = this.algorithm.apply(progress[answer.itemId], stored, new Date(), structuredClone(known));
           await this.storage.saveProgress(userKey, setId, { [answer.itemId]: record });
           this.emit({ type: 'answer', playerId, record, answer: stored, generated: false, skills: listOf(known.skills), tags: listOf(known.tags) });
         }),
@@ -638,6 +648,7 @@ export class LocalSession {
         call('end', async () => {
           const [result] = parseHostCall('end', args);
           requireAuthority('end');
+          await this.discardSnapshot(); // a finished game is not resumed (SPEC 5)
           this.emit({ type: 'ended', result });
         }),
 
@@ -681,7 +692,8 @@ export class LocalSession {
     const userKey = playerView ? this.userKey(instance.address) : null;
     const pluginId = this.plugin.manifest.id;
     if (instance.address === this.authority) await this.flushSnapshot(); // the latest snapshot may still be pending
-    const snapshot = instance.address === this.authority ? await this.storage.loadSnapshot(this.id) : null;
+    const snapshot =
+      instance.address !== this.authority ? null : this.finished ? structuredClone(this.finishedSnapshot) : await this.storage.loadSnapshot(this.id);
     instance.resumed = snapshot !== null;
     return {
       protocol,
@@ -755,13 +767,25 @@ export class LocalSession {
     }
   }
 
+  /** Drops the pending snapshot and deletes the saved one; later saves are ignored. */
+  private async discardSnapshot(): Promise<void> {
+    if (this.finished) return;
+    this.finished = true;
+    clearTimeout(this.snapshotTimer);
+    this.snapshotTimer = undefined;
+    this.finishedSnapshot = this.pendingSnapshot !== undefined ? this.pendingSnapshot : await this.storage.loadSnapshot(this.id);
+    this.pendingSnapshot = undefined;
+    await this.storage.deleteSnapshot?.(this.id);
+  }
+
   private async flushSnapshot(): Promise<void> {
     clearTimeout(this.snapshotTimer);
     this.snapshotTimer = undefined;
-    if (this.pendingSnapshot === undefined) return;
+    if (this.pendingSnapshot === undefined || this.finished) return;
     const snapshot = this.pendingSnapshot;
     this.pendingSnapshot = undefined;
     await this.storage.saveSnapshot(this.id, snapshot);
+    if (this.finished) await this.storage.deleteSnapshot?.(this.id); // the game ended while saving
   }
 
   private pendingDataValue(playerId: string, scope: DataScope): unknown {

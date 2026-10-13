@@ -4,13 +4,17 @@
  * (SPEC 5.1); apps can plug in their own (e.g. FSRS).
  */
 
-import type { ProgressRecord } from '@memizy/oqse';
+import type { OQSEAnyItem, ProgressRecord } from '@memizy/oqse';
 import type { AnswerRecord } from '@memizy/protocol';
 
 export interface LearningAlgorithm {
   /** OQSEP `meta.algorithm` identifier. */
   id: string;
-  apply(previous: ProgressRecord | undefined, answer: AnswerRecord, now: Date): ProgressRecord;
+  /**
+   * The new progress record of the answered item. `item` is the item of the set with its
+   * answers (type, difficulty, skills… for algorithms like FSRS); it may be ignored.
+   */
+  apply(previous: ProgressRecord | undefined, answer: AnswerRecord, now: Date, item: OQSEAnyItem): ProgressRecord;
 }
 
 /** Days until the next review per Leitner bucket (index = bucket). */

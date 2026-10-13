@@ -17,6 +17,8 @@ export interface HostStorage {
   saveData(userKey: string, pluginId: string, scope: DataScope, setId: string, value: unknown): Promise<void>;
   loadSnapshot(sessionId: string): Promise<unknown | null>;
   saveSnapshot(sessionId: string, snapshot: unknown): Promise<void>;
+  /** Removes the snapshot of a finished game (optional; without it the snapshot stays). */
+  deleteSnapshot?(sessionId: string): Promise<void>;
 }
 
 const dataKey = (userKey: string, pluginId: string, scope: DataScope, setId: string) =>
@@ -53,5 +55,9 @@ export class MemoryStorage implements HostStorage {
 
   async saveSnapshot(sessionId: string, snapshot: unknown) {
     this.snapshots.set(sessionId, structuredClone(snapshot));
+  }
+
+  async deleteSnapshot(sessionId: string) {
+    this.snapshots.delete(sessionId);
   }
 }

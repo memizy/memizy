@@ -8,7 +8,7 @@ import type { GameDefinition } from '../../plugin-sdk/src/types';
 import { LocalSession, SETTINGS_ADDRESS, type SessionConfig, type SessionEvent } from './session';
 import { loadPluginFromHtml, prepareSetForPlugin, type LoadedPlugin } from './plugin';
 import { MemoryStorage } from './storage';
-import { leitner } from './learning';
+import { leitner, type LearningAlgorithm } from './learning';
 import { PLUGIN_SANDBOX, createPluginFrame } from './frame';
 
 // ----------------------------------------------------------------------------
@@ -514,11 +514,12 @@ describe('protocol enforcement', () => {
 describe('leitner', () => {
   it('moves buckets up on correct answers and back to 1 on mistakes', () => {
     const now = new Date('2026-10-04T10:00:00Z');
-    const first = leitner.apply(undefined, { itemId: 'x', isCorrect: true }, now);
+    const item = setFile.items[0];
+    const first = leitner.apply(undefined, { itemId: 'x', isCorrect: true }, now, item);
     expect(first).toMatchObject({ bucket: 2, nextReviewAt: '2026-10-07T10:00:00.000Z', stats: { attempts: 1, incorrect: 0, streak: 1 } });
-    const wrong = leitner.apply(first, { itemId: 'x', isCorrect: false, confidence: 1 }, now);
+    const wrong = leitner.apply(first, { itemId: 'x', isCorrect: false, confidence: 1 }, now, item);
     expect(wrong).toMatchObject({ bucket: 1, stats: { attempts: 2, incorrect: 1, streak: 0 }, lastAnswer: { isCorrect: false, confidence: 1 } });
-    const skipped = leitner.apply(wrong, { itemId: 'x', isCorrect: false, isSkipped: true }, now);
+    const skipped = leitner.apply(wrong, { itemId: 'x', isCorrect: false, isSkipped: true }, now, item);
     expect(skipped.bucket).toBe(1);
     expect(skipped.stats.attempts).toBe(2);
   });
@@ -527,6 +528,55 @@ describe('leitner', () => {
 describe('sandbox', () => {
   it('never allows the plugin to share the app origin', () => {
     expect(PLUGIN_SANDBOX).not.toContain('allow-same-origin');
+  });
+});
+
+describe('snapshots of finished games', () => {
+  it('end(result) deletes the stored snapshot and ignores late saves; a reloaded authority still gets the last one', async () => {
+    const storage = new MemoryStorage();
+    const { session } = newSession({ sessionId: 'room-f', storage });
+    const board = await bare(session, 'board');
+    await board.saveSnapshot({ turn: 1 });
+    await (session as any).flushSnapshot();
+    expect(storage.snapshots.get('room-f')).toEqual({ turn: 1 });
+
+    await board.end({ scores: {} });
+    expect(storage.snapshots.has('room-f')).toBe(false);
+    await board.saveSnapshot({ turn: 2, over: true }); // the SDK saves once more after the end
+    await wait(700);
+    expect(storage.snapshots.has('room-f')).toBe(false);
+
+    const reloaded = await session.reload('board');
+    const init = await reloaded.hostApi.hello(handshake);
+    expect(init.snapshot).toEqual({ turn: 2, over: true });
+    await session.end('closed');
+    expect(storage.snapshots.has('room-f')).toBe(false);
+  });
+
+  it("end('finished') deletes the snapshot, end('closed') keeps it for continuing", async () => {
+    const storage = new MemoryStorage();
+    const closed = newSession({ sessionId: 'room-c', storage });
+    await (await bare(closed.session, 'board')).saveSnapshot({ turn: 3 });
+    await closed.session.end('closed');
+    expect(storage.snapshots.get('room-c')).toEqual({ turn: 3 });
+
+    const finished = newSession({ sessionId: 'room-c', storage });
+    await (await bare(finished.session, 'board')).saveSnapshot({ turn: 4 });
+    await finished.session.end('finished');
+    expect(storage.snapshots.has('room-c')).toBe(false);
+  });
+});
+
+describe('learning algorithm', () => {
+  it('gets the answered item of the set (with its answers)', async () => {
+    const apply = vi.fn<LearningAlgorithm['apply']>((previous, answer, now, item) => leitner.apply(previous, answer, now, item));
+    const { session } = newSession({ algorithm: { id: 'custom', apply } });
+    const board = await bare(session, 'board');
+    await board.recordAnswer({ playerId: 'anna', itemId: id(1), isCorrect: true });
+    expect(apply).toHaveBeenCalledTimes(1);
+    const item = apply.mock.calls[0][3];
+    expect(item).toMatchObject({ id: id(1), type: 'mcq-single' });
+    expect(item).toHaveProperty('correctId');
   });
 });
 
