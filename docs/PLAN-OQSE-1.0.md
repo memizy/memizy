@@ -235,12 +235,19 @@ Práce na větvi `sdk-1.0`. **Nic se neodkládá kvůli termínu** (rozhodnutí 
       mezi instancemi SDK (včetně patchů stavu) je v 1.x pevný; hra, která používá pole nebo
       hodnoty z 1.x, deklaruje `protocol: "1.x"` (starší hostitel ji čistě odmítne).
       Knihovny uvnitř SDK (DOMPurify, marked…) se smí aktualizovat (i bezpečnostní opravy).
-- [ ] Zkušební vydání `1.0.0-rc.5` se značkou `next` (vlastník publikuje): ověřit novou adresu
+- [x] Zkušební vydání `1.0.0-rc.5` se značkou `next` (vlastník publikuje): ověřit novou adresu
       v prohlížeči (modul, CSP iframu, Penpal spojení).
       Připraveno: všechny čtyři balíčky `1.0.0-rc.5`, závislosti `^1.0.0-rc.5`; Lab přepisuje
       jakoukoli adresu SDK na jsDelivr (i `/+esm` a přesné verze) na lokální SDK.
       Před vydáním: Penpal 8 (`^8.0.1`, polyfill `Promise.withResolvers` / `Object.hasOwn` pro
       starší iPady), mutative 2 (`^2.0.0`) a test synchronizace stavu patchi.
+      Ověřeno 2026-10-13: `…/plugin-sdk@1.0.0-rc.5` i `@next` na jsDelivr (jsDelivr soubor
+      znovu minifikuje Terserem), hra se spojí a synchronizuje v Edge i WebKitu, s nativním
+      `Promise.withResolvers` i bez něj (polyfill). `@1` začne fungovat až s 1.0.0 (předběžné
+      verze rozsah `@1` nebere).
+- [ ] Publikovat `@memizy/protocol` a `@memizy/host-sdk` (`1.0.0-rc.5`, `--tag next --access public`):
+      na npm chybí (404), přitom na `@memizy/protocol` závisí `plugin-sdk` – `npm install
+      @memizy/plugin-sdk@next` zatím selže.
 
 ### Část B – Veřejné API host-sdk
 
