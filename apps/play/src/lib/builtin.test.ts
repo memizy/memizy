@@ -28,9 +28,28 @@ describe('example plugins', () => {
     expect(result.success, result.success ? '' : result.errors.join('; ')).toBe(true);
     if (!result.success) return;
     expect(result.plugin.html).toContain(localSdkUrl());
-    expect(result.plugin.html).not.toContain(CDN_SDK_URL);
+    expect(result.plugin.html).not.toContain('cdn.jsdelivr.net/npm/@memizy/plugin-sdk');
     const animals = BUILTIN_SETS[0];
     expect(prepareSetForPlugin(animals.file, result.plugin.manifest).set.items.length).toBeGreaterThan(0);
+  });
+});
+
+describe('SDK source', () => {
+  it('rewrites every CDN URL of the SDK to the local one, and nothing else', () => {
+    const local = localSdkUrl();
+    const html = [
+      `import { defineGame } from '${CDN_SDK_URL}';`,
+      `import * as SDK from "https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1/+esm";`,
+      'import { x } from `https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1.0.0-rc.5/dist/bundle/memizy-sdk.bundle.js`;',
+      `import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.min.js';`,
+    ].join('\n');
+    expect(withSdkSource(html, 'local')).toBe([
+      `import { defineGame } from '${local}';`,
+      `import * as SDK from "${local}";`,
+      `import { x } from \`${local}\`;`,
+      `import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.min.js';`,
+    ].join('\n'));
+    expect(withSdkSource(html, 'cdn')).toBe(html);
   });
 });
 

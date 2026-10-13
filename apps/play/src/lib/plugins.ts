@@ -1,15 +1,21 @@
 /**
  * Plugins in Memizy Play: built-in examples, plugin HTML (pasted or uploaded)
- * and plugins loaded from a URL. Until the SDK is published, plugin imports of
- * the CDN SDK are rewritten to the SDK served by this app.
+ * and plugins loaded from a URL. With the local SDK source (the Lab default), plugin
+ * imports of the CDN SDK are rewritten to the SDK built from this repository.
  */
 
 import guide from '../../../../docs/ai-plugin-guide.md?raw';
 import pirates from '@/data/plugins/pirates-of-memizy.html?raw';
 import babis from '@/data/plugins/babis-vs-alzak.html?raw';
 
-/** The import URL plugins use (docs/ai-plugin-guide.md). */
-export const CDN_SDK_URL = 'https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1/+esm';
+/** The import URL plugins use (docs/ai-plugin-guide.md): our self-contained bundle via jsDelivr. */
+export const CDN_SDK_URL = 'https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1';
+
+/**
+ * Any jsDelivr URL of the SDK: `@1`, the older `@1/+esm`, an exact version (`@1.0.0-rc.5`)
+ * or a file path in the package, up to the closing quote.
+ */
+const CDN_SDK_URL_RE = /https:\/\/cdn\.jsdelivr\.net\/npm\/@memizy\/plugin-sdk@[^'"`\s]*/g;
 
 /** The SDK built from this repository, served by Memizy Play (see vite.config.ts). */
 export function localSdkUrl(): string {
@@ -18,9 +24,9 @@ export function localSdkUrl(): string {
 
 export type SdkSource = 'local' | 'cdn';
 
-/** Points the plugin's SDK import to the chosen source. */
+/** Points the plugin's SDK import to the chosen source (`local`: every CDN URL of the SDK). */
 export function withSdkSource(html: string, source: SdkSource): string {
-  return source === 'local' ? html.split(CDN_SDK_URL).join(localSdkUrl()) : html;
+  return source === 'local' ? html.replace(CDN_SDK_URL_RE, localSdkUrl()) : html;
 }
 
 export interface ExamplePlugin {

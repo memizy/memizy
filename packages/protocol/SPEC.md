@@ -158,6 +158,8 @@ A plugin does not declare views. They follow from what it declares, so the two c
 
 The connection uses [Penpal](https://github.com/Aaronius/penpal) over `postMessage`. The iframe is sandboxed **without** `allow-same-origin` (opaque origin), therefore the plugin connects with `allowedOrigins: ['*']`; Penpal still verifies that messages come from the expected window.
 
+**Transport.** Within MAJOR version 1 the connection is Penpal 7 over `postMessage`, with the method names of sections 5 and 7. Implementations may update Penpal within version 7 (including security fixes), but not to a version with another wire protocol: an older host must still connect to a newer plugin and the other way round.
+
 1. The host creates the iframe and starts listening.
 2. The plugin (SDK) connects and calls `hello(handshake)` within **10 s**.
 3. The host validates the handshake and returns an `InitPayload` or rejects with a `ProtocolError`.
@@ -231,6 +233,7 @@ interface Player {
 
 * A host supports a set of protocol versions, one per MAJOR version (e.g. `1.4` and `2.1`). The plugin's MAJOR version must be one of them. Otherwise the host rejects with `ProtocolError { code: 'UNSUPPORTED_PROTOCOL' }` and shows the user a clear message ("this plugin needs a newer Memizy" or "this plugin is too old").
 * The negotiated version has the plugin's MAJOR and the lower of both MINOR versions. Neither side uses a method, field or feature introduced in a higher minor than the negotiated one.
+* A plugin that uses a field, value, method or setting type introduced in protocol 1.*x* declares `protocol: "1.x"` in its manifest (the minimum version it needs). A host that supports only an older minor version then rejects it before loading, instead of misreading what it does not know.
 * `manifest.appSpecific.memizy.protocol` is checked **before** loading the iframe (the host does not offer plugins it cannot run). The manifest itself (`version`, the OQSEM format) follows the [OQSE version rules](../oqse/oqse.md#versioning-and-compatibility): the host reads the OQSEM MAJOR versions it supports.
 * A host SHOULD keep supporting older MAJOR versions as long as practical (e.g. an adapter in `@memizy/host-sdk`), so older plugins keep working.
 
@@ -443,6 +446,10 @@ From `1.0` on, the following MUST NOT change in a backward-incompatible way with
 
 Allowed in `1.x`: new optional fields, new methods guarded by a feature, new setting types, new enum values only where the receiver is required to ignore unknown values (`sessionEnded` reasons, error codes, `Player` fields).
 
+* The plugin SDK sends its own game messages inside `send` / `deliver` (actions, state and state patches, reveals). Their format is part of the SDK's contract: within SDK 1.x it only changes additively, because the devices of one game may run different 1.x versions (a cached copy). Receivers ignore message types and fields they do not know.
+* Libraries inside the SDK and the host SDK (sanitizer, Markdown parser…) may be updated in any 1.x release, including security fixes; only the wire formats above are fixed.
+* Plugins load the SDK as `https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1` (the self-contained bundle of the package): every 1.x release reaches them without a change of the plugin.
+
 ---
 
 ## 10. Decisions and Planned Extensions
@@ -477,7 +484,7 @@ What was decided and why, and what is **reserved** (name and intent fixed, not i
 
 ## Changelog
 
-* **1.0 (unreleased):** `appSpecific.memizy.set` (`required` / `optional` / `none`): games without questions; OQSEM `capabilities` and `actions` may be omitted. Public items (4.4) also lose `sources[].quote`; custom `x-` items lose `solution`, `explanation` and `incorrectFeedback` and get `answerHidden: true` (they were passed unchanged); `hints` stay public. `recordAnswer.answer` follows OQSE Answer Formats (a flashcard answer is a self-rating 1–4; `ui.question` offers four ratings). OQSE 1.0 sets and OQSEM 1.0 manifests (`"version": "1.0"`; other MAJOR versions are not read as 1.x). A host may support several protocol MAJOR versions at once (4.3); supporting older ones is a SHOULD instead of a MUST.
+* **1.0 (unreleased):** the transport (Penpal 7), the SDK message format and the protocol declaration of plugins using 1.x additions are fixed rules (4, 4.3, 9); plugins load the SDK from `…/plugin-sdk@1`. `appSpecific.memizy.set` (`required` / `optional` / `none`): games without questions; OQSEM `capabilities` and `actions` may be omitted. Public items (4.4) also lose `sources[].quote`; custom `x-` items lose `solution`, `explanation` and `incorrectFeedback` and get `answerHidden: true` (they were passed unchanged); `hints` stay public. `recordAnswer.answer` follows OQSE Answer Formats (a flashcard answer is a self-rating 1–4; `ui.question` offers four ratings). OQSE 1.0 sets and OQSEM 1.0 manifests (`"version": "1.0"`; other MAJOR versions are not read as 1.x). A host may support several protocol MAJOR versions at once (4.3); supporting older ones is a SHOULD instead of a MUST.
 * **RC1 (2026-10-04):** first release candidate.
 * **RC2 (2026-10-06):** `SettingDefinition.modes`; the host may show solo settings before the start (section 3.3). Additive: RC1 plugins and hosts keep working.
 * **RC4 (2026-10-07):** OQSE 0.3 sets (choices with IDs; the RC3 `correctOrder` / `correctMatches` display fields are gone because answers refer to IDs); `recordAnswer.answer` and generated items (5.1); services (5.3, `service`, `InitPayload.services`, `SERVICE_UNAVAILABLE`); pauses (`SessionClock`); `permissions` with a Content Security Policy and device grants (8.4); decisions and reservations (section 10). Additive for the protocol except the OQSE version: plugins must read choices (`option.text`, `option.id`).

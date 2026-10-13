@@ -226,17 +226,19 @@ Práce na větvi `sdk-1.0`. **Nic se neodkládá kvůli termínu** (rozhodnutí 
 
 ### Část A – Adresa SDK a pravidla kontraktu
 
-- [ ] Hry importují náš samostatný balíček: `https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1`
+- [x] Hry importují náš samostatný balíček: `https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1`
       (pole `"jsdelivr"` / `"unpkg"` v `package.json` → `dist/bundle/memizy-sdk.bundle.js`).
       `/+esm` přestat používat všude (návod, šablony Labu, příklady, hry, `CDN_SDK_URL`,
       přepisování adresy v Labu); staré hry s `/+esm` poběží dál. Důvod: `/+esm` načte
       `@memizy/oqse` a `@memizy/protocol` celé (Zod, YAML…), náš balíček má 66 kB gzip.
-- [ ] SPEC: transport v rámci MAJOR 1 je pevný (Penpal 7 přes `postMessage`); formát zpráv
+- [x] SPEC: transport v rámci MAJOR 1 je pevný (Penpal 7 přes `postMessage`); formát zpráv
       mezi instancemi SDK (včetně patchů stavu) je v 1.x pevný; hra, která používá pole nebo
       hodnoty z 1.x, deklaruje `protocol: "1.x"` (starší hostitel ji čistě odmítne).
       Knihovny uvnitř SDK (DOMPurify, marked…) se smí aktualizovat (i bezpečnostní opravy).
 - [ ] Zkušební vydání `1.0.0-rc.5` se značkou `next` (vlastník publikuje): ověřit novou adresu
       v prohlížeči (modul, CSP iframu, Penpal spojení).
+      Připraveno: všechny čtyři balíčky `1.0.0-rc.5`, závislosti `^1.0.0-rc.5`; Lab přepisuje
+      jakoukoli adresu SDK na jsDelivr (i `/+esm` a přesné verze) na lokální SDK.
 
 ### Část B – Veřejné API host-sdk
 

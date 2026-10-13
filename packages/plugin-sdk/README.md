@@ -4,7 +4,7 @@ Build **Memizy learning games** – solo and multiplayer – in a single HTML fi
 
 ```html
 <script type="module">
-  import { defineGame, checkAnswer } from 'https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1/+esm';
+  import { defineGame, checkAnswer } from 'https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1';
 
   defineGame({
     root: document.getElementById('app'),
@@ -48,3 +48,12 @@ Version 1.0 is a release candidate; the API follows the guide and stays backward
 ## Compatibility within 1.x
 
 The contract has three layers, all backward compatible within `1.x`: the protocol between hosts and plugins ([SPEC](../protocol/SPEC.md)), this API (`defineGame`, `ctx`, `ui`, the documented classes and attributes of `ui.question`) and the messages between SDK instances. The devices of one game may run different `1.x` versions of the SDK, so an SDK ignores message types and fields it does not know, and new parts of messages are optional fields (an older SDK ignores them, a newer one keeps the old behaviour without them).
+
+## Loading and compatibility
+
+* Plugins import `https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1`: the package's self-contained
+  ES module (`dist/bundle/memizy-sdk.bundle.js`, about 66 kB gzipped). Every 1.x release reaches all
+  plugins (jsDelivr refreshes the `@1` range within hours), so a plugin never pins an exact version.
+* The devices of one game may run different 1.x versions: the SDK's own messages (actions, state
+  patches, reveals) only change additively and unknown parts are ignored. The connection to the host
+  is Penpal 7 for the whole 1.x line (protocol SPEC, section 4).

@@ -14,7 +14,7 @@ const example = /## 8\. Complete Example[\s\S]*?```html\n([\s\S]*?)```/.exec(gui
 
 describe('AI guide example plugin', () => {
   it('imports the SDK exactly as the guide says', () => {
-    expect(example).toContain("import { defineGame, checkAnswer } from 'https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1/+esm';");
+    expect(example).toContain("import { defineGame, checkAnswer } from 'https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1';");
   });
 
   it('runs in standalone mode and plays a question', async () => {

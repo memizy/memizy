@@ -11,7 +11,7 @@ You are writing a **Memizy plugin**: a learning game in **one HTML file**. Memiz
 
 1. Produce **one complete `index.html`** file. No build step, no other files. If you edit files directly (an IDE or coding agent), write it into `index.html`; otherwise give the whole file in **one** code block (```html), never in parts.
 2. Include the **manifest** `<script type="application/oqse-manifest+json">` (section 3).
-3. Import the SDK exactly like this: `import { defineGame, checkAnswer } from 'https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1/+esm';`
+3. Import the SDK exactly like this: `import { defineGame, checkAnswer } from 'https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1';`
 4. Call `defineGame({...})` **once**. Do not use `localStorage` or `IndexedDB` (blocked) – to remember things between games use `ui.save` (section 5.3). Network requests (`fetch`, `WebSocket`) work only to origins declared in the manifest `permissions.network` (section 3); for AI and other Memizy services use `ui.service` (section 5.4).
 5. **All game state lives in the state object** and changes **only inside actions** (and phase hooks). `render` only reads the state and draws the screen.
 6. Inside actions, **mutate `state` directly** (e.g. `state.scores[id] = 10`). Do not return a new object.
@@ -332,7 +332,7 @@ HTML is for text, buttons and menus. For a canvas or a 3D scene (e.g. Three.js):
 **Use `createScene3d`** from the SDK – it handles the hard parts on school devices (no WebGL, black screens, slow phones, iOS resizing, taps):
 
 ```js
-import { defineGame, checkAnswer, createScene3d } from 'https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1/+esm';
+import { defineGame, checkAnswer, createScene3d } from 'https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1';
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.min.js';
 
 let s3 = null;
@@ -444,7 +444,7 @@ A quiz race: questions with a countdown, faster correct answers give more points
 <body>
 <div id="app"></div>
 <script type="module">
-import { defineGame, checkAnswer } from 'https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1/+esm';
+import { defineGame, checkAnswer } from 'https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1';
 
 /** After the reveal: the next question, or the end. */
 function nextQuestion(state, ctx) {
