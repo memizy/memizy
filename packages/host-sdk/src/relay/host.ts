@@ -18,6 +18,7 @@ import {
   type RelayServerMessage,
 } from '@memizy/protocol';
 import type { LocalSession, PluginEndpoint, SessionEvent } from '../session';
+import type { PreparedSet } from '../plugin';
 import { RelaySocket, relayWebSocketUrl, type RelayStatus } from './socket';
 import { blobToJson, serializeError, type HostToPlayer, type PlayerToHost, type RemoteLobbyState } from './messages';
 
@@ -120,8 +121,13 @@ export class RelayHost {
   // Room control
   // ==========================================================================
 
-  /** Uploads the plugin and the set prepared for it (`LocalSession.prepared.set`). */
-  async uploadBundle(pluginHtml: string, set: unknown): Promise<number> {
+  /**
+   * Uploads the plugin and its set for the players' devices. Only `prepared.publicSet`
+   * (items without answers, SPEC 4.4) leaves this machine: anyone with the PIN can
+   * download the bundle. Prepare the set with the seed passed as `shuffleSeed`.
+   */
+  async uploadBundle(pluginHtml: string, prepared: PreparedSet): Promise<number> {
+    const set = prepared.publicSet;
     const response = await (this.options.fetch ?? fetch)(new URL(`/api/rooms/${this.pin}/bundle`, this.options.serverUrl), {
       method: 'PUT',
       headers: { Authorization: `Bearer ${this.hostToken}`, 'Content-Type': 'application/json' },
@@ -242,7 +248,7 @@ export class RelayHost {
   }
 
   private sendMount(playerId: string, gen: number): void {
-    this.sendTo(playerId, { k: 'mount', gen, bundle: this.bundleVersion, locale: this.session?.config.locale ?? 'cs' });
+    this.sendTo(playerId, { k: 'mount', gen, bundle: this.bundleVersion, locale: this.session?.config.locale ?? 'en' });
   }
 
   private remotePlugin(playerId: string, gen: number): PluginApi {

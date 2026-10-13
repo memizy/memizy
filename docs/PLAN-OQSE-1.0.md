@@ -251,12 +251,14 @@ Práce na větvi `sdk-1.0`. **Nic se neodkládá kvůli termínu** (rozhodnutí 
 
 ### Část B – Veřejné API host-sdk
 
-- [ ] Explicitní seznam exportů v `src/index.ts`; vnitřní věci (zprávy mezi aplikacemi,
+- [x] Explicitní seznam exportů v `src/index.ts`; vnitřní věci (zprávy mezi aplikacemi,
       `RelaySocket`, `createPluginFrame`, převody blobů) neexportovat.
-- [ ] `RelayHost.uploadBundle(plugin, prepared)` nahraje jen `prepared.publicSet` (dnes
+- [x] `RelayHost.uploadBundle(plugin, prepared)` nahraje jen `prepared.publicSet` (dnes
       bere libovolnou sadu a komentář chybně radí `prepared.set` s odpověďmi).
-- [ ] `HOST_SDK_VERSION` z buildu místo napevno `'1.0.0-rc.4'`; výchozí jazyk `'en'`
+- [x] `HOST_SDK_VERSION` z buildu místo napevno `'1.0.0-rc.4'`; výchozí jazyk `'en'`
       (`LocalSession`, `mountPlugin`, relay).
+- [x] README host-sdk: `RelayHost` / `RelayPlayer` s příkladem, veřejné API, opravy zastaralých vět.
+      Pozn.: `locale` ve zprávě `mount` hráč nečte (má vlastní jazyk) – řeší část D.
 
 ### Část C – Snímky a učení
 

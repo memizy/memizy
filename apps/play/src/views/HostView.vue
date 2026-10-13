@@ -261,12 +261,13 @@ function ensureUploaded(): Promise<void> {
   uploading = uploading.then(async () => {
     const r = room.value;
     const raw = pluginRaw.value;
-    const set = prepared.value?.publicSet; // without answers: anyone with the PIN can download it
-    if (!r || !raw || !set || !multi.value) return;
+    const ready = prepared.value; // uploadBundle sends only its publicSet (no answers)
+    const set = ready?.publicSet;
+    if (!r || !raw || !ready || !set || !multi.value) return;
     const key = `${r.pin}|${hash(raw)}|${studySet.value?.key}|${set.items.length}|${gameSeed.value}`;
     if (key === uploadedKey) return;
     try {
-      await r.uploadBundle(raw, set);
+      await r.uploadBundle(raw, ready);
       uploadedKey = key;
       uploadError.value = null;
       r.setState({ appName: plugin.value?.manifest.appName ?? null });

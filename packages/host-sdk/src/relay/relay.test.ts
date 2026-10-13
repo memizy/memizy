@@ -148,10 +148,11 @@ describe('relayed multiplayer', () => {
       hostAs: 'presenter',
       players: host.players.map((p) => ({ id: p.id, name: p.name })),
       countdownMs: 0,
+      config: { locale: 'cs' },
     });
     const events: SessionEvent[] = [];
     session.on((e) => events.push(e));
-    await host.uploadBundle(plugin.html, session.prepared.publicSet);
+    await host.uploadBundle(plugin.html, session.prepared);
     host.attach(session);
     // Anyone with the PIN can download the bundle: it has no answers (SPEC 4.4).
     const bundle = await (await fetch(`${serverUrl}/api/rooms/${host.pin}/bundle`)).json();

@@ -38,6 +38,7 @@ import { resolveAsset, type OQSEFile, type ProgressRecord } from '@memizy/oqse';
 import { leitner, type LearningAlgorithm } from './learning';
 import { MemoryStorage, type HostStorage } from './storage';
 import { prepareSetForPlugin, type LoadedPlugin, type PreparedSet } from './plugin';
+import { HOST_SDK_VERSION } from './version';
 
 export interface SessionPlayer {
   id: string;
@@ -183,7 +184,7 @@ export class LocalSession {
     this.mode = config.mode;
     this.storage = config.storage ?? new MemoryStorage();
     this.algorithm = config.algorithm ?? leitner;
-    this.config = { locale: config.config?.locale ?? 'cs', theme: config.config?.theme ?? 'light' };
+    this.config = { locale: config.config?.locale ?? 'en', theme: config.config?.theme ?? 'light' };
 
     if (config.mode === 'solo') {
       if (!this.runtime.solo) throw new Error('The plugin does not support solo mode.');
@@ -684,7 +685,7 @@ export class LocalSession {
     instance.resumed = snapshot !== null;
     return {
       protocol,
-      host: this.options.host ?? { name: '@memizy/host-sdk', version: '1.0.0-rc.4' },
+      host: this.options.host ?? { name: '@memizy/host-sdk', version: HOST_SDK_VERSION },
       oqseVersion: '1.0',
       features: [],
       session: {
