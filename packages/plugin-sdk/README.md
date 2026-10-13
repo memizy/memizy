@@ -56,4 +56,5 @@ The contract has three layers, all backward compatible within `1.x`: the protoco
   plugins (jsDelivr refreshes the `@1` range within hours), so a plugin never pins an exact version.
 * The devices of one game may run different 1.x versions: the SDK's own messages (actions, state
   patches, reveals) only change additively and unknown parts are ignored. The connection to the host
-  is Penpal 7 for the whole 1.x line (protocol SPEC, section 4).
+  is Penpal 8 for the whole 1.x line (protocol SPEC, section 4); the SDK adds what Penpal needs on
+  older browsers (`Promise.withResolvers`, `Object.hasOwn`), so older school iPads work too.

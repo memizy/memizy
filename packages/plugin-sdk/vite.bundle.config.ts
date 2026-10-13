@@ -9,7 +9,11 @@ import { readFileSync } from 'node:fs';
 const pkg = JSON.parse(readFileSync(resolve(import.meta.dirname, 'package.json'), 'utf8')) as { version: string };
 
 export default defineConfig({
-  define: { __SDK_VERSION__: JSON.stringify(pkg.version) },
+  define: {
+    __SDK_VERSION__: JSON.stringify(pkg.version),
+    // Dependencies (mutative 2) read process.env.NODE_ENV, which browsers do not have.
+    'process.env.NODE_ENV': JSON.stringify('production'),
+  },
   build: {
     outDir: 'dist/bundle',
     emptyOutDir: true,

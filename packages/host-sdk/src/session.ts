@@ -289,7 +289,13 @@ export class LocalSession {
     (instance as { hostApi: HostApi }).hostApi = this.createHostApi(instance);
     this.instances.set(address, instance);
     if (address === this.authority && this.started) this.setAuthorityConnected(false);
-    instance.plugin = await endpoint(instance.hostApi);
+    try {
+      instance.plugin = await endpoint(instance.hostApi);
+    } catch (error) {
+      // Replaced or removed while connecting (the connection was destroyed): not an error.
+      if (instance.disposed) return instance;
+      throw error;
+    }
     return instance;
   }
 

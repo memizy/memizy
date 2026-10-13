@@ -4,7 +4,7 @@
  */
 
 import { WindowMessenger, connect } from 'penpal';
-import { LIMITS, ProtocolError, toProtocolError, HOST_API_METHODS, type Handshake, type HostApi, type InitPayload, type PluginApi } from '@memizy/protocol';
+import { LIMITS, ProtocolError, ensureConnectionPolyfills, toProtocolError, HOST_API_METHODS, type Handshake, type HostApi, type InitPayload, type PluginApi } from '@memizy/protocol';
 
 export interface HostConnection {
   host: HostApi;
@@ -32,6 +32,7 @@ export function wrapHost(remote: HostApi): HostApi {
 
 /** Connects to the parent window (the Memizy host). */
 export const iframeConnector: Connector = async (pluginApi, handshake) => {
+  ensureConnectionPolyfills();
   const messenger = new WindowMessenger({ remoteWindow: window.parent, allowedOrigins: ['*'] });
   const connection = connect<HostApi & Record<string, any>>({
     messenger,

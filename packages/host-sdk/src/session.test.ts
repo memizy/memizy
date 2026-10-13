@@ -431,6 +431,20 @@ describe('services and permissions (RC4)', () => {
   });
 });
 
+describe('connecting', () => {
+  it('an instance replaced while it connects resolves quietly (its connection was destroyed)', async () => {
+    const { session } = newSession();
+    let fail!: (error: Error) => void;
+    const first = session.connect('anna', () => new Promise<PluginApi>((_, reject) => (fail = reject)), {
+      onDispose: () => fail(new Error('[CONNECTION_DESTROYED] Connection destroyed')),
+    });
+    await bare(session, 'anna'); // replaces the first instance
+    await expect(first).resolves.toMatchObject({ address: 'anna' });
+    await expect(session.connect('ben', () => Promise.reject(new Error('boom')))).rejects.toThrow('boom');
+    await session.end();
+  });
+});
+
 describe('protocol enforcement', () => {
   it('rejects invalid, oversized, unauthorized and late calls', async () => {
     const { session, events } = newSession();

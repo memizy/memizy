@@ -7,6 +7,7 @@
 import { WindowMessenger, connect } from 'penpal';
 import {
   LIMITS,
+  ensureConnectionPolyfills,
   PLUGIN_API_METHODS,
   injectContentPolicy,
   pluginAllowAttribute,
@@ -83,6 +84,7 @@ export function createPluginFrame(html: string, title: string, hostApi: HostApi,
         reject(new Error('The plugin iframe is not in the document.'));
         return;
       }
+      ensureConnectionPolyfills();
       connection = connect<PluginApi & Record<string, any>>({
         messenger: new WindowMessenger({ remoteWindow: iframe.contentWindow, allowedOrigins: ['*'] }),
         methods: hostApi as unknown as Record<string, (...args: any[]) => any>,

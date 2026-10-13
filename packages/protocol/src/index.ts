@@ -15,3 +15,4 @@ export * from './schemas';
 export * from './relay';
 export * from './items';
 export * from './security';
+export * from './polyfills';

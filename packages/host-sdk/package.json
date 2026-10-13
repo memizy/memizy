@@ -27,7 +27,7 @@
   "dependencies": {
     "@memizy/oqse": "^1.0.0-rc.5",
     "@memizy/protocol": "^1.0.0-rc.5",
-    "penpal": "^7.0.6"
+    "penpal": "^8.0.1"
   },
   "devDependencies": {
     "@memizy/plugin-sdk": "^1.0.0-rc.5",
