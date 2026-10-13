@@ -20,7 +20,12 @@ import {
 import type { LocalSession, SessionInstance } from './session';
 
 /** Never add `allow-same-origin`: the plugin must not reach the app's origin. */
-export const PLUGIN_SANDBOX = 'allow-scripts allow-forms allow-modals allow-pointer-lock';
+/**
+ * The iframe sandbox: never `allow-same-origin` (no storage, no access to the host) and
+ * never `allow-top-navigation` (a game cannot replace the host's page). Popups may escape
+ * the sandbox, so a link the SDK opens in a new tab is a normal page.
+ */
+export const PLUGIN_SANDBOX = 'allow-scripts allow-forms allow-modals allow-pointer-lock allow-popups allow-popups-to-escape-sandbox';
 
 export interface MountOptions {
   /** Text overrides (default: Czech or English by the session locale). */

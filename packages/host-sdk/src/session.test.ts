@@ -528,6 +528,9 @@ describe('leitner', () => {
 describe('sandbox', () => {
   it('never allows the plugin to share the app origin', () => {
     expect(PLUGIN_SANDBOX).not.toContain('allow-same-origin');
+    expect(PLUGIN_SANDBOX).not.toContain('allow-top-navigation');
+    // Links open in a new tab that is a normal page (SPEC 8.4).
+    expect(PLUGIN_SANDBOX.split(' ')).toEqual(expect.arrayContaining(['allow-popups', 'allow-popups-to-escape-sandbox']));
   });
 });
 

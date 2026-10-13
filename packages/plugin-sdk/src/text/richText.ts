@@ -6,6 +6,14 @@
 
 import { Marked } from 'marked';
 import DOMPurify from 'dompurify';
+
+// Links open in a new tab (inside the host's iframe a link would replace the game).
+DOMPurify.addHook('afterSanitizeAttributes', (node) => {
+  if (node.tagName === 'A' && node.hasAttribute('href')) {
+    node.setAttribute('target', '_blank');
+    node.setAttribute('rel', 'noopener noreferrer');
+  }
+});
 import { detokenizeOqseTags, tokenizeOqseTags, shiftHeadings, type MediaObject, type NoteItem } from '@memizy/oqse';
 
 export interface RichTextContext {

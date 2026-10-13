@@ -31,6 +31,7 @@ import { morph } from '../render/morph';
 import { bindEvents } from '../render/events';
 import { injectStyles } from '../render/styles';
 import { preventZoom } from '../render/noZoom';
+import { guardLinks } from '../render/links';
 import { enhance } from '../text/enhance';
 import { escapeHtml, renderNoteHtml, renderRichText, type RichTextContext } from '../text/richText';
 import type { GameDefinition, GameUI, RenderResult, SavedData } from '../types';
@@ -69,6 +70,7 @@ export function startGame<S>(definition: GameDefinition<S>, options: StartOption
   let controller: Controller | null = null;
   let destroyed = false;
   let allowZoom: (() => void) | null = null;
+  let unguardLinks: (() => void) | null = null;
 
   const pluginApi: PluginApi = {
     start: async () => controller?.start(),
@@ -86,6 +88,7 @@ export function startGame<S>(definition: GameDefinition<S>, options: StartOption
     const root = definition.root ?? doc.body;
     injectStyles(doc);
     allowZoom = preventZoom(doc);
+    unguardLinks = guardLinks(doc);
 
     const manifest = readManifest(doc);
     const handshake: Handshake = {
@@ -125,6 +128,7 @@ export function startGame<S>(definition: GameDefinition<S>, options: StartOption
     destroy() {
       destroyed = true;
       allowZoom?.();
+      unguardLinks?.();
       controller?.destroy();
     },
   };

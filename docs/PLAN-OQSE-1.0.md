@@ -303,10 +303,16 @@ Práce na větvi `sdk-1.0`. **Nic se neodkládá kvůli termínu** (rozhodnutí 
 
 ### Část E – SDK pro hry
 
-- [ ] Odkazy v Rich Content: `target="_blank" rel="noopener noreferrer"` a sandbox
+- [x] Odkazy v Rich Content: `target="_blank" rel="noopener noreferrer"` a sandbox
       `allow-popups allow-popups-to-escape-sandbox` (dnes odkaz přepne iframe a hra zmizí).
-- [ ] `allow-modals` zůstává; návod: nepoužívat `alert` / `confirm`.
-- [ ] Opravit zastaralý příklad `data-payload` u `ui.html` (zápis s objektem).
+- [x] `allow-modals` zůstává; návod: nepoužívat `alert` / `confirm`.
+- [x] Opravit zastaralý příklad `data-payload` u `ui.html` (zápis s objektem).
+      Hotovo: SDK otevře každý externí odkaz (`http(s)`, `mailto`) v nové kartě (`guardLinks`), Rich
+      Content má `target="_blank" rel="noopener noreferrer"`; sandbox `allow-popups
+      allow-popups-to-escape-sandbox`, nikdy `allow-top-navigation` (SPEC 8.4). Návod: pravidlo 13
+      (žádné `alert` / `confirm` / `prompt`), kapitola 6.4 Dialogy (overlay, backdrop jako
+      sourozenec, scroll uvnitř, Escape, `localActions`) – vzor ověřen testem; `data-payload=${{ … }}`.
+      Ověřeno v Edge: odkaz otevře novou kartu, hra v iframu běží dál.
 
 ### Část F – Soulad SPEC s rozhodnutími
 

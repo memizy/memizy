@@ -56,4 +56,4 @@ const player = new RelayPlayer({ serverUrl: 'https://mp.memizy.com', pin, name: 
 
 **Continuing a saved game** (SPEC 3.3): create the session with the saved players (their old IDs), the same `sessionId`, `shuffleSeed` and storage, `resume: true` and a paused `clock`, then `host.attach(session, { seats: true })`. Devices see the earlier places in `state.seats` and take one with `player.claimSeat(id)` (or `claimSeat(null)` to join as a new player when the game allows late joins); the host can change it with `host.assignSeat(playerId, seat)`. Keep `host.seatAssignments` and pass it as `taken` to attach again after a reload of the host page. Memizy Play (`apps/play`, `HostView` and `JoinView`) is the reference host.
 
-Iframes are sandboxed with `allow-scripts allow-forms allow-modals allow-pointer-lock` and **never** `allow-same-origin`.
+Iframes are sandboxed with `allow-scripts allow-forms allow-modals allow-pointer-lock allow-popups allow-popups-to-escape-sandbox` (`PLUGIN_SANDBOX`; links open in a new tab) and **never** `allow-same-origin` or `allow-top-navigation`.

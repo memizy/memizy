@@ -21,6 +21,7 @@ You are writing a **Memizy plugin**: a learning game in **one HTML file**. Memiz
 10. Show questions with **`ui.question(item, …)`** (ready-made controls for every common question type, section 6.2) unless the game needs its own controls. Choices have **ids**: send `option.id`, never a position (section 7).
 11. **Answers live only on the authority.** In multiplayer the players' devices get the items **without answers** (`item.answerHidden === true`). Check answers only in actions with `checkAnswer(ctx.item(id), answer)`. Show the right answer after `ctx.reveal(itemId)`.
 12. If the state holds something other players must not see (their answers before the reveal, cards in a hand), add **`playerView`** (section 5.5).
+13. Never use `alert`, `confirm` or `prompt`: they freeze the game on that device (timers, synchronization; on the board for everyone). Draw dialogs in `render` (section 6.4).
 
 ---
 
@@ -300,7 +301,8 @@ render(state, ui) {
 }
 ```
 
-* **Buttons:** `<button data-act="answer" data-payload='${JSON.stringify({ answer: option.id })}'>…</button>` calls the action `answer` with `{ answer: option.id }`. Inside `ui.html` the JSON is escaped correctly; keep the attribute in single quotes.
+* **Buttons:** ``ui.html`<button data-act="answer" data-payload=${{ answer: option.id }}>…</button>` `` calls the action `answer` with `{ answer: option.id }`. Inside `ui.html` write the object directly, **without quotes** around `${…}` and without `JSON.stringify` – the SDK quotes and escapes it.
+* **Links** (`<a href="https://…">`) always open in a new tab; the game stays where it is.
 * **Forms:** `<form data-act="sendText"><input name="text"><button>OK</button></form>` calls `sendText` with `{ text: "…" }` on submit.
 * Screen-only state (the selected tab, an open menu) goes to `ui.setLocal`; call an action when the player decides.
 * In multiplayer an action travels to the authority and back (~0.1–0.3 s). Show it right away with `ui.isPending('answer')` or `ui.pending` (e.g. the chosen option highlighted), but let the result come from the state.
@@ -373,6 +375,52 @@ const game = defineGame({
 * Load libraries as ES modules from `https://cdn.jsdelivr.net/npm/...` (e.g. `https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.min.js`).
 
 ---
+
+### 6.4 Dialogs and Pop-ups
+
+Draw a dialog as part of the screen – never `alert`, `confirm` or `prompt`. Whether it is open is screen-only data (`ui.local`); buttons with `data-local` change it without sending anything (`localActions`), and the player's decision is an ordinary action:
+
+```js
+defineGame({
+  // …
+  localActions: {
+    openShop(local) { local.dialog = 'shop'; },
+    closeDialog(local) { local.dialog = null; },
+  },
+  render(state, ui) {
+    return ui.html`
+      <button data-local="openShop">🛒 Shop</button>
+      ${ui.local.dialog === 'shop' ? ui.html`
+        <div class="overlay" data-key="shop">
+          <div class="backdrop" data-local="closeDialog"></div>
+          <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="shop-title">
+            <h2 id="shop-title">Shop</h2>
+            <div class="dialog-body">${state.offers.map((o) => ui.html`
+              <button data-act="buy" data-payload=${{ offer: o.id }}>${o.name}</button>`)}</div>
+            <button data-local="closeDialog">Close</button>
+          </div>
+        </div>` : ''}`;
+  },
+  afterRender(state, ui) {
+    // Escape closes the dialog (assigning onkeydown again on every render is fine).
+    document.onkeydown = (e) => { if (e.key === 'Escape' && ui.local.dialog) ui.setLocal({ dialog: null }); };
+  },
+});
+```
+
+```css
+.overlay { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 16px; }
+.backdrop { position: absolute; inset: 0; background: rgb(0 0 0 / 0.55); }
+.dialog { position: relative; width: min(480px, 100%); max-height: calc(100dvh - 32px); display: flex; flex-direction: column;
+  border-radius: 16px; background: Canvas; color: CanvasText; box-shadow: 0 10px 40px rgb(0 0 0 / 0.35); }
+.dialog-body { overflow-y: auto; overscroll-behavior: contain; padding: 16px; }
+```
+
+* `position: fixed` with `inset: 0` and a high `z-index` covers the whole game, also a canvas or a 3D scene.
+* Long content scrolls **inside** the dialog (`max-height` + `overflow-y: auto`), never the page behind it; use `100dvh` so phone toolbars do not cut it off.
+* A click on the dark backdrop closes the dialog. The backdrop is a **sibling** of the dialog box, not its parent, so clicks inside the box never reach it. Give the overlay a `data-key` so inputs inside keep their focus.
+* Escape closes it (keyboards on computers), and a visible Close button is always there (phones).
+* A dialog belongs to one screen only: to show something to everybody (the round result), put it in the state and draw it on every device.
 
 ## 7. Study Set Items (OQSE 1.0)
 
@@ -577,3 +625,5 @@ defineGame({
 8. Setting `state.phase` by hand in a game with `phases` – use `ctx.goto`.
 9. Teacher-only actions without `ctx.fromHost` – students could skip questions or end the game.
 10. A canvas or 3D scene without `data-keep` – it is recreated on every render (black or flickering screen). Never call `location.reload()`.
+11. `alert`, `confirm` or `prompt` – they stop the game on that device; draw a dialog instead (section 6.4).
+12. `data-payload='${JSON.stringify(…)}'` – works, but `data-payload=${{ … }}` without quotes is simpler and cannot break the attribute.

@@ -161,7 +161,7 @@ export interface GameUI {
    * HTML template that escapes every value except safe HTML (`ui.html`, `ui.text`,
    * `ui.renderNote`, `ui.question`, `ui.raw`); arrays are joined, `null` / `false` are
    * left out. Use it for every `render`:
-   * ``ui.html`<button data-act="answer" data-payload='${JSON.stringify({ answer: o.id })}'>${ui.text(o.text, { inline: true })}</button>` ``
+   * ``ui.html`<button data-act="answer" data-payload=${{ answer: o.id }}>${ui.text(o.text, { inline: true })}</button>` ``
    */
   html(strings: TemplateStringsArray, ...values: unknown[]): SafeHtml;
   /** Marks HTML you wrote yourself as safe (never use it for text from players or sets). */

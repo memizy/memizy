@@ -96,6 +96,60 @@ describe('defineGame end to end', () => {
     expect(root.querySelector('.name')!.innerHTML).toBe('&lt;b&gt;x&lt;/b&gt;');
   });
 
+  it('the dialog pattern of the guide (6.4): open, click inside, backdrop and Escape close, buy', async () => {
+    const router = new LocalRouter({ items, mode: 'solo' });
+    const root = mount(router, 'me', {
+      initialState: () => ({ offers: [{ id: 'o1', name: 'Sword' }], bought: [] as string[] }),
+      actions: { buy(state: any, payload: any) { if (typeof payload?.offer === 'string') state.bought.push(payload.offer); } },
+      localActions: {
+        openShop(local) { local.dialog = 'shop'; },
+        closeDialog(local) { local.dialog = null; },
+      },
+      render: (state: any, ui) => ui.html`
+        <p class="bought">${state.bought.join(',')}</p>
+        <button class="open" data-local="openShop">Shop</button>
+        ${ui.local.dialog === 'shop' ? ui.html`
+          <div class="overlay" data-key="shop">
+            <div class="backdrop" data-local="closeDialog"></div>
+            <div class="dialog" role="dialog" aria-modal="true">
+              <h2 class="title">Shop</h2>
+              <label><input class="check" type="checkbox"> remember</label>
+              <div class="dialog-body">${state.offers.map((o: any) => ui.html`<button class="buy" data-act="buy" data-payload=${{ offer: o.id }}>${o.name}</button>`)}</div>
+              <button class="close" data-local="closeDialog">Close</button>
+            </div>
+          </div>` : ''}`,
+      afterRender(_state, ui) {
+        document.onkeydown = (e) => { if (e.key === 'Escape' && ui.local.dialog) ui.setLocal({ dialog: null }); };
+      },
+    });
+    await handles.at(-1)!.ready;
+    await router.start();
+    await wait();
+    const q = (s: string) => root.querySelector(s) as HTMLElement | null;
+    q('.open')!.click();
+    await wait();
+    expect(q('.dialog')).not.toBeNull();
+    // Clicks inside the box do not close it, and a checkbox inside still works.
+    q('.title')!.click();
+    (q('.check') as HTMLInputElement).click();
+    await wait();
+    expect(q('.dialog')).not.toBeNull();
+    expect((q('.check') as HTMLInputElement).checked).toBe(true);
+    q('.buy')!.click();
+    await wait();
+    expect(q('.bought')!.textContent).toBe('o1');
+    q('.backdrop')!.click();
+    await wait();
+    expect(q('.dialog')).toBeNull();
+    q('.open')!.click();
+    await wait();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    await wait();
+    expect(q('.dialog')).toBeNull();
+    expect(router.errors).toEqual([]);
+    document.onkeydown = null;
+  });
+
   it('data-local runs a device-only handler and re-renders; unknown handlers are reported', async () => {
     const router = new LocalRouter({ items, mode: 'solo' });
     const seen: unknown[] = [];
