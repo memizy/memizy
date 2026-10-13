@@ -292,11 +292,14 @@ Práce na větvi `sdk-1.0`. **Nic se neodkládá kvůli termínu** (rozhodnutí 
 
 ### Část D – Relay mezi aplikacemi hostitele a hráče
 
-- [ ] Pravidla kompatibility zpráv (`HostToPlayer` / `PlayerToHost`): neznámé druhy a pole
+- [x] Pravidla kompatibility zpráv (`HostToPlayer` / `PlayerToHost`): neznámé druhy a pole
       se ignorují; nepovinná verze v `hello` a `mount`; neznámá metoda → vlastní chyba
       (dnes zavádějící `SESSION_ENDED`).
-- [ ] Rezervace nepovinného `auth` při připojení (server ho předá hostiteli) – přihlášení
+- [x] Rezervace nepovinného `auth` při připojení (server ho předá hostiteli) – přihlášení
       žáci na platformě; implementace s Classroomem.
+      Hotovo: `RELAY_APP_VERSION` (1) v `hello` / `mount`, `RelayHost.appVersionOf` (Play označí
+      starší aplikaci v panelu míst), kód `UNKNOWN_METHOD` (relay i Penpal), `auth` při `join`
+      jde jen hostiteli (`RelayPlayer.auth`, max 4096 znaků), pravidla v README serveru, SPEC 8.2.
 
 ### Část E – SDK pro hry
 

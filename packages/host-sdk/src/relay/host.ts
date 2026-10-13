@@ -20,7 +20,7 @@ import {
 import type { LocalSession, PluginEndpoint, SessionEvent } from '../session';
 import type { PreparedSet } from '../plugin';
 import { RelaySocket, relayWebSocketUrl, type RelayStatus } from './socket';
-import { blobToJson, serializeError, type HostToPlayer, type PlayerToHost, type RemoteLobbyState } from './messages';
+import { RELAY_APP_VERSION, blobToJson, serializeError, unknownMethod, type HostToPlayer, type PlayerToHost, type RemoteLobbyState } from './messages';
 
 export type RelayHostEvent =
   | { type: 'status'; status: RelayStatus }
@@ -99,6 +99,8 @@ export class RelayHost {
   private readonly seatOf = new Map<string, string>();
   /** A continued game (see `AttachOptions.seats`). */
   private seatsMode = false;
+  /** The app message version of each player's app (from its `hello`; 0 = an app before versions). */
+  private readonly appVersions = new Map<string, number>();
 
   private constructor(options: RelayHostOptions, room: CreateRoomResponse) {
     this.options = options;
@@ -282,6 +284,14 @@ export class RelayHost {
     this.seatsChanged();
   }
 
+  /**
+   * The app message version of a room player's app (`RELAY_APP_VERSION` of its host-sdk), or
+   * `null` before it said hello. An app below 1 cannot choose its place: the host assigns it.
+   */
+  appVersionOf(playerId: string): number | null {
+    return this.appVersions.get(playerId) ?? null;
+  }
+
   private relayIdOf(seat: string): string | null {
     for (const [playerId, s] of this.seatOf) if (s === seat) return playerId;
     return null;
@@ -405,7 +415,7 @@ export class RelayHost {
   }
 
   private sendMount(seat: string, gen: number): void {
-    this.sendToSeat(seat, { k: 'mount', gen, bundle: this.bundleVersion, locale: this.session?.config.locale ?? 'en' });
+    this.sendToSeat(seat, { k: 'mount', gen, bundle: this.bundleVersion, locale: this.session?.config.locale ?? 'en', v: RELAY_APP_VERSION });
   }
 
   private remotePlugin(playerId: string, gen: number): PluginApi {
@@ -522,6 +532,7 @@ export class RelayHost {
         if (session && seat !== null && !this.seatsMode) session.renamePlayer(seat, player.name);
         break;
       case 'leave':
+        this.appVersions.delete(player.id);
         if (seat !== null && this.seatsMode) {
           this.unseat(player.id); // the place stays in the game and is free again
           this.seatsChanged();
@@ -545,6 +556,7 @@ export class RelayHost {
     if (typeof msg !== 'object' || msg === null) return;
     const playerId = this.seatOf.get(relayId) ?? null;
     if (msg.k === 'hello') {
+      this.appVersions.set(relayId, typeof msg.v === 'number' && Number.isFinite(msg.v) ? msg.v : 0);
       this.sendTo(relayId, { k: 'state', state: this.state });
       if (this.seatsMode) this.sendSeat(relayId);
     } else if (msg.k === 'claim') {
@@ -552,7 +564,10 @@ export class RelayHost {
       return;
     }
     if (playerId === null) {
-      if (msg.k === 'call') this.sendTo(relayId, { k: 'result', id: msg.id, ok: false, error: { message: '[SESSION_ENDED] This device has no place in the game.' } });
+      if (msg.k === 'call') {
+        const error = HOST_METHODS.has(msg.method) ? { message: '[SESSION_ENDED] This device has no place in the game.' } : unknownMethod(msg.method);
+        this.sendTo(relayId, { k: 'result', id: msg.id, ok: false, error });
+      }
       return;
     }
     const channel = this.channel(playerId);
@@ -598,7 +613,11 @@ export class RelayHost {
       }
       case 'call': {
         const reply = (result: HostToPlayer) => this.sendTo(relayId, result);
-        if (msg.gen !== channel.gen || !channel.hostApi || !HOST_METHODS.has(msg.method) || !Array.isArray(msg.args)) {
+        if (!HOST_METHODS.has(msg.method)) {
+          reply({ k: 'result', id: msg.id, ok: false, error: unknownMethod(msg.method) });
+          return;
+        }
+        if (msg.gen !== channel.gen || !channel.hostApi || !Array.isArray(msg.args)) {
           reply({ k: 'result', id: msg.id, ok: false, error: { message: '[SESSION_ENDED] This plugin instance is no longer active.' } });
           return;
         }

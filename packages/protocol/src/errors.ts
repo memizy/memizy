@@ -21,6 +21,8 @@ export const PROTOCOL_ERROR_CODES = [
   'INTERNAL_ERROR',
   /** RC4: the service is not offered by this host (or not declared by the plugin). */
   'SERVICE_UNAVAILABLE',
+  /** 1.0: the other side does not have this method (e.g. an older version). */
+  'UNKNOWN_METHOD',
 ] as const;
 
 export type ProtocolErrorCode = (typeof PROTOCOL_ERROR_CODES)[number];
@@ -53,6 +55,8 @@ export function isProtocolErrorCode(value: unknown): value is ProtocolErrorCode 
 export function toProtocolError(error: unknown): ProtocolError {
   if (error instanceof ProtocolError) return error;
   const message = error instanceof Error ? error.message : String(error);
+  // Penpal: the other window has no such method.
+  if ((error as { code?: unknown } | null)?.code === 'METHOD_NOT_FOUND') return new ProtocolError('UNKNOWN_METHOD', message);
   const match = CODE_PREFIX_RE.exec(message);
   const code = match && isProtocolErrorCode(match[1]) ? match[1] : 'INTERNAL_ERROR';
   return new ProtocolError(code, match ? message.slice(match[0].length) : message);

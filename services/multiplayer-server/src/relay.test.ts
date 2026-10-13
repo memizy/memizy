@@ -51,6 +51,34 @@ describe('relay rooms', () => {
     expect(anna.last('data')).toEqual({ t: 'data', data: [1, 2] });
   });
 
+  it('passes a player\'s auth to the host only, and refuses one that is too long', () => {
+    const { relay, pin, hostToken, host, connect } = setup();
+    const signedIn = connect();
+    relay.message(signedIn, JSON.stringify({ t: 'join', protocol: RELAY_PROTOCOL, pin, name: 'Anna', auth: 'signed-token-1' }));
+    const { playerId, token } = signedIn.last('joined')!;
+    expect(signedIn.last('joined')).not.toHaveProperty('auth');
+    expect(host.last('presence')?.player).toEqual({ id: playerId, name: 'Anna', connected: true, auth: 'signed-token-1' });
+
+    // Another player never sees it (players only get what the host sends them).
+    const other = connect();
+    relay.message(other, JSON.stringify({ t: 'join', protocol: RELAY_PROTOCOL, pin, name: 'Ben' }));
+    expect(JSON.stringify(other.received)).not.toContain('signed-token-1');
+
+    // A rejoin with a fresh auth replaces it; the host's player list has it after a reconnect.
+    relay.close(signedIn);
+    const again = connect();
+    relay.message(again, JSON.stringify({ t: 'join', protocol: RELAY_PROTOCOL, pin, name: 'Anna', token, auth: 'signed-token-2' }));
+    expect(host.last('presence')).toMatchObject({ event: 'connect', player: { auth: 'signed-token-2' } });
+    const host2 = connect();
+    relay.message(host2, JSON.stringify({ t: 'host', protocol: RELAY_PROTOCOL, pin, hostToken }));
+    expect(host2.last('hosting')?.players.find((p) => p.id === playerId)?.auth).toBe('signed-token-2');
+
+    const big = connect();
+    relay.message(big, JSON.stringify({ t: 'join', protocol: RELAY_PROTOCOL, pin, name: 'Cyril', auth: 'x'.repeat(RELAY_LIMITS.authLength + 1) }));
+    expect(big.last('error')).toMatchObject({ code: 'TOO_LARGE', fatal: true });
+    expect(big.last('joined')).toBeUndefined();
+  });
+
   it('lets a player rejoin with the token as the same player', () => {
     const { relay, host, join } = setup();
     const first = join('Ben');

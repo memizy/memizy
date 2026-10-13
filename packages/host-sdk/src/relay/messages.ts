@@ -6,6 +6,16 @@
 
 import type { Player, SessionResult } from '@memizy/protocol';
 
+/**
+ * Version of the messages between the host app and the player apps. Within one relay
+ * protocol they only change additively: receivers ignore unknown `k` and unknown fields,
+ * and an app that sends nothing is version 0. Player apps send it in `hello`, hosts in
+ * `mount`, so each side knows what the other understands (e.g. a cached older player app).
+ *
+ * 1 – places in a continued game (`seat` / `claim`), `UNKNOWN_METHOD` errors.
+ */
+export const RELAY_APP_VERSION = 1;
+
 export type RemotePhase = 'lobby' | 'loading' | 'countdown' | 'running' | 'ended';
 
 export interface RemoteLobbyState {
@@ -38,8 +48,11 @@ export type SerializedError = { message: string };
 export type HostToPlayer =
   /** Lobby / game state for the player app's own screens. */
   | { k: 'state'; state: RemoteLobbyState }
-  /** Create (or recreate) the plugin instance; download the bundle if its version changed. */
-  | { k: 'mount'; gen: number; bundle: number; locale: string }
+  /**
+   * Create (or recreate) the plugin instance; download the bundle if its version changed.
+   * `locale` is the host's language (informational: player apps use their own); `v` = RELAY_APP_VERSION.
+   */
+  | { k: 'mount'; gen: number; bundle: number; locale: string; v?: number }
   /** Remove the plugin instance. */
   | { k: 'unmount' }
   /** A continued game: the place of this device (`null` = none yet) and its nickname. */
@@ -51,8 +64,8 @@ export type HostToPlayer =
   | { k: 'result'; id: number; ok: false; error: SerializedError };
 
 export type PlayerToHost =
-  /** After (re)joining: the generation of the plugin instance still alive (0 = none). */
-  | { k: 'hello'; gen: number }
+  /** After (re)joining: the generation of the plugin instance still alive (0 = none); `v` = RELAY_APP_VERSION. */
+  | { k: 'hello'; gen: number; v?: number }
   /** A continued game: take the place `seat`, or join as a new player (`null`). */
   | { k: 'claim'; seat: string | null }
   /** The plugin instance `gen` connected (Penpal handshake done). */
@@ -65,7 +78,15 @@ export type PlayerToHost =
   | { k: 'result'; id: number; ok: false; error: SerializedError };
 
 export function serializeError(error: unknown): SerializedError {
-  return { message: error instanceof Error ? error.message : String(error) };
+  const message = error instanceof Error ? error.message : String(error);
+  // Penpal inside the device: the plugin has no such method (keep the code across the relay).
+  if ((error as { code?: unknown } | null)?.code === 'METHOD_NOT_FOUND') return { message: `[UNKNOWN_METHOD] ${message}` };
+  return { message };
+}
+
+/** The error for a call whose method the receiving app does not know (an older or newer version). */
+export function unknownMethod(method: unknown): SerializedError {
+  return { message: `[UNKNOWN_METHOD] This app does not know the method "${String(method).slice(0, 64)}".` };
 }
 
 /** Blobs (getAsset) are not JSON: they travel as base64. */

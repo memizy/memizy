@@ -203,6 +203,7 @@ const en: typeof cs = {
       hint: 'Players pick their name from last time when they join. You can assign or change places here.',
       paused: 'The game is paused. When everybody sits in their place, press Resume.',
       free: '– free –',
+      oldApp: 'older app, assign the place',
     },
     endDialog: {
       title: 'End the game',

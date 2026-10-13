@@ -711,7 +711,9 @@ const statusClass = computed(() =>
               <span class="min-w-0 flex-1 truncate text-sm font-semibold">{{ s.name }}</span>
               <select class="input w-40 py-1 text-xs" :value="s.playerId ?? ''" @change="assignSeat(s, ($event.target as HTMLSelectElement).value)">
                 <option value="">{{ t('host.seats.free') }}</option>
-                <option v-for="pl in players.filter((pl) => pl.connected || pl.id === s.playerId)" :key="pl.id" :value="pl.id">{{ pl.name }}</option>
+                <option v-for="pl in players.filter((pl) => pl.connected || pl.id === s.playerId)" :key="pl.id" :value="pl.id">
+                  {{ pl.name }}{{ room?.appVersionOf(pl.id) === 0 ? ` · ${t('host.seats.oldApp')}` : '' }}
+                </option>
               </select>
             </li>
           </ul>

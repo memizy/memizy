@@ -11,6 +11,7 @@ describe('public API', () => {
       'LocalSession',
       'MemoryStorage',
       'PLUGIN_SANDBOX',
+      'RELAY_APP_VERSION',
       'RelayHost',
       'RelayPlayer',
       'SETTINGS_ADDRESS',

@@ -40,6 +40,8 @@ interface Player {
   name: string;
   token: string;
   conn: RelayConnection | null;
+  /** Passed to the host only (never to other players). */
+  auth?: string;
 }
 
 interface Room {
@@ -345,6 +347,9 @@ export class RelayServer {
     if (!room) return this.fail(conn, 'ROOM_NOT_FOUND', 'No game with this PIN.', true);
     if (state.room) return this.fail(conn, 'NOT_ALLOWED', 'This connection is already attached.', false);
     if (typeof msg.token === 'string' && room.kickedTokens.has(msg.token)) return this.fail(conn, 'KICKED', 'You were removed from this game.', true);
+    if (msg.auth !== undefined && (typeof msg.auth !== 'string' || msg.auth.length > RELAY_LIMITS.authLength)) {
+      return this.fail(conn, 'TOO_LARGE', `"auth" must be a string of at most ${RELAY_LIMITS.authLength} characters.`, true);
+    }
 
     let player = typeof msg.token === 'string' ? [...room.players.values()].find((p) => p.token === msg.token) : undefined;
     let event: 'join' | 'connect' = 'connect';
@@ -364,6 +369,7 @@ export class RelayServer {
       room.players.set(id, player);
       event = 'join';
     }
+    if (msg.auth !== undefined) player.auth = msg.auth;
     player.conn = conn;
     state.role = 'player';
     state.room = room;
@@ -376,8 +382,9 @@ export class RelayServer {
   // Helpers
   // ==========================================================================
 
+  /** A player as the host sees it (only the host gets `auth`). */
   private publicPlayer(player: Player): RelayPlayer {
-    return { id: player.id, name: player.name, connected: player.conn !== null };
+    return { id: player.id, name: player.name, connected: player.conn !== null, ...(player.auth !== undefined && { auth: player.auth }) };
   }
 
   private send(conn: RelayConnection, msg: RelayServerMessage): void {

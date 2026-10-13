@@ -5,6 +5,26 @@ besides `@memizy/protocol`). The game session runs in the host's browser
 (`@memizy/host-sdk`, `RelayHost`); the server only manages rooms, PINs,
 player identity and forwarding. Wire protocol: `packages/protocol/src/relay.ts`.
 
+## Compatibility
+
+Two layers travel over the relay, each with its own version:
+
+* **Client ↔ server** (`RELAY_PROTOCOL`, now 1, in `join` / `host`). Within version 1
+  messages only change additively; receivers ignore unknown fields. The server answers
+  an unknown `t` with a non-fatal `NOT_ALLOWED` error, so a client checks what a
+  server supports before relying on a new message.
+* **Host app ↔ player app** (inside `data`; `RELAY_APP_VERSION` in `@memizy/host-sdk`,
+  sent in the player's `hello` and the host's `mount`; an app that sends none is 0).
+  Additive only; unknown `k` and fields are ignored, an unknown method is answered with
+  `[UNKNOWN_METHOD]`. A host can see a cached older player app with
+  `RelayHost.appVersionOf(playerId)` (e.g. version 0 cannot choose its place in a
+  continued game, so the host assigns it).
+
+**`auth`.** A player may join with `auth` (a string up to 4096 characters, e.g. a signed
+token of a signed-in student). The server does not check it and passes it **only to the
+host** (`RelayPlayer.auth` in `hosting` and `presence`), never to other players; a rejoin
+with `auth` replaces it. Checking it is the host app's job.
+
 ## Development
 
 ```sh

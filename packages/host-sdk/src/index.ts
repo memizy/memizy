@@ -33,4 +33,4 @@ export { leitner, LEITNER_INTERVAL_DAYS, type LearningAlgorithm } from './learni
 export { RelayHost, type RelayHostOptions, type RelayHostEvent, type AttachOptions, type HostSeat } from './relay/host';
 export { RelayPlayer, type RelayPlayerOptions, type RelayPlayerEvent, type FrameFactory, type RemoteFrame } from './relay/player';
 export type { RelayStatus } from './relay/socket';
-export type { RemoteLobbyState, RemotePhase, RemoteSeat } from './relay/messages';
+export { RELAY_APP_VERSION, type RemoteLobbyState, type RemotePhase, type RemoteSeat } from './relay/messages';

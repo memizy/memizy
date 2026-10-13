@@ -79,6 +79,10 @@ describe('errors', () => {
 
   it('turn unknown codes and foreign errors into INTERNAL_ERROR', () => {
     expect(toProtocolError(new Error('[SOMETHING_NEW] x')).code).toBe('INTERNAL_ERROR');
+    // Penpal's "no such method" (an older or newer other side) becomes UNKNOWN_METHOD.
+    const penpal = Object.assign(new Error('Method `shiny` is not found.'), { code: 'METHOD_NOT_FOUND' });
+    expect(toProtocolError(penpal).code).toBe('UNKNOWN_METHOD');
+    expect(toProtocolError(new Error('[UNKNOWN_METHOD] x')).code).toBe('UNKNOWN_METHOD');
     expect(toProtocolError('boom').code).toBe('INTERNAL_ERROR');
   });
 });

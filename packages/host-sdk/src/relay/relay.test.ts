@@ -16,6 +16,8 @@ import { MemoryStorage } from '../storage';
 import { loadPluginFromHtml, type LoadedPlugin } from '../plugin';
 import { RelayHost, type HostSeat } from './host';
 import { RelayPlayer, type FrameFactory, type RelayPlayerEvent } from './player';
+import { RELAY_APP_VERSION } from './messages';
+import { RELAY_PROTOCOL } from '@memizy/protocol';
 
 const PORT = 18_787;
 const serverUrl = `http://127.0.0.1:${PORT}`;
@@ -102,12 +104,12 @@ function playBoard(session: LocalSession): HTMLElement {
   return boardRoot;
 }
 
-function joinPlayer(pin: string, name: string, token?: string, locale?: string) {
+function joinPlayer(pin: string, name: string, token?: string, locale?: string, auth?: string) {
   const frames = sdkFrames();
   const container = document.createElement('div');
   document.body.appendChild(container);
   const events: RelayPlayerEvent[] = [];
-  const player = new RelayPlayer({ serverUrl, WebSocket: WebSocketImpl, pin, name, token, container: () => container, createFrame: frames.factory, config: locale ? () => ({ locale }) : undefined });
+  const player = new RelayPlayer({ serverUrl, WebSocket: WebSocketImpl, pin, name, token, auth, container: () => container, createFrame: frames.factory, config: locale ? () => ({ locale }) : undefined });
   player.on((e) => events.push(e));
   const root = () => frames.roots.at(-1);
   return { player, events, root, container };
@@ -328,6 +330,38 @@ describe('relayed multiplayer', () => {
     host2.close();
     for (const p of [ben, dana, eva, filip]) p.player.leave();
   }, 30_000);
+
+  it('app versions, unknown methods and auth between the host and player apps', async () => {
+    const host = await RelayHost.create({ serverUrl, WebSocket: WebSocketImpl });
+    await until(() => host.status === 'online');
+    const anna = joinPlayer(host.pin, 'Anna', undefined, undefined, 'signed-anna');
+    await until(() => anna.player.playerId !== null && host.appVersionOf(anna.player.playerId) !== null);
+    expect(host.appVersionOf(anna.player.playerId!)).toBe(RELAY_APP_VERSION);
+    expect(host.players.find((p) => p.id === anna.player.playerId)?.auth).toBe('signed-anna');
+
+    // An older player app (no version) and a call of a method this host does not know.
+    const raw = new NodeWebSocket(serverUrl.replace('http', 'ws') + '/ws');
+    const received: any[] = [];
+    raw.on('message', (data) => received.push(JSON.parse(String(data))));
+    await new Promise((r) => raw.on('open', r));
+    raw.send(JSON.stringify({ t: 'join', protocol: RELAY_PROTOCOL, pin: host.pin, name: 'Old' }));
+    await until(() => received.some((m) => m.t === 'joined'));
+    const oldId = received.find((m) => m.t === 'joined').playerId;
+    raw.send(JSON.stringify({ t: 'up', data: { k: 'hello', gen: 0 } }));
+    await until(() => host.appVersionOf(oldId) !== null);
+    expect(host.appVersionOf(oldId)).toBe(0);
+    raw.send(JSON.stringify({ t: 'up', data: { k: 'call', id: 7, gen: 0, method: 'shinyNewMethod', args: [] } }));
+    await until(() => received.some((m) => m.t === 'data' && m.data.k === 'result' && m.data.id === 7));
+    const result = received.find((m) => m.t === 'data' && m.data.k === 'result' && m.data.id === 7).data;
+    expect(result).toMatchObject({ ok: false, error: { message: expect.stringMatching(/^\[UNKNOWN_METHOD\]/) } });
+    raw.send(JSON.stringify({ t: 'up', data: { k: 'call', id: 8, gen: 0, method: 'send', args: [] } }));
+    await until(() => received.some((m) => m.t === 'data' && m.data.k === 'result' && m.data.id === 8));
+    expect(received.find((m) => m.t === 'data' && m.data.id === 8).data.error.message).toMatch(/^\[SESSION_ENDED\]/); // a known method, no instance
+
+    raw.close();
+    anna.player.leave();
+    host.close();
+  });
 
   it('a second host connection takes the room over without a reconnect fight', async () => {
     const first = await RelayHost.create({ serverUrl, WebSocket: WebSocketImpl });

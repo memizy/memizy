@@ -17,6 +17,12 @@
  * WebSocket: `/ws`.
  */
 
+/**
+ * Version of the relay wire protocol (client <-> server). Within version 1 messages only
+ * change additively: receivers ignore unknown fields; the server answers an unknown `t`
+ * with a non-fatal `NOT_ALLOWED` error. The messages between the host app and the player
+ * apps (inside `data`) have their own version (`RELAY_APP_VERSION` in @memizy/host-sdk).
+ */
 export const RELAY_PROTOCOL = 1;
 
 export const RELAY_LIMITS = {
@@ -34,6 +40,8 @@ export const RELAY_LIMITS = {
   hostFrameBurst: 6000,
   /** Max player name length. */
   nameLength: 32,
+  /** Max length of the `auth` a player sends when joining. */
+  authLength: 4096,
   /** A room is closed when its host has been away this long. */
   hostAwayMs: 10 * 60_000,
   /** A room is closed after this time in any case. */
@@ -65,6 +73,11 @@ export interface RelayPlayer {
   id: string;
   name: string;
   connected: boolean;
+  /**
+   * What the player's app sent as `auth` when joining (e.g. a signed token of a signed-in
+   * student). Only the host gets it; the server does not check it – the host app does.
+   */
+  auth?: string;
 }
 
 // ============================================================================
@@ -74,8 +87,12 @@ export interface RelayPlayer {
 export type RelayClientMessage =
   /** The host attaches to its room (also after a reconnect). */
   | { t: 'host'; protocol: number; pin: string; hostToken: string }
-  /** A player joins (with `token`: rejoins as the same player). */
-  | { t: 'join'; protocol: number; pin: string; name: string; token?: string }
+  /**
+   * A player joins (with `token`: rejoins as the same player). `auth` (optional, at most
+   * `RELAY_LIMITS.authLength` characters) is passed to the host only, for apps with
+   * signed-in players; a rejoin with `auth` replaces the earlier one.
+   */
+  | { t: 'join'; protocol: number; pin: string; name: string; token?: string; auth?: string }
   /** Host → one player. */
   | { t: 'to'; to: string; data: unknown }
   /** Host: allow or stop new players joining. */

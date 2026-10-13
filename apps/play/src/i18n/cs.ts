@@ -201,6 +201,7 @@ export default {
       hint: 'Hráči si po připojení vyberou své jméno z minula. Tady můžeš místo přidělit nebo změnit.',
       paused: 'Hra je pozastavená. Až budou všichni na svých místech, stiskni Pokračovat.',
       free: '– volné –',
+      oldApp: 'starší aplikace, přiděl místo',
     },
     endDialog: {
       title: 'Ukončit hru',

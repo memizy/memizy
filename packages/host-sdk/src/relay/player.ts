@@ -19,7 +19,7 @@ import {
 } from '@memizy/protocol';
 import { createPluginFrame } from '../frame';
 import { RelaySocket, relayWebSocketUrl, type RelayStatus } from './socket';
-import { isSerializedBlob, jsonToBlob, serializeError, type HostToPlayer, type PlayerToHost, type RemoteLobbyState } from './messages';
+import { RELAY_APP_VERSION, isSerializedBlob, jsonToBlob, serializeError, unknownMethod, type HostToPlayer, type PlayerToHost, type RemoteLobbyState } from './messages';
 
 export type RelayPlayerEvent =
   | { type: 'status'; status: RelayStatus }
@@ -39,6 +39,11 @@ export interface RelayPlayerOptions {
   name: string;
   /** Token from an earlier `joined` event: rejoin as the same player. */
   token?: string;
+  /**
+   * Passed to the host only (e.g. a signed token of a signed-in student); the relay server
+   * does not check it. At most `RELAY_LIMITS.authLength` characters.
+   */
+  auth?: string;
   /** Where the plugin iframe goes (called when the game starts). */
   container: () => HTMLElement | null;
   fetch?: typeof fetch;
@@ -79,6 +84,8 @@ export class RelayPlayer {
   name: string;
   state: RemoteLobbyState | null = null;
   hostConnected = true;
+  /** The app message version of the host (from `mount`; 0 = a host before versions, `null` = not known yet). */
+  hostAppVersion: number | null = null;
   /**
    * A continued game: this device's place in the game (`null` = not chosen yet;
    * the free places are in `state.seats`). `undefined` in a new game.
@@ -106,7 +113,7 @@ export class RelayPlayer {
     this.name = options.name;
     this.socket = new RelaySocket({
       url: relayWebSocketUrl(options.serverUrl),
-      attach: () => ({ t: 'join', protocol: RELAY_PROTOCOL, pin: options.pin, name: this.name, token: this.token ?? undefined }),
+      attach: () => ({ t: 'join', protocol: RELAY_PROTOCOL, pin: options.pin, name: this.name, token: this.token ?? undefined, ...(options.auth !== undefined && { auth: options.auth }) }),
       WebSocket: options.WebSocket,
     });
     this.socket.onStatus((status) => this.emit({ type: 'status', status }));
@@ -173,12 +180,12 @@ export class RelayPlayer {
         this.name = msg.name;
         this.hostConnected = msg.hostConnected;
         this.emit({ type: 'joined', playerId: msg.playerId, token: msg.token, name: msg.name });
-        this.up({ k: 'hello', gen: this.plugin ? this.gen : 0 });
+        this.up({ k: 'hello', gen: this.plugin ? this.gen : 0, v: RELAY_APP_VERSION });
         break;
       case 'host-presence':
         this.hostConnected = msg.connected;
         this.emit({ type: 'host', connected: msg.connected });
-        if (msg.connected) this.up({ k: 'hello', gen: this.plugin ? this.gen : 0 });
+        if (msg.connected) this.up({ k: 'hello', gen: this.plugin ? this.gen : 0, v: RELAY_APP_VERSION });
         break;
       case 'data':
         void this.onHost(msg.data as HostToPlayer);
@@ -210,6 +217,7 @@ export class RelayPlayer {
         this.emit({ type: 'state', state: msg.state });
         return;
       case 'mount':
+        this.hostAppVersion = typeof msg.v === 'number' ? msg.v : 0;
         this.mountQueue = this.mountQueue.then(() => this.mount(msg.gen, msg.bundle));
         return;
       case 'unmount':
@@ -248,7 +256,11 @@ export class RelayPlayer {
       }
       case 'call': {
         const reply = (data: PlayerToHost) => this.up(data);
-        if (msg.gen !== this.gen || !this.plugin || !PLUGIN_METHODS.has(msg.method)) {
+        if (!PLUGIN_METHODS.has(msg.method)) {
+          reply({ k: 'result', id: msg.id, ok: false, error: unknownMethod(msg.method) });
+          return;
+        }
+        if (msg.gen !== this.gen || !this.plugin) {
           reply({ k: 'result', id: msg.id, ok: false, error: { message: '[SESSION_ENDED] No active plugin instance.' } });
           return;
         }
