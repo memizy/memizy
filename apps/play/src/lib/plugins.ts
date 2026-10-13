@@ -7,6 +7,7 @@
 import guide from '../../../../docs/ai-plugin-guide.md?raw';
 import pirates from '@/data/plugins/pirates-of-memizy.html?raw';
 import babis from '@/data/plugins/babis-vs-alzak.html?raw';
+import civhrad from '@/data/plugins/civhrad.html?raw';
 
 /** The import URL plugins use (docs/ai-plugin-guide.md): our self-contained bundle via jsDelivr. */
 export const CDN_SDK_URL = 'https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1';
@@ -41,11 +42,23 @@ function guideExample(): string {
   return match[1];
 }
 
+/** The built-in games offered in Play (hosting, playing alone, the Lab's "Insert a game"). */
 export const EXAMPLE_PLUGINS: ExamplePlugin[] = [
   { key: 'pirates', title: 'Pirates of Memizy 🏴‍☠️', html: pirates },
   { key: 'babis', title: 'Babiš vs. Alzák 🍩👽', html: babis },
-  { key: 'quiz-race', title: 'Quiz Race (AI guide example)', html: guideExample() },
+  { key: 'civhrad', title: 'Hexagon Empires / Civhrad 🏰', html: civhrad },
 ];
+
+/**
+ * The complete example of the AI guide (section 8). Not offered in the menus: it is the
+ * canonical pattern for AIs, kept working by the tests.
+ */
+export const GUIDE_EXAMPLE: ExamplePlugin = { key: 'quiz-race', title: 'Quiz Race (AI guide example)', html: guideExample() };
+
+/** A remembered choice of a game that is no longer offered falls back to the first one. */
+export function exampleKey(key: string): string {
+  return EXAMPLE_PLUGINS.some((p) => p.key === key) ? key : EXAMPLE_PLUGINS[0].key;
+}
 
 export const AI_GUIDE = guide;
 

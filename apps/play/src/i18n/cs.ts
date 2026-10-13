@@ -36,7 +36,8 @@ export default {
     },
     code: {
       placeholder: 'Sem vlož celý index.html od AI…',
-      example: 'Vložit ukázkovou hru',
+      example: 'Vložit naši hru…',
+      replaceCode: 'Nahradit kód v editoru hrou {name}?',
       urlPlaceholder: 'https://… adresa pluginu',
       valid: 'Manifest je v pořádku',
       invalid: 'Manifest obsahuje chyby',
@@ -242,6 +243,10 @@ export default {
       new: 'Jsem tu nový/nová',
       teacher: 'Nevíš? Učitel ti místo přidělí na tabuli.',
     },
+  },
+  focus: {
+    enter: 'Celá plocha',
+    exit: 'Zpět',
   },
   solo: {
     title: 'Hrát sám',

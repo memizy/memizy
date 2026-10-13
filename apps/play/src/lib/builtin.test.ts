@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { safeValidateOQSEFile } from '@memizy/oqse';
 import { loadPluginFromHtml, prepareSetForPlugin } from '@memizy/host-sdk';
 import { BUILTIN_SETS } from './sets';
-import { EXAMPLE_PLUGINS, localSdkUrl, withSdkSource, CDN_SDK_URL } from './plugins';
+import { EXAMPLE_PLUGINS, GUIDE_EXAMPLE, exampleKey, localSdkUrl, withSdkSource, CDN_SDK_URL } from './plugins';
 import { generateNames } from './names';
 import { buildCreatePrompt } from './prompt';
 
@@ -23,14 +23,23 @@ describe('built-in sets', () => {
 });
 
 describe('example plugins', () => {
-  it.each(EXAMPLE_PLUGINS.map((p) => [p.key, p] as const))('%s loads and handles the sample sets', (_key, example) => {
+  it.each([...EXAMPLE_PLUGINS, GUIDE_EXAMPLE].map((p) => [p.key, p] as const))('%s loads, plays alone and in multiplayer, and handles the sample sets', (_key, example) => {
     const result = loadPluginFromHtml(withSdkSource(example.html, 'local'));
     expect(result.success, result.success ? '' : result.errors.join('; ')).toBe(true);
     if (!result.success) return;
     expect(result.plugin.html).toContain(localSdkUrl());
     expect(result.plugin.html).not.toContain('cdn.jsdelivr.net/npm/@memizy/plugin-sdk');
+    expect(result.plugin.runtime.solo).toBeTruthy();
+    expect(result.plugin.runtime.multiplayer).toBeTruthy();
+    if (result.plugin.runtime.set === 'none') return; // a game without questions (Civhrad)
     const animals = BUILTIN_SETS[0];
     expect(prepareSetForPlugin(animals.file, result.plugin.manifest).set.items.length).toBeGreaterThan(0);
+  });
+
+  it('offers the full games, not the guide example; an old remembered choice falls back', () => {
+    expect(EXAMPLE_PLUGINS.map((p) => p.key)).toEqual(['pirates', 'babis', 'civhrad']);
+    expect(exampleKey('quiz-race')).toBe('pirates');
+    expect(exampleKey('civhrad')).toBe('civhrad');
   });
 });
 

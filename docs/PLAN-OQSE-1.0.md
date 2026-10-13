@@ -314,6 +314,18 @@ Práce na větvi `sdk-1.0`. **Nic se neodkládá kvůli termínu** (rozhodnutí 
       sourozenec, scroll uvnitř, Escape, `localActions`) – vzor ověřen testem; `data-payload=${{ … }}`.
       Ověřeno v Edge: odkaz otevře novou kartu, hra v iframu běží dál.
 
+### Část P – Memizy Play UX (požadavek vlastníka 2026-10-13)
+
+- [x] Nabídka her (hostování, Hrát sám, Lab „Vložit naši hru…“): Piráti, Babiš, Hexagon Empires /
+      Civhrad; Quiz Race jen v návodu a testech (`GUIDE_EXAMPLE`), zapamatovaná volba se vrátí na
+      první hru. Test: každá vestavěná hra jde sólo i v multiplayeru.
+- [x] Režim celé plochy v náhledu Labu a ve hře o samotě (tenká lišta, iframe na celou plochu,
+      nastavení a panely skryté, Fullscreen API kde jde; iframy se nepřenačítají). Ověřeno v Edge.
+- [ ] Hostitel v kartě na pozadí: Wake Lock + ochrana proti omezování časovačů – čeká na rozhodnutí
+      (tichý zvuk s hlasitostí 0 prohlížeč za zvuk nepovažuje; viz návrh).
+- [ ] Odkazy s parametry (`plugin`, `pluginUrl`, `set`, `setUrl`, `settings`, `autostart`) – čeká na
+      rozhodnutí o bezpečnosti `pluginUrl` + `autostart`.
+
 ### Část F – Soulad SPEC s rozhodnutími
 
 - [ ] SPEC 3.3: náhodné přezdívky (hráči se v lobby nepřejmenovávají, pokud to host nedovolí).

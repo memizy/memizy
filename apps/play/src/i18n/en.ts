@@ -38,7 +38,8 @@ const en: typeof cs = {
     },
     code: {
       placeholder: 'Paste the whole index.html from the AI here…',
-      example: 'Insert the example game',
+      example: 'Insert one of our games…',
+      replaceCode: 'Replace the code in the editor with {name}?',
       urlPlaceholder: 'https://… plugin address',
       valid: 'The manifest is valid',
       invalid: 'The manifest has errors',
@@ -244,6 +245,10 @@ const en: typeof cs = {
       new: 'I am new here',
       teacher: 'Not sure? The teacher can give you your place on the board.',
     },
+  },
+  focus: {
+    enter: 'Full screen',
+    exit: 'Back',
   },
   solo: {
     title: 'Play alone',

@@ -2,7 +2,18 @@
 import { settingsForMode, resolveSettings, type SettingValue } from '@memizy/protocol';
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { ArrowLeftIcon, BookOpenIcon, PauseIcon, PlayIcon, PuzzlePieceIcon, RocketLaunchIcon, StopIcon, TrashIcon } from '@heroicons/vue/20/solid';
+import {
+  ArrowLeftIcon,
+  ArrowsPointingInIcon,
+  ArrowsPointingOutIcon,
+  BookOpenIcon,
+  PauseIcon,
+  PlayIcon,
+  PuzzlePieceIcon,
+  RocketLaunchIcon,
+  StopIcon,
+  TrashIcon,
+} from '@heroicons/vue/20/solid';
 import { LocalSession, loadPluginFromHtml, prepareSetForPlugin, type LoadedPlugin } from '@memizy/host-sdk';
 import AppLogo from '@/components/AppLogo.vue';
 import LocaleSwitch from '@/components/LocaleSwitch.vue';
@@ -10,10 +21,11 @@ import PluginFrame from '@/components/PluginFrame.vue';
 import SettingsForm from '@/components/SettingsForm.vue';
 import { generateName } from '@/lib/names';
 import { persisted } from '@/lib/persisted';
-import { EXAMPLE_PLUGINS, fetchPluginHtml, withSdkSource } from '@/lib/plugins';
+import { EXAMPLE_PLUGINS, exampleKey, fetchPluginHtml, withSdkSource } from '@/lib/plugins';
 import { BUILTIN_SETS, NO_SET_KEY, loadStoredSets, noSet, type StudySet } from '@/lib/sets';
 import { PersistentSnapshotStorage } from '@/lib/hostGame';
 import { deleteSavedGame, listSavedGames, saveGame, type SavedGame } from '@/lib/savedGames';
+import { useFocusMode } from '@/lib/focusMode';
 
 /**
  * Playing alone: choose a game and a set, play, and continue later. A running solo game
@@ -26,11 +38,13 @@ type Phase = 'setup' | 'running' | 'ended';
 
 const { t, locale } = useI18n();
 const PLAYER_ID = 'me';
+const focus = useFocusMode();
 
 // --- choice -------------------------------------------------------------------------------
 const sets = shallowRef<StudySet[]>(BUILTIN_SETS);
 const setKey = persisted('solo-set', BUILTIN_SETS[0].key);
 const choice = persisted<PluginChoice>('solo-plugin', { kind: 'example', key: EXAMPLE_PLUGINS[0].key });
+if (choice.value.kind === 'example') choice.value = { kind: 'example', key: exampleKey(choice.value.key) };
 const pluginUrl = ref(choice.value.kind === 'url' ? choice.value.url : '');
 const pluginRaw = ref<string | null>(null);
 const plugin = shallowRef<LoadedPlugin | null>(null);
@@ -203,6 +217,7 @@ async function discard(): Promise<void> {
 }
 
 function leaveGame(): void {
+  focus.exit();
   endDialog.value = false;
   game.value = null;
   current.value = null;
@@ -250,19 +265,30 @@ onBeforeUnmount(() => {
   <div class="min-h-dvh">
     <!-- Running game -->
     <div v-if="game && phase !== 'setup'" class="flex h-dvh flex-col bg-slate-900">
-      <div class="flex items-center gap-3 bg-white px-4 py-2 text-sm shadow-sm">
-        <AppLogo class="hidden sm:flex" />
-        <span class="truncate font-semibold">{{ current?.appName }}</span>
+      <div class="flex items-center gap-3 bg-white text-sm shadow-sm" :class="focus.focused.value ? 'px-3 py-0.5' : 'px-4 py-2'">
+        <AppLogo v-if="!focus.focused.value" class="hidden sm:flex" />
+        <span class="truncate font-semibold" :class="focus.focused.value ? 'text-xs text-text-gray' : ''">{{ current?.appName }}</span>
         <span class="ml-auto flex gap-2">
+          <button
+            type="button"
+            :class="focus.focused.value ? 'btn-ghost px-2 py-1 text-xs' : 'btn-ghost'"
+            :title="focus.focused.value ? t('focus.exit') : t('focus.enter')"
+            @click="focus.toggle()"
+          >
+            <component :is="focus.focused.value ? ArrowsPointingInIcon : ArrowsPointingOutIcon" class="size-4" />
+            <span :class="focus.focused.value ? '' : 'hidden sm:inline'">{{ focus.focused.value ? t('focus.exit') : t('focus.enter') }}</span>
+          </button>
+          <template v-if="!focus.focused.value">
           <button v-if="phase === 'running'" type="button" class="btn-secondary" @click="togglePause">
             <component :is="paused ? PlayIcon : PauseIcon" class="size-4" /> {{ paused ? t('host.resume') : t('host.pause') }}
           </button>
           <button v-if="phase === 'ended'" type="button" class="btn-primary" @click="leaveGame">{{ t('solo.back') }}</button>
           <button v-else type="button" class="btn-danger" @click="endDialog = true"><StopIcon class="size-4" /> {{ t('host.endGame') }}</button>
+          </template>
         </span>
       </div>
       <div class="relative min-h-0 flex-1">
-        <div class="mx-auto size-full max-w-3xl bg-white">
+        <div class="mx-auto size-full bg-white" :class="focus.focused.value ? '' : 'max-w-3xl'">
           <PluginFrame :key="game.id" :session="game" :address="PLAYER_ID" />
         </div>
       </div>

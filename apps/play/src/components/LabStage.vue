@@ -4,6 +4,8 @@ import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import {
   ArrowPathIcon,
+  ArrowsPointingInIcon,
+  ArrowsPointingOutIcon,
   PlayIcon,
   PlusIcon,
   SignalIcon,
@@ -15,6 +17,7 @@ import type { OQSEFile } from '@memizy/oqse';
 import type { Player, SettingValue } from '@memizy/protocol';
 import { LocalSession, SETTINGS_ADDRESS, type LoadedPlugin, type SessionEvent } from '@memizy/host-sdk';
 import { generateName, generateNames } from '@/lib/names';
+import { useFocusMode } from '@/lib/focusMode';
 import PluginFrame from './PluginFrame.vue';
 import SettingsForm from './SettingsForm.vue';
 import LabInspector, { type LogEntry } from './LabInspector.vue';
@@ -25,6 +28,7 @@ type Phase = 'lobby' | 'countdown' | 'running' | 'ended';
 const props = defineProps<{ plugin: LoadedPlugin | null; set: OQSEFile | null; liveTo?: string | null }>();
 const emit = defineEmits<{ played: ['answer' | 'end'] }>();
 const { t, locale } = useI18n();
+const focus = useFocusMode();
 /** What the plugin gets: app language or a test language, light or dark theme. */
 const previewLocale = ref<'app' | 'cs' | 'en'>('app');
 const previewTheme = ref<'light' | 'dark'>('light');
@@ -233,10 +237,10 @@ const phaseLabel = computed(() => {
 </script>
 
 <template>
-  <div class="flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-soft">
-    <!-- Toolbar -->
-    <div class="flex flex-wrap items-center gap-3 border-b border-slate-200 px-4 py-3">
-      <h2 class="font-bold">{{ t('lab.preview.title') }}</h2>
+  <div class="flex flex-col overflow-hidden bg-white" :class="focus.focused.value ? 'fixed inset-0 z-50' : 'h-full rounded-2xl border border-slate-200 shadow-soft'">
+    <!-- Toolbar (focus mode: only a thin bar) -->
+    <div class="flex flex-wrap items-center gap-3 border-b border-slate-200" :class="focus.focused.value ? 'px-3 py-1' : 'px-4 py-3'">
+      <h2 class="font-bold" :class="focus.focused.value ? 'text-sm' : ''">{{ t('lab.preview.title') }}</h2>
       <span
         v-if="session"
         class="badge"
@@ -245,7 +249,7 @@ const phaseLabel = computed(() => {
         {{ phaseLabel }}
       </span>
 
-      <div class="flex items-center gap-1 text-xs" :title="t('lab.preview.configHint')">
+      <div v-show="!focus.focused.value" class="flex items-center gap-1 text-xs" :title="t('lab.preview.configHint')">
         <select v-model="previewLocale" class="rounded-lg border border-slate-200 bg-white px-2 py-1 font-semibold">
           <option value="app">{{ t('lab.preview.localeApp') }}</option>
           <option value="cs">CS</option>
@@ -256,7 +260,7 @@ const phaseLabel = computed(() => {
         </button>
       </div>
 
-      <div v-if="modes.length" class="flex rounded-xl border border-slate-200 bg-slate-50 p-0.5 text-sm">
+      <div v-if="modes.length" v-show="!focus.focused.value" class="flex rounded-xl border border-slate-200 bg-slate-50 p-0.5 text-sm">
         <button
           v-for="m in modes"
           :key="m"
@@ -270,6 +274,7 @@ const phaseLabel = computed(() => {
       </div>
 
       <div class="ml-auto flex flex-wrap items-center gap-2">
+        <template v-if="!focus.focused.value">
         <button v-if="session && mode !== 'solo'" type="button" class="btn-secondary" @click="addPlayer">
           <PlusIcon class="size-4" /> {{ t('lab.preview.addPlayer') }}
         </button>
@@ -282,26 +287,36 @@ const phaseLabel = computed(() => {
         <RouterLink v-if="liveTo && plugin?.runtime.multiplayer" :to="liveTo" class="btn-secondary" :title="t('lab.preview.playLiveHint')">
           <WifiIcon class="size-4" /> {{ t('lab.preview.playLive') }}
         </RouterLink>
+        </template>
+        <button
+          type="button"
+          :class="focus.focused.value ? 'btn-ghost px-2 py-1 text-xs' : 'btn-secondary'"
+          :title="focus.focused.value ? t('focus.exit') : t('focus.enter')"
+          @click="focus.toggle()"
+        >
+          <component :is="focus.focused.value ? ArrowsPointingInIcon : ArrowsPointingOutIcon" class="size-4" />
+          {{ focus.focused.value ? t('focus.exit') : t('focus.enter') }}
+        </button>
       </div>
     </div>
 
     <p v-if="notice" class="border-b border-red-100 bg-red-50 px-4 py-2 text-sm text-red-700">{{ notice }}</p>
 
     <!-- Stage -->
-    <div class="min-h-0 flex-1 overflow-auto bg-slate-900 p-4 sm:p-6">
+    <div class="min-h-0 flex-1 overflow-auto bg-slate-900" :class="focus.focused.value ? (mode === 'solo' ? 'p-0' : 'p-3') : 'p-4 sm:p-6'">
       <p v-if="!session" class="grid h-full min-h-64 place-items-center text-center text-slate-400">
         {{ plugin && set && !modes.includes(mode) ? t('lab.preview.notSupported') : t('lab.preview.empty') }}
       </p>
 
-      <div v-else :key="generation" class="flex flex-col items-center gap-6">
+      <div v-else :key="generation" class="flex flex-col items-center gap-6" :class="focus.focused.value && mode === 'solo' ? 'h-full' : ''">
         <!-- Settings before the start -->
-        <div v-if="showSettingsScreen" class="w-full max-w-3xl">
+        <div v-if="showSettingsScreen" v-show="!focus.focused.value" class="w-full max-w-3xl">
           <div class="section-label mb-2 text-slate-400">{{ t('lab.preview.settings') }}</div>
           <div class="overflow-hidden rounded-2xl" :class="[frameBg, runtime?.settingsScreen?.size === 'large' ? 'h-[480px]' : 'h-[300px]']">
             <PluginFrame :session="session" :address="SETTINGS_ADDRESS" @error="frameError" />
           </div>
         </div>
-        <div v-else-if="showSettingsForm" class="w-full max-w-md rounded-2xl bg-white p-4">
+        <div v-else-if="showSettingsForm" v-show="!focus.focused.value" class="w-full max-w-md rounded-2xl bg-white p-4">
           <div class="section-label mb-3">{{ t('lab.preview.settings') }}</div>
           <SettingsForm :definitions="modeSettings" :model-value="settings" @update:model-value="applySettings" />
         </div>
@@ -310,7 +325,7 @@ const phaseLabel = computed(() => {
         <template v-if="mode === 'solo'">
           <div
             class="overflow-hidden shadow-2xl"
-            :class="[frameBg, soloWide ? 'aspect-video w-full max-w-4xl rounded-2xl' : 'h-[700px] w-[360px] rounded-[2.5rem] border-[10px] border-slate-700']"
+            :class="[frameBg, focus.focused.value ? 'min-h-0 w-full flex-1' : soloWide ? 'aspect-video w-full max-w-4xl rounded-2xl' : 'h-[700px] w-[360px] rounded-[2.5rem] border-[10px] border-slate-700']"
           >
             <PluginFrame :session="session" address="me" @error="frameError" />
           </div>
@@ -318,7 +333,7 @@ const phaseLabel = computed(() => {
 
         <!-- Multiplayer -->
         <template v-else>
-          <div v-if="mode === 'presenter'" class="w-full max-w-4xl">
+          <div v-if="mode === 'presenter'" class="w-full" :class="focus.focused.value ? '' : 'max-w-4xl'">
             <div class="mb-2 flex items-center gap-2">
               <span class="badge bg-primary-blue text-white">{{ t('lab.preview.board') }}</span>
               <button type="button" class="ml-auto text-xs text-slate-400 hover:text-white" @click="reload('board')">
@@ -381,6 +396,6 @@ const phaseLabel = computed(() => {
       </div>
     </div>
 
-    <LabInspector :entries="log" @clear="log = []" />
+    <LabInspector v-show="!focus.focused.value" :entries="log" @clear="log = []" />
   </div>
 </template>

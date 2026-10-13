@@ -3,7 +3,7 @@ import { LocalSession, loadPluginFromHtml, type SessionEvent } from '@memizy/hos
 import { checkAnswer } from '../../../../packages/plugin-sdk/src/checkAnswer';
 import { startGame, type GameHandle } from '../../../../packages/plugin-sdk/src/game/defineGame';
 import type { GameDefinition } from '../../../../packages/plugin-sdk/src/types';
-import { EXAMPLE_PLUGINS } from './plugins';
+import { GUIDE_EXAMPLE } from './plugins';
 import { BUILTIN_SETS } from './sets';
 
 const games: GameHandle[] = [];
@@ -23,7 +23,7 @@ function guideDefinition(html: string): GameDefinition<any> {
 
 describe('the AI guide example in multiplayer', () => {
   it('phases, ui.question, playerView and the reveal work across a board and two players', async () => {
-    const example = EXAMPLE_PLUGINS.find((p) => p.key === 'quiz-race')!;
+    const example = GUIDE_EXAMPLE;
     const loaded = loadPluginFromHtml(example.html);
     if (!loaded.success) throw new Error(loaded.errors.join());
     const set = BUILTIN_SETS.find((s) => s.file.items.some((i) => i.type === 'mcq-single'))!.file;

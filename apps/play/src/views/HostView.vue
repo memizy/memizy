@@ -39,7 +39,7 @@ import StartScreen from '@/components/StartScreen.vue';
 import { RELAY_URL } from '@/lib/config';
 import { generateName } from '@/lib/names';
 import { persisted } from '@/lib/persisted';
-import { EXAMPLE_PLUGINS, fetchPluginHtml, withSdkSource } from '@/lib/plugins';
+import { EXAMPLE_PLUGINS, exampleKey, fetchPluginHtml, withSdkSource } from '@/lib/plugins';
 import { BUILTIN_SETS, NO_SET_KEY, loadStoredSets, noSet, type StudySet } from '@/lib/sets';
 import { PersistentSnapshotStorage, clearHostGame, loadHostGame, saveHostGame } from '@/lib/hostGame';
 import { deleteSavedGame, listSavedGames, loadSavedGame, saveGame, type SavedGame } from '@/lib/savedGames';
@@ -128,6 +128,7 @@ const studySet = computed<StudySet | null>(() => {
 });
 
 const choice = persisted<PluginChoice>('host-plugin', { kind: 'example', key: EXAMPLE_PLUGINS[0].key });
+if (choice.value.kind === 'example') choice.value = { kind: 'example', key: exampleKey(choice.value.key) };
 if (route.query.plugin === 'lab') choice.value = { kind: 'lab' };
 const pluginUrl = ref(choice.value.kind === 'url' ? choice.value.url : '');
 const pluginRaw = ref<string | null>(null);

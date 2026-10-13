@@ -94,8 +94,14 @@ async function onPluginUrl(): Promise<void> {
   }
 }
 
-function insertExample(): void {
-  code.value = (EXAMPLE_PLUGINS.find((p) => p.key === 'quiz-race') ?? EXAMPLE_PLUGINS[0]).html;
+/** Puts the code of a built-in game into the editor (asks before replacing other code). */
+function insertExample(event: Event): void {
+  const select = event.target as HTMLSelectElement;
+  const example = EXAMPLE_PLUGINS.find((p) => p.key === select.value);
+  select.value = '';
+  if (!example || code.value === example.html) return;
+  if (code.value.trim() && !confirm(t('lab.code.replaceCode', { name: example.title }))) return;
+  code.value = example.html;
 }
 
 const pluginSummary = computed(() => {
@@ -186,7 +192,10 @@ const statusColor = { pass: 'text-emerald-600', warn: 'text-amber-600', fail: 't
             <ArrowUpTrayIcon class="size-4" /> {{ t('common.upload') }}
             <input type="file" class="hidden" accept=".html,text/html" @change="onPluginFile" />
           </label>
-          <button type="button" class="btn-secondary" @click="insertExample">{{ t('lab.code.example') }}</button>
+          <select class="input w-auto py-2 text-sm" :aria-label="t('lab.code.example')" @change="insertExample">
+            <option value="">{{ t('lab.code.example') }}</option>
+            <option v-for="ex in EXAMPLE_PLUGINS" :key="ex.key" :value="ex.key">{{ ex.title }}</option>
+          </select>
           <button v-if="code" type="button" class="btn-ghost ml-auto" @click="code = ''">{{ t('common.clear') }}</button>
         </div>
         <textarea v-model="code" class="input min-h-56 resize-y font-mono text-xs" spellcheck="false" :placeholder="t('lab.code.placeholder')" />
