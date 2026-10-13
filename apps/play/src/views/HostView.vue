@@ -13,7 +13,9 @@ import {
   StopIcon,
   PauseIcon,
   PlayIcon,
+  TrashIcon,
   UserGroupIcon,
+  UsersIcon,
 } from '@heroicons/vue/20/solid';
 import {
   LocalSession,
@@ -21,6 +23,7 @@ import {
   SETTINGS_ADDRESS,
   loadPluginFromHtml,
   prepareSetForPlugin,
+  type HostSeat,
   type LoadedPlugin,
   type RelayHostEvent,
 } from '@memizy/host-sdk';
@@ -39,6 +42,7 @@ import { persisted } from '@/lib/persisted';
 import { EXAMPLE_PLUGINS, fetchPluginHtml, withSdkSource } from '@/lib/plugins';
 import { BUILTIN_SETS, NO_SET_KEY, loadStoredSets, noSet, type StudySet } from '@/lib/sets';
 import { PersistentSnapshotStorage, clearHostGame, loadHostGame, saveHostGame } from '@/lib/hostGame';
+import { deleteSavedGame, listSavedGames, loadSavedGame, saveGame, type SavedGame } from '@/lib/savedGames';
 import type { OQSEFile } from '@memizy/oqse';
 
 type Phase = 'lobby' | 'starting' | 'running' | 'ended' | 'closed';
@@ -113,11 +117,15 @@ if (typeof route.query.set === 'string') setKey.value = route.query.set;
 /** Whether the chosen game uses a set (`appSpecific.memizy.set`); `none` = a game without questions. */
 const setMode = computed(() => plugin.value?.runtime.set ?? 'required');
 const emptySet = computed(() => noSet(t('host.noSet'), locale.value));
-const studySet = computed(() =>
-  setMode.value === 'none' || (setMode.value === 'optional' && setKey.value === NO_SET_KEY)
+/** A saved game being continued: its own copy of the plugin and the set replace the lobby choice. */
+const continuing = shallowRef<SavedGame | null>(null);
+const studySet = computed<StudySet | null>(() => {
+  const saved = continuing.value;
+  if (saved) return { key: `saved:${saved.id}`, source: 'upload', title: saved.setTitle, file: saved.set, warnings: [] };
+  return setMode.value === 'none' || (setMode.value === 'optional' && setKey.value === NO_SET_KEY)
     ? emptySet.value
-    : (sets.value.find((s) => s.key === setKey.value) ?? null),
-);
+    : (sets.value.find((s) => s.key === setKey.value) ?? null);
+});
 
 const choice = persisted<PluginChoice>('host-plugin', { kind: 'example', key: EXAMPLE_PLUGINS[0].key });
 if (route.query.plugin === 'lab') choice.value = { kind: 'lab' };
@@ -306,7 +314,7 @@ const blocker = computed(() => {
 async function start(): Promise<void> {
   const r = room.value;
   const p = plugin.value;
-  if (blocker.value || !r || !p || !studySet.value) return;
+  if (blocker.value || !r || !p || !studySet.value || continuing.value) return;
   startError.value = null;
   phase.value = 'starting';
   try {
@@ -339,6 +347,11 @@ function togglePause(): void {
   else game.value.pause();
 }
 
+// A continued game: the places of the earlier players and who has them now.
+const seats = ref<HostSeat[]>([]);
+const showSeats = ref(false);
+let stopSeats: (() => void) | null = null;
+
 function launch(
   p: LoadedPlugin,
   file: OQSEFile,
@@ -346,6 +359,7 @@ function launch(
   sessionId: string,
   resume: boolean,
   clock?: { pausedMs: number; pausedAt: number | null },
+  continued?: { saved: SavedGame; taken?: Record<string, string> },
 ): LocalSession {
   const r = room.value!;
   const session = new LocalSession({
@@ -375,6 +389,7 @@ function launch(
       settings: settings.value,
       players: session.players.map(({ id, name, isHost }) => ({ id, name, isHost })),
       clock: { pausedMs: session.clock.pausedMs ?? 0, pausedAt: session.clock.pausedAt ?? null },
+      ...(continued && { savedId: continued.saved.id, seats: r.seatAssignments }),
     });
   void record();
   countdown.value = null;
@@ -393,12 +408,29 @@ function launch(
     }
     else if (e.type === 'ended') {
       phase.value = 'ended';
-      void clearHostGame(r.pin);
+      endDialog.value = false;
+      // A finished game is not continued again.
+      void deleteSavedGame(sessionId).then(() => clearHostGame(r.pin)).then(refreshSaved);
     }
   });
   game.value = session;
-  r.setOpen(p.runtime.multiplayer!.lateJoin);
-  r.attach(session);
+  stopSeats?.();
+  stopSeats = null;
+  seats.value = [];
+  if (continued) {
+    // Devices must be able to join to take their places, even in games without late joins.
+    r.setOpen(true);
+    r.attach(session, { seats: true, taken: continued.taken });
+    seats.value = r.seats;
+    stopSeats = r.on((e) => {
+      if (e.type !== 'seats') return;
+      seats.value = e.seats;
+      void record();
+    });
+  } else {
+    r.setOpen(p.runtime.multiplayer!.lateJoin);
+    r.attach(session);
+  }
   return session;
 }
 
@@ -408,13 +440,15 @@ async function restoreGame(): Promise<void> {
   if (!r) return;
   const record = await loadHostGame(r.pin);
   if (!record) return;
-  const set = sets.value.find((s) => s.key === record.setKey);
+  const saved = record.savedId ? await loadSavedGame(record.savedId) : null;
+  const set = saved ? { file: saved.set } : sets.value.find((s) => s.key === record.setKey);
   const loaded = loadPluginFromHtml(withSdkSource(record.pluginHtml, 'local'));
   if (!set || !loaded.success || !loaded.plugin.runtime.multiplayer) {
     await clearHostGame(r.pin);
     return;
   }
-  setKey.value = record.setKey;
+  continuing.value = saved;
+  if (!saved) setKey.value = record.setKey;
   gameSeed.value = record.shuffleSeed ?? record.sessionId;
   hostAs.value = record.hostAs;
   hostName.value = record.hostName;
@@ -428,7 +462,7 @@ async function restoreGame(): Promise<void> {
     await ensureUploaded();
     lobbySession.value?.end('closed').catch(() => {});
     lobbySession.value = null;
-    launch(loaded.plugin, set.file, record.players, record.sessionId, true, record.clock);
+    launch(loaded.plugin, set.file, record.players, record.sessionId, true, record.clock, saved ? { saved, taken: record.seats } : undefined);
     r.setState({ phase: 'running' });
     phase.value = 'running';
   } catch (error) {
@@ -437,10 +471,121 @@ async function restoreGame(): Promise<void> {
   }
 }
 
-async function endGame(): Promise<void> {
-  await game.value?.end('closed').catch(() => {});
-  phase.value = 'ended';
+// "End game" asks: save it for later, or end it and throw it away.
+const endDialog = ref(false);
+const saving = ref(false);
+
+function endGame(): void {
+  endDialog.value = true;
 }
+
+/** Pauses the game, keeps its snapshot and saves everything needed to continue it later. */
+async function saveForLater(): Promise<void> {
+  const session = game.value;
+  const p = plugin.value;
+  const raw = pluginRaw.value;
+  const set = studySet.value;
+  if (!session || !p || !raw || !set) return;
+  saving.value = true;
+  try {
+    session.pause(); // the time until the next lesson does not count (timers stay where they were)
+    await session.end('closed'); // stores the last snapshot
+    await saveGame({
+      id: session.id,
+      kind: 'multiplayer',
+      appName: p.manifest.appName,
+      setTitle: set.key === NO_SET_KEY ? t('host.noSet') : set.title,
+      savedAt: Date.now(),
+      pluginHtml: raw,
+      set: set.file,
+      settings: settings.value,
+      hostAs: hostAs.value,
+      hostName: hostName.value,
+      players: session.players.map(({ id, name, isHost }) => ({ id, name, isHost })),
+      shuffleSeed: gameSeed.value,
+      clock: { pausedMs: session.clock.pausedMs ?? 0, pausedAt: session.clock.pausedAt ?? Date.now() },
+    });
+    endDialog.value = false;
+    backToLobby();
+  } catch (error) {
+    startError.value = (error as Error).message;
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function discardGame(): Promise<void> {
+  const session = game.value;
+  endDialog.value = false;
+  await session?.end('closed').catch(() => {});
+  if (session) await deleteSavedGame(session.id);
+  phase.value = 'ended';
+  void refreshSaved();
+}
+
+// Games saved for later (this browser).
+// shallowRef: a reactive proxy of a saved set could not be sent to the game (structuredClone)
+const savedGames = shallowRef<SavedGame[]>([]);
+async function refreshSaved(): Promise<void> {
+  savedGames.value = await listSavedGames('multiplayer');
+}
+
+/** Continues a saved game in this room: devices take the earlier places (or the host assigns them). */
+async function continueSaved(saved: SavedGame): Promise<void> {
+  const r = room.value;
+  if (!r || phase.value === 'starting') return;
+  const loaded = loadPluginFromHtml(withSdkSource(saved.pluginHtml, 'local'));
+  if (!loaded.success || !loaded.plugin.runtime.multiplayer) {
+    startError.value = t('host.saved.broken');
+    return;
+  }
+  startError.value = null;
+  continuing.value = saved;
+  gameSeed.value = saved.shuffleSeed ?? saved.id;
+  if (saved.hostAs) hostAs.value = saved.hostAs;
+  if (saved.hostName) hostName.value = saved.hostName;
+  settings.value = saved.settings;
+  pluginRaw.value = saved.pluginHtml;
+  plugin.value = loaded.plugin;
+  pluginErrors.value = [];
+  phase.value = 'starting';
+  try {
+    await nextTick();
+    await ensureUploaded();
+    if (uploadError.value) throw new Error(uploadError.value);
+    lobbySession.value?.end('closed').catch(() => {});
+    lobbySession.value = null;
+    // Paused since it was saved: the teacher continues when everybody sits.
+    const clock = { pausedMs: saved.clock.pausedMs, pausedAt: saved.clock.pausedAt ?? saved.savedAt };
+    launch(loaded.plugin, saved.set, saved.players, saved.id, true, clock, { saved });
+    r.setState({ phase: 'running' });
+    phase.value = 'running';
+    showSeats.value = true;
+  } catch (error) {
+    startError.value = (error as Error).message;
+    backToLobby();
+  }
+}
+
+async function removeSaved(saved: SavedGame): Promise<void> {
+  if (!confirm(t('host.saved.confirmDelete', { name: saved.appName }))) return;
+  await deleteSavedGame(saved.id);
+  await refreshSaved();
+}
+
+function formatDate(ms: number): string {
+  return new Date(ms).toLocaleString(locale.value, { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+/** The teacher changes who sits where (`''` = the place is free). */
+function assignSeat(seat: HostSeat, playerId: string): void {
+  const r = room.value;
+  if (!r) return;
+  if (playerId) r.assignSeat(playerId, seat.id);
+  else if (seat.playerId) r.assignSeat(seat.playerId, null);
+}
+
+const takenSeats = computed(() => seats.value.filter((s) => s.playerId !== null).length);
 
 function backToLobby(): void {
   if (room.value) void clearHostGame(room.value.pin);
@@ -450,6 +595,17 @@ function backToLobby(): void {
   game.value = null;
   phase.value = 'lobby';
   gameSeed.value = newSeed(); // a new order for the next game (uploaded again)
+  stopSeats?.();
+  stopSeats = null;
+  seats.value = [];
+  showSeats.value = false;
+  void refreshSaved();
+  if (continuing.value) {
+    // Back to the game chosen in the lobby.
+    continuing.value = null;
+    void loadChoice();
+    return;
+  }
   if (labChangedInGame && choice.value.kind === 'lab') {
     labChangedInGame = false;
     reloadFromLab();
@@ -474,6 +630,7 @@ function useUrl(): void {
 onMounted(async () => {
   window.addEventListener('storage', onStorage);
   sets.value = [...BUILTIN_SETS, ...(await loadStoredSets())];
+  void refreshSaved();
   if (await openRoom()) await restoreGame();
 });
 
@@ -482,6 +639,7 @@ onBeforeUnmount(() => {
   clearTimeout(labNoticeTimer);
   stopRoom?.();
   clearTimeout(uploadTimer);
+  stopSeats?.();
   void game.value?.end('closed').catch(() => {});
   void lobbySession.value?.end('closed').catch(() => {});
   // Close our connection (otherwise this page and the next one would fight over the
@@ -518,6 +676,9 @@ const statusClass = computed(() =>
         <button type="button" class="badge bg-slate-100 py-1 text-text-dark hover:bg-slate-200" @click="showPlayers = !showPlayers">
           <UserGroupIcon class="size-4" /> {{ t('host.playersOnline', { n: game.players.filter((p) => p.connected).length }) }}
         </button>
+        <button v-if="continuing" type="button" class="badge bg-orange-50 py-1 text-accent-orange-dark hover:bg-orange-100" @click="showSeats = !showSeats">
+          <UsersIcon class="size-4" /> {{ t('host.seats.button', { taken: takenSeats, total: seats.length }) }}
+        </button>
         <span class="ml-auto flex gap-2">
           <button v-if="hostAs === 'presenter'" type="button" class="btn-ghost" :title="t('host.fullscreen')" @click="fullscreen">
             <ArrowsPointingOutIcon class="size-4" />
@@ -536,9 +697,27 @@ const statusClass = computed(() =>
         <div v-if="showPlayers" class="absolute top-2 right-2 w-80 max-w-[90vw]">
           <PlayerList :players="players" @kick="kick" />
         </div>
+        <!-- A continued game: who sits where -->
+        <section v-if="continuing && showSeats" class="card absolute top-2 left-2 max-h-[85%] w-96 max-w-[90vw] overflow-auto p-4">
+          <div class="flex items-center gap-2">
+            <h2 class="card-title"><UsersIcon class="size-4 text-text-gray" /> {{ t('host.seats.title') }}</h2>
+            <button type="button" class="btn-ghost ml-auto px-2 py-1 text-xs" @click="showSeats = false">{{ t('common.close') }}</button>
+          </div>
+          <p class="mt-1 text-xs text-text-gray">{{ t('host.seats.hint') }}</p>
+          <p v-if="paused" class="mt-2 rounded-lg bg-amber-50 p-2 text-xs text-amber-800">{{ t('host.seats.paused') }}</p>
+          <ul class="mt-3 flex flex-col gap-2">
+            <li v-for="s in seats" :key="s.id" class="flex items-center gap-2">
+              <span class="size-2.5 shrink-0 rounded-full" :class="s.playerId ? 'bg-emerald-500' : 'bg-slate-300'" />
+              <span class="min-w-0 flex-1 truncate text-sm font-semibold">{{ s.name }}</span>
+              <select class="input w-40 py-1 text-xs" :value="s.playerId ?? ''" @change="assignSeat(s, ($event.target as HTMLSelectElement).value)">
+                <option value="">{{ t('host.seats.free') }}</option>
+                <option v-for="pl in players.filter((pl) => pl.connected || pl.id === s.playerId)" :key="pl.id" :value="pl.id">{{ pl.name }}</option>
+              </select>
+            </li>
+          </ul>
+        </section>
       </div>
     </div>
-
     <!-- Lobby -->
     <template v-else>
       <header class="border-b border-slate-200 bg-white">
@@ -568,6 +747,24 @@ const statusClass = computed(() =>
         <div class="flex flex-col gap-5">
           <JoinInfo :pin="room?.pin ?? null" />
           <PlayerList :players="players" :host-name="hostAs === 'player' ? hostName : null" @kick="kick" />
+          <section v-if="savedGames.length" class="card p-5">
+            <h2 class="card-title"><PlayIcon class="size-4 text-text-gray" /> {{ t('host.saved.title') }}</h2>
+            <p class="mt-1 text-xs text-text-gray">{{ t('host.saved.hint') }}</p>
+            <ul class="mt-3 flex flex-col gap-2">
+              <li v-for="s in savedGames" :key="s.id" class="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2">
+                <div class="min-w-0 flex-1">
+                  <div class="truncate text-sm font-semibold">{{ s.appName }} · {{ s.setTitle }}</div>
+                  <div class="text-xs text-text-gray">{{ formatDate(s.savedAt) }} · {{ t('host.saved.players', s.players.filter((p) => !p.isHost).length) }}</div>
+                </div>
+                <button type="button" class="btn-secondary shrink-0 py-1.5" :disabled="roomStatus !== 'online' || phase === 'starting'" @click="continueSaved(s)">
+                  {{ t('host.saved.continue') }}
+                </button>
+                <button type="button" class="btn-ghost shrink-0 px-2" :aria-label="t('host.saved.delete')" :title="t('host.saved.delete')" @click="removeSaved(s)">
+                  <TrashIcon class="size-4" />
+                </button>
+              </li>
+            </ul>
+          </section>
         </div>
 
         <!-- Right: set, game, settings, start -->
@@ -678,5 +875,17 @@ const statusClass = computed(() =>
         </div>
       </main>
     </template>
+    <!-- End: save for later or throw away -->
+    <div v-if="endDialog && game" class="fixed inset-0 z-50 grid place-items-center bg-slate-900/70 p-6">
+      <div class="card w-full max-w-md p-6">
+        <p class="text-lg font-bold">{{ t('host.endDialog.title') }}</p>
+        <p class="mt-2 text-sm text-text-gray">{{ t('host.endDialog.text') }}</p>
+        <div class="mt-5 flex flex-col gap-2">
+          <button type="button" class="btn-primary" :disabled="saving" @click="saveForLater">{{ t('host.endDialog.save') }}</button>
+          <button type="button" class="btn-danger" :disabled="saving" @click="discardGame">{{ t('host.endDialog.discard') }}</button>
+          <button type="button" class="btn-ghost" :disabled="saving" @click="endDialog = false">{{ t('host.endDialog.cancel') }}</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>

@@ -25,6 +25,8 @@ export type RelayPlayerEvent =
   | { type: 'status'; status: RelayStatus }
   | { type: 'joined'; playerId: string; token: string; name: string }
   | { type: 'state'; state: RemoteLobbyState }
+  /** A continued game: this device's place (`null` = choose one with `claimSeat`). */
+  | { type: 'seat'; seat: string | null }
   | { type: 'host'; connected: boolean }
   /** The plugin instance was created (`true`) or removed (`false`). */
   | { type: 'frame'; active: boolean }
@@ -77,6 +79,11 @@ export class RelayPlayer {
   name: string;
   state: RemoteLobbyState | null = null;
   hostConnected = true;
+  /**
+   * A continued game: this device's place in the game (`null` = not chosen yet;
+   * the free places are in `state.seats`). `undefined` in a new game.
+   */
+  seat: string | null | undefined = undefined;
 
   private readonly options: RelayPlayerOptions;
   private readonly socket: RelaySocket;
@@ -134,6 +141,15 @@ export class RelayPlayer {
     this.socket.send({ t: 'rename', name });
   }
 
+  /**
+   * A continued game: takes the place `seat` (one of `state.seats`), or joins as a new
+   * player (`null`, when `state.newPlayers`). The host answers with a `seat` event; when
+   * the place was taken meanwhile, `seat` stays `null` and the device chooses again.
+   */
+  claimSeat(seat: string | null): void {
+    this.up({ k: 'claim', seat });
+  }
+
   /** Reconnect right away (e.g. the page became visible again). */
   reconnectNow(): void {
     this.socket.reconnectNow();
@@ -189,6 +205,7 @@ export class RelayPlayer {
     if (typeof msg !== 'object' || msg === null) return;
     switch (msg.k) {
       case 'state':
+        if (!msg.state.seats) this.seat = undefined; // back to a new game / lobby
         this.state = msg.state;
         this.emit({ type: 'state', state: msg.state });
         return;
@@ -197,6 +214,13 @@ export class RelayPlayer {
         return;
       case 'unmount':
         this.destroyFrame();
+        return;
+      case 'seat':
+        if (msg.seat !== null && typeof msg.seat !== 'string') return;
+        this.seat = msg.seat;
+        // The place keeps the earlier player's nickname: take it, so every list shows the same name.
+        if (msg.seat !== null && typeof msg.name === 'string' && msg.name && msg.name !== this.name) this.rename(msg.name);
+        this.emit({ type: 'seat', seat: msg.seat });
         return;
       case 'result': {
         const call = this.pending.get(msg.id);

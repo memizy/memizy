@@ -30,6 +30,9 @@ const hostConnected = ref(true);
 const frameActive = ref(false);
 const frameBox = ref<HTMLElement | null>(null);
 const mountError = ref<string | null>(null);
+/** A continued (saved) game: this device's place (`null` = choose one), `undefined` otherwise. */
+const seat = ref<string | null | undefined>(undefined);
+const claiming = ref(false);
 let wakeLock: { release(): Promise<void> } | null = null;
 
 const tokenKey = (p: string) => `memizy-play:join:${p}`;
@@ -116,7 +119,13 @@ function onEvent(event: RelayPlayerEvent): void {
       break;
     case 'state':
       state.value = event.state;
+      if (!event.state.seats) seat.value = undefined;
       if (event.state.phase === 'loading') mountError.value = null;
+      break;
+    case 'seat':
+      seat.value = event.seat;
+      claiming.value = false;
+      name.value = player.value?.name ?? name.value; // the place keeps the earlier nickname
       break;
     case 'host':
       hostConnected.value = event.connected;
@@ -160,6 +169,12 @@ function leave(): void {
   state.value = null;
   stage.value = 'form';
   void releaseScreen();
+}
+
+/** A continued game: "this was me" (a place), or a new player (`null`). */
+function claim(id: string | null): void {
+  claiming.value = true;
+  player.value?.claimSeat(id);
 }
 
 let renameTimer: ReturnType<typeof setTimeout> | undefined;
@@ -225,6 +240,7 @@ onBeforeUnmount(() => {
 });
 
 const offline = computed(() => stage.value === 'joined' && status.value !== 'online');
+const choosingSeat = computed(() => stage.value === 'joined' && !!state.value?.seats && seat.value === null);
 const waitingForHost = computed(() => !hostConnected.value || state.value?.authorityConnected === false);
 </script>
 
@@ -291,6 +307,31 @@ const waitingForHost = computed(() => !hostConnected.value || state.value?.autho
         </form>
       </main>
 
+      <!-- A continued game: which place is mine? -->
+      <main v-else-if="choosingSeat" class="flex flex-1 flex-col justify-center gap-4">
+        <div>
+          <h1 class="text-2xl font-bold">{{ t('join.seats.title') }}</h1>
+          <p class="mt-1 text-sm text-text-gray">{{ t('join.seats.text') }}</p>
+          <p v-if="state?.appName" class="mt-1 text-sm text-text-gray">{{ t('join.game', { name: state.appName }) }}</p>
+        </div>
+        <div class="flex flex-col gap-2">
+          <button
+            v-for="s in state?.seats ?? []"
+            :key="s.id"
+            type="button"
+            class="btn-secondary justify-between py-3 text-base"
+            :disabled="s.taken || claiming"
+            @click="claim(s.id)"
+          >
+            <span class="font-bold">{{ s.name }}</span>
+            <span v-if="s.taken" class="text-xs font-normal text-text-gray">{{ t('join.seats.taken') }}</span>
+          </button>
+          <button v-if="state?.newPlayers" type="button" class="btn-primary py-3" :disabled="claiming" @click="claim(null)">{{ t('join.seats.new') }}</button>
+        </div>
+        <p class="text-xs text-text-gray">{{ t('join.seats.teacher') }}</p>
+        <button type="button" class="btn-ghost self-center text-xs" @click="leave">{{ t('join.leave') }}</button>
+      </main>
+
       <!-- Lobby -->
       <main v-else-if="stage === 'joined'" class="flex flex-1 flex-col items-center justify-center gap-6 text-center">
         <div class="size-14 animate-spin rounded-full border-4 border-orange-100 border-t-accent-orange" />
@@ -307,7 +348,7 @@ const waitingForHost = computed(() => !hostConnected.value || state.value?.autho
         <div class="card w-full p-6">
           <div class="section-label">{{ t('join.connectedAs') }}</div>
           <div class="mt-2 text-3xl font-black">{{ name }}</div>
-          <div class="mt-3 flex justify-center gap-2">
+          <div v-if="seat === undefined" class="mt-3 flex justify-center gap-2">
             <button type="button" class="badge bg-orange-50 py-1.5 text-sm text-accent-orange-dark hover:bg-orange-100" @click="another">
               <ArrowPathIcon class="size-4" /> {{ t('join.another') }}
             </button>

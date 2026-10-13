@@ -30,7 +30,7 @@ export {
 export { mountPlugin, PLUGIN_SANDBOX, type MountOptions, type MountedPlugin } from './frame';
 export { MemoryStorage, type HostStorage } from './storage';
 export { leitner, LEITNER_INTERVAL_DAYS, type LearningAlgorithm } from './learning';
-export { RelayHost, type RelayHostOptions, type RelayHostEvent } from './relay/host';
+export { RelayHost, type RelayHostOptions, type RelayHostEvent, type AttachOptions, type HostSeat } from './relay/host';
 export { RelayPlayer, type RelayPlayerOptions, type RelayPlayerEvent, type FrameFactory, type RemoteFrame } from './relay/player';
 export type { RelayStatus } from './relay/socket';
-export type { RemoteLobbyState, RemotePhase } from './relay/messages';
+export type { RemoteLobbyState, RemotePhase, RemoteSeat } from './relay/messages';

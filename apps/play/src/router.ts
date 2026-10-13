@@ -8,6 +8,7 @@ export const router = createRouter({
     { path: '/lab', name: 'lab', component: () => import('./views/LabView.vue') },
     { path: '/join/:pin?', name: 'join', component: () => import('./views/JoinView.vue') },
     { path: '/host', name: 'host', component: () => import('./views/HostView.vue') },
+    { path: '/solo', name: 'solo', component: () => import('./views/SoloView.vue') },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
 });

@@ -272,13 +272,23 @@ Práce na větvi `sdk-1.0`. **Nic se neodkládá kvůli termínu** (rozhodnutí 
 
 ### Část C2 – Uložení a načtení hry (sólo i multiplayer)
 
-- [ ] Návrh ke schválení: co se ukládá (snímek, hra, sada, nastavení, semínko míchání,
+- [x] Návrh ke schválení: co se ukládá (snímek, hra, sada, nastavení, semínko míchání,
       seznam hráčů), kde (úložiště Play / `HostStorage`), seznam rozehraných her, jejich
       jména a mazání.
-- [ ] Sólo: „Pokračovat“ v Play (hra + sada + `sessionId`, `resume`).
-- [ ] Multiplayer: nová místnost, přiřazení hráčů k původním místům (hráč si vybere / učitel
+- [x] Sólo: „Pokračovat“ v Play (hra + sada + `sessionId`, `resume`).
+- [x] Multiplayer: nová místnost, přiřazení hráčů k původním místům (hráč si vybere / učitel
       přiřadí), chybějící hráči (odpojení), noví hráči (`lateJoin`); mapování ID v host-sdk.
-- [ ] Testy (host-sdk, Play) a ruční zkouška.
+- [x] Testy (host-sdk, Play) a ruční zkouška.
+      Hotovo (rozhodnutí vlastníka: sólo v Play „Hrát sám“, hráč si vybere jméno a učitel ho může
+      změnit, „Ukončit hru“ = uložit / zahodit, uložené hry drží IndexedDB do smazání):
+      host-sdk `RelayHost.attach(session, { seats, taken })`, `assignSeat`, `seats`,
+      `seatAssignments`, událost `seats`; `RelayPlayer.seat`, `claimSeat`, místo převezme
+      přezdívku; zprávy `seat` / `claim`. Pokračující hra začíná pozastavená. Play: rozehrané
+      hry v hostování (pokračovat / smazat, panel míst), volba místa v JoinView, nová stránka
+      `/solo` (rozehraná sólo hra se ukládá hned a při skrytí stránky se pozastaví).
+      SPEC 3.3 (popis, beze změny protokolu). Ověřeno v Edge: sólo uložit/pokračovat/zahodit,
+      multiplayer uložit → pokračovat v nové místnosti → hráč si vybral místo, učitel posadil
+      druhého, hra pokračuje.
 
 ### Část D – Relay mezi aplikacemi hostitele a hráče
 

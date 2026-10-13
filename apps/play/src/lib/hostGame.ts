@@ -10,7 +10,9 @@ import { createStore, del, get, set } from 'idb-keyval';
 import { MemoryStorage } from '@memizy/host-sdk';
 import type { HostAs, SettingValue } from '@memizy/protocol';
 
-const store = createStore('memizy-play-host', 'games');
+/** The IndexedDB store of games: reload records, saved games, snapshots. */
+export const hostStore = createStore('memizy-play-host', 'games');
+const store = hostStore;
 
 /** Progress and plugin data stay in memory; snapshots are persisted. */
 export class PersistentSnapshotStorage extends MemoryStorage {
@@ -26,6 +28,12 @@ export class PersistentSnapshotStorage extends MemoryStorage {
     await super.saveSnapshot(sessionId, snapshot);
     await set(`snapshot:${sessionId}`, snapshot, store).catch((error) => console.warn('[memizy play] could not save the snapshot:', error));
   }
+
+  /** A finished game: its snapshot is not needed any more. */
+  override async deleteSnapshot(sessionId: string): Promise<void> {
+    await super.deleteSnapshot(sessionId);
+    await del(`snapshot:${sessionId}`, store).catch(() => {});
+  }
 }
 
 export interface HostGameRecord {
@@ -40,6 +48,9 @@ export interface HostGameRecord {
   shuffleSeed?: string;
   /** Pauses so far (game time without them), so timers stay right after a reload. */
   clock?: { pausedMs: number; pausedAt: number | null };
+  /** A continued saved game: its ID (the set comes from it) and who has which place. */
+  savedId?: string;
+  seats?: Record<string, string>;
 }
 
 /** Games older than this are not resumed. */
@@ -60,8 +71,11 @@ export async function loadHostGame(pin: string): Promise<HostGameRecord | null> 
   }
 }
 
-export async function clearHostGame(pin: string): Promise<void> {
+/** Forgets the running game of the room; its snapshot too, unless the game was saved for later. */
+export async function clearHostGame(pin: string, options: { keepSnapshot?: boolean } = {}): Promise<void> {
   const record = await loadHostGame(pin);
   await del(`game:${pin}`, store).catch(() => {});
-  if (record) await del(`snapshot:${record.sessionId}`, store).catch(() => {});
+  if (!record || options.keepSnapshot) return;
+  const saved = await get(`saved:${record.sessionId}`, store).catch(() => undefined);
+  if (!saved) await del(`snapshot:${record.sessionId}`, store).catch(() => {});
 }

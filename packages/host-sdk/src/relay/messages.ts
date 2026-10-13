@@ -17,6 +17,20 @@ export interface RemoteLobbyState {
   /** Whether the authority is reachable (false = "waiting for the host"). */
   authorityConnected: boolean;
   result?: SessionResult;
+  /**
+   * A continued (saved) game: the places of the earlier players. A device takes one
+   * (`claim`) or the host assigns it; `taken` places have a device.
+   */
+  seats?: RemoteSeat[];
+  /** A continued game: whether a device may also join as a new player (late join, space left). */
+  newPlayers?: boolean;
+}
+
+/** A place of a player in a continued game (the earlier player's ID and nickname). */
+export interface RemoteSeat {
+  id: string;
+  name: string;
+  taken: boolean;
 }
 
 export type SerializedError = { message: string };
@@ -28,6 +42,8 @@ export type HostToPlayer =
   | { k: 'mount'; gen: number; bundle: number; locale: string }
   /** Remove the plugin instance. */
   | { k: 'unmount' }
+  /** A continued game: the place of this device (`null` = none yet) and its nickname. */
+  | { k: 'seat'; seat: string | null; name?: string }
   /** A PluginApi call. */
   | { k: 'call'; id: number; gen: number; method: string; args: unknown[] }
   /** Result of a HostApi call. `hostNow` comes with `hello` (clock sync). */
@@ -37,6 +53,8 @@ export type HostToPlayer =
 export type PlayerToHost =
   /** After (re)joining: the generation of the plugin instance still alive (0 = none). */
   | { k: 'hello'; gen: number }
+  /** A continued game: take the place `seat`, or join as a new player (`null`). */
+  | { k: 'claim'; seat: string | null }
   /** The plugin instance `gen` connected (Penpal handshake done). */
   | { k: 'mounted'; gen: number }
   | { k: 'mount-failed'; gen: number; error: SerializedError }

@@ -12,8 +12,9 @@ import type { HostApi, PluginApi } from '@memizy/protocol';
 import { startGame, type GameHandle } from '../../../plugin-sdk/src/game/defineGame';
 import type { GameDefinition } from '../../../plugin-sdk/src/types';
 import { LocalSession, type SessionEvent } from '../session';
+import { MemoryStorage } from '../storage';
 import { loadPluginFromHtml, type LoadedPlugin } from '../plugin';
-import { RelayHost } from './host';
+import { RelayHost, type HostSeat } from './host';
 import { RelayPlayer, type FrameFactory, type RelayPlayerEvent } from './player';
 
 const PORT = 18_787;
@@ -84,6 +85,21 @@ function sdkFrames(): { factory: FrameFactory; roots: HTMLElement[] } {
     return { iframe: root, plugin, destroy: () => game.destroy() };
   };
   return { factory, roots };
+}
+
+/** The board of a session in this page, connected directly. */
+function playBoard(session: LocalSession): HTMLElement {
+  const boardRoot = document.createElement('div');
+  document.body.appendChild(boardRoot);
+  games.push(
+    startGame({ ...race, root: boardRoot }, {
+      connector: async (pluginApi, handshake) => {
+        const instance = await session.connect('board', () => pluginApi);
+        return { host: instance.hostApi, init: await instance.hostApi.hello(handshake), standalone: false, destroy: () => {} };
+      },
+    }),
+  );
+  return boardRoot;
 }
 
 function joinPlayer(pin: string, name: string, token?: string, locale?: string) {
@@ -215,6 +231,102 @@ describe('relayed multiplayer', () => {
     host.close();
     await until(() => anna2.events.some((e) => e.type === 'closed' && e.reason === 'host'));
     cyril.player.leave();
+  }, 30_000);
+
+  it('continues a saved game in a new room: devices take the earlier places, the host can change them', async () => {
+    const storage = new MemoryStorage();
+    const sessionId = 'saved-game-1';
+
+    // The first lesson: Anna and Ben play, then the host saves the game for later.
+    const host1 = await RelayHost.create({ serverUrl, WebSocket: WebSocketImpl });
+    await until(() => host1.status === 'online');
+    const anna = joinPlayer(host1.pin, 'Anna');
+    const ben = joinPlayer(host1.pin, 'Ben');
+    await until(() => host1.players.length === 2 && host1.players.every((p) => p.connected));
+    const first = new LocalSession({ plugin, set: setFile, mode: 'multiplayer', hostAs: 'presenter', players: host1.players.map((p) => ({ id: p.id, name: p.name })), countdownMs: 0, sessionId, storage, shuffleSeed: 'seed-1' });
+    await host1.uploadBundle(plugin.html, first.prepared);
+    host1.attach(first);
+    const board1 = playBoard(first);
+    await first.start();
+    await until(() => !!anna.root()?.querySelector('button'));
+    const annaId = anna.player.playerId!;
+    const benId = ben.player.playerId!;
+    (anna.root()!.querySelector('button') as HTMLButtonElement).click();
+    await until(() => board1.querySelector('.total')?.textContent === '1');
+    await until(() => JSON.stringify(storage.snapshots.get(sessionId) ?? null).includes(`"${annaId}":1`));
+    first.pause();
+    const saved = { players: first.players.map(({ id, name, isHost }) => ({ id, name, isHost })), clock: { pausedMs: first.clock.pausedMs ?? 0, pausedAt: first.clock.pausedAt ?? null } };
+    await first.end('closed');
+    host1.close();
+    await until(() => anna.events.some((e) => e.type === 'closed'));
+
+    // The next lesson: a new room, new devices with new nicknames.
+    const host2 = await RelayHost.create({ serverUrl, WebSocket: WebSocketImpl });
+    await until(() => host2.status === 'online');
+    const seatEvents: HostSeat[][] = [];
+    host2.on((e) => e.type === 'seats' && seatEvents.push(e.seats));
+    const dana = joinPlayer(host2.pin, 'Dana');
+    const eva = joinPlayer(host2.pin, 'Eva');
+    const filip = joinPlayer(host2.pin, 'Filip');
+    await until(() => host2.players.length === 3 && host2.players.every((p) => p.connected));
+    const second = new LocalSession({ plugin, set: setFile, mode: 'multiplayer', hostAs: 'presenter', players: saved.players, countdownMs: 0, sessionId, storage, shuffleSeed: 'seed-1', resume: true, clock: saved.clock });
+    expect(second.paused).toBe(true); // continued games start paused
+    await host2.uploadBundle(plugin.html, second.prepared);
+    host2.attach(second, { seats: true });
+    const board2 = playBoard(second);
+    await until(() => board2.querySelector('.total')?.textContent === '1'); // resumed from the snapshot
+    expect(second.players.every((p) => !p.connected)).toBe(true); // nobody sits yet
+
+    // Devices see the places (the earlier nicknames) and choose.
+    await until(() => dana.player.state?.seats?.length === 2 && dana.player.seat === null);
+    expect(dana.player.state!.seats!.map((s) => s.name).sort()).toEqual(['Anna', 'Ben']);
+    expect(dana.player.state!.newPlayers).toBe(true);
+    dana.player.claimSeat(annaId);
+    await until(() => dana.player.seat === annaId);
+    expect(dana.player.name).toBe('Anna'); // the place keeps its nickname
+    await until(() => dana.root()?.querySelector('.score')?.textContent === '1'); // Anna's score
+    expect(second.players.find((p) => p.id === annaId)).toMatchObject({ name: 'Anna', connected: true });
+
+    // Eva tries the same place (taken), then joins as a new player.
+    eva.player.claimSeat(annaId);
+    await until(() => eva.events.filter((e) => e.type === 'seat').length >= 2);
+    expect(eva.player.seat).toBeNull();
+    eva.player.claimSeat(null);
+    await until(() => typeof eva.player.seat === 'string');
+    expect(eva.player.seat).toBe(eva.player.playerId);
+    expect(second.players).toHaveLength(3);
+
+    // The teacher puts Filip on Ben's place, then changes their mind.
+    host2.assignSeat(filip.player.playerId!, benId);
+    await until(() => filip.player.seat === benId && filip.player.name === 'Ben');
+    await until(() => !!filip.root()?.querySelector('button'));
+    expect(host2.seats.find((s) => s.id === benId)?.playerId).toBe(filip.player.playerId);
+    expect(host2.seatAssignments).toMatchObject({ [dana.player.playerId!]: annaId, [filip.player.playerId!]: benId });
+
+    // Paused: nothing happens. The teacher continues, and Anna's place plays on.
+    (dana.root()!.querySelector('button') as HTMLButtonElement).click();
+    await wait(300);
+    expect(board2.querySelector('.total')?.textContent).toBe('1');
+    second.resume();
+    await wait(500); // the resume reaches the devices through the relay
+    (dana.root()!.querySelector('button') as HTMLButtonElement).click();
+    await until(() => board2.querySelector('.total')?.textContent === '2');
+    await until(() => dana.root()!.querySelector('.score')?.textContent === '2');
+
+    // The host page reloads: the places are attached again from the saved assignments.
+    host2.attach(second, { seats: true, taken: host2.seatAssignments });
+    await until(() => dana.player.seat === annaId && !!dana.root()?.querySelector('button'));
+    await wait(300);
+    (dana.root()!.querySelector('button') as HTMLButtonElement).click();
+    await until(() => board2.querySelector('.total')?.textContent === '3');
+
+    host2.assignSeat(filip.player.playerId!, null);
+    await until(() => filip.player.seat === null);
+    expect(second.players.find((p) => p.id === benId)?.connected).toBe(false);
+    expect(seatEvents.at(-1)!.find((s) => s.id === benId)?.playerId).toBeNull();
+
+    host2.close();
+    for (const p of [ben, dana, eva, filip]) p.player.leave();
   }, 30_000);
 
   it('a second host connection takes the room over without a reconnect fight', async () => {

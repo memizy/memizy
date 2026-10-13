@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
-import { BeakerIcon, DevicePhoneMobileIcon, PresentationChartBarIcon } from '@heroicons/vue/24/outline';
+import { BeakerIcon, DevicePhoneMobileIcon, PresentationChartBarIcon, UserIcon } from '@heroicons/vue/24/outline';
 import AppLogo from '@/components/AppLogo.vue';
 import LocaleSwitch from '@/components/LocaleSwitch.vue';
 
@@ -9,6 +9,7 @@ const { t } = useI18n();
 const cards = [
   { to: '/join', key: 'join', icon: DevicePhoneMobileIcon, accent: 'bg-orange-50 text-accent-orange' },
   { to: '/host', key: 'host', icon: PresentationChartBarIcon, accent: 'bg-blue-50 text-primary-blue' },
+  { to: '/solo', key: 'solo', icon: UserIcon, accent: 'bg-emerald-50 text-emerald-600' },
   { to: '/lab', key: 'lab', icon: BeakerIcon, accent: 'bg-violet-50 text-violet-600' },
 ] as const;
 </script>
@@ -26,7 +27,7 @@ const cards = [
       </h1>
       <p class="mt-3 text-center text-lg text-text-gray">{{ t('home.tagline') }}</p>
 
-      <div class="mt-10 grid gap-4 sm:grid-cols-3">
+      <div class="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <RouterLink
           v-for="card in cards"
           :key="card.key"
