@@ -12,7 +12,7 @@
     "pluginVersion": "2.0.0",
     "description": "Two pirate crews battle at sea: answer questions to earn cannonballs and repair planks, aim your shots and sink the enemy ship. Solo: you against an enemy galleon.",
     "author": { "name": "BC Praha" },
-    "locales": ["cs", "en"],
+    "locales": ["cs", "en", "es"],
     "tags": ["quiz", "multiplayer", "solo", "game", "pirates", "teams", "battle", "3d"],
     "capabilities": {
       "actions": ["render"],
@@ -27,16 +27,23 @@
           "multiplayer": { "players": { "min": 1, "max": 60, "recommended": 10 }, "hostAs": ["presenter"], "lateJoin": true }
         },
         "settings": [
-          { "id": "timerSec", "type": "number", "label": { "cs": "Sekundy na otázku", "en": "Seconds per question" }, "default": 20, "min": 5, "max": 120 },
-          { "id": "expectedMin", "type": "number", "label": { "cs": "Bitva potrvá zhruba (minuty)", "en": "The battle takes about (minutes)" }, "description": { "cs": "Podle toho se spočítá odolnost lodí.", "en": "The strength of the hulls is computed from it." }, "default": 5, "min": 2, "max": 20 },
-          { "id": "battleMin", "type": "number", "label": { "cs": "Časový limit (minuty)", "en": "Time limit (minutes)" }, "description": { "cs": "Když se do té doby žádná loď nepotopí, vyhraje pevnější trup.", "en": "If no ship sinks by then, the stronger hull wins." }, "default": 10, "min": 2, "max": 40 },
-          { "id": "aimMode", "type": "boolean", "label": { "cs": "Zaměřovací minihra", "en": "Aiming minigame" }, "description": { "cs": "Poškození závisí na přesnosti výstřelu.", "en": "Damage depends on the accuracy of the shot." }, "default": true },
-          { "id": "doShuffle", "type": "boolean", "label": { "cs": "Míchat otázky", "en": "Shuffle questions" }, "default": true },
-          { "id": "enemySkill", "type": "select", "label": { "cs": "Síla počítačové lodi", "en": "Computer ship strength" }, "description": { "cs": "V solu a když se všichni hráči přidají k jedné posádce.", "en": "In solo, and when all players join one crew." }, "default": "normal",
+          { "id": "gameLang", "type": "select", "label": { "cs": "Jazyk hry", "en": "Game language", "es": "Idioma del juego" }, "description": { "cs": "Jazyk pirátského rozhraní pro všechny hráče.", "en": "Pirate interface language for all players.", "es": "Idioma de la interfaz pirata para todos los jugadores." }, "default": "auto",
             "options": [
-              { "value": "easy", "label": { "cs": "Slabá", "en": "Weak" } },
-              { "value": "normal", "label": { "cs": "Normální", "en": "Normal" } },
-              { "value": "hard", "label": { "cs": "Silná", "en": "Strong" } }
+              { "value": "auto", "label": { "cs": "Podle aplikace", "en": "Match app", "es": "Según la aplicación" } },
+              { "value": "es", "label": { "cs": "Španělština 🇪🇸", "en": "Spanish 🇪🇸", "es": "Español 🇪🇸" } },
+              { "value": "cs", "label": { "cs": "Čeština 🇨🇿", "en": "Czech 🇨🇿", "es": "Checo 🇨🇿" } },
+              { "value": "en", "label": { "cs": "Angličtina 🇬🇧", "en": "English 🇬🇧", "es": "Inglés 🇬🇧" } }
+            ] },
+          { "id": "timerSec", "type": "number", "label": { "cs": "Sekundy na otázku", "en": "Seconds per question", "es": "Segundos por pregunta" }, "default": 20, "min": 5, "max": 120 },
+          { "id": "expectedMin", "type": "number", "label": { "cs": "Bitva potrvá zhruba (minuty)", "en": "The battle takes about (minutes)", "es": "Duración estimada (minutos)" }, "description": { "cs": "Podle toho se spočítá odolnost lodí.", "en": "The strength of the hulls is computed from it.", "es": "Determina la resistencia de los cascos." }, "default": 5, "min": 2, "max": 20 },
+          { "id": "battleMin", "type": "number", "label": { "cs": "Časový limit (minuty)", "en": "Time limit (minutes)", "es": "Límite de tiempo (minutos)" }, "description": { "cs": "Když se do té doby žádná loď nepotopí, vyhraje pevnější trup.", "en": "If no ship sinks by then, the stronger hull wins.", "es": "Si ningún barco se hunde antes, gana el casco más resistente." }, "default": 10, "min": 2, "max": 40 },
+          { "id": "aimMode", "type": "boolean", "label": { "cs": "Zaměřovací minihra", "en": "Aiming minigame", "es": "Minijuego de puntería" }, "description": { "cs": "Poškození závisí na přesnosti výstřelu.", "en": "Damage depends on the accuracy of the shot.", "es": "El daño depende de la precisión del disparo." }, "default": true },
+          { "id": "doShuffle", "type": "boolean", "label": { "cs": "Míchat otázky", "en": "Shuffle questions", "es": "Barajar preguntas" }, "default": true },
+          { "id": "enemySkill", "type": "select", "label": { "cs": "Síla počítačové lodi", "en": "Computer ship strength", "es": "Nivel del barco enemigo" }, "description": { "cs": "V solu a když se všichni hráči přidají k jedné posádce.", "en": "In solo, and when all players join one crew.", "es": "En solitario y cuando todos se unen a la misma tripulación." }, "default": "normal",
+            "options": [
+              { "value": "easy", "label": { "cs": "Slabá", "en": "Weak", "es": "Débil" } },
+              { "value": "normal", "label": { "cs": "Normální", "en": "Normal", "es": "Normal" } },
+              { "value": "hard", "label": { "cs": "Silná", "en": "Strong", "es": "Fuerte" } }
             ] }
         ],
         "display": { "orientation": "portrait" }
@@ -244,7 +251,7 @@
 import { defineGame, checkAnswer, createScene3d, webglAvailable } from 'https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1';
 
 /* ═════════════════════════════════════════════════════════
-   Texts (Czech + English)
+   Texts (Czech, English, Spanish)
    ═════════════════════════════════════════════════════════ */
 const TEXTS = {
   cs: {
@@ -315,9 +322,46 @@ const TEXTS = {
     hull: 'hull', correctAnswers: 'correct answers', soloEnemy: 'Enemy Galleon', soloSub: 'Answer, load the cannons and sink the galleon before it sinks you!',
     notInCrew: 'Waiting for the captain to assign you to a crew…',
   },
+  es: {
+    redName: 'Corsarios Carmesí', blackName: 'Hermandad de la Bandera Negra', sailors: (n) => `${n} marinero${n === 1 ? '' : 's'}`,
+    waitTitle: 'Esperando al capitán…', waitSub: 'La batalla comenzará cuando el anfitrión la inicie.',
+    musterTitle: 'Formad las tripulaciones', musterSub: 'Los marineros eligen barco. Quien no elija irá al barco más pequeño. Si todos se unen a una misma tripulación, navegaréis contra un galeón enemigo.',
+    balance: '⚖️ Equilibrar tripulaciones', begin: '⚔️ ¡Comenzar la batalla!', undecided: (names) => `⏳ Indecisos: ${names}`, allChosen: 'Todos los marineros han elegido barco.',
+    chooseShip: 'Elige tu barco', chooseSub: 'La batalla comenzará a la orden del capitán.', youSail: (name) => `Navegas con ${name}. Esperando al capitán…`,
+    joinRed: 'Unirse a los Corsarios', joinBlack: 'Unirse a la Hermandad', noSailors: 'Nadie todavía',
+    endBattle: '✕ Terminar batalla', battleLog: '📡 Cuaderno de bitácora', calmSea: 'La mar está en calma… por ahora.',
+    fired: 'disparos', hits: 'impactos', repairs: 'reparaciones',
+    feedHit: (who, d) => `¡${who} acierta un impacto de <b>${d}</b>!`, feedCrit: (who, d) => `¡${who}: IMPACTO CRÍTICO de <b>${d}</b>!`, feedMiss: (who) => `${who} falló — ¡al agua!`,
+    feedRepair: (who, n) => `${who} reparó el casco (+${n})`, feedCorrect: (who, crate) => `${who} respondió bien en ${crate === 'ammo' ? 'el pañol de pólvora' : 'la carpintería'}`,
+    feedWrong: (who, d) => `${who} falló la respuesta — daño al propio barco −${d}`, feedStart: (r, b) => `¡A los cañones! Corsarios (${r}) contra la Hermandad (${b}).`, feedJoin: (who, team) => `¡${who} se une a ${team}!`,
+    feedWin: (team, pl) => `¡${team} ${pl ? 'ganan' : 'gana'} la batalla!`, feedDraw: 'La batalla terminó en empate.',
+    yourShip: 'TU BARCO', enemy: 'ENEMIGO', empty: '🙌 manos vacías', ball: '💣 bala de cañón', plank: '🪵 tablones',
+    hintBall: '💣 ¡Lleva la bala al cañón!', hintPlank: '🔨 ¡Toca una brecha en el casco para repararla!', hintPlankNone: '🪵 Nada que reparar — o cambia los tablones por una bala en el pañol.',
+    hintEmpty: '❓ ¡Responde una pregunta en una caja para armarte!', hintRun: '🏃 Corriendo…', hintQuestion: '⏳ El contramaestre tiene una pregunta para ti…',
+    sent: '⏳ Enviado…', strength: (f) => `fuerza ×${f}`, strengthHint: 'Tripulación menor: cada acción cuenta más para equilibrar la contienda.',
+    stunned: '😵 ¡ATURDIDO!', streak: (n) => `🔥 racha ×${n}`, to2d: '2D', to3d: '3D', auto2d: 'El 3D no funcionaba bien aquí, cambiamos a 2D. Con el botón 3D puedes reactivarlo.', no3d: 'Este dispositivo no admite 3D, jugamos en 2D.',
+    magazine: '🧨 Pañol de pólvora', carpenter: '🪵 Carpintería', cannons: '💣 Cañones', repair: '🔨 Reparar',
+    magazineSub: 'Pregunta → bala de cañón', carpenterSub: 'Pregunta → tablones', fireSub: 'Dispara al enemigo', fire: '💣 Disparar',
+    breaches: 'Brechas en el casco', noBreaches: 'El casco está intacto.',
+    quizAmmo: '🧨 PAÑOL DE PÓLVORA', quizMaterial: '🪵 CARPINTERÍA', submit: 'Enviar', yourAnswer: 'Tu respuesta…', truth: 'Verdadero', lie: 'Falso',
+    correctAmmo: '✅ ¡Correcto! Una bala de cañón — ¡al cañón!', correctPlank: '✅ ¡Correcto! Tablones — ¡repara una brecha!', wrong: (d) => `❌ ¡Incorrecto! Nuestro barco −${d}`, timeUp: (d) => `⏰ ¡Tiempo agotado! Nuestro barco −${d}`, correctWas: 'Correcto:', yourWas: 'Tu respuesta:',
+    review: 'Mira cuál era la respuesta correcta', continueIn: (n) => `Continúas en ${n} s`, waitReview: (n) => `⏳ Continúas en ${n} s`, msgSelf: (d) => `🔥 Respuesta incorrecta — nuestro barco −${d}`,
+    aimTitle: '🎯 ¡Apunta el cañón!', aimHint: 'El cañón se balancea con las olas — ¡toca y DISPARA cuando apunte al casco enemigo!',
+    msgHands: '🙌 Ya llevas esto — ¡úsalo primero!', msgNoQ: '📭 ¡Esta serie no tiene preguntas!', msgStunned: '⏳ Lee primero la respuesta correcta.', msgPatched: '✨ Esta brecha ya está reparada.',
+    msgNeedBall: '💣 ¡Necesitas una bala! Ve al pañol de pólvora.', msgNeedPlank: '🪵 ¡Necesitas tablones! Ve a la carpintería.', msgHaveBall: '💣 ¡Ya llevas una bala!', msgHavePlank: '🪵 ¡Ya llevas tablones!',
+    msgSplash: '🌊 ¡Al agua! Disparo desviado…', msgHit: (d) => `💥 ¡Impacto! −${d}`, msgCrit: (d) => `💥 ¡IMPACTO CRÍTICO! −${d}`, msgWeHit: (d) => `🚨 ¡Nos han dado! −${d}`,
+    winSunk: '¡El barco enemigo se ha hundido! ¡VICTORIA!', winTime: 'Nuestro casco resistió mejor — ¡VICTORIA!', loseSunk: 'Tu barco se hunde bajo las olas…', loseTime: 'El casco enemigo resistió más. Derrota.', draw: '¡Duelo igualado — empate!',
+    victory: '¡Victoria!', defeat: 'Derrota…', drawTitle: 'Empate en alta mar', rule: (team, pl) => `${team} ${pl ? 'gobiernan' : 'gobierna'} estas aguas.`, bothLive: 'Ambas tripulaciones volverán a luchar otro día.',
+    myScore: (n) => `Tu puntuación: ${n} pts`, battleOver: '¡Fin de la batalla!', winsTitle: (team, pl) => `¡${team} ${pl ? 'ganan' : 'gana'}!`, sunkSub: 'Un barco descansa en el fondo del mar.', timeSub: 'Tiempo agotado — el casco más resistente se lleva la victoria.',
+    hull: 'casco', correctAnswers: 'respuestas correctas', soloEnemy: 'Galeón enemigo', soloSub: '¡Responde, carga los cañones y hunde el galeón antes de que te hunda a ti!',
+    notInCrew: 'Esperando a que el capitán te asigne a una tripulación…',
+  },
 };
 let L = TEXTS.en;
-const setLang = (locale) => { L = String(locale || '').toLowerCase().startsWith('cs') ? TEXTS.cs : TEXTS.en; };
+const setLang = (locale) => {
+  const loc = String(locale || '').toLowerCase();
+  L = loc.startsWith('es') ? TEXTS.es : loc.startsWith('cs') ? TEXTS.cs : TEXTS.en;
+};
 
 /* ═════════════════════════════════════════════════════════
    Rules (they run on the authority: the board, or the device in solo)
@@ -584,6 +628,7 @@ const rules = {
       order: ctx.settings.doShuffle === false ? ids : ctx.shuffle(ids), qIdx: {}, slots: {}, slotStart: {}, seq: 0, ai: null,
       hullPerSailor: hullPerSailor(ctx.settings), repaired: { red: 0, black: 0 },
       aimMode: ctx.settings.aimMode !== false, timerSec: clamp(Number(ctx.settings.timerSec ?? 20), 5, 120),
+      gameLang: ctx.settings.gameLang || 'auto',
     };
     for (const p of ctx.players) state.scores[p.id] = 0;
     if (state.solo) {
@@ -1123,7 +1168,9 @@ function renderPlayerFinished(state, ui) {
 }
 
 function render(state, ui) {
-  setLang(ui.locale);
+  const preferred = state?.gameLang;
+  const effectiveLocale = (preferred && preferred !== 'auto') ? preferred : ui.locale;
+  setLang(effectiveLocale);
   view.state = state;
   view.ui = ui;
   if (ui.view === 'board') {

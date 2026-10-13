@@ -1,0 +1,307 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@memizy/oqse@1/schemas/oqse-v1.0.json",
+  "version": "1.0",
+  "meta": {
+    "id": "0192f0c4-a006-7000-8000-000000000000",
+    "language": "es",
+    "title": "Tiempos del pasado y futuro (salsa picante)",
+    "description": "20 frases picantes y divertidas para dominar los marcadores temporales: Pretérito Perfecto, Indefinido, Imperfecto, Pluscuamperfecto y Futuro Simple.",
+    "subject": "Español (Gramática)",
+    "createdAt": "2026-10-13T14:00:00Z",
+    "updatedAt": "2026-10-13T14:00:00Z",
+    "license": "CC-BY-4.0",
+    "requirements": {
+      "features": [
+        "markdown"
+      ]
+    },
+    "tags": [
+      "español",
+      "gramática",
+      "tiempos verbales",
+      "marcadores"
+    ]
+  },
+  "items": [
+    {
+      "id": "0192f0c4-a006-7000-8000-000000000001",
+      "type": "mcq-single",
+      "topic": "Pretérito Perfecto Compuesto",
+      "question": "Hoy mi ex _______ (hacer) una fiesta salvaje y no me ha invitado.",
+      "options": [
+        { "id": "a", "text": "ha hecho" },
+        { "id": "b", "text": "hizo" },
+        { "id": "c", "text": "hacía" },
+        { "id": "d", "text": "ha hacido" }
+      ],
+      "correctId": "a",
+      "explanation": "*Hoy* indica un período no terminado → Pretérito Perfecto (*ha hecho*). El participio de *hacer* es irregular: *hecho*."
+    },
+    {
+      "id": "0192f0c4-a006-7000-8000-000000000002",
+      "type": "mcq-single",
+      "topic": "Pretérito Perfecto Compuesto",
+      "question": "Esta mañana yo _______ (ver) a tu novio con otra chica en la cafetería.",
+      "options": [
+        { "id": "a", "text": "vi" },
+        { "id": "b", "text": "he visto" },
+        { "id": "c", "text": "veía" },
+        { "id": "d", "text": "he veído" }
+      ],
+      "correctId": "b",
+      "explanation": "*Esta mañana* se usa con Pretérito Perfecto (*he visto*). El participio de *ver* es irregular: *visto*."
+    },
+    {
+      "id": "0192f0c4-a006-7000-8000-000000000003",
+      "type": "mcq-single",
+      "topic": "Pretérito Perfecto Compuesto",
+      "question": "¿Por qué todavía no le _______ (decir, tú) a tu madre que tienes novio?",
+      "options": [
+        { "id": "a", "text": "has dicho" },
+        { "id": "b", "text": "dijiste" },
+        { "id": "c", "text": "decías" },
+        { "id": "d", "text": "dirás" }
+      ],
+      "correctId": "a",
+      "explanation": "*Todavía no* exige Pretérito Perfecto (*has dicho*). El participio de *decir* es irregular: *dicho*."
+    },
+    {
+      "id": "0192f0c4-a006-7000-8000-000000000004",
+      "type": "mcq-single",
+      "topic": "Pretérito Perfecto Compuesto",
+      "question": "Hoy el camarero guapo me _______ (poner) su número de teléfono en la servilleta.",
+      "options": [
+        { "id": "a", "text": "puso" },
+        { "id": "b", "text": "ponía" },
+        { "id": "c", "text": "ha puesto" },
+        { "id": "d", "text": "ha ponido" }
+      ],
+      "correctId": "c",
+      "explanation": "*Hoy* pide Pretérito Perfecto (*ha puesto*). El participio de *poner* es irregular: *puesto*."
+    },
+    {
+      "id": "0192f0c4-a006-7000-8000-000000000005",
+      "type": "mcq-single",
+      "topic": "Pretérito Indefinido",
+      "question": "Anoche Marta _______ (salir) a bailar con dos chicos diferentes.",
+      "options": [
+        { "id": "a", "text": "salió" },
+        { "id": "b", "text": "ha salido" },
+        { "id": "c", "text": "salía" },
+        { "id": "d", "text": "saldrá" }
+      ],
+      "correctId": "a",
+      "explanation": "*Anoche* es un tiempo terminado en el pasado → Pretérito Indefinido (*salió*)."
+    },
+    {
+      "id": "0192f0c4-a006-7000-8000-000000000006",
+      "type": "mcq-single",
+      "topic": "Pretérito Indefinido",
+      "question": "Ayer nosotros _______ (tener) una cita secreta en la playa.",
+      "options": [
+        { "id": "a", "text": "teníamos" },
+        { "id": "b", "text": "tuvimos" },
+        { "id": "c", "text": "hemos tenido" },
+        { "id": "d", "text": "tendremos" }
+      ],
+      "correctId": "b",
+      "explanation": "*Ayer* pide Pretérito Indefinido. El verbo *tener* tiene raíz irregular *tuv-* → *tuvimos*."
+    },
+    {
+      "id": "0192f0c4-a006-7000-8000-000000000007",
+      "type": "mcq-single",
+      "topic": "Pretérito Indefinido",
+      "question": "El sábado pasado tú _______ (ir) a la discoteca sin mí.",
+      "options": [
+        { "id": "a", "text": "fuiste" },
+        { "id": "b", "text": "ibas" },
+        { "id": "c", "text": "has ido" },
+        { "id": "d", "text": "fuisteis" }
+      ],
+      "correctId": "a",
+      "explanation": "*El sábado pasado* es acción puntual y terminada → Indefinido para 2ª persona singular: *fuiste*."
+    },
+    {
+      "id": "0192f0c4-a006-7000-8000-000000000008",
+      "type": "mcq-single",
+      "topic": "Pretérito Indefinido",
+      "question": "Hace tres días Carlos _______ (estar) en la cama todo el día con resaca.",
+      "options": [
+        { "id": "a", "text": "estaba" },
+        { "id": "b", "text": "ha estado" },
+        { "id": "c", "text": "estuvo" },
+        { "id": "d", "text": "estuvó" }
+      ],
+      "correctId": "c",
+      "explanation": "*Hace tres días* exige Indefinido (*estuvo*). Los verbos con raíz fuerte irregular no llevan tilde gráfica."
+    },
+    {
+      "id": "0192f0c4-a006-7000-8000-000000000009",
+      "type": "mcq-single",
+      "topic": "Pretérito Indefinido",
+      "question": "El otro día ellos me _______ (decir) que eres un mentiroso.",
+      "options": [
+        { "id": "a", "text": "dijeron" },
+        { "id": "b", "text": "dijieron" },
+        { "id": "c", "text": "decían" },
+        { "id": "d", "text": "han dicho" }
+      ],
+      "correctId": "a",
+      "explanation": "*El otro día* → Indefinido. Con la raíz en *-j-* (*dij-*), la terminación en 3ª plural pierde la 'i': *dijeron* (no *dijieron*)."
+    },
+    {
+      "id": "0192f0c4-a006-7000-8000-000000000010",
+      "type": "mcq-single",
+      "topic": "Pretérito Imperfecto",
+      "question": "Antes tú _______ (ser) mucho más cariñoso y romántico conmigo.",
+      "options": [
+        { "id": "a", "text": "fuiste" },
+        { "id": "b", "text": "eras" },
+        { "id": "c", "text": "has sido" },
+        { "id": "d", "text": "eres" }
+      ],
+      "correctId": "b",
+      "explanation": "*Antes* describe un estado o hábito continuado en el pasado → Pretérito Imperfecto (*eras*)."
+    },
+    {
+      "id": "0192f0c4-a006-7000-8000-000000000011",
+      "type": "mcq-single",
+      "topic": "Pretérito Imperfecto",
+      "question": "Cuando éramos estudiantes, nosotros _______ (beber) vino barato todos los viernes.",
+      "options": [
+        { "id": "a", "text": "bebimos" },
+        { "id": "b", "text": "hemos bebido" },
+        { "id": "c", "text": "bebíamos" },
+        { "id": "d", "text": "bebiamos" }
+      ],
+      "correctId": "c",
+      "explanation": "Hábito repetido en el pasado (*todos los viernes*) → Pretérito Imperfecto (*bebíamos* con tilde en la í)."
+    },
+    {
+      "id": "0192f0c4-a006-7000-8000-000000000012",
+      "type": "mcq-single",
+      "topic": "Pretérito Imperfecto",
+      "question": "De pequeña, Lucía siempre _______ (ir) a espiar a sus vecinos.",
+      "options": [
+        { "id": "a", "text": "fue" },
+        { "id": "b", "text": "iba" },
+        { "id": "c", "text": "ha ido" },
+        { "id": "d", "text": "ibá" }
+      ],
+      "correctId": "b",
+      "explanation": "*De pequeña* y *siempre* expresan costumbre infantil → Pretérito Imperfecto (*iba*)."
+    },
+    {
+      "id": "0192f0c4-a006-7000-8000-000000000013",
+      "type": "mcq-single",
+      "topic": "Pretérito Imperfecto",
+      "question": "Mientras mi pareja _______ (dormir), yo leía sus mensajes privados.",
+      "options": [
+        { "id": "a", "text": "dormía" },
+        { "id": "b", "text": "durmió" },
+        { "id": "c", "text": "ha dormido" },
+        { "id": "d", "text": "duerme" }
+      ],
+      "correctId": "a",
+      "explanation": "*Mientras* con acción continua de fondo en el pasado exige Pretérito Imperfecto (*dormía*)."
+    },
+    {
+      "id": "0192f0c4-a006-7000-8000-000000000014",
+      "type": "mcq-single",
+      "topic": "Pretérito Pluscuamperfecto",
+      "question": "Cuando llegué a la fiesta, la chica que me gustaba ya _______ (irse).",
+      "options": [
+        { "id": "a", "text": "se fue" },
+        { "id": "b", "text": "se ha ido" },
+        { "id": "c", "text": "se había ido" },
+        { "id": "d", "text": "se iba" }
+      ],
+      "correctId": "c",
+      "explanation": "Acción anterior a otro momento del pasado (*cuando llegué... ya*) → Pretérito Pluscuamperfecto (*se había ido*)."
+    },
+    {
+      "id": "0192f0c4-a006-7000-8000-000000000015",
+      "type": "mcq-single",
+      "topic": "Pretérito Pluscuamperfecto",
+      "question": "Antes de la boda, el novio ya _______ (arrepentirse) de su decisión.",
+      "options": [
+        { "id": "a", "text": "se había arrepentido" },
+        { "id": "b", "text": "se arrepintió" },
+        { "id": "c", "text": "se arrepentía" },
+        { "id": "d", "text": "se ha arrepentido" }
+      ],
+      "correctId": "a",
+      "explanation": "*Antes de... ya* marca anterioridad en el pasado → Pluscuamperfecto (*se había arrepentido*)."
+    },
+    {
+      "id": "0192f0c4-a006-7000-8000-000000000016",
+      "type": "mcq-single",
+      "topic": "Pretérito Pluscuamperfecto",
+      "question": "Hasta esa noche, nadie me _______ (besar) con tanta pasión.",
+      "options": [
+        { "id": "a", "text": "besó" },
+        { "id": "b", "text": "había besado" },
+        { "id": "c", "text": "ha besado" },
+        { "id": "d", "text": "besaba" }
+      ],
+      "correctId": "b",
+      "explanation": "Experiencia previa a un punto del pasado (*hasta esa noche*) → Pretérito Pluscuamperfecto (*había besado*)."
+    },
+    {
+      "id": "0192f0c4-a006-7000-8000-000000000017",
+      "type": "mcq-single",
+      "topic": "Futuro Simple",
+      "question": "Mañana yo te _______ (decir) quién me robó un beso en la fiesta.",
+      "options": [
+        { "id": "a", "text": "deciré" },
+        { "id": "b", "text": "dije" },
+        { "id": "c", "text": "diré" },
+        { "id": "d", "text": "he dicho" }
+      ],
+      "correctId": "c",
+      "explanation": "*Mañana* → Futuro Simple. El verbo *decir* tiene raíz irregular de futuro: *dir-* → *diré* (nunca *deciré*)."
+    },
+    {
+      "id": "0192f0c4-a006-7000-8000-000000000018",
+      "type": "mcq-single",
+      "topic": "Futuro Simple",
+      "question": "La próxima semana nosotros _______ (tener) una cita romántica en secreto.",
+      "options": [
+        { "id": "a", "text": "tuvimos" },
+        { "id": "b", "text": "tendremos" },
+        { "id": "c", "text": "tenemos" },
+        { "id": "d", "text": "teneremos" }
+      ],
+      "correctId": "b",
+      "explanation": "*La próxima semana* pide Futuro Simple. *Tener* usa la raíz irregular *tendr-* → *tendremos*."
+    },
+    {
+      "id": "0192f0c4-a006-7000-8000-000000000019",
+      "type": "mcq-single",
+      "topic": "Futuro Simple",
+      "question": "El mes que viene vosotros _______ (hacer) una locura en las vacaciones.",
+      "options": [
+        { "id": "a", "text": "hicisteis" },
+        { "id": "b", "text": "hacéis" },
+        { "id": "c", "text": "haceréis" },
+        { "id": "d", "text": "haréis" }
+      ],
+      "correctId": "d",
+      "explanation": "*El mes que viene* → Futuro Simple. *Hacer* tiene raíz *har-* → para vosotros: *haréis*."
+    },
+    {
+      "id": "0192f0c4-a006-7000-8000-000000000020",
+      "type": "mcq-single",
+      "topic": "Futuro Simple",
+      "question": "Dentro de dos días todo el pueblo _______ (saber) tu gran secreto.",
+      "options": [
+        { "id": "a", "text": "supo" },
+        { "id": "b", "text": "sabrá" },
+        { "id": "c", "text": "sabía" },
+        { "id": "d", "text": "saberá" }
+      ],
+      "correctId": "b",
+      "explanation": "*Dentro de dos días* expresa futuro → Futuro Simple (*sabrá*). El verbo *saber* tiene raíz *sabr-*."
+    }
+  ]
+}

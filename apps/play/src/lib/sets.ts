@@ -11,6 +11,7 @@ import animals from '@/data/sets/animals.oqse.json';
 import workshop from '@/data/sets/workshop.oqse.json';
 import generalKnowledge from '@/data/sets/general-knowledge.oqse.json';
 import testSuite from '@/data/sets/test-suite.oqse.json';
+import spanishVerbTenses from '@/data/sets/spanish-verb-tenses.oqse.json';
 import notesMarkdown from '@/data/sets/web-app-notes.oqse.md?raw';
 
 export interface StudySet {
@@ -61,6 +62,7 @@ export const BUILTIN_SETS: StudySet[] = [
   builtin(animals, 'animals.oqse.json'),
   builtin(workshop, 'workshop.oqse.json'),
   builtin(generalKnowledge, 'general-knowledge.oqse.json'),
+  builtin(spanishVerbTenses, 'spanish-verb-tenses.oqse.json'),
   builtin(notesMarkdown, 'web-app-notes.oqse.md'),
   builtin(testSuite, 'test-suite.oqse.json'),
 ];
