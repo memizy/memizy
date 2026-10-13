@@ -245,7 +245,7 @@ Práce na větvi `sdk-1.0`. **Nic se neodkládá kvůli termínu** (rozhodnutí 
       znovu minifikuje Terserem), hra se spojí a synchronizuje v Edge i WebKitu, s nativním
       `Promise.withResolvers` i bez něj (polyfill). `@1` začne fungovat až s 1.0.0 (předběžné
       verze rozsah `@1` nebere).
-- [ ] Publikovat `@memizy/protocol` a `@memizy/host-sdk` (`1.0.0-rc.5`, `--tag next --access public`):
+- [x] Publikovat `@memizy/protocol` a `@memizy/host-sdk` (`1.0.0-rc.5`, `--tag next --access public`):
       na npm chybí (404), přitom na `@memizy/protocol` závisí `plugin-sdk` – `npm install
       @memizy/plugin-sdk@next` zatím selže.
 
