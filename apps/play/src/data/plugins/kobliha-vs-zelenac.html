@@ -938,7 +938,7 @@
        Content: teams, shop, quotes (parody — every quote at most once per game)
        ═════════════════════════════════════════════════════════ */
     const TEAMS = {
-      kobliha: { name: 'Tým Kobliha', hero: 'Andrej Kobliha', slogan: 'Koblihy, řepka a Čapí farma!' },
+      kobliha: { name: 'Tým Kobliha', hero: 'Andrej Kobliha', slogan: 'Koblihy, řepka a rodinná farma!' },
       zelenac: { name: 'Tým Zelenáč', hero: 'Zelenáč', slogan: 'Tisíc mobilů denně a masakr cen!' },
     };
     const other = (t) => (t === 'kobliha' ? 'zelenac' : 'kobliha');
@@ -949,8 +949,8 @@
      */
     const SHOP = [
       { id: 'koblizek', icon: '🍩', name: 'Holdingový koblížek', cost: 220, kind: 'team', desc: 'Týmu doplní 35 HP. „Koblížek pro každého!“' },
-      { id: 'alzabox', icon: '📦', name: 'Pancéřovaný Ufobox', cost: 280, kind: 'team', desc: 'Štít 40 pro tým. Bez tajného PINu se nikdo nedostane dovnitř.' },
-      { id: 'capi', icon: '🪺', name: 'Čapí farma', cost: 400, kind: 'team', desc: 'Štít 65. „Nejlepší rekreační statek široko daleko!“' },
+      { id: 'ufobox', icon: '📦', name: 'Pancéřovaný Ufobox', cost: 280, kind: 'team', desc: 'Štít 40 pro tým. Bez tajného PINu se nikdo nedostane dovnitř.' },
+      { id: 'farma', icon: '🪺', name: 'Rodinná farma', cost: 400, kind: 'team', desc: 'Štít 65. „Nejlepší rekreační statek široko daleko!“' },
       { id: 'motyli', icon: '🦋', name: 'Motýle a včely', cost: 320, kind: 'team', desc: 'Týmu léčí 12 HP každé kolo, čtyři kola po sobě.' },
       { id: 'tiskovka', icon: '🎤', name: 'Tisková konference', cost: 300, kind: 'team', desc: 'Příští kolo dá tvůj tým o 40 % větší ránu.' },
       { id: 'tablety', icon: '📱', name: 'Tisíc mobilů denně', cost: 420, kind: 'self', desc: 'Každý tvůj zásah +12 poškození až do konce hry.' },
@@ -968,7 +968,7 @@
         intro: [
           'Všeci len kecajú, iba ja makám! Poďte do Týmu Kobliha, vybudujeme lepšie Slovensko… teda Česko!',
           'Já jsem do této bitvy nechtěl! To opozice a novináři mě vyprovokovali!',
-          'Čapí farma byl nejhezčí statek v Evropě! Každý oslík tam měl vlastní výběh!',
+          'Rodinná farma byl nejhezčí statek v Evropě! Každý oslík tam měl vlastní výběh!',
           'Já jsem postavil dálnice, školy, nemocnice, obchvaty, všechno!',
           'Moje pekárny pečou tisíce koblih! Kdo nejí koblihy, nerozumí ekonomice!',
         ],
@@ -978,7 +978,7 @@
           'Čas běží! Kdo neodpoví včas, nedostane ani suchý rohlík!',
           'Soustřeďte se! Tady jde o rozpočet, žádné lelkování!',
           'Rychle klikat! Já taky makám osmnáct hodin denně bez přestávky!',
-          'Čas jsou dotace! Kdo odpoví první, dostane prémii do kapsy!',
+          'Čas jsou peníze! Kdo odpoví první, dostane prémii do kapsy!',
           'Nespěte u toho! Andrej se dívá a kontroluje vaši produktivitu!',
         ],
         good: [
@@ -1003,8 +1003,8 @@
           'Nakupujte! Ale berte jen čerstvé zboží z naší pekárny!',
           'Kdo odpovídal rychle, ten má na koblihy!',
           'Neplýtvejte! Každou korunu jsem si vydřel!',
-          'Kupte pořádné zásoby! Dotace jsou od toho, aby se utrácely!',
-          'Megastore nebo Agro-holding, hlavní je mít na účtu dost kapitálu!',
+          'Kupte pořádné zásoby! Rozpočet je od toho, aby se utrácel!',
+          'Megastore nebo Velko-holding, hlavní je mít na účtu dost kapitálu!',
           'Investujte chytře! Kdo šetří na obraně, ten spláče nad výdělkem!',
         ],
         battle_intro: [
@@ -1029,7 +1029,7 @@
           'Já vám dám takový rozpočet, že se z toho zelený skřet zblázní!',
           'Ostatní jen mluví, ale Tým Kobliha rozdrtí zelené sklady na prach!',
           'Tato debata je řízená lidem! Tady máte salvu z naší pekárny!',
-          'Dotační salva přímo na komoru! Zelený mimozemšťan letí do vesmíru!',
+          'Holdingová salva přímo na komoru! Zelený mimozemšťan letí do vesmíru!',
           'Tohle je síla holdingu! Přímý zásah za miliardu korun!',
         ],
         hit: [
@@ -1112,7 +1112,7 @@
         battle: [
           'Zamiřte tablety přímo na Andreje! Kdo odpoví, ten střílí!',
           'Palte ze všech e-shopů! Správná volba pálí plnou parou!',
-          'Útok na Čapí farmu! Rychle odpověz a vystřel z kanónu!',
+          'Útok na Rodinnou farmu! Rychle odpověz a vystřel z kanónu!',
           'Naložte mu co se do něj vejde! Zelený laser nabíjí!',
           'Zaměřit cíl a kliknout! Slevová vlna ho smete!',
           'Tisíc mobilů nabito! Vypalte další salvu, hejblátka!',
@@ -1331,7 +1331,7 @@
           state.boost[state.ai] = true;
           state.shopLog.push({ who: 'ai', item: 'tiskovka' });
         }
-        state.shopLog.push({ who: 'ai', item: 'alzabox' });
+        state.shopLog.push({ who: 'ai', item: 'ufobox' });
       }
       const first = ctx.random() < 0.5 ? 'kobliha' : 'zelenac';
       const second = other(first);
@@ -1746,7 +1746,7 @@
       const players = ui.players.filter((p) => p.connected && state.teams[p.id]).length;
       return ui.html`<div class="card">
         <div class="row">
-          <span class="tag">🛒 ${state.shopIdx === 1 ? 'Obchod před bitvou' : 'Obchod v půlce bitvy'} · dotace +${SUBSIDY} Kč pro každého</span>
+          <span class="tag">🛒 ${state.shopIdx === 1 ? 'Obchod před bitvou' : 'Obchod v půlce bitvy'} · příspěvek +${SUBSIDY} Kč pro každého</span>
           <span class="muted">Hotovo ${readyCount} / ${players} ${skipButton(state, ui)}</span>
         </div>
         ${ui.self ? ui.html`<div class="row"><b style="font-size:1.3em;color:var(--gold)">💰 ${coins} Kč</b><button class="done${done ? ' on' : ''}" data-act="shopDone" ${done ? 'disabled' : ''}>${done ? 'Připraven ✔' : 'Hotovo, jdeme bojovat'}</button></div>` : ''}
@@ -1878,8 +1878,8 @@
           const team = state.teams[pid], foe = other(team), power = powerOf(state, ctx, team), perks = state.perks[pid];
           switch (s.id) {
             case 'koblizek': state.hp[team] = Math.min(state.maxHp[team], state.hp[team] + Math.round(35 * power)); break;
-            case 'alzabox': state.shield[team] += Math.round(40 * power); break;
-            case 'capi': state.shield[team] += Math.round(65 * power); break;
+            case 'ufobox': state.shield[team] += Math.round(40 * power); break;
+            case 'farma': state.shield[team] += Math.round(65 * power); break;
             case 'motyli': state.regen[team] = { amount: (state.regen[team].rounds ? state.regen[team].amount : 0) + Math.round(12 * power), rounds: 4 }; break;
             case 'tiskovka': state.boost[team] = true; break;
             case 'tablety': perks.dmg += 12; break;

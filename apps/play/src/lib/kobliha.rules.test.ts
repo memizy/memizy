@@ -41,7 +41,7 @@ function answer(session: FakeSession<any>, player: string, value: unknown, seen?
   session.get(player).dispatch('answer', { itemId: itemId ?? currentItem(s), answer: value }, seen ?? s.phaseSeq);
 }
 
-describe('Babiš vs. Alzák rules', () => {
+describe('Kobliha vs. Zelenáč rules', () => {
   it('a full multiplayer game: fair teams, shop, no repeated quote, an end', async () => {
     const session = new FakeSession<any>(definition(), { players: ['anna', 'ben', 'cyril'], items, settings: { questionTime: 10, questionCount: 3, battleRounds: 6 } });
     session.start();
@@ -63,7 +63,7 @@ describe('Babiš vs. Alzák rules', () => {
       if (!seen.has(s.dialogue.id)) { seen.add(s.dialogue.id); lines.push(...s.dialogue.lines.map((l: any) => l.text)); }
       if (s.phase === 'question') {
         const id = currentItem(s);
-        // Everyone right: the lone Alzák player must hit like the two Babiš players together.
+        // Everyone right: the lone Zelenáč player must hit like the two Kobliha players together.
         for (const p of ['anna', 'ben', 'cyril']) answer(session, p, correctOf(id));
         await tick();
         if (s.stage === 'battle') {
