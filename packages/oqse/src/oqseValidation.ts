@@ -919,7 +919,6 @@ export const MathInputItemSchema = BaseItemSchema.extend({
   type: z.literal('math-input'),
   question: RichContentSchema.max(10000, 'Question must not be longer than 10000 characters'),
   correctAnswers: z.array(RawLatexSchema).min(1, 'Must have at least 1 correct answer'),
-  tolerance: z.number().nonnegative().optional(),
 });
 
 /**

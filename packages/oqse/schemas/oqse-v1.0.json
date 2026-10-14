@@ -6139,10 +6139,6 @@
                     "items": {
                       "type": "string"
                     }
-                  },
-                  "tolerance": {
-                    "type": "number",
-                    "minimum": 0
                   }
                 },
                 "required": [

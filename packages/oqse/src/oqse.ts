@@ -1112,9 +1112,6 @@ export interface MathInputItem extends BaseItem {
 
   /** Correct answers as raw LaTeX without `$` delimiters (e.g., ["2x+2", "2+2x"]). Min 1. */
   correctAnswers: string[];
-
-  /** For purely numeric answers, allowed numeric deviation */
-  tolerance?: number;
 }
 
 /**

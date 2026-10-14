@@ -994,7 +994,6 @@ In the example above, `BE-4` has no connection: it is a distractor.
 
   * `question` (string, required): **Rich Content.** Question text.
   * `correctAnswers` (string[], required, at least 1): Correct answers as raw LaTeX **without** `$` / `$$` delimiters (e.g., `["2x + 2", "2*x + 2", "2+2x"]`); all are equally correct, as the `correctAnswers` of `short-answer`. Values wrapped in `$` MUST cause a validation error.
-  * `tolerance` (number, optional): For purely numeric answers, allowed numeric deviation.
   * **Implementation note:** Application **SHOULD** support symbolic checking of mathematical equivalence (e.g., recognize `2+2x` same as `2x+2`). All LaTeX notations MUST be compatible with web rendering libraries (KaTeX, MathJax). If application does not support symbolic checking (e.g., due to technical limitations), it **MUST** use plain string comparison. **String comparison rules:** (1) Normalize whitespace (remove all spaces inside LaTeX). (2) Compare the string with each item of `correctAnswers`. (3) Case-sensitive. (4) DO NOT convert symbols (e.g., `*` stays `*`, not rewritten to `\cdot`). **Recommendations for set authors:** Prefer normalized form without spaces if Application doesn't support symbolic mathematical checking (CAS). Include all common notation variants in `correctAnswers`. Example: `correctAnswers: ['2x+2', '2*x+2', '2+2x']`.
 
 **Example:**
@@ -2213,7 +2212,7 @@ OQSE is an open standard. Suggestions for improvements:
 
 ### Version 1.0 (October 2026)
 The first stable version. From now on, 1.x versions only add (see [Versioning and Compatibility](#versioning-and-compatibility)).
-* Before 1.0, two item types were aligned with the others: `math-input` has `correctAnswers` (a list, like `short-answer`) instead of `correctAnswer` + `alternativeAnswers`, and `match-complex` has `prompts` / `matches` (like `match-pairs`) instead of `leftItems` / `rightItems`.
+* Before 1.0, two item types were aligned with the others: `math-input` has `correctAnswers` (a list, like `short-answer`) instead of `correctAnswer` + `alternativeAnswers`, and `match-complex` has `prompts` / `matches` (like `match-pairs`) instead of `leftItems` / `rightItems`. `math-input` has no `tolerance` (its answers are compared as LaTeX; numbers are `numeric-input`).
 * Version rules for sets, manifests and progress files: applications read the MAJOR versions they support and never read another MAJOR version (including the pre-release 0.x drafts) silently as a supported one.
 * Schema URLs: `https://cdn.jsdelivr.net/npm/@memizy/oqse@1/schemas/oqse-v1.0.json` (and `oqse-manifest-v1.0.json`, `oqse-progress-v1.0.json`, `oqse-header-v1.0.json`).
 * Markdown images `![alt](https://…)` are explicitly allowed for pictures from the web (absolute URL; `<asset:key />` for everything else). Blank tags belong only in the `text` of `fill-in-blanks` and `fill-in-select` (elsewhere a warning; shown as an empty line).

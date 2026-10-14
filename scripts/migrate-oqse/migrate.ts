@@ -257,6 +257,10 @@ function itemTo10(item: Rec, index: number, latex: boolean, changes: Set<string>
     rewrite(item, { correctAnswer: ['correctAnswers', answers], alternativeAnswers: null });
     changes.add('math-input: correctAnswer + alternativeAnswers → correctAnswers');
   }
+  if (item.type === 'math-input' && 'tolerance' in item) {
+    delete item.tolerance;
+    changes.add('math-input: tolerance removed (answers are compared as LaTeX)');
+  }
   if (item.type === 'match-complex' && 'leftItems' in item && !('prompts' in item)) {
     rewrite(item, { leftItems: ['prompts', item.leftItems], rightItems: ['matches', item.rightItems] });
     changes.add('match-complex: leftItems / rightItems → prompts / matches');

@@ -263,6 +263,8 @@ describe('OQSE 1.0 item shape', () => {
     expect(OQSEItemSchema.safeParse({ ...base, correctAnswers: ['2x', '$$2x$$'] }).success).toBe(false);
     expect(OQSEItemSchema.safeParse({ ...base, correctAnswers: [] }).success).toBe(false);
     expect(OQSEItemSchema.safeParse({ ...base, correctAnswer: '2x' }).success).toBe(false); // the 0.x / RC field
+    const strict = safeValidateOQSEFile({ version: '1.0', meta: { id, language: 'en', title: 'T', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' }, items: [{ ...base, correctAnswers: ['2'], tolerance: 0.1 }] });
+    expect(strict.success).toBe(false); // tolerance is not a field of math-input
   });
 
   it('match-complex connects prompts to matches (any number per side)', () => {
