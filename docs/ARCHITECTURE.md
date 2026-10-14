@@ -11,7 +11,6 @@ document and a specification differ, the specification wins.
 | [`packages/oqse/oqse.md`](../packages/oqse/oqse.md) (+ `oqse-manifest.md`, `oqse-progress.md`, `oqse-header.md`) | The OQSE 1.0 formats: study sets, application manifests (OQSEM), learning progress, headers |
 | [`packages/protocol/SPEC.md`](../packages/protocol/SPEC.md) | The Memizy Plugin Protocol 1.0 between games and hosts, and the compatibility rules |
 | [`docs/ai-plugin-guide.md`](./ai-plugin-guide.md) | The SDK as game authors (and their AI assistants) use it |
-| [`docs/RELEASE-1.0.md`](./RELEASE-1.0.md) | What is left before and right after the 1.0.0 release |
 
 ---
 
