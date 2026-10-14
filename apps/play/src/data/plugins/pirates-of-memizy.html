@@ -46,7 +46,7 @@
               { "value": "hard", "label": { "cs": "Silná", "en": "Strong", "es": "Fuerte" } }
             ] }
         ],
-        "display": { "orientation": "portrait" }
+        "display": { "orientation": "any" }
       }
     }
   }
@@ -1410,7 +1410,7 @@ const Scene = {
       // Which side of our hull faces the camera (it changes with the portrait / landscape layout).
       this.own.updateMatrixWorld(true);
       this.ownSide = this.own.worldToLocal(cam.position.clone()).z >= 0 ? 1 : -1;
-      for (const d of Object.values(this.decals.own)) d.position.z = 1.78 * this.ownSide;
+      for (const b of Object.values(this.decals.own)) placeBreach(b, this.ownSide);
       cam.fov = 52;
       cam.updateProjectionMatrix();
     };
@@ -1475,25 +1475,22 @@ const Scene = {
       const seen = new Set();
       for (const h of hits) {
         seen.add(h.id);
-        if (!this.decals[slot][h.id]) {
-          const s = sprite(this.tex.scorch, (h.sev === 'crit' ? 2.6 : 1.9) * scale, 0.95);
-          // High on the side the camera sees: waves and the steep view hide the waterline.
-          // Ours reach up to the gunwale, so the crew on deck sees where to repair.
-          const y = slot === 'own' ? 1.65 + h.y * 0.85 : 1.4 + h.y * 0.85;
-          s.position.set(h.x * 4.6, y, 1.78 * (slot === 'own' ? this.ownSide : 1));
-          if (slot === 'own') { s.material.depthTest = false; s.renderOrder = 10; }
-          ship.add(s);
-          this.decals[slot][h.id] = s;
+        let b = this.decals[slot][h.id];
+        if (!b) {
+          b = this.decals[slot][h.id] = makeBreach(this.tex.scorch, h.x * 4.6, h.y);
+          ship.add(b);
         }
         // The size shows how much is still to repair (a partly repaired breach shrinks).
         const size = clamp(1.1 + (h.left ?? 100) / 70, 1.1, 3.4) * scale;
-        this.decals[slot][h.id].scale.set(size, size, 1);
+        placeBreach(b, slot === 'own' ? this.ownSide : 1, size);
       }
       for (const id of Object.keys(this.decals[slot])) {
         if (seen.has(id)) continue;
-        const s = this.decals[slot][id];
-        s.parent?.remove(s);
-        if (slot === 'own') this.particle(this.own, this.tex.glow, s.position.x, s.position.y, s.position.z, { scale: 2, vy: 0.8, maxLife: 0.7, grow: 2 });
+        const b = this.decals[slot][id];
+        // a puff of light over the repaired deck planks
+        const { x, y, z } = b.userData.deck.position;
+        if (slot === 'own') this.particle(this.own, this.tex.glow, b.position.x + x, y, z, { scale: 2, vy: 0.8, maxLife: 0.7, grow: 2 });
+        b.parent?.remove(b);
         delete this.decals[slot][id];
       }
     }
@@ -1549,11 +1546,11 @@ const Scene = {
     ray.setFromCamera({ x: ((e.clientX - rect.left) / rect.width) * 2 - 1, y: -((e.clientY - rect.top) / rect.height) * 2 + 1 }, this.cam);
     const decals = Object.entries(this.decals.own);
     if (decals.length) {
-      const hit = ray.intersectObjects(decals.map(([, s]) => s))[0];
+      const hit = ray.intersectObjects(decals.map(([, b]) => b))[0];
       if (hit) {
-        const hitId = decals.find(([, s]) => s === hit.object)?.[0];
+        const [hitId, b] = decals.find(([, b]) => b === hit.object.parent);
         if (state.inventory[me] !== 'plank') return floatMsg(L.msgNeedPlank, '#f0c96c');
-        return this.walkTo(hit.object.position.x, () => game.act('repair', { hitId }));
+        return this.walkTo(breachX(b), () => game.act('repair', { hitId }));
       }
     }
     // 2) Otherwise the 3D objects themselves.
@@ -1686,11 +1683,12 @@ const Scene = {
       this.targets.push({ kind: d.id, x: p.x, y: p.y - 10 }); // the label sits above its point
     }
     if (inv === 'plank') {
-      for (const [hitId, s] of Object.entries(this.decals.own)) {
-        const p = project(s.getWorldPosition(new THREE.Vector3()));
+      for (const [hitId, b] of Object.entries(this.decals.own)) {
+        // the label sits on the broken deck planks, where the crew walks
+        const p = project(b.userData.deck.getWorldPosition(new THREE.Vector3()));
         if (!p) continue;
         html += `<div class="slabel ok" style="left:${p.x}px;top:${p.y}px">${L.repair}</div>`;
-        this.targets.push({ kind: 'repair', x: p.x, y: p.y - 10, hitId, localX: s.position.x });
+        this.targets.push({ kind: 'repair', x: p.x, y: p.y - 10, hitId, localX: breachX(b) });
       }
     }
     if (this.labels.innerHTML !== html) this.labels.innerHTML = html;
@@ -1816,6 +1814,39 @@ function breachTexture() {
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
 }
+/**
+ * A breach lying flat on the ship (not a billboard): the hole in the side of the hull
+ * and the broken planks on the deck above it, where the crew sees it and repairs it.
+ * `y` (0–1) is the height of the hit on the hull.
+ */
+function makeBreach(tex, x, y) {
+  // depth-tested (the rails and cannons stay in front), pulled in front of the wood under it
+  const mat = new THREE.MeshLambertMaterial({ map: tex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 });
+  const hull = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat);
+  const deck = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat);
+  deck.rotation.x = -Math.PI / 2;
+  const g = new THREE.Group();
+  g.position.x = x;
+  g.add(hull, deck);
+  g.userData = { hull, deck, y, size: 1, side: 1 };
+  return g;
+}
+/** Sizes a breach and puts it on the side of the hull facing `side` (+1 / -1 in ship space). */
+function placeBreach(g, side, size = g.userData.size) {
+  const { hull, deck, y } = g.userData;
+  Object.assign(g.userData, { side, size });
+  // Hull side: below the trim (y 1.8), in front of the gun ports, above the waves.
+  const h = Math.min(size, 1.45);
+  hull.position.set(0, 1.75 - h / 2 - (1 - y) * 0.15, 1.77 * side);
+  hull.rotation.y = side > 0 ? 0 : Math.PI;
+  hull.scale.set(size, h, 1);
+  // Deck (top at y 2.41, 3 wide): next to the rail, kept out of the quarterdeck (x < -3.2).
+  const d = Math.min(size * 0.6, 1.4);
+  deck.position.set(Math.max(0, -3.1 + d / 2 - g.position.x), 2.43, (1.45 - d / 2) * side);
+  deck.scale.set(d, d, 1);
+}
+/** Where on the deck the sailor walks to repair a breach. */
+const breachX = (g) => g.position.x + g.userData.deck.position.x;
 function sprite(tex, scale, opacity = 1) {
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, opacity, depthWrite: false }));
   s.scale.set(scale, scale, 1);

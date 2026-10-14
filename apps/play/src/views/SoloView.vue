@@ -54,6 +54,8 @@ const pluginUrl = ref(choice.value.kind === 'url' ? choice.value.url : '');
 const pluginRaw = ref<string | null>(null);
 const plugin = shallowRef<LoadedPlugin | null>(null);
 const pluginErrors = ref<string[]>([]);
+/** On a big screen landscape and 3D games get room; games for an upright phone stay a column. */
+const stageWidth = computed(() => (plugin.value?.runtime.orientation === 'portrait' ? 'max-w-lg' : 'max-w-6xl'));
 const settings = ref<Record<string, SettingValue>>({});
 
 const setMode = computed(() => plugin.value?.runtime.set ?? 'required');
@@ -320,7 +322,7 @@ onBeforeUnmount(() => {
         </span>
       </div>
       <div class="relative min-h-0 flex-1">
-        <div class="mx-auto size-full bg-white" :class="focus.focused.value ? '' : 'max-w-3xl'">
+        <div class="mx-auto size-full bg-white" :class="focus.focused.value ? '' : stageWidth">
           <PluginFrame :key="game.id" :session="game" :address="PLAYER_ID" />
         </div>
       </div>

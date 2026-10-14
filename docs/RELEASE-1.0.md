@@ -23,7 +23,7 @@ least 1–2 days before the workshop (the guide imports `@memizy/plugin-sdk@1` f
 
 - [x] **URL link parameter `set=none`:** `play.memizy.com/host?plugin=lab&set=none` now recognizes `none`
       as `NO_SET_KEY` instead of reporting "Sadu z odkazu („none“) se nepodařilo najít".
-- [ ] **Solo & Host-as-player container size:** In `SoloView.vue` (`max-w-3xl`) and `HostView.vue` (`max-w-md`),
+- [x] **Solo & Host-as-player container size:** In `SoloView.vue` (`max-w-3xl`) and `HostView.vue` (`max-w-md`),
       games in solo mode or when the host plays along are constrained to a narrow column. Expand to full
       width (`w-full` / `max-w-6xl` or responsive based on manifest `orientation`), so 3D/landscape games
       (Civhrad, Pirates) have adequate space on desktop.
