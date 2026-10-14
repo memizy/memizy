@@ -66,9 +66,9 @@ export const MemizyRuntimeSchema = z
     settings: z.array(SettingDefinitionSchema).optional(),
     settingsScreen: z.looseObject({ size: z.enum(['compact', 'large']) }).optional(),
     display: z.looseObject({ orientation: z.enum(['any', 'portrait', 'landscape']).optional() }).optional(),
-    /** RC4: what the plugin reaches outside its sandbox (SPEC 8.4). */
+    /** What the plugin reaches outside its sandbox (SPEC 8.4). */
     permissions: PluginPermissionsSchema.optional(),
-    /** RC4: Memizy services the plugin uses (`ui.service`), e.g. "ai.chat" (SPEC 5.3). */
+    /** Memizy services the plugin uses (`ui.service`), e.g. "ai.chat" (SPEC 5.3). */
     services: z.array(ServiceNameSchema).max(20).optional(),
   })
   .refine((r) => r.modes.solo !== undefined || r.modes.multiplayer !== undefined, {

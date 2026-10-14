@@ -9,7 +9,7 @@ import type { HostAs, PluginView } from './pluginRuntime';
 // Addresses, players, session
 // ============================================================================
 
-/** Address of an instance: a player ID, `"board"`; `"server"` is reserved. */
+/** Address of an instance: a player ID, `"board"`, `"settings"` (`SETTINGS_ADDRESS`); `"server"` is reserved. */
 export type Address = string;
 
 /** Address of the presenter's board. */
@@ -96,7 +96,7 @@ export interface InitPayload {
 }
 
 /**
- * The session clock. `Date.now() + offsetMs` is the session time. RC4 adds pauses: the
+ * The session clock. `Date.now() + offsetMs` is the session time. Pauses: the
  * game time is `(pausedAt ?? sessionTime) - pausedMs` – it stands still while the host
  * has paused the game (`pausedAt` = session time of the pause) and continues afterwards
  * without the paused time (`pausedMs` = total of finished pauses).
@@ -123,12 +123,12 @@ export interface AnswerRecord {
   hintsUsed?: number;
   isSkipped?: boolean;
   /**
-   * RC4: what the player answered, in the `checkAnswer` format of the item type
+   * What the player answered, in the `checkAnswer` format of the item type
    * (choice IDs, text, numbers…). Lets teachers see which wrong answers were chosen.
    */
   answer?: unknown;
   /**
-   * RC4: the item itself, required when `itemId` is not in the set (a generated item, e.g.
+   * The item itself, required when `itemId` is not in the set (a generated item, e.g.
    * from a service). It needs at least `id` (= `itemId`) and `type`; the answer fields may
    * be left out. Such answers count for statistics (`skills`, `tags`), not for repetition.
    */
@@ -186,7 +186,7 @@ export interface HostApi {
   getAsset(key: string, itemId?: string): Promise<Blob>;
   end(result: SessionResult): Promise<void>;
   reportError(error: ErrorReport): Promise<void>;
-  /** RC4: calls a Memizy service (one of `InitPayload.services`); returns its JSON result. */
+  /** Calls a Memizy service (one of `InitPayload.services`); returns its JSON result. */
   service(name: string, payload: unknown): Promise<unknown>;
 }
 
@@ -197,7 +197,7 @@ export interface PluginApi {
   playersChanged(players: Player[]): Promise<void>;
   authorityChanged(status: { connected: boolean }): Promise<void>;
   configChanged(config: HostConfig): Promise<void>;
-  /** The clock was corrected, or the game was paused / resumed (RC4). */
+  /** The clock was corrected, or the game was paused / resumed. */
   clockChanged(clock: SessionClock): Promise<void>;
   sessionEnded(reason: SessionEndReason): Promise<void>;
 }

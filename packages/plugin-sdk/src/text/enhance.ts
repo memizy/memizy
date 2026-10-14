@@ -7,8 +7,9 @@
  * DOM morph keeps them on the next render instead of re-rendering.
  */
 
-const KATEX_VERSION = '0.16';
-const MERMAID_VERSION = '11';
+// Exact versions: formulas and diagrams render the same until an SDK release updates them.
+const KATEX_VERSION = '0.16.47';
+const MERMAID_VERSION = '11.17.2';
 
 let katexPromise: Promise<any> | null = null;
 let mermaidPromise: Promise<any> | null = null;

@@ -320,7 +320,7 @@ describe('multiplayer', () => {
   });
 });
 
-describe('pause (RC4)', () => {
+describe('pause', () => {
   it('the host pauses and resumes every device; the SDK covers the game meanwhile', async () => {
     const { session, events } = newSession();
     const board = play(session, 'board');
@@ -354,7 +354,7 @@ describe('pause (RC4)', () => {
   });
 });
 
-describe('services and permissions (RC4)', () => {
+describe('services and permissions', () => {
   const withServices = (memizy: Record<string, unknown>) => {
     const m = { ...manifest, appSpecific: { memizy: { ...manifest.appSpecific.memizy, ...memizy } } };
     const html = `<!doctype html><html><head><script type="application/oqse-manifest+json">${JSON.stringify(m)}</script></head><body></body></html>`;
@@ -488,6 +488,47 @@ describe('protocol enforcement', () => {
     const anna = await bare(session, 'anna');
     const results = await Promise.allSettled(Array.from({ length: 80 }, () => anna.send({ to: 'all', data: 1 })));
     expect(results.filter((r) => r.status === 'rejected').length).toBe(20);
+  });
+
+  it('accepts hello once per instance and only the first end(result)', async () => {
+    const { session, events } = newSession();
+    const board = await bare(session, 'board');
+    await expect(board.hello({ ...handshake, protocol: '2.0' })).rejects.toThrow(/\[UNSUPPORTED_PROTOCOL\]/);
+    await board.hello(handshake);
+    await expect(board.hello(handshake)).rejects.toThrow(/\[INVALID_ARGUMENT\] hello may only be called once/);
+
+    // A recreated instance says hello again; a recreated authority's end does not count twice.
+    await board.end({ scores: { anna: 1 } });
+    const reloaded = await session.reload('board');
+    await expect(reloaded.hostApi.hello(handshake)).resolves.toMatchObject({ protocol: '1.0' });
+    await expect(reloaded.hostApi.end({ scores: { anna: 2 } })).resolves.toBeUndefined();
+    await reloaded.hostApi.end({ scores: { anna: 3 } });
+    expect(events.filter((e) => e.type === 'result')).toEqual([{ type: 'result', result: { scores: { anna: 1 } } }]);
+  });
+
+  it('rate-limits answers (per player for the authority) and assets, drops extra error reports', async () => {
+    const { session, events } = newSession();
+    const board = await bare(session, 'board');
+    const anna = await bare(session, 'anna');
+    const rejected = (results: PromiseSettledResult<unknown>[]) =>
+      results.filter((r) => r.status === 'rejected').map((r) => String((r as PromiseRejectedResult).reason.message));
+
+    const own = rejected(await Promise.allSettled(Array.from({ length: 30 }, () => anna.recordAnswer({ itemId: id(1), isCorrect: true }))));
+    expect(own).toHaveLength(10);
+    expect(own.every((m) => m.startsWith('[RATE_LIMITED]'))).toBe(true);
+    // Two players: the authority may record twice as many answers.
+    const forAll = rejected(
+      await Promise.allSettled(Array.from({ length: 50 }, (_, i) => board.recordAnswer({ playerId: i % 2 ? 'anna' : 'ben', itemId: id(1), isCorrect: true }))),
+    );
+    expect(forAll).toHaveLength(10);
+
+    const assets = rejected(await Promise.allSettled(Array.from({ length: 25 }, () => anna.getAsset('nope'))));
+    expect(assets.filter((m) => m.startsWith('[ASSET_NOT_FOUND]'))).toHaveLength(20);
+    expect(assets.filter((m) => m.startsWith('[RATE_LIMITED]'))).toHaveLength(5);
+
+    const reports = await Promise.allSettled(Array.from({ length: 15 }, () => anna.reportError({ code: 'NOISY', message: 'again' })));
+    expect(reports.every((r) => r.status === 'fulfilled')).toBe(true);
+    expect(events.filter((e) => e.type === 'pluginError' && e.code === 'NOISY')).toHaveLength(10);
   });
 
   it('rejects messages to an unreachable authority', async () => {

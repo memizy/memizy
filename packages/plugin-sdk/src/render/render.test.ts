@@ -36,6 +36,31 @@ describe('rich text', () => {
     expect(html).toContain('<div class="mz-mermaid" data-mz-src="graph TD; A--&gt;B">');
   });
 
+  it('keeps set content from acting like the game: no data-*, ids or form controls, only safe styles', () => {
+    const html = renderRichText(
+      [
+        'Klikni <button data-act="end">Vyhrát</button> <span id="app" data-local="{}" data-mz-q="1">x</span>',
+        '<form data-act="answer"><input name="answer" value="y"><textarea>t</textarea></form>',
+        '<span style="color: red; position: fixed; background-image: url(https://evil.example/x.png); font-weight: bold">styled</span>',
+        '<span style="top: 0">plain</span> <style>body { display: none }</style>',
+        '',
+        '- [x] done',
+      ].join('\n'),
+      ctx(),
+    );
+    expect(html).not.toMatch(/data-act|data-local|data-mz-q|id=|<button|<form|<textarea|name=|position|url\(|top:|<style|display: none/);
+    expect(html).toContain('<span style="color: red; font-weight: bold">styled</span>');
+    expect(html).toContain('<span>plain</span>');
+    expect(html).toMatch(/<input[^>]*disabled[^>]*type="checkbox"|<input[^>]*type="checkbox"[^>]*disabled/); // a GFM task list keeps its checkbox
+    expect(html).toContain('Vyhrát'); // the text stays
+  });
+
+  it('renders media from object URLs (host assets) but not from other schemes', () => {
+    const media = (value: string) => ctx({ resolveMedia: () => ({ type: 'image', value, altText: 'a' }) });
+    expect(renderRichText('<asset:a />', media('blob:https://play.memizy.com/1'))).toContain('<img src="blob:https://play.memizy.com/1"');
+    expect(renderRichText('<asset:a />', media('data:image/png;base64,AAAA'))).toContain('mz-missing-asset');
+  });
+
   it('renders inline text without paragraphs', () => {
     expect(renderRichText('*a*', ctx(), { inline: true })).toBe('<em>a</em>');
   });

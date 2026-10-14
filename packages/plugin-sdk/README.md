@@ -35,6 +35,9 @@ Version 1.0 is a release candidate; the API follows the guide and stays backward
   * State patches carry their format (`f: 1`); a device that does not know the format asks for the full state.
   * Names starting with `$` (actions, timer keys) are reserved for the SDK; `defineGame` and `ctx.after` / `ctx.cancel` reject them.
   * Links open in a new tab; the SDK can be imported without a DOM (Node).
+  * The SDK keeps within the host's rates (SPEC 8.1): recorded answers and asset requests wait for their turn, `end` follows the answers recorded before it, extra error reports are dropped.
+  * `ui.text` removes `data-*` attributes, `id`s, form controls and styles other than colors and text formatting from the set's texts; `ui.question` shows pictures of host assets (object URLs).
+  * KaTeX `0.16.47` and Mermaid `11.17.2` are loaded in exact versions.
 * **Unreleased (after 1.0.0-rc.4):**
   * `ui.question(item, { counts })` – how many players chose each option, as a badge on the option (choice types).
   * Timed phases re-render on their own (the `ui.timeLeft()` countdown runs without `tickMs`; `tickMs` stays for own animations).

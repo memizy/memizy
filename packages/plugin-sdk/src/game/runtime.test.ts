@@ -530,7 +530,7 @@ describe('playerView', () => {
   });
 });
 
-describe('pause (RC4)', () => {
+describe('pause', () => {
   it('stops game time and timers, ignores actions, and continues afterwards', async () => {
     const def: GameDefinition<{ fired: number; acted: number; deadline: number }> = {
       initialState: (ctx) => {

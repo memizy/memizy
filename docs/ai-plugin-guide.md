@@ -228,6 +228,7 @@ Exceeding a limit makes the action fail (and the Plugin Lab tests report it):
 * **Actions:** at most **30 per second** per device. Never call `ui.act` in a loop, in `requestAnimationFrame` or on every mouse move; send the decision, not every intermediate step.
 * **Timers:** use phases or `ctx.after` with a deadline in the state; never an action every second to count down – `render` shows the countdown with `ui.timeLeft()` (timed phases re-render by themselves; `tickMs` for your own deadlines).
 * **Saved data** (section 5.3): at most **256 KB** per scope.
+* **Recorded answers:** the SDK sends `ctx.recordAnswer` at most about 10 per second per player; more wait for their turn (nothing is lost). Record each answer when it is given, not hundreds at once at the end.
 
 ### 5.2 Teacher-Only Controls
 
@@ -489,7 +490,7 @@ Lists the player chooses from or arranges are **choices** `{ id, text }`: `optio
 | `x-…` (custom) | defined by the set's author | the answer data is in `solution` (hidden until the reveal) |
 
 * `checkAnswer(item, answer)` returns `true`/`false` and applies the rules of the set. Call it in **actions** (on a player's device the item has no answer and `checkAnswer` throws). Typed answers ignore letter case, extra spaces and – unless the set says otherwise – diacritics, and may allow small typos; numbers are right within `correctAnswer ± tolerance`; timeline dates may be BC (negative years).
-* Texts of the set may contain Markdown, `<sub>` / `<sup>`, formulas and images: show them with `ui.text` (or `toPlainText` on a canvas), never as raw HTML.
+* Texts of the set may contain Markdown, `<sub>` / `<sup>`, formulas and images: show them with `ui.text` (or `toPlainText` on a canvas), never as raw HTML. `ui.text` removes from the set's texts what could act like your game – `data-*` attributes (`data-act`…), `id`s, buttons, forms and inputs, and styles except colors and text formatting – so put your own controls around the text, not inside it.
 * Memizy already shuffles options and lists once per game (the same order on every device). Show them in the order you get them.
 * The answer fields (`correctId`, `correctIds`, `correctOrder`, `pairs`, `correctAnswer(s)`, `explanation`, a choice's `explanation`, the `back` of a flashcard…) exist on players' devices only after `ctx.reveal`. Show them only after the reveal and only when `!item.answerHidden` (`ui.question` with `reveal: true` does it for you).
 

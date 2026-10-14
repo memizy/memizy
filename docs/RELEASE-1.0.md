@@ -58,7 +58,7 @@ least 1–2 days before the workshop (the guide imports `@memizy/plugin-sdk@1` f
 
 ## 5. Documentation & Presentation
 
-- [ ] SPEC status: "1.0" instead of "Release Candidate 4"; the changelog line "1.0 (unreleased)"
+- [ ] SPEC: the status says "1.0" and the "RC4" labels are gone (contract-1.0-final); the changelog line "1.0 (unreleased)"
       gets the date, and covers everything since RC4 (also `phaseSeq` and `actedAt` in the
       SDK messages and the rule about SDK versions on one game's devices).
 - [ ] OQSE: date of "Version 1.0" in `oqse.md`; the sub-specifications (`oqse-manifest.md`,
@@ -99,6 +99,20 @@ least 1–2 days before the workshop (the guide imports `@memizy/plugin-sdk@1` f
       `apps/play/src/lib/aiSets.ts` into `@memizy/oqse` as a documented, tested function
       (`compileShorthand`), used by Play, the platform and scripts; IDs kept across edits
       (OQSE "Canonical and Authoring Formats").
+- [ ] **Rich content in the SDK (additive, from the final contract audit):**
+      - `latexPackages`: load KaTeX's `mhchem` extension when a set declares it (today `\ce{…}`
+        renders as a KaTeX error).
+      - YouTube / Vimeo videos (OQSE allows them): an embed player in `ui.text` and a CSP
+        `frame-src` for the privacy-friendly embed origins (today a `<video>` that cannot play
+        and `frame-src 'none'`).
+      - `http:` media: OQSE accepts them with a warning, the plugin CSP allows only `https:`
+        images and media; decide between allowing them and upgrading the URLs to `https:`.
+      - LaTeX inside inline code (`` `$x$` ``) is rendered as a formula; protect code spans
+        before replacing math.
+- [ ] **`GameHandle` for code outside `render` (additive):** `game.setLocal(patch)`, `game.ui` /
+      `game.state` (read-only), so that document listeners, timers and 3D scenes need not keep
+      `ui` in a global (Civhrad `G.ui`, Pirates `view.ui`). Perhaps `data-act-on="pointerdown"`
+      for actions where the tap time matters (Pirates fires on `pointerdown` itself).
 - [ ] **AI tooling & micro-prompts (discussion):** Consider dedicated AI tooling (e.g. `@memizy/ai` or
       platform/CLI helpers) that export modular micro-prompts and partial JSON Schemas on demand
       (e.g. generating specific question types like `match-pairs` or `sort-items` without prompt bloating).

@@ -25,6 +25,7 @@ import {
   RateLimiter,
   parseHostCall,
   HOST_API_ARGS,
+  RELAY_LIMITS,
 } from './internal';
 
 const root = resolve(import.meta.dirname, '../../..');
@@ -121,6 +122,23 @@ describe('limits', () => {
     allowed = 0;
     for (let i = 0; i < 100; i++) if (limiter.tryTake()) allowed++;
     expect(allowed).toBe(30);
+  });
+
+  it('the values of SPEC 8.1, and a relay frame holds the largest guaranteed asset', () => {
+    expect(LIMITS).toMatchObject({
+      answersPerSecond: 10,
+      answerBurst: 20,
+      assetsPerSecond: 10,
+      assetBurst: 20,
+      assetBytes: 2 * 1024 * 1024,
+      errorReportsPerSecond: 5,
+      errorReportBurst: 10,
+      serviceBytes: 64 * 1024,
+      serviceResultBytes: 256 * 1024,
+    });
+    // getAsset over the relay: base64 of the bytes inside a JSON envelope.
+    const base64 = Math.ceil(LIMITS.assetBytes / 3) * 4;
+    expect(base64 + 1024).toBeLessThan(RELAY_LIMITS.frameBytes);
   });
 });
 

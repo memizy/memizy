@@ -78,6 +78,30 @@ function mount(router: LocalRouter, address: string, def: Omit<GameDefinition<an
 }
 
 describe('defineGame end to end', () => {
+  it('ui.question shows the picture of a host asset (loaded as an object URL)', async () => {
+    const original = URL.createObjectURL;
+    URL.createObjectURL = () => 'blob:https://play.example/asset-1'; // jsdom has no object URLs
+    try {
+      const diagram = {
+        id: 'd1',
+        type: 'diagram-label',
+        question: 'Q',
+        targetAsset: 'heart',
+        assets: { heart: { type: 'image', value: 'assets/heart.png', altText: 'Heart' } },
+        labels: [{ id: 'a', text: 'A' }],
+        zones: [{ id: 'z1', type: 'rect', x: 0, y: 0, width: 10, height: 10, correctLabelId: 'a' }],
+      } as unknown as OQSEAnyItem;
+      const router = new LocalRouter({ items: [diagram], mode: 'solo' });
+      const root = mount(router, 'me', { initialState: () => ({}), actions: {}, render: (_state, ui) => ui.question(ui.items[0]) });
+      await Promise.all(handles.map((h) => h.ready));
+      await router.start();
+      await wait(50);
+      expect(root.querySelector('.mz-q-picture img')?.getAttribute('src')).toBe('blob:https://play.example/asset-1');
+    } finally {
+      URL.createObjectURL = original;
+    }
+  });
+
   it('ui.setLocal re-renders with device-only state; ui.html escapes', async () => {
     const router = new LocalRouter({ items });
     const root = mount(router, 'anna', {

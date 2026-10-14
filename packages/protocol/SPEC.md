@@ -1,8 +1,6 @@
 # Memizy Plugin Protocol v1
 
-> Status: **Release Candidate 4** (2026-10-07) · Final `1.0` after the acceptance test with AI-generated plugins (planned 2026-10-19/20).
->
-> RC rules: the design does not change unless the implementation or the acceptance test proves that something does not work. Every change until `1.0` is recorded in the changelog at the end.
+> Status: **1.0** (protocol version `1.0`, packages `1.0.0`). The contract is frozen: within MAJOR `1` it changes only additively (section 9). Every change is recorded in the changelog at the end.
 
 This document defines the contract between a **Memizy plugin** (an HTML page running in a sandboxed iframe) and a **Memizy host** (the Memizy app, the Plugin Lab, or any other application embedding plugins through `@memizy/host-sdk`).
 
@@ -80,9 +78,9 @@ The OQSEM part describes **content** (item types, assets, features) and is used 
 | `settings` | SettingDefinition[] | No | Settings of the game (see below). Default `[]`. They define types, defaults and limits; the host validates every value against them. Used in both modes (section 3.3). |
 | `settingsScreen` | `{ size }` | No | Multiplayer lobby only. Present = the plugin renders its own settings screen (view `settings`) on the host's device; absent = the host generates a form from `settings`. `size: "compact"` – a panel next to the player list (the user may expand it to full screen); `size: "large"` – opened as a full-screen dialog from a "Game settings" button. |
 | `display.orientation` | `"any"` \| `"portrait"` \| `"landscape"` | No | Preferred orientation of player screens. Default `"any"`. |
-| `permissions.network` | string[] | No | RC4. Origins the plugin talks to with `fetch` / WebSocket, as `"https://host[:port]"` or `"wss://host[:port]"` (no path; max 20). Shown to users and enforced (section 8.4). |
-| `permissions.devices` | (`"camera"` \| `"microphone"` \| `"geolocation"` \| `"serial"` \| `"bluetooth"`)[] | No | RC4. Devices the plugin uses; the host grants only these (section 8.4). |
-| `services` | string[] | No | RC4. Memizy services the plugin calls (section 5.3), e.g. `"chess.puzzles"`: lowercase segments joined by dots. A host that does not offer one can still run the plugin; the call then fails with `SERVICE_UNAVAILABLE`. |
+| `permissions.network` | string[] | No | Origins the plugin talks to with `fetch` / WebSocket, as `"https://host[:port]"` or `"wss://host[:port]"` (no path; max 20). Shown to users and enforced (section 8.4). |
+| `permissions.devices` | (`"camera"` \| `"microphone"` \| `"geolocation"` \| `"serial"` \| `"bluetooth"`)[] | No | Devices the plugin uses; the host grants only these (section 8.4). |
+| `services` | string[] | No | Memizy services the plugin calls (section 5.3), e.g. `"chess.puzzles"`: lowercase segments joined by dots. A host that does not offer one can still run the plugin; the call then fails with `SERVICE_UNAVAILABLE`. |
 
 **SettingDefinition:** `{ id, type, label, default, description?, modes?, ...typeSpecific }`
 
@@ -114,7 +112,7 @@ Reserved for later minor versions: `teams`, editing permissions.
 | **Instance** | One running plugin iframe on one device. 30 phones + 1 projector = 31 instances. |
 | **View** | What one instance shows: `solo`, `board` (the presenter's shared screen), `controller` (one player's own screen – a phone, tablet or computer) or `settings` (the plugin's settings screen on the host's device in the multiplayer lobby). Views are derived from the manifest (section 3.2), not declared separately. |
 | **Player** | A person who plays and can score. The presenter is not a player. |
-| **Address** | The "envelope address" of an instance, used to route messages (section 6): the player ID for a player's instance (stable across reconnects), `"board"` for the presenter's board. The address `"server"` is **reserved** for a future server-side authority. Plugin authors never see addresses; the SDK exposes only player IDs. |
+| **Address** | The "envelope address" of an instance, used to route messages (section 6): the player ID for a player's instance (stable across reconnects), `"board"` for the presenter's board, `"settings"` (`SETTINGS_ADDRESS`) for the plugin's settings screen in the lobby. The address `"server"` is **reserved** for a future server-side authority. Plugin authors never see addresses; the SDK exposes only player IDs. |
 | **Authority** | The one place that owns the game state and applies actions: the board (`presenter`), the host's controller (host as `player`) or the only instance (`solo`). Other instances send actions to it and receive the new state. In a future version the authority may be the server (address `"server"`); this is why game logic must be deterministic. |
 | **State** | The whole state of the game: one JSON value owned by the authority; its content is defined by the plugin. |
 | **Action** | An intent of a player or a timer (e.g., "answered B"). Only actions change the state. |
@@ -212,7 +210,7 @@ interface InitPayload {
   snapshot: unknown | null;             // last saved snapshot, only for the authority (resume)
 }
 
-type Address = string;                  // player ID, "board"; "server" is reserved
+type Address = string;                  // player ID, "board", "settings"; "server" is reserved
 
 interface SessionClock {
   offsetMs: number;                     // Date.now() + offsetMs = session time
@@ -258,7 +256,7 @@ All methods return Promises and reject with a `ProtocolError` (section 8.2). Met
 
 | Method | Description |
 | :--- | :--- |
-| `hello(handshake): InitPayload` | Handshake (section 4). Called exactly once. |
+| `hello(handshake): InitPayload` | Handshake (section 4). Called exactly once per instance; a second call rejects with `INVALID_ARGUMENT`. |
 | `ready(): void` | The plugin is rendered and interactive. |
 | `send(message: OutgoingMessage): void` | Sends a game message to other instances (section 6). |
 | `saveSnapshot(snapshot: unknown): void` | *authority.* Stores the latest resumable game state (overwrites the previous one). Returned as `InitPayload.snapshot` when the authority instance is recreated (reload, crash, reconnect). After `end(result)` the host discards the snapshot: a finished game is not resumed. |
@@ -266,9 +264,9 @@ All methods return Promises and reject with a `ProtocolError` (section 8.2). Met
 | `saveData(scope: 'plugin' \| 'set', value: unknown): void` | *views `solo`, `controller`.* Replaces the plugin data of `self` in the given scope (section 5.2). |
 | `updateSettings(update: { values: Record<string, unknown>; valid: boolean; message?: string }): void` | *view `settings`.* Replaces the settings values. The host validates them against the manifest schema; `valid: false` disables Start and shows `message`. |
 | `getAsset(key: string, itemId?: string): Blob` | Raw data of an asset (resolution: item assets, then set assets). |
-| `end(result: SessionResult): void` | *authority.* The game is over. The host shows/stores the result; instances stay open until the host closes them. |
-| `reportError(error: { code: string; message: string; context?: object }): void` | Non-fatal error for logs and the Lab test report. |
-| `service(name: string, payload: unknown): unknown` | RC4. Calls a Memizy service (section 5.3). Rejects with `SERVICE_UNAVAILABLE` unless the plugin declares it and `InitPayload.services` lists it. |
+| `end(result: SessionResult): void` | *authority.* The game is over. The host shows/stores the result; instances stay open until the host closes them. Only the first call counts: later calls (also from a recreated authority) resolve and are ignored. |
+| `reportError(error: { code: string; message: string; context?: object }): void` | Non-fatal error for logs and the Lab test report. Reports beyond the rate in section 8.1 are dropped without an error. |
+| `service(name: string, payload: unknown): unknown` | Calls a Memizy service (section 5.3). Rejects with `SERVICE_UNAVAILABLE` unless the plugin declares it and `InitPayload.services` lists it. |
 
 ```ts
 interface AnswerRecord {
@@ -279,8 +277,8 @@ interface AnswerRecord {
   timeSpentMs?: number;
   hintsUsed?: number;
   isSkipped?: boolean;
-  answer?: unknown;           // RC4: what the player answered (checkAnswer format, choice IDs; max 4 KB)
-  item?: { id: string; type: string; [key: string]: unknown };  // RC4: required for an item that is not in the set
+  answer?: unknown;           // what the player answered (checkAnswer format, choice IDs; max 4 KB)
+  item?: { id: string; type: string; [key: string]: unknown };  // required for an item that is not in the set
 }
 
 interface SessionResult {
@@ -293,7 +291,7 @@ interface SessionResult {
 
 Plugins write it with **`recordAnswer`**: the plugin reports what happened ("player X answered item Y correctly"); the host decides the new bucket and review date with its own algorithm. A self-rating (a flashcard) is an answer too (OQSE Answer Formats). Writing progress records directly is reserved (`saveProgress`, section 10).
 
-RC4 additions to `recordAnswer`:
+What `recordAnswer` carries besides the result:
 
 * `answer` – what the player answered, in the format of the item type defined in [OQSE Answer Formats](../oqse/oqse.md#answer-formats) (the format `checkAnswer` takes: choice IDs, text, numbers; a flashcard's self-rating 1–4). Teachers see which wrong answers were chosen; because answers use IDs, the statistics survive edits of the set.
 * **Generated items** (from a service or a generator in the plugin) are not in the set. The plugin attaches the item (`item`, at least `id` and `type`; answer fields may be left out; max 32 KB). The host counts such answers in statistics (per `skills` and `tags`) but not in the repetition schedule, because the item never comes back.
@@ -364,7 +362,7 @@ If the authority instance loses its connection or is being recreated (e.g., the 
 | `playersChanged(players: Player[]): void` | The roster changed (join, leave, rename, connection status). Always the full list. |
 | `authorityChanged(status: { connected: boolean }): void` | The authority became unreachable / reachable again (section 6.1). Not called on the authority itself. |
 | `configChanged(config: { locale, theme }): void` | Locale or theme changed. |
-| `clockChanged(clock: SessionClock): void` | Clock synchronization updated, or (RC4) the host paused / resumed the game. While `pausedAt` is set the SDK stops game time and timers, ignores actions and covers the game with a "paused" curtain. |
+| `clockChanged(clock: SessionClock): void` | Clock synchronization updated, or the host paused / resumed the game. While `pausedAt` is set the SDK stops game time and timers, ignores actions and covers the game with a "paused" curtain. |
 | `sessionEnded(reason: 'finished' \| 'host-left' \| 'kicked' \| 'closed' \| 'error'): void` | The host is closing this instance. |
 
 ---
@@ -378,13 +376,17 @@ The values are **guaranteed minimums**: a host MUST accept at least this much an
 | Limit | Guaranteed minimum | When exceeded |
 | :--- | :--- | :--- |
 | `send` message size (serialized JSON) | 64 KB | `MESSAGE_TOO_LARGE` |
-| `send` rate per instance | 30 messages/s (burst 60); the authority: 30 messages/s **per other instance** (RC4: it sends each device its own view) | `RATE_LIMITED` |
+| `send` rate per instance | 30 messages/s (burst 60); the authority: 30 messages/s **per other instance** (it sends each device its own view) | `RATE_LIMITED` |
 | `saveSnapshot` size | 1 MB | `SNAPSHOT_TOO_LARGE` |
 | `saveSnapshot` rate | 2 per second (the host keeps the latest) | coalesced, no error |
 | `saveData` size per scope | 256 KB | `DATA_TOO_LARGE` |
 | `saveData` rate | 1 per second per scope (the host keeps the latest) | coalesced, no error |
 | `hello` deadline | 10 s after iframe load | the host shows an error |
 | `recordAnswer` answer / generated item | 4 KB / 32 KB | `DATA_TOO_LARGE` |
+| `recordAnswer` rate per instance | 10 per second (burst 20); the authority: 10 per second **per player** (it records for everyone) | `RATE_LIMITED` |
+| `getAsset` size | 2 MB per asset | `DATA_TOO_LARGE` |
+| `getAsset` rate per instance | 10 per second (burst 20) | `RATE_LIMITED` |
+| `reportError` rate per instance | 5 per second (burst 10) | dropped, no error |
 | `service` request / result | 64 KB / 256 KB | `MESSAGE_TOO_LARGE` |
 | `service` rate per instance | 30 calls/min | `RATE_LIMITED` |
 
@@ -411,8 +413,8 @@ interface ProtocolError {
 | `ASSET_NOT_FOUND` | `getAsset` with an unknown key. |
 | `SESSION_ENDED` | A call after `sessionEnded`. |
 | `INTERNAL_ERROR` | A host-side failure; the plugin may retry. |
-| `SERVICE_UNAVAILABLE` | RC4. The service is not declared by the plugin or not offered by this host. |
-| `UNKNOWN_METHOD` | 1.0. The other side does not have the method (an older or newer version). Methods added in 1.x are guarded by a feature (9), so a plugin sees this only by mistake. |
+| `SERVICE_UNAVAILABLE` | The service is not declared by the plugin or not offered by this host. |
+| `UNKNOWN_METHOD` | The other side does not have the method (an older or newer version). Methods added in 1.x are guarded by a feature (9), so a plugin sees this only by mistake. |
 
 New codes may be added in minor versions; plugins MUST treat unknown codes like `INTERNAL_ERROR`.
 
@@ -426,8 +428,8 @@ New codes may be added in minor versions; plugins MUST treat unknown codes like 
 * The host validates every incoming call against the schemas in `@memizy/protocol` and the limits above.
 * The host never passes credentials, user e-mail or other private data. `Player.name` is the display name chosen for the session.
 * Answers are known only to the authority (section 4.4). Everything else a plugin puts in the game state or in messages is visible to every instance: do not put secrets there.
-* **Network (RC4).** The host puts a Content Security Policy into the plugin document (`pluginContentPolicy` in `@memizy/protocol`): scripts only inline, from the library CDNs (`cdn.jsdelivr.net`, `unpkg.com`, `cdnjs.cloudflare.com`, `esm.sh`) and from the host; `fetch`, WebSocket and similar only to these and to the origins in `permissions.network`. Images and media may come from any `https:` URL (sets link them), so the policy blocks data channels but not every possible leak; hosts show the declared origins to users ("this game talks to lichess.org").
-* **Devices (RC4).** The iframe `allow` attribute grants only `permissions.devices`; the browser still asks the user.
+* **Network.** The host puts a Content Security Policy into the plugin document (`pluginContentPolicy` in `@memizy/protocol`): scripts only inline, from the library CDNs (`cdn.jsdelivr.net`, `unpkg.com`, `cdnjs.cloudflare.com`, `esm.sh`) and from the host; `fetch`, WebSocket and similar only to these and to the origins in `permissions.network`. Images and media may come from any `https:` URL (sets link them), so the policy blocks data channels but not every possible leak; hosts show the declared origins to users ("this game talks to lichess.org").
+* **Devices.** The iframe `allow` attribute grants only `permissions.devices`; the browser still asks the user.
 
 ---
 
@@ -488,7 +490,7 @@ What was decided and why, and what is **reserved** (name and intent fixed, not i
 
 ## Changelog
 
-* **1.0 (unreleased):** the term *host* (3.1): the application that embeds the plugin on a device, also on a player's device; the host ends a player's instance with `sessionEnded` (also `kicked`, `host-left`) before removing it. Removed before 1.0 and reserved (10): `exit`, `resize`, `setChanged`, `saveProgress` (a self-rating is an answer). `InitPayload.services` and the pause fields of `SessionClock` are always present; `sessionEnded` reason `host-left` (was `host_left`); `SETTINGS_ADDRESS` is defined here; the relay type of a room player is `RoomPlayer`. State patches carry their format (`f`); reserved names `$…`, `data-mz-…`, `mz-…` and opt-in state fields; `@memizy/protocol/internal`; Zod 4 (9). Renamed before 1.0: `ui.renderNote` → `ui.note` (SDK), the type `Theme` → `HostConfig`. Player names and personal data: plugins MUST NOT ask for real names or other personal data (3.3); `setChanged` is optional for hosts (7); `replay` reserved (10). The sandbox allows popups that escape it, links open in a new tab (8.4). Error code `UNKNOWN_METHOD` (8.2). Continuing a saved game is described (3.3; host feature, no protocol change). After `end(result)` the host discards the snapshot (5). The transport (Penpal 8), the SDK message format and the protocol declaration of plugins using 1.x additions are fixed rules (4, 4.3, 9); plugins load the SDK from `…/plugin-sdk@1`. `appSpecific.memizy.set` (`required` / `optional` / `none`): games without questions; OQSEM `capabilities` and `actions` may be omitted. Public items (4.4) also lose `sources[].quote`; custom `x-` items lose `solution`, `explanation` and `incorrectFeedback` and get `answerHidden: true` (they were passed unchanged); `hints` stay public. `recordAnswer.answer` follows OQSE Answer Formats (a flashcard answer is a self-rating 1–4; `ui.question` offers four ratings). OQSE 1.0 sets and OQSEM 1.0 manifests (`"version": "1.0"`; other MAJOR versions are not read as 1.x). A host may support several protocol MAJOR versions at once (4.3); supporting older ones is a SHOULD instead of a MUST.
+* **1.0 (unreleased):** the term *host* (3.1): the application that embeds the plugin on a device, also on a player's device; the host ends a player's instance with `sessionEnded` (also `kicked`, `host-left`) before removing it. Removed before 1.0 and reserved (10): `exit`, `resize`, `setChanged`, `saveProgress` (a self-rating is an answer). `InitPayload.services` and the pause fields of `SessionClock` are always present; `sessionEnded` reason `host-left` (was `host_left`); `SETTINGS_ADDRESS` is defined here; the relay type of a room player is `RoomPlayer`. State patches carry their format (`f`); reserved names `$…`, `data-mz-…`, `mz-…` and opt-in state fields; `@memizy/protocol/internal`; Zod 4 (9). Renamed before 1.0: `ui.renderNote` → `ui.note` (SDK), the type `Theme` → `HostConfig`. Player names and personal data: plugins MUST NOT ask for real names or other personal data (3.3); `setChanged` is optional for hosts (7); `replay` reserved (10). The sandbox allows popups that escape it, links open in a new tab (8.4). Error code `UNKNOWN_METHOD` (8.2). Continuing a saved game is described (3.3; host feature, no protocol change). After `end(result)` the host discards the snapshot (5). The transport (Penpal 8), the SDK message format and the protocol declaration of plugins using 1.x additions are fixed rules (4, 4.3, 9); plugins load the SDK from `…/plugin-sdk@1`. `appSpecific.memizy.set` (`required` / `optional` / `none`): games without questions; OQSEM `capabilities` and `actions` may be omitted. Public items (4.4) also lose `sources[].quote`; custom `x-` items lose `solution`, `explanation` and `incorrectFeedback` and get `answerHidden: true` (they were passed unchanged); `hints` stay public. `recordAnswer.answer` follows OQSE Answer Formats (a flashcard answer is a self-rating 1–4; `ui.question` offers four ratings). OQSE 1.0 sets and OQSEM 1.0 manifests (`"version": "1.0"`; other MAJOR versions are not read as 1.x). A host may support several protocol MAJOR versions at once (4.3); supporting older ones is a SHOULD instead of a MUST. Final rules: a second `hello` of an instance rejects with `INVALID_ARGUMENT`, only the first `end(result)` counts (5); guaranteed rates of `recordAnswer` (per player for the authority), `getAsset` and `reportError` (dropped beyond it) and an asset size of 2 MB (8.1); the address `"settings"` (3.1).
 * **RC1 (2026-10-04):** first release candidate.
 * **RC2 (2026-10-06):** `SettingDefinition.modes`; the host may show solo settings before the start (section 3.3). Additive: RC1 plugins and hosts keep working.
 * **RC4 (2026-10-07):** OQSE 0.3 sets (choices with IDs; the RC3 `correctOrder` / `correctMatches` display fields are gone because answers refer to IDs); `recordAnswer.answer` and generated items (5.1); services (5.3, `service`, `InitPayload.services`, `SERVICE_UNAVAILABLE`); pauses (`SessionClock`); `permissions` with a Content Security Policy and device grants (8.4); decisions and reservations (section 10). Additive for the protocol except the OQSE version: plugins must read choices (`option.text`, `option.id`).

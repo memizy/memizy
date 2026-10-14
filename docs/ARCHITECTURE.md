@@ -190,9 +190,12 @@ updated. Everything else in SPEC 9 is frozen.
 
 A `send` message (and so the whole state or a view) at most 64 KB at 30 messages per second
 (burst 60); snapshot 1 MB (2 per second stored); plugin data 256 KB per scope; a recorded
-answer 4 KB, a generated item 32 KB; services 64 KB per request, 30 per minute; `hello`
-within 10 s. The relay: frames up to 2 MB, bundles up to 8 MB, 100 players per room, rooms
-close after 6 hours or 10 minutes without the host.
+answer 4 KB, a generated item 32 KB, 10 answers per second (the authority: per player);
+services 64 KB per request, 256 KB per result, 30 per minute; assets of 2 MB at 10 per second;
+error reports 5 per second (more are dropped); `hello` within 10 s, once per instance. The
+SDK paces answers and assets itself. The relay: frames up to 3 MB (a 2 MB asset as base64),
+bundles up to 8 MB, 100 players per room, rooms close after 6 hours or 10 minutes without
+the host.
 
 ---
 
@@ -201,6 +204,10 @@ close after 6 hours or 10 minutes without the host.
 - **Isolation**: the iframe has an opaque origin (no `allow-same-origin`), never
   `allow-top-navigation`; popups may escape the sandbox, so links open in a new tab. A CSP
   limits network access to the declared origins; devices need a declaration.
+- **Set content** is Markdown sanitized in the SDK (DOMPurify): no scripts or event
+  handlers, and nothing that could act like the game it is shown in (`data-*`, `id`, form
+  controls; styles only for colors and text formatting). KaTeX and Mermaid load on demand
+  from the CDN in pinned versions.
 - **The host validates every call** (schemas, sizes, rates, views, authority) and reports
   rejections: only the authority may record answers for other players or save snapshots,
   and plugin data is always the instance's own player's.

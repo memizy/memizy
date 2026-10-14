@@ -1203,23 +1203,24 @@ Defines clickable zone on image or named mesh in a 3D model. For `pin-on-image`,
 
 **For `type: "rect"` (rectangle):**
 
-  * `x` (number): Percent X from left edge.
-  * `y` (number): Percent Y from top edge.
-  * `width` (number): Width in percentages.
-  * `height` (number): Height in percentages.
+  * `x` (number, required): Percent X from left edge.
+  * `y` (number, required): Percent Y from top edge.
+  * `width` (number, required): Width in percentages.
+  * `height` (number, required): Height in percentages.
 
 **For `type: "circle"` (circle):**
 
-  * `x` (number): Center X in percentages.
-  * `y` (number): Center Y in percentages.
-  * `radius` (number): Radius in percentages.
+  * `x` (number, required): Center X in percentages.
+  * `y` (number, required): Center Y in percentages.
+  * `radius` (number, required): Radius in percentages.
 
 **For `type: "polygon"` (polygon):**
 
-  * `points` (object[]): Array of points defining shape. Each point is `{ "x": number, "y": number }`.
+  * `points` (object[], required, at least 3): Array of points defining shape. Each point is `{ "x": number, "y": number }` (both required).
 
 **For `type: "mesh"` (3D model part):**
-  * `targetName` (string): Name (or partial name) of the object/mesh in the 3D scene (glTF node name).
+
+  * `targetName` (string, required): **Plain Text.** Name (or partial name) of the object/mesh in the 3D scene (glTF node name).
 
 ### `CategorizeEntry` (for `categorize`)
 
@@ -2222,6 +2223,7 @@ OQSE is an open standard. Suggestions for improvements:
 
 ### Version 1.0 (October 2026)
 The first stable version. From now on, 1.x versions only add (see [Versioning and Compatibility](#versioning-and-compatibility)).
+* The shape fields of a `HotspotObject` (`x`, `y`, `width`, `height`, `radius`, `points`, `targetName`) are marked required, as validators always treated them.
 * Before 1.0, two item types were aligned with the others: `math-input` has `correctAnswers` (a list, like `short-answer`) instead of `correctAnswer` + `alternativeAnswers`, and `match-complex` has `prompts` / `matches` (like `match-pairs`) instead of `leftItems` / `rightItems`. `math-input` has no `tolerance` (its answers are compared as LaTeX; numbers are `numeric-input`).
 * [Canonical and Authoring Formats](#canonical-and-authoring-formats): the JSON file is the canonical form that is stored and exchanged; authoring formats (OQSE Markdown for notes, tool-specific shorthands) are converted to it and keep item IDs across edits.
 * Version rules for sets, manifests and progress files: applications read the MAJOR versions they support and never read another MAJOR version (including the pre-release 0.x drafts) silently as a supported one.

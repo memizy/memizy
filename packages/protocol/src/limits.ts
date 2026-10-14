@@ -28,10 +28,26 @@ export const LIMITS = {
   answerBytes: 4 * 1024,
   /** Max serialized size of a generated item attached to `recordAnswer`. */
   generatedItemBytes: 32 * 1024,
-  /** Max serialized size of a service request (its result may be up to `messageBytes * 4`). */
+  /** `recordAnswer` calls per second and instance (sustained); the authority: per player. */
+  answersPerSecond: 10,
+  /** Burst size of the `recordAnswer` rate limiter. */
+  answerBurst: 20,
+  /** Max serialized size of a service request. */
   serviceBytes: 64 * 1024,
+  /** Max serialized size of a service result. */
+  serviceResultBytes: 256 * 1024,
   /** Service calls per minute and instance (sustained). */
   servicesPerMinute: 30,
+  /** `getAsset` calls per second and instance (sustained). */
+  assetsPerSecond: 10,
+  /** Burst size of the `getAsset` rate limiter. */
+  assetBurst: 20,
+  /** Size of one asset every host can deliver through `getAsset`. */
+  assetBytes: 2 * 1024 * 1024,
+  /** `reportError` calls per second and instance the host keeps (more are dropped). */
+  errorReportsPerSecond: 5,
+  /** Burst size of the `reportError` limiter. */
+  errorReportBurst: 10,
 } as const;
 
 export type Limits = { [K in keyof typeof LIMITS]: number };

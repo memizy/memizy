@@ -28,6 +28,7 @@ import { GameRuntime } from './runtime';
 import { SafeHtml, html as safeHtml, raw as rawHtml } from '../render/html';
 import { applyQuestionEvent, renderQuestion, type QuestionEvent, type QuestionLocal } from '../render/question';
 import { autoConnector, type Connector, type HostConnection } from '../connection/connect';
+import { pacedHost } from '../connection/pacedHost';
 import { standaloneConnector } from '../standalone/standaloneHost';
 import { morph } from '../render/morph';
 import { bindEvents } from '../render/events';
@@ -35,7 +36,7 @@ import { injectStyles } from '../render/styles';
 import { preventZoom } from '../render/noZoom';
 import { guardLinks } from '../render/links';
 import { enhance } from '../text/enhance';
-import { escapeHtml, renderNoteHtml, renderRichText, type RichTextContext } from '../text/richText';
+import { escapeHtml, isMediaUrl, renderNoteHtml, renderRichText, type RichTextContext } from '../text/richText';
 import type { GameDefinition, GameUI, RenderResult, SavedData } from '../types';
 
 declare const __SDK_VERSION__: string;
@@ -100,8 +101,9 @@ export function startGame<S>(definition: GameDefinition<S>, options: StartOption
     };
     const connector =
       options.connector ?? autoConnector(standaloneConnector({ runtime: manifest.runtime, pluginId: manifest.id, types: manifest.types }));
-    const connection = await connector(pluginApi, handshake);
+    const connected = await connector(pluginApi, handshake);
     if (destroyed) return;
+    const connection = { ...connected, host: pacedHost(connected.host, connected.init) };
 
     applyConfig(doc, connection.init.config);
     await resolveAssets(connection.init, connection.host);
@@ -236,7 +238,7 @@ abstract class BaseController implements Controller {
         locale: this.init.config.locale,
         assetUrl: (key) => {
           const media = findMedia(key, item, this.init) as { value?: unknown } | null | undefined;
-          return typeof media?.value === 'string' && /^https?:\/\//.test(media.value) ? media.value : null;
+          return typeof media?.value === 'string' && isMediaUrl(media.value) ? media.value : null;
         },
       }),
     );

@@ -144,12 +144,12 @@ export interface GameUI {
    */
   readonly now: number;
   /**
-   * Whether the host has paused the game (RC4). The SDK covers the game with a "paused"
+   * Whether the host has paused the game. The SDK covers the game with a "paused"
    * curtain, stops `ui.now` / timers and ignores actions; show it in the game if you like.
    */
   readonly paused: boolean;
   /**
-   * RC4: calls a Memizy service the plugin declares in its manifest `services` and the
+   * Calls a Memizy service the plugin declares in its manifest `services` and the
    * host offers (`ui.services`), e.g. `await ui.service('chess.puzzles', { level: 3 })`.
    * Rejects with SERVICE_UNAVAILABLE otherwise. Call it from event handlers or
    * `afterRender`, then put the result into the game with an action.

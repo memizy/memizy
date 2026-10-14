@@ -138,8 +138,13 @@ interface Instance extends SessionInstance {
   connected: boolean;
   disposed: boolean;
   resumed: boolean;
+  /** `hello` was called (it may be called once per instance). */
+  greeted: boolean;
   limiter: RateLimiter;
   serviceLimiter: RateLimiter;
+  answerLimiter: RateLimiter;
+  assetLimiter: RateLimiter;
+  errorLimiter: RateLimiter;
 }
 
 
@@ -180,6 +185,8 @@ export class LocalSession {
   private pendingSnapshot: unknown = undefined;
   /** The game has a result (`end(result)` or `end('finished')`): its snapshot is gone for good. */
   private finished = false;
+  /** The authority called `end(result)`; later calls are ignored. */
+  private hasResult = false;
   /** After the end, snapshots live only here: a reloaded authority still shows the end screen. */
   private finishedSnapshot: unknown = null;
   private snapshotTimer: ReturnType<typeof setTimeout> | undefined;
@@ -321,8 +328,12 @@ export class LocalSession {
       connected: true,
       disposed: false,
       resumed: false,
+      greeted: false,
       limiter: new RateLimiter(LIMITS.messagesPerSecond, LIMITS.messageBurst),
       serviceLimiter: new RateLimiter(LIMITS.servicesPerMinute / 60, 10),
+      answerLimiter: new RateLimiter(LIMITS.answersPerSecond, LIMITS.answerBurst),
+      assetLimiter: new RateLimiter(LIMITS.assetsPerSecond, LIMITS.assetBurst),
+      errorLimiter: new RateLimiter(LIMITS.errorReportsPerSecond, LIMITS.errorReportBurst),
     };
     (instance as { hostApi: HostApi }).hostApi = this.createHostApi(instance);
     this.instances.set(address, instance);
@@ -526,10 +537,12 @@ export class LocalSession {
       hello: (...args) =>
         call('hello', async () => {
           const [handshake] = parseHostCall('hello', args);
+          if (instance.greeted) throw new ProtocolError('INVALID_ARGUMENT', 'hello may only be called once per instance.');
           const negotiated = negotiateProtocolVersion(handshake.protocol, PROTOCOL_VERSION);
           if (!negotiated) {
             throw new ProtocolError('UNSUPPORTED_PROTOCOL', `The plugin speaks protocol ${handshake.protocol}; this host supports ${PROTOCOL_VERSION}.`);
           }
+          instance.greeted = true;
           if (handshake.plugin.id !== this.plugin.manifest.id) {
             this.emit({ type: 'pluginError', address: instance.address, code: 'PLUGIN_ID_MISMATCH', message: `The SDK reports plugin id "${handshake.plugin.id}", the manifest says "${this.plugin.manifest.id}".` });
           }
@@ -604,6 +617,9 @@ export class LocalSession {
           if (!playerId) throw new ProtocolError('INVALID_ARGUMENT', 'recordAnswer needs a playerId on the board.');
           if (playerId !== self) requireAuthority('recordAnswer for another player');
           if (!this.roster.some((p) => p.id === playerId)) throw new ProtocolError('INVALID_ARGUMENT', `Unknown player "${playerId}".`);
+          // The authority records for every player: its limit is per player.
+          const cost = instance.address === this.authority ? 1 / Math.max(1, this.roster.length) : 1;
+          if (!instance.answerLimiter.tryTake(cost)) throw new ProtocolError('RATE_LIMITED', `More than ${LIMITS.answersPerSecond} answers per second.`);
           if (answer.answer !== undefined) assertJsonWithin(answer.answer, LIMITS.answerBytes, 'DATA_TOO_LARGE', 'answer');
           const known = this.prepared.set.items.find((i) => i.id === answer.itemId);
           const listOf = (value: unknown) => (Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : []);
@@ -656,6 +672,7 @@ export class LocalSession {
       getAsset: (...args) =>
         call('getAsset', async () => {
           const [key, itemId] = parseHostCall('getAsset', args);
+          if (!instance.assetLimiter.tryTake()) throw new ProtocolError('RATE_LIMITED', `More than ${LIMITS.assetsPerSecond} assets per second.`);
           const item = itemId ? this.options.set.items.find((i) => i.id === itemId) : undefined;
           const media = resolveAsset(key, item, this.options.set.meta);
           if (!media) throw new ProtocolError('ASSET_NOT_FOUND', `Asset "${key}" does not exist.`);
@@ -671,6 +688,8 @@ export class LocalSession {
         call('end', async () => {
           const [result] = parseHostCall('end', args);
           requireAuthority('end');
+          if (this.hasResult) return; // only the first result counts (SPEC 5)
+          this.hasResult = true;
           await this.discardSnapshot(); // a finished game is not resumed (SPEC 5)
           this.emit({ type: 'result', result });
         }),
@@ -678,6 +697,7 @@ export class LocalSession {
       reportError: (...args) =>
         call('reportError', () => {
           const [error] = parseHostCall('reportError', args);
+          if (!instance.errorLimiter.tryTake()) return; // beyond the rate: dropped (SPEC 8.1)
           this.emit({ type: 'pluginError', address: instance.address, code: error.code, message: error.message, ...(error.context && { context: error.context }) });
         }),
 
@@ -690,7 +710,7 @@ export class LocalSession {
           if (!instance.serviceLimiter.tryTake()) throw new ProtocolError('RATE_LIMITED', `More than ${LIMITS.servicesPerMinute} service calls per minute.`);
           const playerId = this.roster.some((p) => p.id === instance.address) ? instance.address : null;
           const result = await handler(plainCopy(payload), { playerId, address: instance.address, pluginId: this.plugin.manifest.id, setId: this.prepared.set.meta.id });
-          assertJsonWithin(result ?? null, LIMITS.messageBytes * 4, 'MESSAGE_TOO_LARGE', `service ${name} result`);
+          assertJsonWithin(result ?? null, LIMITS.serviceResultBytes, 'MESSAGE_TOO_LARGE', `service ${name} result`);
           return plainCopy(result ?? null);
         }),
     };

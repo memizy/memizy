@@ -26,8 +26,8 @@
 export const RELAY_PROTOCOL = 1;
 
 export const RELAY_LIMITS = {
-  /** Max size of one WebSocket frame (UTF-8 JSON). */
-  frameBytes: 2 * 1024 * 1024,
+  /** Max size of one WebSocket frame (UTF-8 JSON); fits an asset of `LIMITS.assetBytes` as base64. */
+  frameBytes: 3 * 1024 * 1024,
   /** Max size of an uploaded bundle (plugin + set). */
   bundleBytes: 8 * 1024 * 1024,
   /** Max players in a room (the plugin may allow fewer). */

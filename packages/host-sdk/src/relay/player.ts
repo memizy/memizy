@@ -103,6 +103,8 @@ export class RelayPlayer {
   private frame: RemoteFrame | null = null;
   private plugin: PluginApi | null = null;
   private gen = 0;
+  /** The generation of the last `mount` taken (a repeated `mount` of it loads nothing new). */
+  private mountGen = 0;
   private callCounter = 0;
   private readonly pending = new Map<number, Pending>();
   /** Host clock minus local clock (ms). */
@@ -229,10 +231,20 @@ export class RelayPlayer {
         return;
       case 'mount':
         this.hostAppVersion = typeof msg.v === 'number' ? msg.v : 0;
+        if (msg.gen === this.mountGen) {
+          // The host repeats a mount when this device reconnects while loading: the instance
+          // is the same, so is its iframe (a new one would say `hello` twice). Confirm it again.
+          this.mountQueue = this.mountQueue.then(() => {
+            if (this.plugin && this.gen === msg.gen) this.up({ k: 'mounted', gen: msg.gen });
+          });
+          return;
+        }
+        this.mountGen = msg.gen;
         this.mountQueue = this.mountQueue.then(() => this.mount(msg.gen, msg.bundle));
         return;
       case 'unmount':
         // The host took the game away (back to the lobby, the room closing, another device on this place).
+        this.mountGen = 0;
         this.mountQueue = this.mountQueue.then(() => this.endGame('closed'));
         return;
       case 'seat':

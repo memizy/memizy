@@ -17,6 +17,7 @@ import {
   type RoomPlayer,
   type RelayServerMessage,
 } from '@memizy/protocol';
+import { RELAY_LIMITS, jsonByteSize } from '@memizy/protocol/internal';
 import type { LocalSession, PluginEndpoint, SessionEvent } from '../session';
 import type { PreparedSet } from '../plugin';
 import { RelaySocket, relayWebSocketUrl, type RelayStatus } from './socket';
@@ -631,7 +632,13 @@ export class RelayHost {
             return;
           }
           if (msg.method === 'getAsset' && value instanceof Blob) value = await blobToJson(value);
-          reply({ k: 'result', id: msg.id, ok: true, value: value ?? null });
+          const result: HostToPlayer = { k: 'result', id: msg.id, ok: true, value: value ?? null };
+          // A frame above the relay limit would close the host's connection: refuse the result instead.
+          if (jsonByteSize({ t: 'to', to: relayId, data: result }) > RELAY_LIMITS.frameBytes) {
+            reply({ k: 'result', id: msg.id, ok: false, error: { message: `[DATA_TOO_LARGE] The result of ${msg.method} is too large to send to the device.` } });
+            return;
+          }
+          reply(result);
         } catch (error) {
           reply({ k: 'result', id: msg.id, ok: false, error: serializeError(error) });
         }

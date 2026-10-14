@@ -17,7 +17,7 @@ import { loadPluginFromHtml, type LoadedPlugin } from '../plugin';
 import { RelayHost, type HostSeat } from './host';
 import { RelayPlayer, type FrameFactory, type RelayPlayerEvent } from './player';
 import { RELAY_APP_VERSION } from './messages';
-import { RELAY_PROTOCOL } from '@memizy/protocol';
+import { LIMITS, RELAY_PROTOCOL } from '@memizy/protocol';
 
 const PORT = 18_787;
 const serverUrl = `http://127.0.0.1:${PORT}`;
@@ -37,7 +37,13 @@ const manifest = {
 const pluginHtml = `<!doctype html><script type="application/oqse-manifest+json">${JSON.stringify(manifest)}</script>`;
 const setFile = loadOQSEFile({
   version: '1.0',
-  meta: { id: id(0), language: 'cs', title: 'Set', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+  meta: {
+    id: id(0), language: 'cs', title: 'Set', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z',
+    assets: {
+      max: { type: 'image', value: 'https://example.com/max.png', altText: 'The largest guaranteed asset' },
+      huge: { type: 'image', value: 'https://example.com/huge.png', altText: 'Too large for the relay' },
+    },
+  },
   items: [{ id: id(1), type: 'mcq-single', question: 'Who barks?', options: [{ id: 'cat', text: 'cat' }, { id: 'dog', text: 'dog' }], correctId: 'dog' }],
 }).data as OQSEFile;
 
@@ -68,10 +74,12 @@ async function until(check: () => boolean, ms = 5000): Promise<void> {
 }
 
 /** The SDK connected directly to the RelayPlayer's host API (no iframe in jsdom). */
-function sdkFrames(): { factory: FrameFactory; roots: HTMLElement[]; ended: string[] } {
+function sdkFrames(): { factory: FrameFactory; roots: HTMLElement[]; ended: string[]; hosts: HostApi[] } {
   const roots: HTMLElement[] = [];
+  const hosts: HostApi[] = []; // the host API each game got
   const ended: string[] = []; // sessionEnded reasons the games of this device got
   const factory: FrameFactory = (_html, _title, hostApi: HostApi) => {
+    hosts.push(hostApi);
     const root = document.createElement('div');
     roots.push(root);
     let resolvePlugin!: (api: PluginApi) => void;
@@ -87,7 +95,7 @@ function sdkFrames(): { factory: FrameFactory; roots: HTMLElement[]; ended: stri
     games.push(game);
     return { iframe: root, plugin, destroy: () => game.destroy() };
   };
-  return { factory, roots, ended };
+  return { factory, roots, ended, hosts };
 }
 
 /** The board of a session in this page, connected directly. */
@@ -113,7 +121,7 @@ function joinPlayer(pin: string, name: string, token?: string, locale?: string, 
   const player = new RelayPlayer({ serverUrl, WebSocket: WebSocketImpl, pin, name, token, auth, container: () => container, createFrame: frames.factory, config: locale ? () => ({ locale }) : undefined });
   player.on((e) => events.push(e));
   const root = () => frames.roots.at(-1);
-  return { player, events, root, container, ended: frames.ended };
+  return { player, events, root, container, ended: frames.ended, hosts: frames.hosts };
 }
 
 let plugin: LoadedPlugin;
@@ -168,6 +176,7 @@ describe('relayed multiplayer', () => {
       players: host.players.map((p) => ({ id: p.id, name: p.name })),
       countdownMs: 0,
       locale: 'cs',
+      loadAsset: async (key) => new Blob([new Uint8Array(key === 'max' ? LIMITS.assetBytes : LIMITS.assetBytes * 2)], { type: 'image/png' }),
     });
     const events: SessionEvent[] = [];
     session.on((e) => events.push(e));
@@ -199,6 +208,13 @@ describe('relayed multiplayer', () => {
     // Each device uses its own language (Ben's app is in English, the host's in Czech).
     expect(anna.root()!.querySelector('.loc')!.textContent).toBe('cs');
     expect(ben.root()!.querySelector('.loc')!.textContent).toBe('en');
+
+    // Assets travel through the relay: the guaranteed size arrives; a larger one is refused
+    // (a frame above the relay limit would close the host's connection).
+    const annaHost = anna.hosts.at(-1)!;
+    expect((await annaHost.getAsset('max')).size).toBe(LIMITS.assetBytes);
+    await expect(annaHost.getAsset('huge')).rejects.toThrow(/\[DATA_TOO_LARGE\]/);
+    expect(host.status).toBe('online');
 
     // Actions travel player → relay → host → board, state comes back.
     (anna.root()!.querySelector('button') as HTMLButtonElement).click();

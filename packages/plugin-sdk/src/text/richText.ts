@@ -7,13 +7,59 @@
 import { Marked } from 'marked';
 import DOMPurify from 'dompurify';
 
-// Links open in a new tab (inside the host's iframe a link would replace the game).
+// Content of a set lives inside the game's DOM, so it must not act like the game:
+// no `data-*` (`data-act`, `data-local`…), no `id` (the game's elements, morph keys),
+// no form controls (they would join the game's forms; a GFM task list keeps its disabled checkboxes) and only a few style properties
+// (OQSE Security: no UI redressing).
+const SANITIZE_CONFIG = {
+  ADD_ATTR: ['target'],
+  ALLOW_DATA_ATTR: false,
+  FORBID_ATTR: ['id', 'name', 'form', 'formaction'],
+  FORBID_TAGS: ['form', 'button', 'select', 'option', 'optgroup', 'textarea', 'datalist', 'output', 'style'],
+};
+
+const STYLE_PROPERTIES = new Set([
+  'color',
+  'background-color',
+  'font-weight',
+  'font-style',
+  'text-decoration',
+  'text-align',
+  'vertical-align',
+]);
+// Keywords, lengths, percentages, hex colors and rgb()/hsl() colors; no url(), var(), expressions.
+const STYLE_VALUE_RE = /^(?:[a-z-]+|#[0-9a-f]{3,8}|-?[\d.]+(?:%|px|em|rem)?|(?:rgba?|hsla?)\([\d\s.,%/]+\))(?:\s+(?:[a-z-]+|#[0-9a-f]{3,8}|-?[\d.]+(?:%|px|em|rem)?|(?:rgba?|hsla?)\([\d\s.,%/]+\)))*$/i;
+
+/** Keeps only harmless typographic declarations of a `style` attribute. */
+export function safeStyle(style: string): string {
+  const kept: string[] = [];
+  for (const declaration of style.split(';')) {
+    const colon = declaration.indexOf(':');
+    if (colon < 0) continue;
+    const property = declaration.slice(0, colon).trim().toLowerCase();
+    const value = declaration.slice(colon + 1).trim();
+    if (STYLE_PROPERTIES.has(property) && STYLE_VALUE_RE.test(value)) kept.push(`${property}: ${value}`);
+  }
+  return kept.join('; ');
+}
+
 // Without a DOM (Node: server code, tests) DOMPurify has no hooks; importing must still work.
 if (typeof DOMPurify.addHook === 'function') {
+  DOMPurify.addHook('uponSanitizeElement', (node, data) => {
+    if (data.tagName !== 'input') return;
+    const element = node as Element;
+    if (element.getAttribute('type') !== 'checkbox' || !element.hasAttribute('disabled')) element.remove();
+  });
   DOMPurify.addHook('afterSanitizeAttributes', (node) => {
+    // Links open in a new tab (inside the host's iframe a link would replace the game).
     if (node.tagName === 'A' && node.hasAttribute('href')) {
       node.setAttribute('target', '_blank');
       node.setAttribute('rel', 'noopener noreferrer');
+    }
+    if (node.hasAttribute?.('style')) {
+      const style = safeStyle(node.getAttribute('style') ?? '');
+      if (style) node.setAttribute('style', style);
+      else node.removeAttribute('style');
     }
   });
 }
@@ -82,7 +128,7 @@ export function renderRichText(source: string | null | undefined, ctx: RichTextC
   mermaidBlocks = [];
   const parsed = options.inline ? (marked.parseInline(text) as string) : (marked.parse(text) as string);
   const diagrams = mermaidBlocks;
-  let html = DOMPurify.sanitize(parsed, { ADD_ATTR: ['target'] });
+  let html = DOMPurify.sanitize(parsed, SANITIZE_CONFIG);
 
   for (const { token, code } of diagrams) {
     html = html.replace(
@@ -103,7 +149,7 @@ export function renderRichText(source: string | null | undefined, ctx: RichTextC
 }
 
 function renderMedia(key: string, media: MediaObject | undefined): string {
-  if (!media || !isSafeUrl(media.value)) return `<span class="mz-missing-asset">[${escapeHtml(key)}]</span>`;
+  if (!media || !isMediaUrl(media.value)) return `<span class="mz-missing-asset">[${escapeHtml(key)}]</span>`;
   const src = escapeHtml(media.value);
   const caption = media.caption ? `<figcaption>${escapeHtml(media.caption)}</figcaption>` : '';
   const size = `${media.width ? ` width="${Number(media.width)}"` : ''}${media.height ? ` height="${Number(media.height)}"` : ''}`;
@@ -124,7 +170,8 @@ function renderMedia(key: string, media: MediaObject | undefined): string {
   return caption ? `<figure class="mz-media">${element}${caption}</figure>` : element;
 }
 
-function isSafeUrl(value: string): boolean {
+/** A media value the page can load: a web URL, or an object URL made from a host asset. */
+export function isMediaUrl(value: string): boolean {
   return /^(https?:|blob:)/i.test(value);
 }
 

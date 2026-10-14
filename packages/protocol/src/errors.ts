@@ -19,7 +19,7 @@ export const PROTOCOL_ERROR_CODES = [
   'ASSET_NOT_FOUND',
   'SESSION_ENDED',
   'INTERNAL_ERROR',
-  /** RC4: the service is not offered by this host (or not declared by the plugin). */
+  /** The service is not offered by this host (or not declared by the plugin). */
   'SERVICE_UNAVAILABLE',
   /** 1.0: the other side does not have this method (e.g. an older version). */
   'UNKNOWN_METHOD',
