@@ -71,7 +71,6 @@ least 1–2 days before the workshop (the guide imports `@memizy/plugin-sdk@1` f
 - [ ] `CHANGELOG.md` in every package, starting with 1.0.0 (the plugin-sdk README has the RC history).
 - [ ] READMEs of the packages: version 1.0, the CDN URLs at `@1`, the JSON Schemas.
 - [ ] Finish workshop presentation in `docs/presentation/`: check versions, import URLs and API names (`ui.note`, no `/+esm`).
-- [ ] Dát do toho play na tu hlavní stránku i odkaz na tu prezentaci tu tam dát taky.
 
 ## 6. Release
 
@@ -80,9 +79,15 @@ least 1–2 days before the workshop (the guide imports `@memizy/plugin-sdk@1` f
 - [ ] Release candidate **1.0.0-rc.6** (`npm publish --tag next --access public`, in the order
       oqse → protocol → plugin-sdk → host-sdk): check the published packages and the SDK bundle
       from jsDelivr (`…/plugin-sdk@1.0.0-rc.6`) in a browser, as students will use them.
+      - **Standalone mode test:** Open an example or AI-generated plugin HTML file directly from disk
+        (`file://…`) in the browser (importing `…/plugin-sdk@1.0.0-rc.6`) to verify that standalone mode
+        starts cleanly without an iframe/host, loads the sample set, and plays questions.
 - [ ] The owner's manual test on phones (iPhone: zoom, 3D; the oldest school device).
 - [ ] Version **1.0.0** of all four packages and their dependencies on each other; publish in
       the same order (tag `latest`); check that the CDN `@1` returns the SDK bundle and the schemas.
+      - **Standalone mode on CDN `@1`:** Open a plugin HTML file directly in the browser importing the
+        official production URL (`https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1`) to confirm that
+        standalone mode works out-of-the-box for workshop participants.
 - [ ] Merge to `main` → Play deploys (Workers); deploy the relay (`deploy.sh`); tag `v1.0.0`.
 - [ ] No deployments the day before the workshop; during it: relay logs open
       (`ssh memizy-vps`), a printed QR code and the address.
