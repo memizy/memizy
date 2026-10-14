@@ -89,6 +89,8 @@ AI plugin testing can run continuously as soon as ready.
       - **Standalone mode on CDN `@1`:** Open a plugin HTML file directly in the browser importing the
         official production URL (`https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1`) to confirm that
         standalone mode works out-of-the-box for workshop participants.
+      - **Switch validator import to CDN `@1`:** In `packages/oqse/docs/index.html`, update import from
+        `@memizy/oqse@1.0.0-rc.6` to `@memizy/oqse@1` once 1.0.0 is live on npm.
 - [ ] Merge to `main` → Play deploys (Workers); deploy the relay (`deploy.sh`); tag `v1.0.0`.
 - [ ] No deployments the day before the workshop; during it: relay logs open
       (`ssh memizy-vps`), a printed QR code and the address.
