@@ -9,7 +9,8 @@
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "typecheck": "vue-tsc --noEmit"
+    "typecheck": "vue-tsc --noEmit",
+    "e2e:3d": "node e2e/scene3d.e2e.mjs"
   },
   "license": "MIT",
   "dependencies": {
@@ -31,7 +32,9 @@
     "@vue/test-utils": "^2.5.1",
     "fake-indexeddb": "^6.2.5",
     "jsdom": "^30.1.2",
+    "playwright-core": "^1.64.0",
     "tailwindcss": "^4.3.3",
+    "three": "0.160.0",
     "typescript": "~6.0.2",
     "vite": "^8.3.2",
     "vitest": "^4.1.4",

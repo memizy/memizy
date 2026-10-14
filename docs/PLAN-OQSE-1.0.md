@@ -342,10 +342,14 @@ Práce na větvi `sdk-1.0`. **Nic se neodkládá kvůli termínu** (rozhodnutí 
 
 ## 3. E – test 3D se skutečným WebGL (z PLAN-RC4)
 
-- [ ] Skript v repu (Playwright, Edge, SwiftShader): vykreslení, přepnutí 2D ↔ 3D, ztráta
+- [x] Skript v repu (Playwright, Edge, SwiftShader): vykreslení, přepnutí 2D ↔ 3D, ztráta
       kontextu → 2D s hláškou, pomalá scéna → 2D jen jednou a po návratu hráče zůstane 3D,
       bez WebGL → 2D bez tlačítka 3D, výstřel ve 2D i 3D (Piráti).
-- [ ] Spouštění popsat v `CLAUDE.md` (není součást `bun run test`, pokud je pomalý).
+- [x] Spouštění popsat v `CLAUDE.md` (není součást `bun run test`, pokud je pomalý).
+      Hotovo: `apps/play/e2e/scene3d.e2e.mjs` (`cd apps/play && bun run e2e:3d`, ~1 min): Piráti sólo
+      v iframu host-sdk se sadou se známými odpověďmi; 13 kontrol (vykreslení, 2D ↔ 3D, výstřel ve
+      3D i 2D, ztráta kontextu → 2D s hláškou a tlačítkem 3D, pomalá scéna → 2D jednou a vybrané 3D
+      zůstane, bez WebGL → 2D bez tlačítka). Stabilní 4× po sobě; popsáno v `CLAUDE.md`.
 
 ## 4. F – Návod pro AI (`docs/ai-plugin-guide.md`)
 

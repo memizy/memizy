@@ -44,6 +44,7 @@ bun run build:packages          # oqse → protocol → plugin-sdk → host-sdk 
 bun run test                    # builds packages, then every workspace's tests
 cd apps/play && bun run test    # vitest (jsdom); bun run typecheck = vue-tsc
 cd services/multiplayer-server && bun test
+cd apps/play && bun run e2e:3d  # 3D rules with real WebGL in Edge (SwiftShader), ~1 min; not in `bun run test`
 bun run dev:play                # Play on http://localhost:5180/play/ (ask first)
 bun run dev:server              # relay on :8787 (ask first)
 ```
@@ -91,6 +92,11 @@ After changing a package, rebuild it (`bun run build:packages`) before testing t
   `page.route('https://cdn.jsdelivr.net/**')` fulfilled by
   `packages/plugin-sdk/dist/bundle/memizy-sdk.bundle.js` and the plugin HTML served
   from a routed URL (standalone solo mode).
+- 3D with real WebGL: `apps/play/e2e/scene3d.e2e.mjs` runs Pirates alone in the host-sdk
+  iframe (Edge, `--use-angle=swiftshader`) with a set whose answers it knows: rendering,
+  2D ↔ 3D, shots in 3D and 2D, a lost context, a slow scene (once), no WebGL. Keep all
+  scenarios in one browser context (routes for the sandboxed iframe are unreliable in
+  later contexts) and the viewport small (software WebGL is slow).
 - Real sessions in jsdom: `packages/host-sdk/src/session.test.ts` connects real SDK games
   to a `LocalSession`; `relay.test.ts` starts the relay server.
 
