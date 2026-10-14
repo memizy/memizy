@@ -5,9 +5,9 @@ The open items before and right after releasing **1.0.0** of `@memizy/oqse`,
 contract are described in [ARCHITECTURE.md](./ARCHITECTURE.md); finished work is in the
 Git history.
 
-Dates: test with AI-made games 2026-10-19/20, the workshop 2026-10-22. Publish 1.0.0 at
-least 1–2 days before the workshop (the guide imports `@memizy/plugin-sdk@1` from the CDN;
-`@1` does not match release candidates).
+Dates: the workshop is 2026-10-22. Publish 1.0.0 at least 1–2 days before the workshop
+(the guide imports `@memizy/plugin-sdk@1` from the CDN; `@1` does not match release candidates).
+AI plugin testing can run continuously as soon as ready.
 
 ## 1. Decisions waiting for the owner
 
@@ -35,16 +35,18 @@ least 1–2 days before the workshop (the guide imports `@memizy/plugin-sdk@1` f
 - [x] **Link to workshop presentation in Play:** Add a link to the presentation slides on Play's home page
       (`HomeView.vue`).
 
-## 3. CI, Web & Deployment
+## 3. CI, Web & Deployment (Platform & Engine)
 
-- [ ] **GitHub Actions:** Add `.github/workflows/ci.yml` running `bun run test`, `bun run typecheck` and
-      `apps/play` build on pull requests and pushes to `main`.
-- [ ] **Astro landing page for memizy.com:** Create a clean, modern landing page for `https://memizy.com` with only links for play
-- [ ] **Deploy Play to subpath / subdomain:** Deploy Memizy Play to `memizy.com/play/` or think of the route where it should be,
-      verify base URL routing, assets and CDN links.
+- [ ] **GitHub Actions (Engine):** Add `.github/workflows/ci.yml` in `engine` running `bun run test`, `bun run typecheck`,
+      linting and schema validation on pull requests and pushes to `main`.
+- [ ] **GitHub Pages for OQSE Validator (Engine):** Host schema validator / documentation tool on Pages.
+- [ ] **Migrate Play to Platform repo:** Move `apps/play` into the private `platform` project to keep open-source `engine`
+      focused strictly on SDKs, specs and tools.
+- [ ] **Astro landing page for memizy.com (Platform):** Create a clean, modern landing page for `https://memizy.com` with links to play.
+- [ ] **Deploy Play & Landing Page:** Deploy Memizy Play and landing page (subpaths/subdomains), verify base URLs and CDN links.
 - [ ] **Relay server deploy:** Deploy latest relay server (`deploy.sh` on VPS `memizy-vps`).
 
-## 4. Test with AI-made games & Prompts (2026-10-19/20)
+## 4. Test with AI-made games & Prompts
 
 - [ ] Several games written by different AI assistants from `docs/ai-plugin-guide.md`, through
       the Lab: tests including the naughty player, solo and multiplayer on real phones.
@@ -75,9 +77,9 @@ least 1–2 days before the workshop (the guide imports `@memizy/plugin-sdk@1` f
       `bun run build:packages`; generated JSON Schemas committed (rc.6). The packed tarballs were
       installed into an empty project: ESM and CommonJS imports in Node, typings with
       `moduleResolution` `bundler` and `node16` (an ESM project), one copy of the protocol.
-- [ ] Release candidate **1.0.0-rc.6** (`npm publish --tag next --access public`, in the order
-      oqse → protocol → plugin-sdk → host-sdk): check the published packages and the SDK bundle
-      from jsDelivr (`…/plugin-sdk@1.0.0-rc.6`) in a browser, as students will use them.
+- [x] Release candidate **1.0.0-rc.6** (`npm publish --tag next --access public`, in the order
+      oqse → protocol → plugin-sdk → host-sdk): published on npm under tag `next`. Check the published packages
+      and the SDK bundle from jsDelivr (`…/plugin-sdk@1.0.0-rc.6`) in a browser, as students will use them.
       - **Standalone mode test:** Open an example or AI-generated plugin HTML file directly from disk
         (`file://…`) in the browser (importing `…/plugin-sdk@1.0.0-rc.6`) to verify that standalone mode
         starts cleanly without an iframe/host, loads the sample set, and plays questions.
