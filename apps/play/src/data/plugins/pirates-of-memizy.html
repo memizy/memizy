@@ -1477,8 +1477,10 @@ const Scene = {
         seen.add(h.id);
         if (!this.decals[slot][h.id]) {
           const s = sprite(this.tex.scorch, (h.sev === 'crit' ? 2.6 : 1.9) * scale, 0.95);
-          // above the waterline (waves cut them into half circles), on the side the camera sees
-          s.position.set(h.x * 4.6, 1.15 + h.y * 0.95, 1.78 * (slot === 'own' ? this.ownSide : 1));
+          // High on the side the camera sees: waves and the steep view hide the waterline.
+          // Ours reach up to the gunwale, so the crew on deck sees where to repair.
+          const y = slot === 'own' ? 1.65 + h.y * 0.85 : 1.4 + h.y * 0.85;
+          s.position.set(h.x * 4.6, y, 1.78 * (slot === 'own' ? this.ownSide : 1));
           if (slot === 'own') { s.material.depthTest = false; s.renderOrder = 10; }
           ship.add(s);
           this.decals[slot][h.id] = s;
@@ -1751,12 +1753,68 @@ function makeTextures() {
     return tex;
   };
   return {
-    scorch: radial(4, 60, [[0, 'rgba(12,8,4,0.95)'], [0.45, 'rgba(20,12,6,0.8)'], [1, 'rgba(0,0,0,0)']]),
+    scorch: breachTexture(),
     smoke: radial(4, 60, [[0, 'rgba(70,70,74,0.65)'], [1, 'rgba(70,70,74,0)']]),
     boom: radial(2, 60, [[0, 'rgba(255,240,180,1)'], [0.35, 'rgba(255,150,50,0.9)'], [1, 'rgba(200,60,20,0)']]),
     splash: radial(4, 60, [[0, 'rgba(235,250,255,0.9)'], [1, 'rgba(180,220,240,0)']]),
     glow: radial(2, 60, [[0, 'rgba(255,235,170,0.9)'], [1, 'rgba(255,200,80,0)']]),
   };
+}
+/**
+ * A cannonball hole in the planks: a charred, ragged hole, splinters of fresh wood
+ * bent outwards, cracks running away from it and the seams of the broken planks,
+ * fading out at the edge. Seeded, so every breach looks the same.
+ */
+function breachTexture() {
+  const cv = document.createElement('canvas'); cv.width = 128; cv.height = 128;
+  const c = cv.getContext('2d');
+  let seed = 9;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const at = (a, r) => [64 + Math.cos(a) * r, 64 + Math.sin(a) * r];
+  // seams of the planks around the hole, the boards shifted where they broke
+  c.lineCap = 'round';
+  for (let y = 22; y <= 106; y += 14) {
+    const shift = Math.abs(y - 64) < 30 ? (rnd() - 0.5) * 6 : 0;
+    c.strokeStyle = 'rgba(46,28,14,0.85)'; c.lineWidth = 2.2;
+    c.beginPath(); c.moveTo(4, y); c.lineTo(46, y + shift); c.moveTo(82, y - shift); c.lineTo(124, y); c.stroke();
+    c.strokeStyle = 'rgba(196,154,69,0.35)'; c.lineWidth = 1;
+    c.beginPath(); c.moveTo(4, y + 2); c.lineTo(46, y + 2 + shift); c.moveTo(82, y + 2 - shift); c.lineTo(124, y + 2); c.stroke();
+  }
+  // soot burnt into the wood
+  const soot = c.createRadialGradient(64, 64, 14, 64, 64, 50);
+  soot.addColorStop(0, 'rgba(20,12,6,0.95)'); soot.addColorStop(0.5, 'rgba(32,20,10,0.6)'); soot.addColorStop(1, 'rgba(32,20,10,0)');
+  c.fillStyle = soot; c.fillRect(0, 0, 128, 128);
+  // cracks running away from the hole
+  c.strokeStyle = '#2a1a0f';
+  for (let i = 0; i < 9; i++) {
+    let a = (i / 9) * Math.PI * 2 + rnd() * 0.5, r = 16;
+    c.lineWidth = 1 + rnd() * 1.2;
+    c.beginPath(); c.moveTo(...at(a, r));
+    while (r < 44 + rnd() * 16) { r += 5 + rnd() * 6; a += (rnd() - 0.5) * 0.35; c.lineTo(...at(a, r)); }
+    c.stroke();
+  }
+  // splinters: fresh ochre wood with a dark shadowed side
+  for (let i = 0; i < 14; i++) {
+    const a = (i / 14) * Math.PI * 2 + (rnd() - 0.5) * 0.8, w = 0.06 + rnd() * 0.2;
+    const r0 = 12 + rnd() * 6, len = 20 + rnd() * rnd() * 34, tip = a + (rnd() - 0.5) * 0.3;
+    c.fillStyle = '#5c3a1e';
+    c.beginPath(); c.moveTo(...at(a - w, r0)); c.lineTo(...at(tip + 0.04, len + 2)); c.lineTo(...at(a + w, r0)); c.fill();
+    c.fillStyle = '#c49a45';
+    c.beginPath(); c.moveTo(...at(a - w, r0)); c.lineTo(...at(tip, len)); c.lineTo(...at(a + w * (rnd() * 0.5), r0)); c.fill();
+  }
+  // the charred hole with a ragged edge
+  c.fillStyle = '#0d0804'; c.strokeStyle = 'rgba(92,58,30,0.9)'; c.lineWidth = 2;
+  c.beginPath();
+  for (let i = 0; i < 18; i++) c[i ? 'lineTo' : 'moveTo'](...at((i / 18) * Math.PI * 2, 13 + rnd() * 8));
+  c.closePath(); c.fill(); c.stroke();
+  // fade out towards the edge (no square outline on the hull)
+  c.globalCompositeOperation = 'destination-in';
+  const fade = c.createRadialGradient(64, 64, 40, 64, 64, 63);
+  fade.addColorStop(0, 'rgba(0,0,0,1)'); fade.addColorStop(1, 'rgba(0,0,0,0)');
+  c.fillStyle = fade; c.fillRect(0, 0, 128, 128);
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
 }
 function sprite(tex, scale, opacity = 1) {
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, opacity, depthWrite: false }));

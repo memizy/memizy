@@ -6,6 +6,8 @@ import { existsSync, readFileSync } from 'node:fs';
 
 const SDK_BUNDLE = fileURLToPath(new URL('../../packages/plugin-sdk/dist/bundle/memizy-sdk.bundle.js', import.meta.url));
 const SDK_PATH = 'sdk/memizy-sdk.js';
+const PRESENTATION = fileURLToPath(new URL('../../docs/presentation/index.html', import.meta.url));
+const PRESENTATION_PATH = 'presentation/index.html';
 
 /**
  * Where Play is served: `/play/` on memizy.com (same origin as the main app →
@@ -45,9 +47,27 @@ function localSdk(): Plugin {
   };
 }
 
+/** Serves the workshop presentation (one self-contained file) at `presentation/`. */
+function presentation(): Plugin {
+  const read = () => readFileSync(PRESENTATION, 'utf8');
+  return {
+    name: 'memizy-presentation',
+    configureServer(server) {
+      server.middlewares.use(`${BASE}presentation`, (req, res, next) => {
+        if (req.url !== '/' && req.url !== '/index.html') return next();
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.end(read());
+      });
+    },
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: PRESENTATION_PATH, source: read() });
+    },
+  };
+}
+
 export default defineConfig({
   base: BASE,
-  plugins: [vue(), tailwindcss(), localSdk()],
+  plugins: [vue(), tailwindcss(), localSdk(), presentation()],
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },

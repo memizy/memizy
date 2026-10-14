@@ -18,6 +18,7 @@ export default {
     host: { title: 'Hostit hru', text: 'Vyber sadu a hru, promítni PIN a hrajte celá třída.' },
     solo: { title: 'Hrát sám', text: 'Zahraj si hru se sadou otázek sám a pokračuj, kdy chceš.' },
     lab: { title: 'Lab pro tvůrce', text: 'Vytvoř s AI vlastní hru a vyzkoušej ji na simulovaných zařízeních.' },
+    presentation: 'Prezentace pro workshop',
   },
   lab: {
     title: 'Plugin Lab',

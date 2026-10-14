@@ -20,6 +20,7 @@ const en: typeof cs = {
     solo: { title: 'Play alone', text: 'Play a game with a question set on your own and continue whenever you like.' },
     host: { title: 'Host a game', text: 'Pick a set and a game, show the PIN and play with the whole class.' },
     lab: { title: 'Lab for creators', text: 'Create your own game with AI and try it on simulated devices.' },
+    presentation: 'Workshop presentation',
   },
   lab: {
     title: 'Plugin Lab',

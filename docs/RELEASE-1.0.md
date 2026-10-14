@@ -27,12 +27,12 @@ least 1–2 days before the workshop (the guide imports `@memizy/plugin-sdk@1` f
       games in solo mode or when the host plays along are constrained to a narrow column. Expand to full
       width (`w-full` / `max-w-6xl` or responsive based on manifest `orientation`), so 3D/landscape games
       (Civhrad, Pirates) have adequate space on desktop.
-- [ ] **Pirates ship breach appearance:** In `pirates-of-memizy.html`, update the `scorch` texture from a soft
+- [x] **Pirates ship breach appearance:** In `pirates-of-memizy.html`, update the `scorch` texture from a soft
       radial blur to splintered wood planks around the cannonball hole. And maybe also put damage somwhere else on the ship than just where it is now, somewhere more visible on the deck, use Claude in new context for this
 - [ ] **Alza mascot (Alzák) removal from production:** Avoid trademark/commercial dispute with Alza.cz a.s. on
       `memizy.com` – remove `babis-vs-alzak.html` from `EXAMPLE_PLUGINS` in production or replace the mascot
       with a generic alien without Alza branding.
-- [ ] **Link to workshop presentation in Play:** Add a link to the presentation slides on Play's home page
+- [x] **Link to workshop presentation in Play:** Add a link to the presentation slides on Play's home page
       (`HomeView.vue`).
 
 ## 3. CI, Web & Deployment

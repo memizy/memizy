@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
-import { BeakerIcon, DevicePhoneMobileIcon, PresentationChartBarIcon, UserIcon } from '@heroicons/vue/24/outline';
+import {
+  ArrowTopRightOnSquareIcon,
+  BeakerIcon,
+  DevicePhoneMobileIcon,
+  PresentationChartBarIcon,
+  PresentationChartLineIcon,
+  UserIcon,
+} from '@heroicons/vue/24/outline';
 import AppLogo from '@/components/AppLogo.vue';
 import LocaleSwitch from '@/components/LocaleSwitch.vue';
 
@@ -12,6 +19,9 @@ const cards = [
   { to: '/solo', key: 'solo', icon: UserIcon, accent: 'bg-emerald-50 text-emerald-600' },
   { to: '/lab', key: 'lab', icon: BeakerIcon, accent: 'bg-violet-50 text-violet-600' },
 ] as const;
+
+// docs/presentation, copied into the build by vite.config.ts
+const presentationUrl = `${import.meta.env.BASE_URL}presentation/`;
 </script>
 
 <template>
@@ -41,6 +51,17 @@ const cards = [
           <span class="text-sm text-text-gray">{{ t(`home.${card.key}.text`) }}</span>
         </RouterLink>
       </div>
+
+      <a
+        :href="presentationUrl"
+        target="_blank"
+        rel="noopener"
+        class="group mx-auto mt-8 inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-text-gray transition hover:bg-white hover:text-accent-orange hover:shadow-soft"
+      >
+        <PresentationChartLineIcon class="size-5" />
+        {{ t('home.presentation') }}
+        <ArrowTopRightOnSquareIcon class="size-4 opacity-0 transition group-hover:opacity-100" />
+      </a>
     </main>
   </div>
 </template>
