@@ -333,9 +333,12 @@ Práce na větvi `sdk-1.0`. **Nic se neodkládá kvůli termínu** (rozhodnutí 
 
 ### Část F – Soulad SPEC s rozhodnutími
 
-- [ ] SPEC 3.3: náhodné přezdívky (hráči se v lobby nepřejmenovávají, pokud to host nedovolí).
-- [ ] `setChanged` zůstává (volitelné, žádný host ho zatím nevolá) – zapsat výslovně.
-- [ ] Rezervovat přehrání hry (záznam akcí a deterministické přehrání) v SPEC 10.
+- [x] SPEC 3.3: náhodné přezdívky (hráči se v lobby nepřejmenovávají, pokud to host nedovolí).
+- [x] `setChanged` zůstává (volitelné, žádný host ho zatím nevolá) – zapsat výslovně.
+- [x] Rezervovat přehrání hry (záznam akcí a deterministické přehrání) v SPEC 10.
+      Hotovo: SPEC 3.3 – jména volí hostitel (Play: náhodné přezdívky), pluginy se NESMÍ ptát na
+      skutečné jméno ani jiné osobní údaje (MUST NOT); návod pravidlo 14. `setChanged` volitelné pro
+      hostitele (7). Rezervováno `replay` (10). Changelog.
 
 ## 3. E – test 3D se skutečným WebGL (z PLAN-RC4)
 
@@ -370,6 +373,10 @@ Pro každou věc jen jedna cesta.
 - [ ] Manifest `"version": "1.0"`, import `@memizy/plugin-sdk@1`.
 - [ ] Test `guideExample` odpovídá návodu; Lab kopíruje aktuální návod do promptů.
 - [ ] Zkouška s hrami od AI (19.–20. 10.): několik her podle návodu, Lab + zlobivý hráč.
+- [ ] Důraz na časté chyby AI (vlastník, 2026-10-14): žádné inline `onclick` – jen `data-act` (akce)
+      a `data-local` (UI jen pro zařízení); v pravidlech žádné `Math.random()`, `setInterval`,
+      `Date.now()` – jen `ctx.random()`, `ctx.now`, `phases`; `ctx.reveal(itemId)`, aby hráči
+      viděli správné řešení; `ui.escape()` neexistuje, `ui.html` escapuje samo.
 
 ## 5. G – Dokumentace
 

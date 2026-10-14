@@ -22,6 +22,7 @@ You are writing a **Memizy plugin**: a learning game in **one HTML file**. Memiz
 11. **Answers live only on the authority.** In multiplayer the players' devices get the items **without answers** (`item.answerHidden === true`). Check answers only in actions with `checkAnswer(ctx.item(id), answer)`. Show the right answer after `ctx.reveal(itemId)`.
 12. If the state holds something other players must not see (their answers before the reveal, cards in a hand), add **`playerView`** (section 5.5).
 13. Never use `alert`, `confirm` or `prompt`: they freeze the game on that device (timers, synchronization; on the board for everyone). Draw dialogs in `render` (section 6.4).
+14. Never ask players for their real name, age, class or other personal data. Players have nicknames from the app: use `ui.self.name` / `ctx.players`.
 
 ---
 
