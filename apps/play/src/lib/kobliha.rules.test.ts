@@ -3,7 +3,7 @@ import type { OQSEAnyItem } from '@memizy/oqse';
 import { checkAnswer } from '../../../../packages/plugin-sdk/src/checkAnswer';
 import { FakeSession } from '../../../../packages/plugin-sdk/src/test/fakeHost';
 import type { GameDefinition } from '../../../../packages/plugin-sdk/src/types';
-import html from '@/data/plugins/babis-vs-alzak.html?raw';
+import html from '@/data/plugins/kobliha-vs-zelenac.html?raw';
 
 /** Runs the plugin's module script with a fake SDK and returns its game definition. */
 function definition(): GameDefinition<any> {
@@ -47,13 +47,13 @@ describe('Babiš vs. Alzák rules', () => {
     session.start();
     await tick();
     const board = () => session.get('board').state;
-    session.get('anna').dispatch('chooseTeam', { team: 'babis' });
-    session.get('ben').dispatch('chooseTeam', { team: 'babis' });
-    session.get('cyril').dispatch('chooseTeam', { team: 'alzak' });
+    session.get('anna').dispatch('chooseTeam', { team: 'kobliha' });
+    session.get('ben').dispatch('chooseTeam', { team: 'kobliha' });
+    session.get('cyril').dispatch('chooseTeam', { team: 'zelenac' });
     await tick();
     await tick(2600);
     expect(board().phase).toBe('question');
-    expect(board().maxHp).toEqual({ babis: 1020, alzak: 1020 }); // from the bigger team
+    expect(board().maxHp).toEqual({ kobliha: 1020, zelenac: 1020 }); // from the bigger team
 
     const lines: string[] = [];
     const seen = new Set<number>();
@@ -68,7 +68,7 @@ describe('Babiš vs. Alzák rules', () => {
         await tick();
         if (s.stage === 'battle') {
           const r = board().lastRound;
-          expect(Math.abs(r.alzak.dmg - r.babis.dmg)).toBeLessThan(r.babis.dmg * 0.35);
+          expect(Math.abs(r.zelenac.dmg - r.kobliha.dmg)).toBeLessThan(r.kobliha.dmg * 0.35);
         }
       } else if (s.phase === 'shop') {
         session.get('cyril').dispatch('buy', { item: 'koblizek' });
@@ -94,8 +94,8 @@ describe('Babiš vs. Alzák rules', () => {
     const session = new FakeSession<any>(definition(), { players: ['anna', 'ben'], items });
     session.start();
     await tick();
-    session.get('anna').dispatch('chooseTeam', { team: 'babis' });
-    session.get('ben').dispatch('chooseTeam', { team: 'alzak' });
+    session.get('anna').dispatch('chooseTeam', { team: 'kobliha' });
+    session.get('ben').dispatch('chooseTeam', { team: 'zelenac' });
     await tick(2600);
     const s = session.get('board').state;
     expect(s.phase).toBe('question');
@@ -110,8 +110,8 @@ describe('Babiš vs. Alzák rules', () => {
     const session = new FakeSession<any>(definition(), { players: ['anna', 'ben'], items: two, settings: { questionCount: 2, battleRounds: 4 } });
     session.start();
     await tick();
-    session.get('anna').dispatch('chooseTeam', { team: 'babis' });
-    session.get('ben').dispatch('chooseTeam', { team: 'alzak' });
+    session.get('anna').dispatch('chooseTeam', { team: 'kobliha' });
+    session.get('ben').dispatch('chooseTeam', { team: 'zelenac' });
     await tick(2600);
     const board = () => session.get('board').state;
     const first = currentItem(board());
@@ -145,8 +145,8 @@ describe('Babiš vs. Alzák rules', () => {
     const session = new FakeSession<any>(definition(), { players: ['anna', 'ben'], items, settings: { questionTime: 10 } });
     session.start();
     await tick();
-    session.get('anna').dispatch('chooseTeam', { team: 'babis' });
-    session.get('ben').dispatch('chooseTeam', { team: 'alzak' });
+    session.get('anna').dispatch('chooseTeam', { team: 'kobliha' });
+    session.get('ben').dispatch('chooseTeam', { team: 'zelenac' });
     await tick(2600);
     await tick(3000); // 3 s into the question (the speed is below the maximum)
     const board = session.get('board');
@@ -165,8 +165,8 @@ describe('Babiš vs. Alzák rules', () => {
     const session = new FakeSession<any>(definition(), { players: ['anna', 'ben'], items });
     session.start();
     await tick();
-    session.get('anna').dispatch('chooseTeam', { team: 'babis' });
-    session.get('ben').dispatch('chooseTeam', { team: 'alzak' });
+    session.get('anna').dispatch('chooseTeam', { team: 'kobliha' });
+    session.get('ben').dispatch('chooseTeam', { team: 'zelenac' });
     await tick(2600);
     const s = session.get('board').state;
     answer(session, 'anna', 99); // not an option
@@ -181,9 +181,9 @@ describe('Babiš vs. Alzák rules', () => {
     session.start();
     await tick();
     const me = () => session.get('me').state;
-    session.get('me').dispatch('chooseTeam', { team: 'alzak' });
+    session.get('me').dispatch('chooseTeam', { team: 'zelenac' });
     await tick();
-    expect(me().ai).toBe('babis');
+    expect(me().ai).toBe('kobliha');
     let guard = 0;
     while (me().phase !== 'end' && guard++ < 100) {
       const s = me();
@@ -196,7 +196,7 @@ describe('Babiš vs. Alzák rules', () => {
       } else await tick(5000);
     }
     expect(me().phase).toBe('end');
-    expect(me().winner).toBe('babis'); // all wrong in battle: the computer wins
+    expect(me().winner).toBe('kobliha'); // all wrong in battle: the computer wins
     expect(session.records.length).toBeGreaterThan(0);
   });
 
@@ -205,9 +205,9 @@ describe('Babiš vs. Alzák rules', () => {
     session.start();
     await tick();
     const me = () => session.get('me').state;
-    session.get('me').dispatch('chooseTeam', { team: 'babis' });
+    session.get('me').dispatch('chooseTeam', { team: 'kobliha' });
     await tick();
-    expect(me().ai).toBe('alzak');
+    expect(me().ai).toBe('zelenac');
     // Answer question 1
     answer(session, 'me', correctOf(currentItem(me())));
     await tick();
@@ -217,8 +217,8 @@ describe('Babiš vs. Alzák rules', () => {
     await tick();
     await tick(5000); // reveal 2 -> shop
     expect(me().phase).toBe('shop');
-    expect(me().shield.alzak).toBe(50); // hard AI shield
-    expect(me().boost.alzak).toBe(true); // hard AI boost
+    expect(me().shield.zelenac).toBe(50); // hard AI shield
+    expect(me().boost.zelenac).toBe(true); // hard AI boost
     expect(me().dialogue.lines.length).toBe(2); // both characters speak in shop
   });
 });

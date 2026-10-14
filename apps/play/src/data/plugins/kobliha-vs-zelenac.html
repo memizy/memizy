@@ -53,10 +53,10 @@
       --line: #2a3766;
       --text: #f4f6ff;
       --muted: #9aa6cf;
-      --babis: #38bdf8;
-      --babis-deep: #075985;
-      --alzak: #4ade80;
-      --alzak-deep: #166534;
+      --kobliha: #38bdf8;
+      --kobliha-deep: #075985;
+      --zelenac: #4ade80;
+      --zelenac-deep: #166534;
       --gold: #fbbf24;
       --red: #f43f5e;
       --green: #22c55e;
@@ -131,7 +131,7 @@
       min-width: 0;
     }
 
-    .side.alzak {
+    .side.zelenac {
       flex-direction: row-reverse;
       text-align: right;
     }
@@ -168,12 +168,12 @@
       }
     }
 
-    .babis .name {
-      color: var(--babis);
+    .kobliha .name {
+      color: var(--kobliha);
     }
 
-    .alzak .name {
-      color: var(--alzak);
+    .zelenac .name {
+      color: var(--zelenac);
     }
 
     .avatar {
@@ -212,14 +212,14 @@
       transition: width 0.6s ease;
     }
 
-    .babis .hp i {
-      background: linear-gradient(90deg, var(--babis-deep), var(--babis));
+    .kobliha .hp i {
+      background: linear-gradient(90deg, var(--kobliha-deep), var(--kobliha));
     }
 
-    .alzak .hp i {
+    .zelenac .hp i {
       left: auto;
       right: 0;
-      background: linear-gradient(270deg, var(--alzak-deep), var(--alzak));
+      background: linear-gradient(270deg, var(--zelenac-deep), var(--zelenac));
     }
 
     .hp b {
@@ -243,7 +243,7 @@
       font-weight: 800;
     }
 
-    .alzak .chips {
+    .zelenac .chips {
       justify-content: flex-end;
     }
 
@@ -316,15 +316,15 @@
       padding: 14px 18px;
     }
 
-    .bubble.babis {
+    .bubble.kobliha {
       background: #0c2a44;
-      border: 2px solid var(--babis);
+      border: 2px solid var(--kobliha);
       grid-column: 1;
     }
 
-    .bubble.alzak {
+    .bubble.zelenac {
       background: #0b3320;
-      border: 2px solid var(--alzak);
+      border: 2px solid var(--zelenac);
       grid-column: 2;
       text-align: right;
     }
@@ -345,11 +345,11 @@
       border-top: inherit;
     }
 
-    .bubble.babis::after {
+    .bubble.kobliha::after {
       left: 26px;
     }
 
-    .bubble.alzak::after {
+    .bubble.zelenac::after {
       right: 26px;
     }
 
@@ -413,11 +413,11 @@
       color: var(--green);
     }
 
-    .dmg.on-babis {
+    .dmg.on-kobliha {
       left: 18%;
     }
 
-    .dmg.on-alzak {
+    .dmg.on-zelenac {
       right: 18%;
     }
 
@@ -653,14 +653,14 @@
       border: 2px solid transparent;
     }
 
-    .team-card.babis {
+    .team-card.kobliha {
       background: linear-gradient(180deg, #0c2a44, #0a1a30);
-      border-color: var(--babis);
+      border-color: var(--kobliha);
     }
 
-    .team-card.alzak {
+    .team-card.zelenac {
       background: linear-gradient(180deg, #0b3320, #08200f);
-      border-color: var(--alzak);
+      border-color: var(--zelenac);
     }
 
     .team-card h2 {
@@ -686,11 +686,11 @@
       color: #fff;
     }
 
-    .join.babis {
+    .join.kobliha {
       background: linear-gradient(135deg, #0284c7, #075985);
     }
 
-    .join.alzak {
+    .join.zelenac {
       background: linear-gradient(135deg, #22c55e, #166534);
     }
 
@@ -828,7 +828,7 @@
 
     .kind.team {
       background: rgba(56, 189, 248, 0.15);
-      color: var(--babis);
+      color: var(--kobliha);
     }
 
     .kind.self {
@@ -938,10 +938,10 @@
        Content: teams, shop, quotes (parody — every quote at most once per game)
        ═════════════════════════════════════════════════════════ */
     const TEAMS = {
-      babis: { name: 'Tým Kobliha', hero: 'Andrej Kobliha', slogan: 'Koblihy, řepka a Čapí farma!' },
-      alzak: { name: 'Tým Zelenáč', hero: 'Zelenáč', slogan: 'Tisíc mobilů denně a masakr cen!' },
+      kobliha: { name: 'Tým Kobliha', hero: 'Andrej Kobliha', slogan: 'Koblihy, řepka a Čapí farma!' },
+      zelenac: { name: 'Tým Zelenáč', hero: 'Zelenáč', slogan: 'Tisíc mobilů denně a masakr cen!' },
     };
-    const other = (t) => (t === 'babis' ? 'alzak' : 'babis');
+    const other = (t) => (t === 'kobliha' ? 'zelenac' : 'kobliha');
 
     /**
      * kind: team (helps your team), self (your own answers), foe (hurts the other team).
@@ -964,7 +964,7 @@
     const shopItem = (id) => SHOP.find((s) => s.id === id);
 
     const QUOTES = {
-      babis: {
+      kobliha: {
         intro: [
           'Všeci len kecajú, iba ja makám! Poďte do Týmu Kobliha, vybudujeme lepšie Slovensko… teda Česko!',
           'Já jsem do této bitvy nechtěl! To opozice a novináři mě vyprovokovali!',
@@ -1060,7 +1060,7 @@
           'Špatně spočítané hlasy! Na tenhle kvíz podám oficiální reklamaci!',
         ],
       },
-      alzak: {
+      zelenac: {
         intro: [
           'Tisíc mobilů denně! Přidej se k Týmu Zelenáč a ovládneme e-shopy!',
           'V noci klikneš, ráno v Ufoboxu pípneš! Žádné trapné koblihy!',
@@ -1203,12 +1203,12 @@
     }
 
     function hullFor(state, ctx) {
-      return Math.max(HP_PER_PLAYER, HP_PER_PLAYER * Math.max(teamSize(state, ctx, 'babis'), teamSize(state, ctx, 'alzak')));
+      return Math.max(HP_PER_PLAYER, HP_PER_PLAYER * Math.max(teamSize(state, ctx, 'kobliha'), teamSize(state, ctx, 'zelenac')));
     }
     /** Both teams get the same HP (from the bigger team); keeps the percentage when it changes. */
     function rescale(state, ctx) {
       const max = hullFor(state, ctx);
-      for (const t of ['babis', 'alzak']) {
+      for (const t of ['kobliha', 'zelenac']) {
         state.hp[t] = Math.round((state.hp[t] / state.maxHp[t]) * max);
         state.maxHp[t] = max;
       }
@@ -1230,17 +1230,17 @@
     }
 
     function startCampaign(state, ctx) {
-      let b = members(state, ctx, 'babis').length, a = members(state, ctx, 'alzak').length;
+      let b = members(state, ctx, 'kobliha').length, a = members(state, ctx, 'zelenac').length;
       for (const p of ctx.players) {
         if (state.teams[p.id]) continue;
-        state.teams[p.id] = b <= a ? 'babis' : 'alzak';
-        if (state.teams[p.id] === 'babis') b++; else a++;
+        state.teams[p.id] = b <= a ? 'kobliha' : 'zelenac';
+        if (state.teams[p.id] === 'kobliha') b++; else a++;
       }
       // Everyone in one team: the computer plays the other one.
-      state.ai = !members(state, ctx, 'babis').length ? 'babis' : !members(state, ctx, 'alzak').length ? 'alzak' : null;
+      state.ai = !members(state, ctx, 'kobliha').length ? 'kobliha' : !members(state, ctx, 'zelenac').length ? 'zelenac' : null;
       const hp = hullFor(state, ctx);
-      state.hp = { babis: hp, alzak: hp };
-      state.maxHp = { babis: hp, alzak: hp };
+      state.hp = { kobliha: hp, zelenac: hp };
+      state.maxHp = { kobliha: hp, zelenac: hp };
       startQuestion(state, ctx, 'quiz');
     }
 
@@ -1251,7 +1251,7 @@
       state.lastRound = null;
       // A question asked again (short sets) is hidden again (nothing happens if it was not revealed).
       ctx.hide(currentItemId(state));
-      const first = ctx.random() < 0.5 ? 'babis' : 'alzak';
+      const first = ctx.random() < 0.5 ? 'kobliha' : 'zelenac';
       const second = other(first);
       const cat = stage === 'quiz' ? 'quiz' : 'battle';
       say(state, [
@@ -1283,7 +1283,7 @@
       const item = ctx.item(itemId);
       showAnswer(state, ctx, itemId);
       state.reveal = { results: {} };
-      const rate = { babis: [0, 0], alzak: [0, 0] };
+      const rate = { kobliha: [0, 0], zelenac: [0, 0] };
       for (const p of connected(ctx)) {
         const team = state.teams[p.id];
         if (!team || !item) continue;
@@ -1302,13 +1302,13 @@
       const skill = ctx.settings.enemySkill ?? 'normal';
       const aiAcc = skill === 'easy' ? 0.45 : skill === 'hard' ? 0.88 : 0.65;
       const share = (t) => (rate[t][1] ? rate[t][0] / rate[t][1] : state.ai === t ? aiAcc : 0);
-      const bGood = share('babis') >= 0.5;
-      const aGood = share('alzak') >= 0.5;
-      const first = ctx.random() < 0.5 ? 'babis' : 'alzak';
+      const bGood = share('kobliha') >= 0.5;
+      const aGood = share('zelenac') >= 0.5;
+      const first = ctx.random() < 0.5 ? 'kobliha' : 'zelenac';
       const second = other(first);
       say(state, [
-        { who: first, text: quote(state, ctx, first, (first === 'babis' ? bGood : aGood) ? 'good' : 'bad') },
-        { who: second, text: quote(state, ctx, second, (second === 'babis' ? bGood : aGood) ? 'good' : 'bad') },
+        { who: first, text: quote(state, ctx, first, (first === 'kobliha' ? bGood : aGood) ? 'good' : 'bad') },
+        { who: second, text: quote(state, ctx, second, (second === 'kobliha' ? bGood : aGood) ? 'good' : 'bad') },
       ]);
       ctx.goto('reveal');
     }
@@ -1333,7 +1333,7 @@
         }
         state.shopLog.push({ who: 'ai', item: 'alzabox' });
       }
-      const first = ctx.random() < 0.5 ? 'babis' : 'alzak';
+      const first = ctx.random() < 0.5 ? 'kobliha' : 'zelenac';
       const second = other(first);
       say(state, [
         { who: first, text: quote(state, ctx, first, 'shop') },
@@ -1351,9 +1351,9 @@
       const item = ctx.item(itemId);
       showAnswer(state, ctx, itemId);
       state.reveal = { results: {} };
-      const out = { babis: { dmg: 0, hits: 0, of: 0 }, alzak: { dmg: 0, hits: 0, of: 0 } };
+      const out = { kobliha: { dmg: 0, hits: 0, of: 0 }, zelenac: { dmg: 0, hits: 0, of: 0 } };
 
-      for (const team of ['babis', 'alzak']) {
+      for (const team of ['kobliha', 'zelenac']) {
         if (state.ai === team) {
           // The computer: as many "players" as the other team, accuracy and power set by difficulty.
           const n = teamSize(state, ctx, team);
@@ -1401,7 +1401,7 @@
         out[team].dmg = raw;
       }
 
-      for (const team of ['babis', 'alzak']) {
+      for (const team of ['kobliha', 'zelenac']) {
         let dmg = out[team].dmg * (state.boost[team] ? 1.4 : 1) * (state.weak[team] ? 0.7 : 1);
         dmg = Math.round(dmg);
         out[team].dmg = dmg;
@@ -1411,7 +1411,7 @@
         state.hp[foe] = Math.max(0, state.hp[foe] - (dmg - absorbed));
         out[team].absorbed = absorbed;
       }
-      for (const team of ['babis', 'alzak']) {
+      for (const team of ['kobliha', 'zelenac']) {
         const r = state.regen[team];
         if (r.rounds > 0 && state.hp[team] > 0) { state.hp[team] = Math.min(state.maxHp[team], state.hp[team] + r.amount); r.rounds -= 1; out[team].healed = r.amount; }
         state.boost[team] = false;
@@ -1420,14 +1420,14 @@
       state.lastRound = out;
 
       // Reactions: the stronger side attacks, the other one complains.
-      const b = out.babis.dmg, a = out.alzak.dmg;
+      const b = out.kobliha.dmg, a = out.zelenac.dmg;
       if (b === a) {
         say(state, [
-          { who: 'babis', text: quote(state, ctx, 'babis', 'tie') },
-          { who: 'alzak', text: quote(state, ctx, 'alzak', 'tie') },
+          { who: 'kobliha', text: quote(state, ctx, 'kobliha', 'tie') },
+          { who: 'zelenac', text: quote(state, ctx, 'zelenac', 'tie') },
         ]);
       } else {
-        const att = b > a ? 'babis' : 'alzak';
+        const att = b > a ? 'kobliha' : 'zelenac';
         say(state, [{ who: att, text: quote(state, ctx, att, 'attack') }, { who: other(att), text: quote(state, ctx, other(att), 'hit') }]);
       }
       ctx.goto('resolve');
@@ -1435,9 +1435,9 @@
 
     function finish(state, ctx) {
       ctx.goto('end');
-      const pb = state.hp.babis / state.maxHp.babis, pa = state.hp.alzak / state.maxHp.alzak;
-      state.winner = pb === pa ? 'draw' : pb > pa ? 'babis' : 'alzak';
-      if (state.winner === 'draw') say(state, [{ who: 'babis', text: quote(state, ctx, 'babis', 'tie') }, { who: 'alzak', text: quote(state, ctx, 'alzak', 'tie') }]);
+      const pb = state.hp.kobliha / state.maxHp.kobliha, pa = state.hp.zelenac / state.maxHp.zelenac;
+      state.winner = pb === pa ? 'draw' : pb > pa ? 'kobliha' : 'zelenac';
+      if (state.winner === 'draw') say(state, [{ who: 'kobliha', text: quote(state, ctx, 'kobliha', 'tie') }, { who: 'zelenac', text: quote(state, ctx, 'zelenac', 'tie') }]);
       else say(state, [{ who: state.winner, text: quote(state, ctx, state.winner, 'win') }, { who: other(state.winner), text: quote(state, ctx, other(state.winner), 'lose') }]);
       const scores = {};
       for (const p of ctx.players) {
@@ -1462,7 +1462,7 @@
         case 'shop':
           useCoupons(state);
           if (state.shopIdx === 1) {
-            const first = ctx.random() < 0.5 ? 'babis' : 'alzak';
+            const first = ctx.random() < 0.5 ? 'kobliha' : 'zelenac';
             const second = other(first);
             say(state, [
               { who: first, text: quote(state, ctx, first, 'battle_intro') },
@@ -1473,7 +1473,7 @@
           return startQuestion(state, ctx, 'battle');
         case 'battle_intro': return startQuestion(state, ctx, 'battle');
         case 'resolve':
-          if (state.hp.babis <= 0 || state.hp.alzak <= 0 || state.battleRound + 1 >= state.totalBattle) return finish(state, ctx);
+          if (state.hp.kobliha <= 0 || state.hp.zelenac <= 0 || state.battleRound + 1 >= state.totalBattle) return finish(state, ctx);
           state.battleRound += 1;
           if (state.battleRound === half && state.shopIdx === 1) return startShop(state, ctx);
           return startQuestion(state, ctx, 'battle');
@@ -1526,8 +1526,8 @@
         currentUtterance = u;
         u.lang = 'cs-CZ';
         if (cs) u.voice = cs;
-        u.rate = line.who === 'babis' ? 1.25 : 1.5;
-        u.pitch = line.who === 'babis' ? 0.85 : 2.0;
+        u.rate = line.who === 'kobliha' ? 1.25 : 1.5;
+        u.pitch = line.who === 'kobliha' ? 0.85 : 2.0;
 
         let finished = false;
         const onDone = () => {
@@ -1581,7 +1581,7 @@
     /* ═════════════════════════════════════════════════════════
        Drawing
        ═════════════════════════════════════════════════════════ */
-    function babisSvg(cls = 'bobbing') {
+    function koblihaSvg(cls = 'bobbing') {
       return `<svg viewBox="0 0 100 100" class="${cls}" aria-hidden="true">
         <path d="M16 98 L32 68 L68 68 L84 98 Z" fill="#0b4a75" stroke="#062c48" stroke-width="2"/>
         <polygon points="43,68 50,84 57,68" fill="#fff"/><polygon points="47,73 53,73 55,99 45,99" fill="#dc2626"/>
@@ -1595,7 +1595,7 @@
         <circle cx="84" cy="80" r="10" fill="#d97706" stroke="#92400e" stroke-width="2"/><circle cx="84" cy="80" r="3.5" fill="#fde68a"/>
       </svg>`;
     }
-    function alzakSvg(cls = 'bobbing') {
+    function zelenacSvg(cls = 'bobbing') {
       return `<svg viewBox="0 0 100 100" class="${cls}" aria-hidden="true">
         <path d="M30 32 Q16 12 12 22 Q9 32 26 38" fill="#22c55e" stroke="#15803d" stroke-width="2.5"/><circle cx="12" cy="22" r="5" fill="#38bdf8"/>
         <path d="M70 32 Q84 12 88 22 Q91 32 74 38" fill="#22c55e" stroke="#15803d" stroke-width="2.5"/><circle cx="88" cy="22" r="5" fill="#38bdf8"/>
@@ -1616,11 +1616,11 @@
         const pct = Math.max(0, Math.min(100, (state.hp[team] / state.maxHp[team]) * 100));
         const n = state.ai === team ? '🤖' : `👥 ${ui.players.filter((p) => p.connected && state.teams[p.id] === team).length}`;
         const shaking = hit && state.lastRound[other(team)].dmg > 0;
-        const avatar = team === 'babis' ? babisSvg(shaking ? 'shaking' : 'bobbing') : alzakSvg(shaking ? 'shaking' : 'bobbing');
+        const avatar = team === 'kobliha' ? koblihaSvg(shaking ? 'shaking' : 'bobbing') : zelenacSvg(shaking ? 'shaking' : 'bobbing');
         return ui.html`<div class="side ${team}">
           <div class="avatar">${ui.raw(avatar)}</div>
           <div class="who">
-            <div class="name"><span class="long">${teamLabel(state, team)}</span><span class="short">${team === 'babis' ? 'Kobliha' : 'Zelenáč'}${state.ai === team ? ' 🤖' : ''}</span></div>
+            <div class="name"><span class="long">${teamLabel(state, team)}</span><span class="short">${team === 'kobliha' ? 'Kobliha' : 'Zelenáč'}${state.ai === team ? ' 🤖' : ''}</span></div>
             <div class="hp"><i style="width:${pct}%"></i><b>${state.hp[team]} / ${state.maxHp[team]}</b></div>
             <div class="chips"><span class="chip">${n}</span>${state.shield[team] > 0 ? ui.html`<span class="chip">🛡️ ${state.shield[team]}</span>` : ''}${state.regen[team].rounds > 0 ? ui.html`<span class="chip">🦋 ${state.regen[team].rounds}×</span>` : ''}${state.boost[team] ? ui.html`<span class="chip">🎤 +40 %</span>` : ''}${state.weak[team] ? ui.html`<span class="chip">📺 −30 %</span>` : ''}</div>
           </div>
@@ -1629,14 +1629,14 @@
       const left = ui.timeLeft();
       const total = Math.max(1, (state.phaseEndsAt ?? 0) - state.phaseStart);
       const timed = typeof state.phaseEndsAt === 'number' && state.phase !== 'end';
-      const pops = hit ? ['babis', 'alzak'].map((t) => {
+      const pops = hit ? ['kobliha', 'zelenac'].map((t) => {
         const dmg = state.lastRound[other(t)].dmg - (state.lastRound[other(t)].absorbed ?? 0);
         return dmg > 0 ? ui.html`<div class="dmg on-${t}" data-key="d${t}${state.battleRound}">−${dmg}</div>` : '';
       }) : '';
       return ui.html`<div class="stage">
-        ${side('babis')}
+        ${side('kobliha')}
         <div class="mid"><div class="vs">VS</div>${timed ? ui.html`<div class="clock">${Math.ceil(left / 1000)} s</div>` : ''}</div>
-        ${side('alzak')}
+        ${side('zelenac')}
         ${timed ? ui.html`<div class="timebar ${left < 4000 ? 'low' : ''}"><i style="width:${(left / total) * 100}%"></i></div>` : ''}
         ${pops}
       </div>`;
@@ -1659,7 +1659,7 @@
       const card = (team) => {
         const list = ui.players.filter((p) => state.teams[p.id] === team);
         return ui.html`<div class="team-card ${team}">
-          <div class="avatar">${ui.raw(team === 'babis' ? babisSvg() : alzakSvg())}</div>
+          <div class="avatar">${ui.raw(team === 'kobliha' ? koblihaSvg() : zelenacSvg())}</div>
           <h2>${TEAMS[team].name}</h2>
           <div class="muted">${TEAMS[team].slogan}</div>
           ${ui.self ? ui.html`<button class="join ${team}" data-act="chooseTeam" data-payload=${{ team }} ${myTeam === team ? 'disabled' : ''}>${myTeam === team ? 'Jsi tady ✔' : 'Přidat se'}</button>` : ''}
@@ -1670,7 +1670,7 @@
         <h1>Vyber si tým</h1>
         <div class="muted">Kampaň o peníze → obchod → bitva odpovědí. Menší tým má silnější rány, takže je to fér. Když jsou všichni v jednom týmu, druhý hraje počítač.</div>
       </div>
-      <div class="pick">${card('babis')}${card('alzak')}</div>`;
+      <div class="pick">${card('kobliha')}${card('zelenac')}</div>`;
     }
 
     function renderQuestion(state, ui) {
@@ -1704,7 +1704,7 @@
       }
       if (revealed && ui.view === 'board' && battle && state.lastRound) {
         const l = state.lastRound;
-        result = ui.html`<div class="row"><div class="result good" style="flex:1">${TEAMS.babis.name}: ${l.babis.hits}/${l.babis.of} zásahů · ${l.babis.dmg} poškození</div><div class="result good" style="flex:1">${TEAMS.alzak.name}: ${l.alzak.hits}/${l.alzak.of} zásahů · ${l.alzak.dmg} poškození</div></div>`;
+        result = ui.html`<div class="row"><div class="result good" style="flex:1">${TEAMS.kobliha.name}: ${l.kobliha.hits}/${l.kobliha.of} zásahů · ${l.kobliha.dmg} poškození</div><div class="result good" style="flex:1">${TEAMS.zelenac.name}: ${l.zelenac.hits}/${l.zelenac.of} zásahů · ${l.zelenac.dmg} poškození</div></div>`;
       }
 
       return ui.html`<div class="card">
@@ -1760,12 +1760,12 @@
       const ranking = [...ui.players].filter((p) => state.teams[p.id]).sort((a, b) => (state.scores[b.id] ?? 0) - (state.scores[a.id] ?? 0));
       const mvp = (team) => ranking.filter((p) => state.teams[p.id] === team).sort((a, b) => (state.dealt[b.id] ?? 0) - (state.dealt[a.id] ?? 0))[0];
       return ui.html`<div class="card big">
-        <h1>${w === 'draw' ? '🤝 Remíza!' : w === 'babis' ? `👑 Vítězí ${teamLabel(state, 'babis')}!` : `🎉 Vítězí ${teamLabel(state, 'alzak')}!`}</h1>
-        <div class="mvp">${['babis', 'alzak'].map((t) => {
+        <h1>${w === 'draw' ? '🤝 Remíza!' : w === 'kobliha' ? `👑 Vítězí ${teamLabel(state, 'kobliha')}!` : `🎉 Vítězí ${teamLabel(state, 'zelenac')}!`}</h1>
+        <div class="mvp">${['kobliha', 'zelenac'].map((t) => {
         const p = mvp(t);
         return ui.html`<div class="result ${t === w ? 'good' : 'wait'}">${TEAMS[t].name}<br>${p ? ui.html`⭐ ${p.name} · ${state.dealt[p.id]} poškození` : state.ai === t ? '🤖 počítač' : '—'}</div>`;
       })}</div>
-        <div class="rank">${ranking.map((p, i) => ui.html`<div class="${i === 0 ? 'first' : ''}"><span>${i === 0 ? '🏆 ' : `${i + 1}. `}${p.name} <span class="muted">· ${state.teams[p.id] === 'babis' ? 'Kobliha' : 'Zelenáč'}</span></span><span>${state.scores[p.id] ?? 0} b.</span></div>`)}</div>
+        <div class="rank">${ranking.map((p, i) => ui.html`<div class="${i === 0 ? 'first' : ''}"><span>${i === 0 ? '🏆 ' : `${i + 1}. `}${p.name} <span class="muted">· ${state.teams[p.id] === 'kobliha' ? 'Kobliha' : 'Zelenáč'}</span></span><span>${state.scores[p.id] ?? 0} b.</span></div>`)}</div>
       </div>`;
     }
 
@@ -1785,9 +1785,9 @@
         if (!battleIds.length) battleIds = [...quizIds];
         const state = {
           stage: 'quiz', teams: {}, ai: null,
-          hp: { babis: HP_PER_PLAYER, alzak: HP_PER_PLAYER }, maxHp: { babis: HP_PER_PLAYER, alzak: HP_PER_PLAYER },
-          shield: { babis: 0, alzak: 0 }, regen: { babis: { amount: 0, rounds: 0 }, alzak: { amount: 0, rounds: 0 } },
-          boost: { babis: false, alzak: false }, weak: { babis: false, alzak: false },
+          hp: { kobliha: HP_PER_PLAYER, zelenac: HP_PER_PLAYER }, maxHp: { kobliha: HP_PER_PLAYER, zelenac: HP_PER_PLAYER },
+          shield: { kobliha: 0, zelenac: 0 }, regen: { kobliha: { amount: 0, rounds: 0 }, zelenac: { amount: 0, rounds: 0 } },
+          boost: { kobliha: false, zelenac: false }, weak: { kobliha: false, zelenac: false },
           quizIds, battleIds, quizRound: 0, battleRound: 0, totalBattle,
           phaseStart: 0,
           answers: {}, reveal: null, lastRound: null,
@@ -1808,7 +1808,7 @@
           actions: ['chooseTeam'],
           onEnter(state, ctx) {
             state.phaseStart = ctx.now;
-            say(state, [{ who: 'babis', text: quote(state, ctx, 'babis', 'intro') }, { who: 'alzak', text: quote(state, ctx, 'alzak', 'intro') }]);
+            say(state, [{ who: 'kobliha', text: quote(state, ctx, 'kobliha', 'intro') }, { who: 'zelenac', text: quote(state, ctx, 'zelenac', 'intro') }]);
           },
           onTimeout: advance,
         },
@@ -1833,7 +1833,7 @@
         ensurePlayer(state, player.id);
         if (state.phase === 'team_select' || state.teams[player.id]) return;
         // Late joiners: the smaller human team (never the computer's).
-        const choices = ['babis', 'alzak'].filter((t) => t !== state.ai);
+        const choices = ['kobliha', 'zelenac'].filter((t) => t !== state.ai);
         choices.sort((x, y) => members(state, ctx, x).length - members(state, ctx, y).length);
         state.teams[player.id] = choices[0];
         rescale(state, ctx);
@@ -1842,7 +1842,7 @@
       actions: {
         chooseTeam(state, payload, ctx) {
           if (!ctx.playerId) return;
-          if (payload?.team !== 'babis' && payload?.team !== 'alzak') return;
+          if (payload?.team !== 'kobliha' && payload?.team !== 'zelenac') return;
           state.teams[ctx.playerId] = payload.team;
           if (state.phase === 'team_select' && connected(ctx).every((p) => state.teams[p.id])) {
             if (ctx.players.length === 1) startCampaign(state, ctx);

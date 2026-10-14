@@ -15,7 +15,7 @@ describe('link parameters', () => {
       settings: { rounds: 10 },
       problems: [],
     });
-    expect(readLinkParams({ pluginUrl: 'https://example.com/g.html', setUrl: 'https://example.com/s.json', plugin: 'babis' })).toMatchObject({
+    expect(readLinkParams({ pluginUrl: 'https://example.com/g.html', setUrl: 'https://example.com/s.json', plugin: 'kobliha' })).toMatchObject({
       plugin: { kind: 'url', url: 'https://example.com/g.html' }, // the URL wins over a key
       set: { url: 'https://example.com/s.json' },
     });

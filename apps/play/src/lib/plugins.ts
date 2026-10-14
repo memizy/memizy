@@ -6,7 +6,7 @@
 
 import guide from '../../../../docs/ai-plugin-guide.md?raw';
 import pirates from '@/data/plugins/pirates-of-memizy.html?raw';
-import babis from '@/data/plugins/babis-vs-alzak.html?raw';
+import kobliha from '@/data/plugins/kobliha-vs-zelenac.html?raw';
 import civhrad from '@/data/plugins/civhrad.html?raw';
 
 /** The import URL plugins use (docs/ai-plugin-guide.md): our self-contained bundle via jsDelivr. */
@@ -53,8 +53,7 @@ export const EXAMPLE_PLUGINS: ExamplePlugin[] = [
 
 /** Hidden/parody games accessible via URL parameters (e.g. ?plugin=kobliha), not shown in public menus. */
 export const HIDDEN_PLUGINS: ExamplePlugin[] = [
-  { key: 'kobliha', title: 'Kobliha vs. Zelenáč 🍩👽', html: babis },
-  { key: 'babis', title: 'Kobliha vs. Zelenáč 🍩👽', html: babis },
+  { key: 'kobliha', title: 'Kobliha vs. Zelenáč 🍩👽', html: kobliha },
 ];
 
 /** All known built-in plugins (public and hidden). */

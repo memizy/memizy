@@ -90,7 +90,7 @@ After changing a package, rebuild it (`bun run build:packages`) before testing t
 - Game rules without a browser: extract the plugin's module script, replace the SDK
   import with `{ defineGame: capture, checkAnswer }` and run the definition in
   `FakeSession` (`packages/plugin-sdk/src/test/fakeHost.ts`); see
-  `apps/play/src/lib/babis.rules.test.ts`.
+  `apps/play/src/lib/kobliha.rules.test.ts`.
 - Screens without servers: Playwright (`playwright-core`, `channel: 'msedge'`) with
   `page.route('https://cdn.jsdelivr.net/**')` fulfilled by
   `packages/plugin-sdk/dist/bundle/memizy-sdk.bundle.js` and the plugin HTML served
