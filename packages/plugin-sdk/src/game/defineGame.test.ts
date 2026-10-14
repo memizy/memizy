@@ -150,6 +150,41 @@ describe('defineGame end to end', () => {
     document.onkeydown = null;
   });
 
+  it('ui.note renders a whole note item', async () => {
+    const router = new LocalRouter({ items, mode: 'solo' });
+    const note = { id: '0192f0c4-0000-7000-8000-00000000abcd', type: 'note', title: 'Rule', content: '**Bold** text' } as any;
+    const root = mount(router, 'me', { initialState: () => ({}), actions: {}, render: (_s, ui) => ui.html`<div class="n">${ui.note(note)}</div>` });
+    await handles.at(-1)!.ready;
+    await router.start();
+    await wait();
+    expect(root.querySelector('.n h1')?.textContent).toBe('Rule');
+    expect(root.querySelector('.n strong')?.textContent).toBe('Bold');
+  });
+
+  it('names starting with $ are reserved for the SDK (actions, timer keys)', async () => {
+    const router = new LocalRouter({ items, mode: 'solo' });
+    const bad = startGame({ initialState: () => ({}), actions: { $mine() {} }, render: () => '' } as any, { connector: router.connector('me') });
+    await expect(bad.ready).rejects.toThrow(/actions.\$mine: names starting with \$ are reserved/);
+    const root = mount(router, 'me', {
+      initialState: () => ({ n: 0 }),
+      actions: {
+        sneaky(_state, _payload, ctx) { ctx.after(10, '$phaseTimeout', { seq: 1 }); },
+        sneakyKey(_state, _payload, ctx) { ctx.cancel('$phase'); },
+      },
+      render: () => '<p>x</p>',
+    });
+    await handles.at(-1)!.ready;
+    await router.start();
+    handles.at(-1)!.act('sneaky', null);
+    handles.at(-1)!.act('sneakyKey', null);
+    await wait();
+    expect(root.textContent).toBe('x');
+    expect(router.errors).toEqual([
+      expect.stringMatching(/ACTION_FAILED: .*sneaky.*reserved for the SDK/),
+      expect.stringMatching(/ACTION_FAILED: .*sneakyKey.*reserved for the SDK/),
+    ]);
+  });
+
   it('data-local runs a device-only handler and re-renders; unknown handlers are reported', async () => {
     const router = new LocalRouter({ items, mode: 'solo' });
     const seen: unknown[] = [];

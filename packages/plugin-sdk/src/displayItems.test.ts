@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { displayItem, publicItem, seededRandom } from '@memizy/protocol';
+import { displayItem, publicItem, seededRandom } from '@memizy/protocol/internal';
 import type { OQSEAnyItem } from '@memizy/oqse';
 import { checkAnswer } from './checkAnswer';
 

@@ -7,16 +7,18 @@
 import { WindowMessenger, connect } from 'penpal';
 import {
   LIMITS,
-  ensureConnectionPolyfills,
   PLUGIN_API_METHODS,
-  injectContentPolicy,
-  pluginAllowAttribute,
-  pluginContentPolicy,
   readPluginManifestFromHtml,
   toProtocolError,
   type HostApi,
   type PluginApi,
 } from '@memizy/protocol';
+import {
+  ensureConnectionPolyfills,
+  injectContentPolicy,
+  pluginAllowAttribute,
+  pluginContentPolicy,
+} from '@memizy/protocol/internal';
 import type { LocalSession, SessionInstance } from './session';
 
 /** Never add `allow-same-origin`: the plugin must not reach the app's origin. */

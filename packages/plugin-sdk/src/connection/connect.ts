@@ -4,7 +4,8 @@
  */
 
 import { WindowMessenger, connect } from 'penpal';
-import { LIMITS, ProtocolError, ensureConnectionPolyfills, toProtocolError, HOST_API_METHODS, type Handshake, type HostApi, type InitPayload, type PluginApi } from '@memizy/protocol';
+import { LIMITS, ProtocolError, toProtocolError, HOST_API_METHODS, type Handshake, type HostApi, type InitPayload, type PluginApi } from '@memizy/protocol';
+import { ensureConnectionPolyfills } from '@memizy/protocol/internal';
 
 export interface HostConnection {
   host: HostApi;

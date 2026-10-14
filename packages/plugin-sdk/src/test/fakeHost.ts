@@ -4,7 +4,8 @@
  */
 
 import type { HostApi, InitPayload, Player, AnswerRecord, SessionResult } from '@memizy/protocol';
-import { BOARD_ADDRESS, ProtocolError, assertJsonWithin, LIMITS, prepareDisplaySet } from '@memizy/protocol';
+import { BOARD_ADDRESS, ProtocolError, LIMITS, prepareDisplaySet } from '@memizy/protocol';
+import { assertJsonWithin } from '@memizy/protocol/internal';
 import type { OQSEAnyItem } from '@memizy/oqse';
 import { GameRuntime } from '../game/runtime';
 import type { GameDefinition } from '../types';

@@ -7,10 +7,8 @@ import {
   LIMITS,
   PROTOCOL_VERSION,
   ProtocolError,
-  assertJsonWithin,
   localize,
   resolveSettings,
-  toRuntime,
   toProtocolError,
   type DataScope,
   type Handshake,
@@ -21,6 +19,10 @@ import {
   type SessionClock,
   type SettingDefinition,
 } from '@memizy/protocol';
+import {
+  assertJsonWithin,
+  toRuntime,
+} from '@memizy/protocol/internal';
 import { resolveAsset, type MediaObject, type NoteItem, type OQSEAnyItem, type ProgressRecord } from '@memizy/oqse';
 import { GameRuntime } from './runtime';
 import { SafeHtml, html as safeHtml, raw as rawHtml } from '../render/html';
@@ -325,7 +327,7 @@ abstract class BaseController implements Controller {
         this.schedule();
       },
       text: (markdown, options) => rawHtml(renderRichText(markdown, this.textContext((options as { item?: OQSEAnyItem } | undefined)?.item), options)),
-      renderNote: (note: NoteItem, options) => rawHtml(renderNoteHtml(note, this.textContext(note), options)),
+      note: (note: NoteItem, options) => rawHtml(renderNoteHtml(note, this.textContext(note), options)),
       html: safeHtml,
       raw: rawHtml,
       question: (item, options) => this.question(item, options),
@@ -652,7 +654,11 @@ function validateDefinition(def: GameDefinition<any>): void {
   if (!def || typeof def !== 'object') throw new Error('defineGame needs an object: defineGame({ initialState, actions, render })');
   if (typeof def.initialState !== 'function') problems.push('initialState must be a function returning the initial state');
   if (!def.actions || typeof def.actions !== 'object') problems.push('actions must be an object of functions');
-  else for (const [name, fn] of Object.entries(def.actions)) if (typeof fn !== 'function') problems.push(`actions.${name} must be a function`);
+  else
+    for (const [name, fn] of Object.entries(def.actions)) {
+      if (name.startsWith('$')) problems.push(`actions.${name}: names starting with $ are reserved for the SDK`);
+      else if (typeof fn !== 'function') problems.push(`actions.${name} must be a function`);
+    }
   if (typeof def.render !== 'function') problems.push('render must be a function returning HTML');
   if (def.afterRender !== undefined && typeof def.afterRender !== 'function') problems.push('afterRender must be a function (state, ui) => void');
   if ((def as { local?: unknown }).local !== undefined) problems.push('local was renamed to localActions');

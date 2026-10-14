@@ -36,6 +36,8 @@ const { success, data, errors, warnings } = loadOQSEFile(JSON.parse(text));
 
 ## Schemas
 
+The exported `*Schema` objects are **Zod 4** schemas (use them with `.safeParse`); the 1.x line of this package stays on Zod 4.
+
 The auto-generated JSON Schemas are published with this repository and are available at the following URLs:
 
 - Core OQSE Schema: https://cdn.jsdelivr.net/npm/@memizy/oqse@1/schemas/oqse-v1.0.json

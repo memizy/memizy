@@ -9,5 +9,5 @@ describe('import without a DOM', () => {
     expect(typeof sdk.defineGame).toBe('function');
     expect(typeof sdk.checkAnswer).toBe('function');
     expect(sdk.toPlainText('**a**')).toBe('a');
-  });
+  }, 30_000); // the first import transforms the whole SDK (slow while other test files run)
 });

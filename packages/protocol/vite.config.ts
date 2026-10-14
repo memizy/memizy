@@ -10,7 +10,7 @@ export default defineConfig({
   ],
   build: {
     lib: {
-      entry: resolve(import.meta.dirname, 'src/index.ts'),
+      entry: { index: resolve(import.meta.dirname, 'src/index.ts'), internal: resolve(import.meta.dirname, 'src/internal.ts') },
       // One output file per source module, so bundlers can drop unused modules (Zod schemas).
       fileName: (format, entryName) => `${entryName}.${format === 'es' ? 'js' : 'cjs'}`,
       formats: ['es', 'cjs'],

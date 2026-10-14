@@ -5,12 +5,8 @@
  */
 
 import {
-  RELAY_LIMITS,
   RELAY_PROTOCOL,
-  RateLimiter,
   extractManifestFromHtml,
-  isPin,
-  normalizePlayerName,
   type CreateRoomResponse,
   type RelayClientMessage,
   type RelayErrorCode,
@@ -18,6 +14,12 @@ import {
   type RelayServerMessage,
   type RoomInfo,
 } from '@memizy/protocol';
+import {
+  RELAY_LIMITS,
+  RateLimiter,
+  isPin,
+  normalizePlayerName,
+} from '@memizy/protocol/internal';
 
 export interface RelayOptions {
   /** Allowed `Origin` values, or `'*'` (development only). */

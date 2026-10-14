@@ -159,7 +159,7 @@ export interface GameUI {
   readonly services: readonly string[];
   /**
    * HTML template that escapes every value except safe HTML (`ui.html`, `ui.text`,
-   * `ui.renderNote`, `ui.question`, `ui.raw`); arrays are joined, `null` / `false` are
+   * `ui.note`, `ui.question`, `ui.raw`); arrays are joined, `null` / `false` are
    * left out. Use it for every `render`:
    * ``ui.html`<button data-act="answer" data-payload=${{ answer: o.id }}>${ui.text(o.text, { inline: true })}</button>` ``
    */
@@ -177,7 +177,7 @@ export interface GameUI {
   /** Safe HTML for Rich Content from the study set. */
   text(markdown: string | undefined | null, options?: { inline?: boolean; item?: OQSEAnyItem }): SafeHtml;
   /** Safe HTML of a whole note item. */
-  renderNote(note: NoteItem, options?: { titleLevel?: number }): SafeHtml;
+  note(note: NoteItem, options?: { titleLevel?: number }): SafeHtml;
   /** Save data between games (`'plugin'`: across sets, `'set'`: this set). */
   save(scope: DataScope, value: unknown): void;
   /** Set this player's learning progress directly (bucket 0–4). */

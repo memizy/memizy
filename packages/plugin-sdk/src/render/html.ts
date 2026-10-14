@@ -6,7 +6,7 @@
  *   ui.html`<ul>${list.map((x) => ui.html`<li>${x}</li>`)}</ul>`
  *   ui.html`<button data-act="buy" data-payload=${{ item: s.id }}>` → JSON in quotes
  *
- * Safe values are `SafeHtml` (results of `ui.html`, `ui.text`, `ui.renderNote`,
+ * Safe values are `SafeHtml` (results of `ui.html`, `ui.text`, `ui.note`,
  * `ui.question`, `ui.raw`). They extend `String`, so they also work in plain template
  * literals and string concatenation.
  */

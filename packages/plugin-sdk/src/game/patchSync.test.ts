@@ -8,6 +8,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { create, apply, type Patches } from 'mutative';
 import { FakeSession } from '../test/fakeHost';
+import { PATCH_FORMAT } from './runtime';
 import type { GameDefinition } from '../types';
 
 interface Tricky {
@@ -138,5 +139,21 @@ describe('state sync through the SDK runtime', () => {
     for (const address of ['anna', 'ben']) expect(session.get(address).state, address).toEqual(board);
     expect(session.sent.some((m) => m.from === 'board' && m.data?.t === 'patch')).toBe(true);
     expect(session.sent.filter((m) => m.data?.t === 'sync')).toEqual([]);
+    expect(session.sent.filter((m) => m.data?.t === 'patch').every((m) => m.data.f === PATCH_FORMAT)).toBe(true);
+  });
+
+  it('a patch in a format this SDK does not know is not applied: the follower asks for the full state', async () => {
+    const session = new FakeSession(game);
+    session.start();
+    await vi.advanceTimersByTimeAsync(100);
+    const ben = session.get('ben');
+    const before = JSON.stringify(ben.state);
+    session.sent.length = 0;
+    // A future SDK on the authority sends patches in format 2 (e.g. another library).
+    ben.receive({ from: 'board', data: { t: 'patch', b: ben.version, v: ben.version + 1, p: [{ op: 'replace', path: ['log'], value: ['x'] }], f: 2 }, sentAt: 0 });
+    expect(JSON.stringify(ben.state)).toBe(before);
+    expect(session.sent.filter((m) => m.from === 'ben' && m.data?.t === 'sync')).toHaveLength(1);
+    await vi.advanceTimersByTimeAsync(100);
+    expect(ben.state).toEqual(session.get('board').state);
   });
 });

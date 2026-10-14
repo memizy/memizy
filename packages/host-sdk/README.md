@@ -33,6 +33,12 @@ await session.start();                              // waits for everyone, count
 
 The exports listed in `src/index.ts` are the public API; everything else is internal. Without `config.locale` the host uses `'en'`.
 
+**Within 1.x** (for apps that implement or consume the interfaces):
+
+* New methods of `HostStorage` and `LearningAlgorithm` are always optional (`deleteSnapshot?` is one); new parameters come last.
+* `SessionEvent` and `RelayHostEvent` may get new event types: ignore types you do not know (no exhaustive `switch` that fails on them).
+* The language and theme of a session are a `HostConfig` (`config`).
+
 ## Multiplayer over the relay
 
 ```ts

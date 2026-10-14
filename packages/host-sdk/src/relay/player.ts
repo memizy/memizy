@@ -11,7 +11,7 @@ import {
   extractManifestFromHtml,
   type HostApi,
   type InitPayload,
-  type Theme,
+  type HostConfig,
   type PluginApi,
   type RelayBundle,
   type RelayErrorCode,
@@ -55,7 +55,7 @@ export interface RelayPlayerOptions {
    * Language and theme of this device. They replace the host's values, so every
    * player sees the game in the language and theme of their own app.
    */
-  config?: () => Partial<Theme>;
+  config?: () => Partial<HostConfig>;
   /** Creates the plugin instance (default: a sandboxed iframe; tests connect the SDK directly). */
   createFrame?: FrameFactory;
 }
@@ -104,7 +104,7 @@ export class RelayPlayer {
   /** Host clock minus local clock (ms). */
   private skewMs = 0;
   /** The config the host sent last (before this device's overrides). */
-  private hostConfig: Theme | null = null;
+  private hostConfig: HostConfig | null = null;
   private mountQueue: Promise<void> = Promise.resolve();
 
   constructor(options: RelayPlayerOptions) {
@@ -139,7 +139,7 @@ export class RelayPlayer {
     this.plugin.configChanged(this.localConfig(this.hostConfig)).catch(() => {});
   }
 
-  private localConfig(host: Theme): Theme {
+  private localConfig(host: HostConfig): HostConfig {
     return { ...host, ...this.options.config?.() };
   }
 
@@ -266,7 +266,7 @@ export class RelayPlayer {
         }
         let args = msg.args;
         if (msg.method === 'configChanged') {
-          this.hostConfig = args[0] as Theme;
+          this.hostConfig = args[0] as HostConfig;
           args = [this.localConfig(this.hostConfig)];
         }
         if (msg.method === 'clockChanged') {

@@ -8,9 +8,6 @@ import {
   compareProtocolVersions,
   ProtocolError,
   toProtocolError,
-  findNonJson,
-  assertJsonWithin,
-  RateLimiter,
   LIMITS,
   SettingDefinitionSchema,
   resolveSettings,
@@ -18,12 +15,17 @@ import {
   safeParsePluginManifest,
   readPluginManifestFromHtml,
   extractManifestFromHtml,
-  parseHostCall,
-  HOST_API_ARGS,
   HOST_API_METHODS,
   type SettingDefinition,
- settingsForMode
+  settingsForMode,
 } from './index';
+import {
+  findNonJson,
+  assertJsonWithin,
+  RateLimiter,
+  parseHostCall,
+  HOST_API_ARGS,
+} from './internal';
 
 const root = resolve(import.meta.dirname, '../../..');
 

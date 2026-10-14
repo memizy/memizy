@@ -69,7 +69,7 @@ Declare what the game supports. Adjust `id`, `appName`, `types` and `modes`.
 ```
 
 * `"version": "1.0"` is the version of the manifest format (keep it). `types`: only item types your game can show (section 7). With `ui.question` that can be many of them. The app gives you only these.
-* `features`: what your game can show of the set's texts. If texts go through the SDK (`ui.text`, `ui.question`, `ui.renderNote`), keep `["markdown", "latex", "html", "mermaid"]` – the SDK renders them. If your game draws texts itself (e.g. on a canvas), write `[]` and use `toPlainText(text, { latex: true, item })` from the SDK (formatting removed, images replaced by their alt text). A missing feature never hides your game; the app only says that the set is shown simplified.
+* `features`: what your game can show of the set's texts. If texts go through the SDK (`ui.text`, `ui.question`, `ui.note`), keep `["markdown", "latex", "html", "mermaid"]` – the SDK renders them. If your game draws texts itself (e.g. on a canvas), write `[]` and use `toPlainText(text, { latex: true, item })` from the SDK (formatting removed, images replaced by their alt text). A missing feature never hides your game; the app only says that the set is shown simplified.
 * **A game without questions** (it does not use a study set at all): drop `capabilities` and add `"set": "none"` next to `"protocol"` in `appSpecific.memizy`. The app then offers no set and the game gets `ctx.items` empty. With `"set": "optional"` the teacher may choose a set or play without questions (keep `types` then).
 * Remove `solo` or `multiplayer` if the game does not support it. In `hostAs` keep `"presenter"` only if you draw a `board` view, keep `"player"` only if the game works without a board.
 * `settings`: options of the game (types `number`, `boolean`, `select`, `text`). Read them as `ctx.settings.questionTime`.
@@ -194,7 +194,7 @@ phases: {
 | `ui.html` | Template for HTML: ``ui.html`<p>${name}</p>` `` escapes every value; values from `ui.text`, `ui.question` and nested `ui.html` stay HTML; arrays are joined; `null`/`false` are left out. |
 | `ui.question(item, options?)` | Ready-made answering controls (section 6.2). |
 | `ui.text(markdown, { inline, item }?)` | Safe HTML for text from the set (Markdown, LaTeX, images). `inline: true` inside buttons; pass `item` so its images are found. |
-| `ui.renderNote(note)` | Safe HTML of a whole `note` item. |
+| `ui.note(note)` | Safe HTML of a whole `note` item. |
 | `ui.view` | `'solo'`, `'board'` or `'controller'`. |
 | `ui.isAuthority` | Whether this screen runs the rules (the board, the host playing along, or solo). |
 | `ui.self` | This player (`null` on the board). |
@@ -315,6 +315,7 @@ render(state, ui) {
 * **Buttons:** ``ui.html`<button data-act="answer" data-payload=${{ answer: option.id }}>…</button>` `` calls the action `answer` with `{ answer: option.id }`. Inside `ui.html` write the object directly, **without quotes** around `${…}` and without `JSON.stringify` – the SDK quotes and escapes it.
 * **Screen-only buttons:** ``ui.html`<button data-local="tab" data-payload=${'map'}>Map</button>` `` runs `localActions.tab(local, payload, ui)` on this device only and re-renders; nothing is sent to the others.
 * **Links** (`<a href="https://…">`) always open in a new tab; the game stays where it is.
+* Reserved for the SDK: action names starting with `$`, attributes starting with `data-mz-`, CSS classes starting with `mz-`. Your own attributes and classes use other names (e.g. `data-fire`, `.my-board`).
 * **Forms:** `<form data-act="sendText"><input name="text"><button>OK</button></form>` calls `sendText` with `{ text: "…" }` on submit.
 * Screen-only state (the selected tab, an open menu) goes to `ui.setLocal`; call an action when the player decides.
 * In multiplayer an action travels to the authority and back (~0.1–0.3 s). Show it right away with `ui.isPending('answer')` or `ui.pending` (e.g. the chosen option highlighted), but let the result come from the state.
@@ -485,7 +486,7 @@ Lists the player chooses from or arranges are **choices** `{ id, text }`: `optio
 | `chess-puzzle` | `fen`, `question?` | array of moves in SAN (the player's and the replies) – draw it yourself |
 | `open-ended` | `question` | text; `checkAnswer` cannot check it (a teacher does) |
 | `flashcard` | `front`, `back` | the player rates themselves 1–4 (1 no idea, 2 familiar, 3 with effort, 4 easy); `checkAnswer` → correct for 3 and 4; pass the rating also as `confidence` |
-| `note` | `title?`, `content`, `hiddenContent?` | no checking – show with `ui.renderNote` |
+| `note` | `title?`, `content`, `hiddenContent?` | no checking – show with `ui.note` |
 | `x-…` (custom) | defined by the set's author | the answer data is in `solution` (hidden until the reveal) |
 
 * `checkAnswer(item, answer)` returns `true`/`false` and applies the rules of the set. Call it in **actions** (on a player's device the item has no answer and `checkAnswer` throws). Typed answers ignore letter case, extra spaces and – unless the set says otherwise – diacritics, and may allow small typos; numbers are right within `correctAnswer ± tolerance`; timeline dates may be BC (negative years).
@@ -649,7 +650,7 @@ defineGame({
 - [ ] The game is described as `phases`; actions of a phase are listed in its `actions`; every action validates its payload and ignores duplicates.
 - [ ] Answers are checked in actions with `checkAnswer`; the reveal calls `ctx.reveal(itemId)`; answers are shown only after it.
 - [ ] Choices are sent as ids (`option.id`), never positions; `ui.question` is used where it fits.
-- [ ] `render` uses `ui.html`; study-set text goes through `ui.text` / `ui.question` / `ui.renderNote`.
+- [ ] `render` uses `ui.html`; study-set text goes through `ui.text` / `ui.question` / `ui.note`.
 - [ ] No `Math.random()`, `Date.now()`, `setTimeout` / `setInterval` in the rules; no `localStorage`; network only to declared `permissions.network`.
 - [ ] Buttons use `data-act` / `data-local`, never `onclick`; no `alert` / `confirm` / `prompt`.
 - [ ] The game never asks for a real name or other personal data.

@@ -28,6 +28,11 @@ Version 1.0 is a release candidate; the API follows the guide and stays backward
 
 ## Changelog
 
+* **1.0.0 (after 1.0.0-rc.5):**
+  * Renamed `ui.renderNote` → `ui.note` (no alias; nothing used it).
+  * State patches carry their format (`f: 1`); a device that does not know the format asks for the full state.
+  * Names starting with `$` (actions, timer keys) are reserved for the SDK; `defineGame` and `ctx.after` / `ctx.cancel` reject them.
+  * Links open in a new tab; the SDK can be imported without a DOM (Node).
 * **Unreleased (after 1.0.0-rc.4):**
   * `ui.question(item, { counts })` – how many players chose each option, as a badge on the option (choice types).
   * Timed phases re-render on their own (the `ui.timeLeft()` countdown runs without `tickMs`; `tickMs` stays for own animations).
@@ -47,7 +52,9 @@ Version 1.0 is a release candidate; the API follows the guide and stays backward
 
 ## Compatibility within 1.x
 
-The contract has three layers, all backward compatible within `1.x`: the protocol between hosts and plugins ([SPEC](../protocol/SPEC.md)), this API (`defineGame`, `ctx`, `ui`, the documented classes and attributes of `ui.question`) and the messages between SDK instances. The devices of one game may run different `1.x` versions of the SDK, so an SDK ignores message types and fields it does not know, and new parts of messages are optional fields (an older SDK ignores them, a newer one keeps the old behaviour without them).
+The contract has three layers, all backward compatible within `1.x`: the protocol between hosts and plugins ([SPEC](../protocol/SPEC.md)), this API (`defineGame`, `ctx`, `ui`, the documented classes and attributes of `ui.question`) and the messages between SDK instances. The devices of one game may run different `1.x` versions of the SDK, so an SDK ignores message types and fields it does not know, and new parts of messages are optional fields (an older SDK ignores them, a newer one keeps the old behaviour without them). State patches carry the version of their format, so even the patch format can change within 1.x (older devices then ask for the full state).
+
+Reserved for the SDK (SPEC 9): action names and timer keys starting with `$`, attributes `data-mz-…`, CSS classes `mz-…`. Fields of the SDK in the game state exist only on request (`phase`, `phaseSeq`, `phaseEndsAt` with `phases`); later ones will be opt-in too.
 
 ## Loading and compatibility
 

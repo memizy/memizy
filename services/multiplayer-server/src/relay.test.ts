@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test';
-import { RELAY_LIMITS, RELAY_PROTOCOL, type RelayServerMessage } from '@memizy/protocol';
+import { RELAY_PROTOCOL, type RelayServerMessage } from '@memizy/protocol';
+import { RELAY_LIMITS } from '@memizy/protocol/internal';
 import { RelayServer, type RelayConnection } from './relay';
 
 class FakeConn implements RelayConnection {

@@ -53,7 +53,8 @@ export interface Handshake {
   features: string[];
 }
 
-export interface Theme {
+/** Language and theme of the app (`InitPayload.config`, `configChanged`). */
+export interface HostConfig {
   locale: string;
   theme: 'light' | 'dark';
 }
@@ -79,7 +80,7 @@ export interface InitPayload {
   set: { meta: OQSEMeta; items: OQSEAnyItem[] };
   /** Values for every declared setting (defaults applied). */
   settings: Record<string, unknown>;
-  config: Theme;
+  config: HostConfig;
   /** The session clock and its pauses (see {@link SessionClock}). */
   clock: SessionClock;
   /**
@@ -202,7 +203,7 @@ export interface PluginApi {
   playersChanged(players: Player[]): Promise<void>;
   authorityChanged(status: { connected: boolean }): Promise<void>;
   setChanged(set: { meta: OQSEMeta; items: OQSEAnyItem[] }): Promise<void>;
-  configChanged(config: Theme): Promise<void>;
+  configChanged(config: HostConfig): Promise<void>;
   /** The clock was corrected, or the game was paused / resumed (RC4). */
   clockChanged(clock: SessionClock): Promise<void>;
   sessionEnded(reason: SessionEndReason): Promise<void>;

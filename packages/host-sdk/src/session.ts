@@ -14,10 +14,7 @@ import {
   LIMITS,
   PROTOCOL_VERSION,
   ProtocolError,
-  RateLimiter,
-  assertJsonWithin,
   negotiateProtocolVersion,
-  parseHostCall,
   resolveSettings,
   toProtocolError,
   type AnswerRecord,
@@ -31,9 +28,14 @@ import {
   type PluginView,
   type SessionEndReason,
   type SessionResult,
-  type Theme,
+  type HostConfig,
   type SessionClock,
 } from '@memizy/protocol';
+import {
+  RateLimiter,
+  assertJsonWithin,
+  parseHostCall,
+} from '@memizy/protocol/internal';
 import { resolveAsset, type OQSEFile, type ProgressRecord } from '@memizy/oqse';
 import { leitner, type LearningAlgorithm } from './learning';
 import { MemoryStorage, type HostStorage } from './storage';
@@ -63,7 +65,7 @@ export interface SessionConfig {
   loadAsset?: (key: string, itemId: string | undefined) => Promise<Blob>;
   /** Maps a player to the key of their stored progress and data (default: the player ID). */
   userKeyFor?: (playerId: string) => string;
-  config?: Partial<Theme>;
+  config?: Partial<HostConfig>;
   sessionId?: string;
   /**
    * Seed of the display order of options, pairs… (SPEC 4.4; default: the session id).
@@ -158,7 +160,7 @@ export class LocalSession {
   players: Player[];
   settings: Record<string, unknown>;
   settingsValid = true;
-  config: Theme;
+  config: HostConfig;
   started = false;
   ended = false;
   /** Pauses of the game (game time = session time without them). */
@@ -450,7 +452,7 @@ export class LocalSession {
     this.emit({ type: 'paused', paused: this.paused, clock: { ...this.pauseState } });
   }
 
-  setConfig(config: Partial<Theme>): void {
+  setConfig(config: Partial<HostConfig>): void {
     this.config = { ...this.config, ...config };
     for (const address of this.instances.keys()) void this.callPlugin(address, (p) => p.configChanged(this.config));
   }

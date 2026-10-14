@@ -12,7 +12,7 @@
  *   school shares one public IP, so keep it high.
  */
 
-import { RELAY_LIMITS } from '@memizy/protocol';
+import { RELAY_LIMITS } from '@memizy/protocol/internal';
 import { RelayServer, type RelayConnection } from './relay';
 
 const port = Number(process.env.PORT ?? 8787);

@@ -10,14 +10,16 @@ import { create, apply, type Patches } from 'mutative';
 import {
   BOARD_ADDRESS,
   LIMITS,
-  findNonJson,
-  jsonByteSize,
   toProtocolError,
   type HostApi,
   type IncomingMessage,
   type InitPayload,
   type Player,
 } from '@memizy/protocol';
+import {
+  findNonJson,
+  jsonByteSize,
+} from '@memizy/protocol/internal';
 import type { OQSEAnyItem } from '@memizy/oqse';
 import type { GameContext, GameDefinition, RecordAnswerOptions } from '../types';
 import { diffJson } from './diff';
@@ -42,7 +44,11 @@ export type SyncMessage =
   | { t: 'sync' }
   /** `a`: the last action number the authority processed, per sender. */
   | { t: 'state'; v: number; s: unknown; a?: Record<string, number> }
-  | { t: 'patch'; b: number; v: number; p: Patches; a?: Record<string, number> }
+  /**
+   * Changes from version `b` to `v`, applied in order. `f` = the format of `p` (PATCH_FORMAT;
+   * missing = 1): a receiver that does not know it asks for the full state instead.
+   */
+  | { t: 'patch'; b: number; v: number; p: Patches; f?: number; a?: Record<string, number> }
   /** Full items (with answers) the authority revealed to this device (`ctx.reveal`). */
   | { t: 'reveal'; items: OQSEAnyItem[] }
   /** The authority took a reveal back (`ctx.hide`): back to the public items. */
@@ -55,12 +61,29 @@ export interface PendingAction {
   sentAt: number;
 }
 
+/**
+ * Format of state patches: 1 = mutative 2 patches (`{ op: 'add' | 'remove' | 'replace',
+ * path: (string | number)[], value? }`, applied in order). A different format (another
+ * library, another encoding) gets a new number, so older SDKs ask for the full state.
+ */
+export const PATCH_FORMAT = 1;
+
 /** Minimum time between two state broadcasts. */
 const MIN_FLUSH_INTERVAL_MS = 40;
 
-/** Internal timer action and key of the phase deadline. */
+/**
+ * Names starting with `$` are reserved for the SDK: actions and timer keys (SPEC 9). Here:
+ * the internal timer action and key of the phase deadline.
+ */
 const PHASE_TIMEOUT = '$phaseTimeout';
 const PHASE_TIMER = '$phase';
+const reserved = (name: string) => name.startsWith('$');
+/** Timers of the SDK itself (phase deadlines), next to the game's `ctx.after` / `ctx.cancel`. */
+const SDK_TIMERS = Symbol('memizy.sdkTimers');
+interface SdkTimers {
+  after(ms: number, action: string, payload: unknown, key: string): void;
+  cancel(key: string): void;
+}
 
 /** Pending actions are forgotten after this time (lost message, authority away). */
 const PENDING_TIMEOUT_MS = 5000;
@@ -405,8 +428,8 @@ export class GameRuntime<S = unknown> {
       this.onChange();
     } else if (data.t === 'patch') {
       this.confirmActions(data.a);
-      if (this.state === undefined || data.b !== this.version) {
-        this.sendToAuthority({ t: 'sync' });
+      if (this.state === undefined || data.b !== this.version || (data.f ?? 1) !== PATCH_FORMAT) {
+        this.sendToAuthority({ t: 'sync' }); // missed an update, or patches in a format this SDK does not know
         return;
       }
       try {
@@ -572,12 +595,16 @@ export class GameRuntime<S = unknown> {
       after: (ms, action, payload, options) => {
         if (typeof ms !== 'number' || !Number.isFinite(ms) || ms < 0) throw new Error('ctx.after: ms must be a non-negative number');
         if (typeof action !== 'string') throw new Error('ctx.after: action must be the name of an action');
+        if (reserved(action) || (typeof options?.key === 'string' && reserved(options.key))) {
+          throw new Error('ctx.after: names starting with $ are reserved for the SDK');
+        }
         timerSeq += 1;
         const key = options?.key ?? `#${timerSeq}`;
         effects.push({ type: 'after', timer: { key, at: now + ms, action, payload: detach(payload ?? null) } });
         this.timerSeq = timerSeq;
       },
       cancel: (key) => {
+        if (typeof key === 'string' && reserved(key)) throw new Error('ctx.cancel: keys starting with $ are reserved for the SDK');
         effects.push({ type: 'cancel', key });
       },
       recordAnswer: (itemOrId, isCorrect, options = {}) => {
@@ -609,6 +636,11 @@ export class GameRuntime<S = unknown> {
         if (ids.length) effects.push({ type: 'hide', itemIds: ids, to });
       },
     };
+    const sdkTimers: SdkTimers = {
+      after: (ms, action, payload, key) => effects.push({ type: 'after', timer: { key, at: now + ms, action, payload: detach(payload ?? null) } }),
+      cancel: (key) => effects.push({ type: 'cancel', key }),
+    };
+    Object.defineProperty(ctx, SDK_TIMERS, { value: sdkTimers });
     return ctx;
   }
 
@@ -636,15 +668,16 @@ export class GameRuntime<S = unknown> {
   /** Sets `phase`, `phaseSeq`, `phaseEndsAt` and the phase timer. */
   private setPhaseFields(draft: S, name: string, def: NonNullable<GameDefinition<S>['phases']>[string], ctx: GameContext): void {
     const state = draft as Record<string, unknown>;
+    const timers = (ctx as GameContext & { [SDK_TIMERS]: SdkTimers })[SDK_TIMERS];
     state.phase = name;
     state.phaseSeq = (typeof state.phaseSeq === 'number' ? state.phaseSeq : 0) + 1;
     const seconds = typeof def.seconds === 'function' ? def.seconds(draft, ctx) : def.seconds;
     if (typeof seconds === 'number' && Number.isFinite(seconds) && seconds > 0) {
       state.phaseEndsAt = ctx.now + seconds * 1000;
-      ctx.after(seconds * 1000, PHASE_TIMEOUT, { seq: state.phaseSeq }, { key: PHASE_TIMER });
+      timers.after(seconds * 1000, PHASE_TIMEOUT, { seq: state.phaseSeq }, PHASE_TIMER);
     } else {
       state.phaseEndsAt = null;
-      ctx.cancel(PHASE_TIMER);
+      timers.cancel(PHASE_TIMER);
     }
   }
 
@@ -744,7 +777,7 @@ export class GameRuntime<S = unknown> {
       return;
     }
     const acks = this.acksDirty ? { a: this.acks } : {};
-    let message: SyncMessage = { t: 'patch', b: this.sentVersion, v: this.version, p: this.pending, ...acks };
+    let message: SyncMessage = { t: 'patch', b: this.sentVersion, v: this.version, p: this.pending, f: PATCH_FORMAT, ...acks };
     if (this.needFullState || jsonByteSize(message) > LIMITS.messageBytes - 1024) {
       message = { t: 'state', v: this.version, s: this.state, ...acks };
       if (jsonByteSize(message) > LIMITS.messageBytes - 1024) {
@@ -807,7 +840,7 @@ export class GameRuntime<S = unknown> {
       if (sent) {
         const patches = diffJson(sent.view, view);
         if (patches.length === 0 && !a.a) continue;
-        message = { t: 'patch', b: sent.version, v: this.version, p: patches, ...a };
+        message = { t: 'patch', b: sent.version, v: this.version, p: patches, f: PATCH_FORMAT, ...a };
         if (jsonByteSize(message) > LIMITS.messageBytes - 1024) message = { t: 'state', v: this.version, s: view, ...a };
       } else {
         message = { t: 'state', v: this.version, s: view, ...a };
