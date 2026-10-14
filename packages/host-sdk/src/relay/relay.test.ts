@@ -68,8 +68,9 @@ async function until(check: () => boolean, ms = 5000): Promise<void> {
 }
 
 /** The SDK connected directly to the RelayPlayer's host API (no iframe in jsdom). */
-function sdkFrames(): { factory: FrameFactory; roots: HTMLElement[] } {
+function sdkFrames(): { factory: FrameFactory; roots: HTMLElement[]; ended: string[] } {
   const roots: HTMLElement[] = [];
+  const ended: string[] = []; // sessionEnded reasons the games of this device got
   const factory: FrameFactory = (_html, _title, hostApi: HostApi) => {
     const root = document.createElement('div');
     roots.push(root);
@@ -77,7 +78,7 @@ function sdkFrames(): { factory: FrameFactory; roots: HTMLElement[] } {
     const plugin = new Promise<PluginApi>((r) => (resolvePlugin = r));
     const game = startGame({ ...race, root }, {
       connector: async (pluginApi, handshake) => {
-        resolvePlugin(pluginApi);
+        resolvePlugin({ ...pluginApi, sessionEnded: async (reason) => { ended.push(reason); return pluginApi.sessionEnded(reason); } });
         await wait(0); // like Penpal: the host learns about the connection first
         const init = await hostApi.hello(handshake);
         return { host: hostApi, init, standalone: false, destroy: () => {} };
@@ -86,7 +87,7 @@ function sdkFrames(): { factory: FrameFactory; roots: HTMLElement[] } {
     games.push(game);
     return { iframe: root, plugin, destroy: () => game.destroy() };
   };
-  return { factory, roots };
+  return { factory, roots, ended };
 }
 
 /** The board of a session in this page, connected directly. */
@@ -112,7 +113,7 @@ function joinPlayer(pin: string, name: string, token?: string, locale?: string, 
   const player = new RelayPlayer({ serverUrl, WebSocket: WebSocketImpl, pin, name, token, auth, container: () => container, createFrame: frames.factory, config: locale ? () => ({ locale }) : undefined });
   player.on((e) => events.push(e));
   const root = () => frames.roots.at(-1);
-  return { player, events, root, container };
+  return { player, events, root, container, ended: frames.ended };
 }
 
 let plugin: LoadedPlugin;
@@ -224,14 +225,16 @@ describe('relayed multiplayer', () => {
     await until(() => anna2.root()?.querySelector('.score')?.textContent === '1');
     expect(session.players.find((p) => p.id === annaId)?.connected).toBe(true);
 
-    // The host removes Ben.
+    // The host removes Ben: his game hears why before it is removed.
     host.kick(ben.player.playerId!);
     await until(() => ben.events.some((e) => e.type === 'closed' && e.reason === 'kicked'));
     await until(() => session.players.length === 2);
+    expect(ben.ended).toEqual(['kicked']);
 
-    // The host closes the room.
+    // The host closes the room: the game is taken away (closed), once.
     host.close();
     await until(() => anna2.events.some((e) => e.type === 'closed' && e.reason === 'host'));
+    expect(anna2.ended).toEqual(['closed']);
     cyril.player.leave();
   }, 30_000);
 

@@ -16,6 +16,7 @@ import {
   type RelayBundle,
   type RelayErrorCode,
   type RelayServerMessage,
+  type SessionEndReason,
 } from '@memizy/protocol';
 import { createPluginFrame } from '../frame';
 import { RelaySocket, relayWebSocketUrl, type RelayStatus } from './socket';
@@ -78,6 +79,9 @@ interface Pending {
 
 const PLUGIN_METHODS = new Set<string>(PLUGIN_API_METHODS);
 
+/** How long the game may take to react to `sessionEnded` before it is removed. */
+const SESSION_END_GRACE_MS = 1000;
+
 export class RelayPlayer {
   playerId: string | null = null;
   token: string | null;
@@ -106,6 +110,8 @@ export class RelayPlayer {
   /** The config the host sent last (before this device's overrides). */
   private hostConfig: HostConfig | null = null;
   private mountQueue: Promise<void> = Promise.resolve();
+  /** The current game instance was told that its session ended (`sessionEnded`). */
+  private sessionEndedSent = false;
 
   constructor(options: RelayPlayerOptions) {
     this.options = options;
@@ -193,10 +199,15 @@ export class RelayPlayer {
       case 'error':
         this.emit({ type: 'error', code: msg.code, message: msg.message, fatal: msg.fatal });
         break;
-      case 'closed':
-        this.destroyFrame();
-        this.emit({ type: 'closed', reason: msg.reason });
+      case 'closed': {
+        // The game knows only its host: why the host ended the session.
+        const why: SessionEndReason = msg.reason === 'kicked' ? 'kicked' : msg.reason === 'host' ? 'closed' : 'host-left';
+        this.mountQueue = this.mountQueue.then(async () => {
+          await this.endGame(why);
+          this.emit({ type: 'closed', reason: msg.reason });
+        });
         break;
+      }
     }
   }
 
@@ -221,7 +232,8 @@ export class RelayPlayer {
         this.mountQueue = this.mountQueue.then(() => this.mount(msg.gen, msg.bundle));
         return;
       case 'unmount':
-        this.destroyFrame();
+        // The host took the game away (back to the lobby, the room closing, another device on this place).
+        this.mountQueue = this.mountQueue.then(() => this.endGame('closed'));
         return;
       case 'seat':
         if (msg.seat !== null && typeof msg.seat !== 'string') return;
@@ -265,6 +277,7 @@ export class RelayPlayer {
           return;
         }
         let args = msg.args;
+        if (msg.method === 'sessionEnded') this.sessionEndedSent = true;
         if (msg.method === 'configChanged') {
           this.hostConfig = args[0] as HostConfig;
           args = [this.localConfig(this.hostConfig)];
@@ -294,8 +307,24 @@ export class RelayPlayer {
     return data;
   }
 
+  /** Tells the game that its session ended (once, with a short grace period), then removes it. */
+  private async endGame(reason: SessionEndReason): Promise<void> {
+    const plugin = this.plugin;
+    if (plugin && !this.sessionEndedSent) {
+      this.sessionEndedSent = true;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      await Promise.race([
+        plugin.sessionEnded(reason).catch(() => {}),
+        new Promise<void>((resolve) => (timer = setTimeout(resolve, SESSION_END_GRACE_MS))),
+      ]);
+      clearTimeout(timer);
+    }
+    this.destroyFrame();
+  }
+
   private async mount(gen: number, bundleVersion: number): Promise<void> {
     this.destroyFrame();
+    this.sessionEndedSent = false;
     this.gen = gen;
     try {
       const bundle = await this.ensureBundle(bundleVersion);

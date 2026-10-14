@@ -11,17 +11,13 @@ least 1–2 days before the workshop (the guide imports `@memizy/plugin-sdk@1` f
 
 ## 1. Decisions waiting for the owner
 
-- [ ] **Sessions that end on a player's device.** When the relay closes a room (the host was
-      away for 10 minutes, the host closed it) or kicks a player, `RelayPlayer` removes the
-      game without calling `sessionEnded`, so the reasons `host-left` and `kicked` never reach
-      a game. Proposal: `RelayPlayer` calls `sessionEnded` (`kicked`, `closed`, `host-left`)
-      before it removes the game; SPEC 6.1 says the host *or the relay* ends the session
-      (today it says the host does, which no host implements). Additive, no contract change.
-- [ ] **Learning progress in Memizy Play.** Play stores progress and plugin data in memory
-      only (`MemoryStorage`; only snapshots and saved games are persistent), so a student who
-      plays alone in Play loses the Leitner progress and `ui.save` data when the page closes.
-      Fine for the workshop (the platform will own progress); otherwise an IndexedDB
-      `HostStorage` in Play.
+- [x] **Sessions that end on a player's device.** `RelayPlayer` tells the game `sessionEnded`
+      (`kicked`, `closed`, `host-left`; once, with a 1 s grace period) before it removes it, also
+      when the host takes the game away (`unmount`). SPEC 3.1 defines the host as the application
+      on each device (the plugin never sees the transport); SPEC 4.4 no longer mentions the relay.
+- [x] **Learning progress in Memizy Play: stays in memory** (owner, 2026-10-14). Play keeps
+      progress and plugin data in `MemoryStorage` (only snapshots and saved games persist); fine
+      for the workshop. Persistent storage comes with the platform after 1.0.
 
 ## 2. Play app & plugins polish
 
