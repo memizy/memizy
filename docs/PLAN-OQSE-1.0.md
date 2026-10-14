@@ -356,28 +356,28 @@ Práce na větvi `sdk-1.0`. **Nic se neodkládá kvůli termínu** (rozhodnutí 
 Musí pokrýt **vše od RC4**, ne jen poslední změny: kroky A–D, krok 1 (API SDK) a OQSE 1.0.
 Pro každou věc jen jedna cesta.
 
-- [ ] SDK: `ui.html` (i objekty v atributech `data-payload=${{ … }}`), `localActions`
+- [x] SDK: `ui.html` (i objekty v atributech `data-payload=${{ … }}`), `localActions`
       (signatura `(local, payload, ui)`), fáze bez `tickMs` a `ctx.goto` platí hned,
       pozdní akce řeší SDK (bez ručního `round` / `seq`), `ctx.actedAt` pro rychlost,
       `ui.now` jako vlastnost, `ui.pending`, `ui.setLocal` / `ui.local`, `data-local`,
       `playerView`, `ctx.reveal` / `ctx.hide` (i na začátku každé otázky), `ui.question`
       s `counts` a odeslanou odpovědí, `ui.escape` neexistuje.
-- [ ] Rezervovaná pole stavu: `phase`, `phaseSeq`, `phaseEndsAt`.
-- [ ] Stabilní háčky pro styl: třídy a proměnné `ui.question`, `data-option`,
+- [x] Rezervovaná pole stavu: `phase`, `phaseSeq`, `phaseEndsAt`.
+- [x] Stabilní háčky pro styl: třídy a proměnné `ui.question`, `data-option`,
       `--mz-q-index`, `data-type`; ostatní třídy jsou vnitřní.
-- [ ] Výslovně součást kontraktu (z převodu her):
+- [x] Výslovně součást kontraktu (z převodu her):
       1. pořadí potomků `.mz-q-options` = pořadí možností (pravda, nepravda);
       2. akce z `ui.question` má tvar `{ itemId, ...payload, answer }`;
       3. ve hrách s fázemi se zahazují všechny pozdní akce.
-- [ ] 3D: `createScene3d` (`fov`, `near`, `far`), pravidla přepnutí do 2D, toast v `onFallback`.
-- [ ] Mobil: políčka nezmenšovat pod 16 px, bez zoomu.
-- [ ] Protokol RC4: `permissions`, `service()`, `recordAnswer.answer`, vygenerované položky.
-- [ ] OQSE 1.0: tabulka položek a formátů odpovědí, bez `range` / `trimWhitespace`,
+- [x] 3D: `createScene3d` (`fov`, `near`, `far`), pravidla přepnutí do 2D, toast v `onFallback`.
+- [x] Mobil: políčka nezmenšovat pod 16 px, bez zoomu.
+- [x] Protokol RC4: `permissions`, `service()`, `recordAnswer.answer`, vygenerované položky.
+- [x] OQSE 1.0: tabulka položek a formátů odpovědí, bez `range` / `trimWhitespace`,
       diakritika, `solution` u `x-`, `chess-puzzle`, roky př. n. l., `sub` / `sup`.
-- [ ] Manifest `"version": "1.0"`, import `@memizy/plugin-sdk@1`.
-- [ ] Test `guideExample` odpovídá návodu; Lab kopíruje aktuální návod do promptů.
+- [x] Manifest `"version": "1.0"`, import `@memizy/plugin-sdk@1`.
+- [x] Test `guideExample` odpovídá návodu; Lab kopíruje aktuální návod do promptů.
 - [ ] Zkouška s hrami od AI (19.–20. 10.): několik her podle návodu, Lab + zlobivý hráč.
-- [ ] Důraz na časté chyby AI (vlastník, 2026-10-14): žádné inline `onclick` – jen `data-act` (akce)
+- [x] Důraz na časté chyby AI (vlastník, 2026-10-14): žádné inline `onclick` – jen `data-act` (akce)
       a `data-local` (UI jen pro zařízení); v pravidlech žádné `Math.random()`, `setInterval`,
       `Date.now()` – jen `ctx.random()`, `ctx.now`, `phases`; `ctx.reveal(itemId)`, aby hráči
       viděli správné řešení; `ui.escape()` neexistuje, `ui.html` escapuje samo.

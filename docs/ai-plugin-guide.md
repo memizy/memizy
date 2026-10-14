@@ -1,6 +1,6 @@
 # Memizy Plugin Guide for AI Assistants
 
-> Status: **Release Candidate 4** (2026-10-07) – describes `@memizy/plugin-sdk@1` and OQSE 1.0 study sets.
+> Status: **1.0** (2026-10-14) – describes `@memizy/plugin-sdk@1` (Memizy Plugin Protocol 1.0) and OQSE 1.0 study sets.
 > Paste this whole document into your AI assistant together with your idea for a game.
 
 You are writing a **Memizy plugin**: a learning game in **one HTML file**. Memizy (the host app) gives the game a study set (questions, notes) and runs it alone (**solo**) or with a whole class (**multiplayer**). You write only the game rules and the screens. The SDK handles connection, synchronization between devices, reconnecting, timers, pauses, rendering of formatted text, ready-made answer controls and saving learning progress.
@@ -15,11 +15,11 @@ You are writing a **Memizy plugin**: a learning game in **one HTML file**. Memiz
 4. Call `defineGame({...})` **once**. Do not use `localStorage` or `IndexedDB` (blocked) – to remember things between games use `ui.save` (section 5.3). Network requests (`fetch`, `WebSocket`) work only to origins declared in the manifest `permissions.network` (section 3); for AI and other Memizy services use `ui.service` (section 5.4).
 5. **All game state lives in the state object** and changes **only inside actions** (and phase hooks). `render` only reads the state and draws the screen.
 6. Inside actions, **mutate `state` directly** (e.g. `state.scores[id] = 10`). Do not return a new object.
-7. Never use `Math.random()` or `Date.now()` inside `initialState`/actions. Use `ctx.random()`, `ctx.shuffle()`, `ctx.now`.
+7. The rules (`initialState`, actions, phase hooks) never use `Math.random()`, `Date.now()`, `setTimeout` or `setInterval`. Use `ctx.random()`, `ctx.shuffle()`, `ctx.now`, `phases` and `ctx.after`: the rules must give the same result on every device (and when a game is replayed).
 8. Describe the game as **phases** (`phases` + `ctx.goto`, section 4.2): the SDK then ignores actions that do not belong to the current phase and runs the time limits. Every action still **validates its payload** and ignores duplicates (just `return`).
-9. Draw screens with **`ui.html`** templates (section 6): they escape player names and other text automatically. Buttons call actions with `data-act` attributes, never with `onclick`.
+9. Draw screens with **`ui.html`** templates (section 6): they escape player names and other text automatically (there is no `ui.escape`). Buttons use **`data-act`** (an action of the game) or **`data-local`** (a change of this screen only) – never `onclick="…"` or other inline handlers.
 10. Show questions with **`ui.question(item, …)`** (ready-made controls for every common question type, section 6.2) unless the game needs its own controls. Choices have **ids**: send `option.id`, never a position (section 7).
-11. **Answers live only on the authority.** In multiplayer the players' devices get the items **without answers** (`item.answerHidden === true`). Check answers only in actions with `checkAnswer(ctx.item(id), answer)`. Show the right answer after `ctx.reveal(itemId)`.
+11. **Answers live only on the authority.** In multiplayer the players' devices get the items **without answers** (`item.answerHidden === true`). Check answers only in actions with `checkAnswer(ctx.item(id), answer)`. When players should see the right answer (the reveal, a review after a mistake), call **`ctx.reveal(itemId)`** – without it their devices never get it.
 12. If the state holds something other players must not see (their answers before the reveal, cards in a hand), add **`playerView`** (section 5.5).
 13. Never use `alert`, `confirm` or `prompt`: they freeze the game on that device (timers, synchronization; on the board for everyone). Draw dialogs in `render` (section 6.4).
 14. Never ask players for their real name, age, class or other personal data. Players have nicknames from the app: use `ui.self.name` / `ctx.players`.
@@ -87,7 +87,8 @@ Declare what the game supports. Adjust `id`, `appName`, `types` and `modes`.
 ```js
 const game = defineGame({
   root: document.getElementById('app'),  // where to render
-  tickMs: 250,                           // optional: re-render periodically (countdowns)
+  tickMs: 250,                           // optional: re-render every 250 ms (own deadlines, animations;
+                                         //   timed phases re-render by themselves)
 
   initialState(ctx) {                    // once, when the game starts → initial state
     ctx.goto('question');                // the first phase (section 4.2)
@@ -98,6 +99,10 @@ const game = defineGame({
 
   actions: {                             // what players (and the teacher) can do
     answer(state, payload, ctx) { /* ... */ },
+  },
+
+  localActions: {                        // optional: clicks that change only this screen (data-local, section 6)
+    tab(local, payload, ui) { local.tab = payload; },
   },
 
   playerView(state, playerId) {},        // optional: what one player may see (section 5.5)
@@ -154,9 +159,11 @@ phases: {
 },
 ```
 
-* The SDK keeps **`state.phase`**, **`state.phaseEndsAt`** (the deadline, or `null`) and `state.phaseSeq` – reserved names: do not set them yourself (`playerView` gets them copied). `ctx.goto` takes effect at once (the rest of the action sees the new phase), and actions sent from the screen of an older phase are ignored (late answers, double clicks). `ui.phase` is the current phase, **`ui.timeLeft()`** (without an argument) the milliseconds until the end of the phase.
-* An action listed in some phase's `actions` is **ignored in every other phase** (late answers, taps during the reveal). Actions that no phase lists are always allowed – e.g. a teacher's "next" (protect it with `ctx.fromHost`, section 5.2).
-* `ctx.goto` takes effect right **after** the current action or hook. Ending a phase early (everyone answered) is just `ctx.goto('reveal')`.
+* The SDK keeps **`state.phase`**, **`state.phaseEndsAt`** (the deadline, or `null`) and **`state.phaseSeq`** – reserved names: never set them yourself (`playerView` gets them copied). `ui.phase` is the current phase, **`ui.timeLeft()`** (without an argument) the milliseconds until the end of the phase.
+* `ctx.goto(name)` takes effect **at once**: the rest of the action already sees the new phase, and `onEnter` of the new phase runs right away (as the game itself: `ctx.playerId` is `null`). Ending a phase early (everyone answered) is just `ctx.goto('reveal')`.
+* An action listed in some phase's `actions` is **ignored in every other phase**. Actions that no phase lists are always allowed – e.g. a teacher's "next" (protect it with `ctx.fromHost`, section 5.2).
+* **Late actions are handled for you:** the SDK drops every action sent from the screen of an older phase (a late answer, a double click on "next"). Do not add your own `round` or `seq` to payloads for that.
+* Timed phases re-render the screen by themselves, so a countdown with `ui.timeLeft()` needs no `tickMs`.
 * Time limits use the game clock: when the teacher pauses the game, the phase waits too.
 * You can still use `ctx.after(ms, action, payload)` for other timers.
 
@@ -171,13 +178,14 @@ phases: {
 | `ctx.settings` | Values of the manifest settings. |
 | `ctx.mode` / `ctx.hostAs` | `'solo'` / `'multiplayer'`; `'presenter'` / `'player'` / `null`. |
 | `ctx.now` | Current time in ms (same clock on all devices; stands still while paused). |
+| `ctx.actedAt` | When the player tapped (ms, same clock as `ctx.now`; at most 0.4 s before the action arrived). Use it for speed bonuses: fair also on a slow network. |
 | `ctx.random()` / `ctx.shuffle(array)` | Random number 0–1 / shuffled copy of an array. |
 | `ctx.goto(phase)` | Move to another phase (section 4.2). |
 | `ctx.after(ms, action, payload?, { key }?)` / `ctx.cancel(key)` | Run an action later / cancel a timer. A timer with the same `key` replaces the previous one. |
 | `ctx.recordAnswer(itemId, isCorrect, { playerId?, answer? }?)` | Save learning progress (default player: `ctx.playerId`). Call it for every answered question and pass `answer` (what the player chose) – teachers see it. For a question that is not in the set (from a service or your own generator) pass the item itself instead of its id. |
 | `ctx.reveal(itemId \| ids, { to? }?)` | Send the answer (correct option, explanation, back of a flashcard) to the players' devices: to everyone, or `{ to: playerId }`. |
 | `ctx.hide(itemId \| ids, { to? }?)` | Take a reveal back (e.g. before the same question is asked again). |
-| `ctx.end({ scores })` | The game is over. `scores` = `{ [playerId]: points }`. |
+| `ctx.end({ scores, summary? })` | The game is over. `scores` = `{ [playerId]: points }`; `summary` = an optional short text for the app. |
 
 ### `ui` (in `render`, `afterRender`, `renderWaiting`)
 
@@ -188,12 +196,14 @@ phases: {
 | `ui.text(markdown, { inline, item }?)` | Safe HTML for text from the set (Markdown, LaTeX, images). `inline: true` inside buttons; pass `item` so its images are found. |
 | `ui.renderNote(note)` | Safe HTML of a whole `note` item. |
 | `ui.view` | `'solo'`, `'board'` or `'controller'`. |
+| `ui.isAuthority` | Whether this screen runs the rules (the board, the host playing along, or solo). |
 | `ui.self` | This player (`null` on the board). |
 | `ui.players`, `ui.settings`, `ui.mode`, `ui.hostAs` | Same as in `ctx`. |
 | `ui.items`, `ui.item(id)` | The items to show. On players' devices in multiplayer **without** answers (`answerHidden: true`) until `ctx.reveal`. |
 | `ui.phase`, `ui.timeLeft()` | The current phase / ms until its end (`ui.timeLeft(deadline)` for your own deadline). |
+| `ui.now` | Current time in ms (a property, the same clock as `ctx.now`). |
 | `ui.isPending(name?)`, `ui.pending` | Whether an action of this device still waits for the authority / the list `{ name, payload, sentAt }`. Use it to mark the chosen option right away. |
-| `ui.local`, `ui.setLocal(update)` | Data for this screen only (selected tab, 2D/3D switch…). `ui.setLocal({ tab: 'map' })` changes it **and re-renders**. Not shared, not saved. |
+| `ui.local`, `ui.setLocal(update)` | Data for this screen only (selected tab, 2D/3D switch, an open dialog). `ui.setLocal({ tab: 'map' })` changes it **and re-renders**; buttons with `data-local` change it through `localActions`. Not shared, not saved. |
 | `ui.act(name, payload)` | Call an action from your own JavaScript (normally use `data-act`). |
 | `ui.paused` | `true` while the teacher has paused the game (the app covers the screen). |
 | `ui.service(name, payload)`, `ui.services` | Call a Memizy service (section 5.4) / services available here. |
@@ -201,7 +211,7 @@ phases: {
 | `ui.saved` / `ui.save(scope, value)` | Data saved between games for this player (section 5.3). |
 | `ui.setProgress(itemId, { bucket })` | Set this player's progress directly (self-rating). Prefer `ctx.recordAnswer` when an answer can be checked. |
 | `ui.raw(html)` | Mark HTML you wrote yourself as safe (rarely needed: `ui.html` escapes everything else). |
-| `ui.locale` | Language of the app, e.g. `'cs'`. |
+| `ui.locale`, `ui.theme` | Language of the app, e.g. `'cs'`; `'light'` or `'dark'`. |
 
 ---
 
@@ -217,7 +227,7 @@ Exceeding a limit makes the action fail (and the Plugin Lab tests report it):
 
 * **State size:** under **64 KB** as JSON (ids, not whole items; no images or long texts).
 * **Actions:** at most **30 per second** per device. Never call `ui.act` in a loop, in `requestAnimationFrame` or on every mouse move; send the decision, not every intermediate step.
-* **Timers:** use phases or `ctx.after` with a deadline in the state; never an action every second to count down – `render` with `tickMs` shows the countdown.
+* **Timers:** use phases or `ctx.after` with a deadline in the state; never an action every second to count down – `render` shows the countdown with `ui.timeLeft()` (timed phases re-render by themselves; `tickMs` for your own deadlines).
 * **Saved data** (section 5.3): at most **256 KB** per scope.
 
 ### 5.2 Teacher-Only Controls
@@ -303,30 +313,36 @@ render(state, ui) {
 ```
 
 * **Buttons:** ``ui.html`<button data-act="answer" data-payload=${{ answer: option.id }}>…</button>` `` calls the action `answer` with `{ answer: option.id }`. Inside `ui.html` write the object directly, **without quotes** around `${…}` and without `JSON.stringify` – the SDK quotes and escapes it.
+* **Screen-only buttons:** ``ui.html`<button data-local="tab" data-payload=${'map'}>Map</button>` `` runs `localActions.tab(local, payload, ui)` on this device only and re-renders; nothing is sent to the others.
 * **Links** (`<a href="https://…">`) always open in a new tab; the game stays where it is.
 * **Forms:** `<form data-act="sendText"><input name="text"><button>OK</button></form>` calls `sendText` with `{ text: "…" }` on submit.
 * Screen-only state (the selected tab, an open menu) goes to `ui.setLocal`; call an action when the player decides.
 * In multiplayer an action travels to the authority and back (~0.1–0.3 s). Show it right away with `ui.isPending('answer')` or `ui.pending` (e.g. the chosen option highlighted), but let the result come from the state.
 * Elements that appear and disappear (messages, popups, timers) need an `id` or `data-key`, e.g. `<div data-key="toast">`, so an input below them keeps its focus.
-* A controller can be a **phone, tablet or computer**: big buttons (min. 48 px), one column on narrow screens, no hover-only interactions. The board is for a **projector**: large font, high contrast. Browsers grey out disabled buttons; add `button:disabled { color: inherit; }` if you show them on the board.
+* A controller can be a **phone, tablet or computer**: big buttons (min. 48 px), one column on narrow screens, no hover-only interactions. Keep the font of inputs at least 16 px (smaller makes iPhones zoom in; the SDK enforces it on touch screens and blocks zooming). The board is for a **projector**: large font, high contrast. Browsers grey out disabled buttons; add `button:disabled { color: inherit; }` if you show them on the board.
 * Support light and dark mode with `light-dark(lightColor, darkColor)` in CSS (the SDK sets `color-scheme` from the app; do not use `prefers-color-scheme`).
 
 ### 6.2 Ready-Made Question Controls: `ui.question`
 
-`ui.question(item, options)` draws the question and its answering controls for any common type: choices and true/false (one tap), multiple choice, short / numeric / math answers, slider, sorting and timelines (tap in order), pairs and categories (pick from a list), fill-in blanks, matrix, flashcards (flip and self-rating), notes and pins on an image. When the player answers, it calls the action with `{ ...payload, answer }`, where `answer` is exactly what `checkAnswer` expects.
+`ui.question(item, options)` draws the question and its answering controls for every type of the set except `pin-on-model`, `chess-puzzle` and custom `x-` types: choices and true/false (one tap), multiple choice, short / numeric / math answers, slider, sorting and timelines (tap in order), pairs, connections and categories (pick from a list), fill-in blanks, matrix, diagram labels, open answers, flashcards (flip and self-rating), notes and pins on an image. When the player answers, it calls the action with **`{ itemId, ...payload, answer }`**, where `answer` is exactly what `checkAnswer` expects.
 
 ```js
 ui.question(item, {
   action: 'answer',                     // default
-  payload: { round: state.round },      // extra fields for the action
-  chosen: mine?.answer,                 // the player's answer: marked, controls locked
+  payload: { crate: 'ammo' },           // optional extra fields (itemId and answer are always there)
+  chosen: mine?.answer,                 // the player's answer from the state: marked, controls locked
   reveal: state.phase === 'reveal',     // mark right / wrong (after ctx.reveal)
   disabled: ui.view === 'board',        // e.g. the board only shows the question
+  counts: state.phase === 'reveal' ? votes : undefined,   // { optionId: n } – how many chose it (a badge)
   showQuestion: true,                   // false = only the controls
+  submitLabel: 'Send',                  // the submit button (typed answers, multiple choice…)
 })
 ```
 
-Restyle it with CSS variables on a parent: `--mz-q-accent`, `--mz-q-bg`, `--mz-q-fg`, `--mz-q-border`, `--mz-q-radius`, `--mz-q-gap`, `--mz-q-right`, `--mz-q-wrong` (classes `.mz-q-opt`, `.mz-q-submit`… for more). Draw your own controls only when the game needs them (e.g. answering by shooting at a target); then send `option.id`s.
+* An answer on the way is shown by the SDK itself; pass `chosen` once it is in the state.
+* The options are shown in the order of the item (true before false); `counts` keys are option ids (`true` / `false` for true-false).
+* **Styling** – only these hooks are stable: the CSS variables `--mz-q-accent`, `--mz-q-bg`, `--mz-q-fg`, `--mz-q-border`, `--mz-q-radius`, `--mz-q-gap`, `--mz-q-right`, `--mz-q-wrong`, `--mz-q-count-bg` (set them on a parent); the root `.mz-q` with `data-type="<item type>"`; `.mz-q-question`, `.mz-q-options` (for choices and true/false its children are in the order of the options), every option `.mz-q-opt` with `data-option="<id>"` and `--mz-q-index`; `.mz-q-submit`; the states `.mz-q-chosen`, `.mz-q-right`, `.mz-q-wrong`. Other classes may change.
+* Draw your own controls only when the game needs them (e.g. answering by shooting at a target); then send `option.id`s.
 
 ### 6.3 Canvas, WebGL and 3D Games
 
@@ -341,14 +357,25 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.m
 let s3 = null;
 const game = defineGame({
   // …
-  render: (state, ui) => ui.local.no3d
-    ? ui.html`<div class="deck2d">… a simple 2D view …</div>`
-    : ui.html`<div id="scene" data-keep></div><div class="hud">${state.score}</div>`,
+  localActions: {
+    // The 2D / 3D button: the player's choice (createScene3d never switches it back by itself).
+    toggle3d(local) { local.in2d = !local.in2d; if (local.in2d) s3 = null; },
+  },
+  render: (state, ui) => ui.html`
+    ${ui.local.in2d
+      ? ui.html`<div class="deck2d">… a simple 2D view …</div>`
+      : ui.html`<div id="scene" data-keep></div><div class="hud">${state.score}</div>`}
+    ${ui.local.noWebgl ? '' : ui.html`<button class="mode" data-local="toggle3d">${ui.local.in2d ? '3D' : '2D'}</button>`}
+    ${ui.local.message ? ui.html`<div class="toast" data-key="toast">${ui.local.message}</div>` : ''}`,
   afterRender(state, ui) {
-    if (ui.local.no3d) return;
+    if (ui.local.in2d) return;
     if (!s3) {
       s3 = createScene3d(THREE, document.getElementById('scene'), {
-        onFallback: (reason) => ui.setLocal({ no3d: reason }),   // switch to the 2D view
+        onFallback: (reason, { kind }) => {                       // switch to the 2D view and say why
+          s3 = null;
+          ui.setLocal({ in2d: true, noWebgl: kind === 'unsupported', message: '3D does not work well here – switched to 2D.' });
+          setTimeout(() => ui.setLocal({ message: null }), 4000);
+        },
         onFrame: (dt) => { /* animate */ },
       });
       if (!s3) return;
@@ -366,7 +393,14 @@ const game = defineGame({
 });
 ```
 
-`createScene3d(THREE, element, { onFallback, onFrame, onResize, minFps })` returns `{ renderer, scene, camera, canvas, size, start, stop, syncSize, project, nearest, dispose }`, or `null` when 3D cannot run (then `onFallback` was called).
+`createScene3d(THREE, element, { onFallback, onFrame, onResize, minFps, maxPixelRatio, fov, near, far })` returns `{ renderer, scene, camera, canvas, size, start, stop, syncSize, project, nearest, dispose }`, or `null` when 3D cannot run (then `onFallback` was called).
+
+When it switches to 2D (`onFallback(reason, { kind })`):
+
+* `unsupported` (no WebGL, the scene cannot start) and `lost` (the graphics card dropped it): always. With `unsupported` hide the 3D button.
+* `black` (a broken driver draws nothing) and `slow` (too few frames even at lower quality): **only once per page**. When the player switches back to 3D, the next scene stays 3D – the player's choice wins.
+* Show a short message why (a toast for a few seconds), and keep the 3D button so the player can try again.
+* Without `onFallback` the game has no 2D view: it stays 3D (and shows a message when 3D cannot run at all).
 
 * Put an empty element with **`data-keep`** into the HTML: `<div id="scene" data-keep></div>`. The SDK never touches what is inside it, so your canvas survives every render.
 * Create the scene once and update it in **`afterRender(state, ui)`**, which runs after every render (not every animation frame): move objects, start an explosion when `state.lastShot` changed. It must not change the state. Keep your own `requestAnimationFrame` loop for smooth movement.
@@ -441,11 +475,21 @@ Lists the player chooses from or arranges are **choices** `{ id, text }`: `optio
 | `match-pairs` | `question?`, `prompts[]`, `matches[]` (may have extra matches) | `{ promptId: matchId }` |
 | `categorize` | `question`, `categories[]`, `items[]` | `{ itemId: categoryId }` |
 | `fill-in-blanks` / `fill-in-select` | `text` with blanks | `{ token: text }` / `{ token: optionId }` |
+| `match-complex` | `question?`, `leftItems[]`, `rightItems[]` | array of `[leftId, rightId]` pairs |
 | `timeline` | `question`, `events[]` | array of event ids in order |
+| `matrix` | `question`, `rows[]`, `columns[]` | array of `[rowId, columnId]` cells |
+| `math-input` | `question` | LaTeX string |
+| `diagram-label` | `question`, `targetAsset` (an image), `zones[]`, `labels[]` | `{ zoneId: labelId }` (typed texts with `requireTyping`) |
+| `pin-on-image` | `question`, `targetAsset` (an image) | `{ x, y }` in percent of the image (an array with `multipleCorrect`) |
+| `pin-on-model` | `question`, `targetAsset` (a 3D model) | mesh name (an array with `multipleCorrect`) – draw it yourself |
+| `chess-puzzle` | `fen`, `question?` | array of moves in SAN (the player's and the replies) – draw it yourself |
+| `open-ended` | `question` | text; `checkAnswer` cannot check it (a teacher does) |
 | `flashcard` | `front`, `back` | the player rates themselves 1–4 (1 no idea, 2 familiar, 3 with effort, 4 easy); `checkAnswer` → correct for 3 and 4; pass the rating also as `confidence` |
 | `note` | `title?`, `content`, `hiddenContent?` | no checking – show with `ui.renderNote` |
+| `x-…` (custom) | defined by the set's author | the answer data is in `solution` (hidden until the reveal) |
 
-* `checkAnswer(item, answer)` returns `true`/`false` and applies the rules of the set (case, tolerance, alternative answers). Call it in **actions** (on a player's device the item has no answer and `checkAnswer` throws).
+* `checkAnswer(item, answer)` returns `true`/`false` and applies the rules of the set. Call it in **actions** (on a player's device the item has no answer and `checkAnswer` throws). Typed answers ignore letter case, extra spaces and – unless the set says otherwise – diacritics, and may allow small typos; numbers are right within `correctAnswer ± tolerance`; timeline dates may be BC (negative years).
+* Texts of the set may contain Markdown, `<sub>` / `<sup>`, formulas and images: show them with `ui.text` (or `toPlainText` on a canvas), never as raw HTML.
 * Memizy already shuffles options and lists once per game (the same order on every device). Show them in the order you get them.
 * The answer fields (`correctId`, `correctIds`, `correctOrder`, `pairs`, `correctAnswer(s)`, `explanation`, a choice's `explanation`, the `back` of a flashcard…) exist on players' devices only after `ctx.reveal`. Show them only after the reveal and only when `!item.answerHidden` (`ui.question` with `reveal: true` does it for you).
 
@@ -606,13 +650,16 @@ defineGame({
 - [ ] Answers are checked in actions with `checkAnswer`; the reveal calls `ctx.reveal(itemId)`; answers are shown only after it.
 - [ ] Choices are sent as ids (`option.id`), never positions; `ui.question` is used where it fits.
 - [ ] `render` uses `ui.html`; study-set text goes through `ui.text` / `ui.question` / `ui.renderNote`.
-- [ ] No `Math.random()`, `Date.now()`, `localStorage` in game logic; network only to declared `permissions.network`.
+- [ ] No `Math.random()`, `Date.now()`, `setTimeout` / `setInterval` in the rules; no `localStorage`; network only to declared `permissions.network`.
+- [ ] Buttons use `data-act` / `data-local`, never `onclick`; no `alert` / `confirm` / `prompt`.
+- [ ] The game never asks for a real name or other personal data.
 - [ ] `ctx.recordAnswer(itemId, correct, { answer })` for every answered question, `ctx.end({ scores })` at the end.
 - [ ] Secrets in the state (others' answers before the reveal, hands) are hidden with `playerView`.
 - [ ] Teacher-only actions (next, end…) start with `if (!ctx.fromHost) return;`.
 - [ ] Controllers usable on a phone and a computer, the board readable on a projector.
 - [ ] State stays small (ids instead of items); no actions in loops or animation frames.
 - [ ] Progress between games uses `ui.save`; in solo, player choices (level, character) are the first phase.
+- [ ] A 3D game has a 2D view, a 2D / 3D button and a message in `onFallback`.
 
 ## 10. Common Mistakes
 
@@ -628,3 +675,7 @@ defineGame({
 10. A canvas or 3D scene without `data-keep` – it is recreated on every render (black or flickering screen). Never call `location.reload()`.
 11. `alert`, `confirm` or `prompt` – they stop the game on that device; draw a dialog instead (section 6.4).
 12. `data-payload='${JSON.stringify(…)}'` – works, but `data-payload=${{ … }}` without quotes is simpler and cannot break the attribute.
+13. Calling `ui.escape(…)` – it does not exist; `ui.html` escapes every value by itself.
+14. Counting time with `setInterval` or `Date.now()` in the rules – use phases with `seconds`, `ctx.after` and `ctx.now`.
+15. Adding a `round` or `seq` to payloads to drop late answers – in a game with phases the SDK does it.
+16. Forgetting `ctx.reveal(itemId)` – the players' devices then never show the right answer.
