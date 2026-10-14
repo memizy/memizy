@@ -43,8 +43,8 @@ least 1–2 days before the workshop (the guide imports `@memizy/plugin-sdk@1` f
 
 - [ ] **GitHub Actions:** Add `.github/workflows/ci.yml` running `bun run test`, `bun run typecheck` and
       `apps/play` build on pull requests and pushes to `main`.
-- [ ] **Astro landing page for memizy.com:** Create a clean, modern landing page for `https://memizy.com`.
-- [ ] **Deploy Play to subpath / subdomain:** Deploy Memizy Play to `memizy.com/play/` (or `play.memizy.com`),
+- [ ] **Astro landing page for memizy.com:** Create a clean, modern landing page for `https://memizy.com` with only links for play
+- [ ] **Deploy Play to subpath / subdomain:** Deploy Memizy Play to `memizy.com/play/` or think of the route where it should be,
       verify base URL routing, assets and CDN links.
 - [ ] **Relay server deploy:** Deploy latest relay server (`deploy.sh` on VPS `memizy-vps`).
 
@@ -52,9 +52,13 @@ least 1–2 days before the workshop (the guide imports `@memizy/plugin-sdk@1` f
 
 - [ ] Several games written by different AI assistants from `docs/ai-plugin-guide.md`, through
       the Lab: tests including the naughty player, solo and multiplayer on real phones.
-- [ ] Compare models (Claude 3.5 Sonnet, GPT-4o, Gemini 1.5 Pro) on following the guide and formulate
+- [ ] Compare models that students will use on following the guide and formulate
       concrete recommendations for workshop attendees.
-- [ ] Fix what the games show (guide first, then the SDK), only additively.
+- [ ] **Fix what the games show (guide first, then the SDK – strictly additive):**
+      When AI models make recurring mistakes, improve `docs/ai-plugin-guide.md` first (add concrete
+      examples and antipatterns to "Common AI mistakes"). If the SDK is too brittle, add safe fallbacks
+      or clearer warnings, but strictly without breaking changes to the frozen 1.0 contract (no renames,
+      no removals, no altered method signatures).
 
 ## 5. Documentation & Presentation
 
@@ -67,6 +71,7 @@ least 1–2 days before the workshop (the guide imports `@memizy/plugin-sdk@1` f
 - [ ] `CHANGELOG.md` in every package, starting with 1.0.0 (the plugin-sdk README has the RC history).
 - [ ] READMEs of the packages: version 1.0, the CDN URLs at `@1`, the JSON Schemas.
 - [ ] Finish workshop presentation in `docs/presentation/`: check versions, import URLs and API names (`ui.note`, no `/+esm`).
+- [ ] Dát do toho play na tu hlavní stránku i odkaz na tu prezentaci tu tam dát taky.
 
 ## 6. Release
 
