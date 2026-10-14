@@ -1,6 +1,6 @@
 # Memizy Plugin Protocol v1
 
-> Status: **1.0** (protocol version `1.0`, packages `1.0.0`). The contract is frozen: within MAJOR `1` it changes only additively (section 9). Every change is recorded in the changelog at the end.
+> Status: **1.0** (2026-10-14; protocol version `1.0`, packages `1.0.0`). The contract is frozen: within MAJOR `1` it changes only additively (section 9). Every change is recorded in the changelog at the end.
 
 This document defines the contract between a **Memizy plugin** (an HTML page running in a sandboxed iframe) and a **Memizy host** (the Memizy app, the Plugin Lab, or any other application embedding plugins through `@memizy/host-sdk`).
 
@@ -13,9 +13,9 @@ It covers:
 5. **message routing** for multiplayer,
 6. **limits, errors, security and compatibility rules**.
 
-It does **not** cover the high-level game API (`defineGame`) – that lives in `@memizy/plugin-sdk`, which every plugin bundles (see [the AI plugin guide](../../docs/ai-plugin-guide.md)). It also does not cover the host ↔ multiplayer-server wire protocol, which is internal to `@memizy/host-sdk`.
+It does **not** cover the high-level game API (`defineGame`) – that lives in `@memizy/plugin-sdk`, which every plugin bundles (see [the AI plugin guide](https://github.com/memizy/memizy/blob/main/docs/ai-plugin-guide.md)). It also does not cover the host ↔ multiplayer-server wire protocol, which is internal to `@memizy/host-sdk`.
 
-Data formats (sets, items, progress) are defined by [OQSE](../oqse/oqse.md).
+Data formats (sets, items, progress) are defined by [OQSE](https://github.com/memizy/memizy/blob/main/packages/oqse/oqse.md).
 
 ---
 
@@ -30,7 +30,7 @@ Data formats (sets, items, progress) are defined by [OQSE](../oqse/oqse.md).
 
 ## 2. Plugin Manifest
 
-The manifest is an [OQSEM](../oqse/oqse-manifest.md) document embedded in the plugin HTML as a data island. The host reads it **without executing the plugin** (registry, upload in the Lab).
+The manifest is an [OQSEM](https://github.com/memizy/memizy/blob/main/packages/oqse/oqse-manifest.md) document embedded in the plugin HTML as a data island. The host reads it **without executing the plugin** (registry, upload in the Lab).
 
 ```html
 <script type="application/oqse-manifest+json">
@@ -64,7 +64,7 @@ The manifest is an [OQSEM](../oqse/oqse-manifest.md) document embedded in the pl
 </script>
 ```
 
-The OQSEM part describes **content** (item types, assets, features) and is used for the [OQSE handshake](../oqse/oqse-manifest.md#the-handshake-matching-process) (`checkCompatibility`). The Memizy part (`appSpecific.memizy`) describes the **runtime**:
+The OQSEM part describes **content** (item types, assets, features) and is used for the [OQSE handshake](https://github.com/memizy/memizy/blob/main/packages/oqse/oqse-manifest.md#the-handshake-matching-process) (`checkCompatibility`). The Memizy part (`appSpecific.memizy`) describes the **runtime**:
 
 | Key | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
@@ -117,7 +117,7 @@ Reserved for later minor versions: `teams`, editing permissions.
 | **State** | The whole state of the game: one JSON value owned by the authority; its content is defined by the plugin. |
 | **Action** | An intent of a player or a timer (e.g., "answered B"). Only actions change the state. |
 | **Snapshot** | A saved copy of the authority's state (including pending timers), used to resume the game when the authority instance is recreated (reload, crash). Late joiners and reconnecting players do not use it; they synchronize with the running authority. |
-| **Learning progress** | Per-item learning records of a player in [OQSEP](../oqse/oqse-progress.md) (buckets, review dates). Understood and scheduled by the host. |
+| **Learning progress** | Per-item learning records of a player in [OQSEP](https://github.com/memizy/memizy/blob/main/packages/oqse/oqse-progress.md) (buckets, review dates). Understood and scheduled by the host. |
 | **Plugin data** | Game progress of a player that only the plugin understands (unlocked levels, coins, best scores). Stored by the host, opaque to it (section 5.2). |
 
 | Situation | Instances (views) | Authority |
@@ -235,7 +235,7 @@ interface Player {
 * A host supports a set of protocol versions, one per MAJOR version (e.g. `1.4` and `2.1`). The plugin's MAJOR version must be one of them. Otherwise the host rejects with `ProtocolError { code: 'UNSUPPORTED_PROTOCOL' }` and shows the user a clear message ("this plugin needs a newer Memizy" or "this plugin is too old").
 * The negotiated version has the plugin's MAJOR and the lower of both MINOR versions. Neither side uses a method, field or feature introduced in a higher minor than the negotiated one.
 * A plugin that uses a field, value, method or setting type introduced in protocol 1.*x* declares `protocol: "1.x"` in its manifest (the minimum version it needs). A host that supports only an older minor version then rejects it before loading, instead of misreading what it does not know.
-* `manifest.appSpecific.memizy.protocol` is checked **before** loading the iframe (the host does not offer plugins it cannot run). The manifest itself (`version`, the OQSEM format) follows the [OQSE version rules](../oqse/oqse.md#versioning-and-compatibility): the host reads the OQSEM MAJOR versions it supports.
+* `manifest.appSpecific.memizy.protocol` is checked **before** loading the iframe (the host does not offer plugins it cannot run). The manifest itself (`version`, the OQSEM format) follows the [OQSE version rules](https://github.com/memizy/memizy/blob/main/packages/oqse/oqse.md#versioning-and-compatibility): the host reads the OQSEM MAJOR versions it supports.
 * A host SHOULD keep supporting older MAJOR versions as long as practical (e.g. an adapter in `@memizy/host-sdk`), so older plugins keep working.
 
 ### 4.4 Display order and hidden answers
@@ -293,7 +293,7 @@ Plugins write it with **`recordAnswer`**: the plugin reports what happened ("pla
 
 What `recordAnswer` carries besides the result:
 
-* `answer` – what the player answered, in the format of the item type defined in [OQSE Answer Formats](../oqse/oqse.md#answer-formats) (the format `checkAnswer` takes: choice IDs, text, numbers; a flashcard's self-rating 1–4). Teachers see which wrong answers were chosen; because answers use IDs, the statistics survive edits of the set.
+* `answer` – what the player answered, in the format of the item type defined in [OQSE Answer Formats](https://github.com/memizy/memizy/blob/main/packages/oqse/oqse.md#answer-formats) (the format `checkAnswer` takes: choice IDs, text, numbers; a flashcard's self-rating 1–4). Teachers see which wrong answers were chosen; because answers use IDs, the statistics survive edits of the set.
 * **Generated items** (from a service or a generator in the plugin) are not in the set. The plugin attaches the item (`item`, at least `id` and `type`; answer fields may be left out; max 32 KB). The host counts such answers in statistics (per `skills` and `tags`) but not in the repetition schedule, because the item never comes back.
 * Progress for teachers is aggregated per OQSE `skills` (and their parents, `chess.tactics` for `chess.tactics.fork`), which come from the content, never from the plugin. A game's own model of the player (rating, level, unlocked chapters) belongs to plugin data (section 5.2).
 
@@ -490,7 +490,7 @@ What was decided and why, and what is **reserved** (name and intent fixed, not i
 
 ## Changelog
 
-* **1.0 (unreleased):** the term *host* (3.1): the application that embeds the plugin on a device, also on a player's device; the host ends a player's instance with `sessionEnded` (also `kicked`, `host-left`) before removing it. Removed before 1.0 and reserved (10): `exit`, `resize`, `setChanged`, `saveProgress` (a self-rating is an answer). `InitPayload.services` and the pause fields of `SessionClock` are always present; `sessionEnded` reason `host-left` (was `host_left`); `SETTINGS_ADDRESS` is defined here; the relay type of a room player is `RoomPlayer`. State patches carry their format (`f`); reserved names `$…`, `data-mz-…`, `mz-…` and opt-in state fields; `@memizy/protocol/internal`; Zod 4 (9). Renamed before 1.0: `ui.renderNote` → `ui.note` (SDK), the type `Theme` → `HostConfig`. Player names and personal data: plugins MUST NOT ask for real names or other personal data (3.3); `setChanged` is optional for hosts (7); `replay` reserved (10). The sandbox allows popups that escape it, links open in a new tab (8.4). Error code `UNKNOWN_METHOD` (8.2). Continuing a saved game is described (3.3; host feature, no protocol change). After `end(result)` the host discards the snapshot (5). The transport (Penpal 8), the SDK message format and the protocol declaration of plugins using 1.x additions are fixed rules (4, 4.3, 9); plugins load the SDK from `…/plugin-sdk@1`. `appSpecific.memizy.set` (`required` / `optional` / `none`): games without questions; OQSEM `capabilities` and `actions` may be omitted. Public items (4.4) also lose `sources[].quote`; custom `x-` items lose `solution`, `explanation` and `incorrectFeedback` and get `answerHidden: true` (they were passed unchanged); `hints` stay public. `recordAnswer.answer` follows OQSE Answer Formats (a flashcard answer is a self-rating 1–4; `ui.question` offers four ratings). OQSE 1.0 sets and OQSEM 1.0 manifests (`"version": "1.0"`; other MAJOR versions are not read as 1.x). A host may support several protocol MAJOR versions at once (4.3); supporting older ones is a SHOULD instead of a MUST. Final rules: a second `hello` of an instance rejects with `INVALID_ARGUMENT`, only the first `end(result)` counts (5); guaranteed rates of `recordAnswer` (per player for the authority), `getAsset` and `reportError` (dropped beyond it) and an asset size of 2 MB (8.1); the address `"settings"` (3.1).
+* **1.0 (2026-10-14):** the term *host* (3.1): the application that embeds the plugin on a device, also on a player's device; the host ends a player's instance with `sessionEnded` (also `kicked`, `host-left`) before removing it. Removed before 1.0 and reserved (10): `exit`, `resize`, `setChanged`, `saveProgress` (a self-rating is an answer). `InitPayload.services` and the pause fields of `SessionClock` are always present; `sessionEnded` reason `host-left` (was `host_left`); `SETTINGS_ADDRESS` is defined here; the relay type of a room player is `RoomPlayer`. State patches carry their format (`f`); reserved names `$…`, `data-mz-…`, `mz-…` and opt-in state fields; `@memizy/protocol/internal`; Zod 4 (9). Renamed before 1.0: `ui.renderNote` → `ui.note` (SDK), the type `Theme` → `HostConfig`. Player names and personal data: plugins MUST NOT ask for real names or other personal data (3.3); `setChanged` is optional for hosts (7); `replay` reserved (10). The sandbox allows popups that escape it, links open in a new tab (8.4). Error code `UNKNOWN_METHOD` (8.2). Continuing a saved game is described (3.3; host feature, no protocol change). After `end(result)` the host discards the snapshot (5). The transport (Penpal 8), the SDK message format (actions carry the `phaseSeq` the player saw and the tap time `actedAt`; devices of one game may run different SDK 1.x versions) and the protocol declaration of plugins using 1.x additions are fixed rules (4, 4.3, 9); plugins load the SDK from `…/plugin-sdk@1`. `appSpecific.memizy.set` (`required` / `optional` / `none`): games without questions; OQSEM `capabilities` and `actions` may be omitted. Public items (4.4) also lose `sources[].quote`; custom `x-` items lose `solution`, `explanation` and `incorrectFeedback` and get `answerHidden: true` (they were passed unchanged); `hints` stay public. `recordAnswer.answer` follows OQSE Answer Formats (a flashcard answer is a self-rating 1–4; `ui.question` offers four ratings). OQSE 1.0 sets and OQSEM 1.0 manifests (`"version": "1.0"`; other MAJOR versions are not read as 1.x). A host may support several protocol MAJOR versions at once (4.3); supporting older ones is a SHOULD instead of a MUST. Final rules: a second `hello` of an instance rejects with `INVALID_ARGUMENT`, only the first `end(result)` counts (5); guaranteed rates of `recordAnswer` (per player for the authority), `getAsset` and `reportError` (dropped beyond it) and an asset size of 2 MB (8.1); the address `"settings"` (3.1).
 * **RC1 (2026-10-04):** first release candidate.
 * **RC2 (2026-10-06):** `SettingDefinition.modes`; the host may show solo settings before the start (section 3.3). Additive: RC1 plugins and hosts keep working.
 * **RC4 (2026-10-07):** OQSE 0.3 sets (choices with IDs; the RC3 `correctOrder` / `correctMatches` display fields are gone because answers refer to IDs); `recordAnswer.answer` and generated items (5.1); services (5.3, `service`, `InitPayload.services`, `SERVICE_UNAVAILABLE`); pauses (`SessionClock`); `permissions` with a Content Security Policy and device grants (8.4); decisions and reservations (section 10). Additive for the protocol except the OQSE version: plugins must read choices (`option.text`, `option.id`).

@@ -1,6 +1,6 @@
 {
   "name": "@memizy/plugin-sdk",
-  "version": "1.0.0-rc.5",
+  "version": "1.0.0-rc.6",
   "description": "Build Memizy learning games (solo and multiplayer) in a single HTML file.",
   "type": "module",
   "main": "./dist/memizy-sdk.cjs",
@@ -18,17 +18,19 @@
   "files": [
     "dist",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsc --noEmit && vite build && vite build -c vite.bundle.config.ts",
+    "build": "tsc --noEmit && vite build && vite build -c vite.bundle.config.ts && node ../../scripts/dts-extensions.mjs dist",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@memizy/oqse": "^1.0.0-rc.5",
-    "@memizy/protocol": "^1.0.0-rc.5",
+    "@memizy/oqse": "^1.0.0-rc.6",
+    "@memizy/protocol": "^1.0.0-rc.6",
     "dompurify": "^3.4.1",
     "marked": "^16.0.0",
     "mutative": "^2.0.0",

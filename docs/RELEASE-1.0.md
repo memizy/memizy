@@ -58,20 +58,23 @@ least 1–2 days before the workshop (the guide imports `@memizy/plugin-sdk@1` f
 
 ## 5. Documentation & Presentation
 
-- [ ] SPEC: the status says "1.0" and the "RC4" labels are gone (contract-1.0-final); the changelog line "1.0 (unreleased)"
-      gets the date, and covers everything since RC4 (also `phaseSeq` and `actedAt` in the
-      SDK messages and the rule about SDK versions on one game's devices).
-- [ ] OQSE: date of "Version 1.0" in `oqse.md`; the sub-specifications (`oqse-manifest.md`,
-      `oqse-progress.md`, `oqse-header.md`) have no changelog – add a line pointing to the one in
-      `oqse.md`, or their own.
-- [ ] `CHANGELOG.md` in every package, starting with 1.0.0 (the plugin-sdk README has the RC history).
-- [ ] READMEs of the packages: version 1.0, the CDN URLs at `@1`, the JSON Schemas.
+- [x] SPEC: status 1.0 (2026-10-14), no "RC4" labels; the changelog line "1.0 (2026-10-14)"
+      covers everything since RC4 (also `phaseSeq` and `actedAt` in the SDK messages and the
+      rule about SDK versions on one game's devices).
+- [x] OQSE: "Version 1.0 (2026-10-14)" in `oqse.md`; the sub-specifications point to its changelog.
+- [x] `CHANGELOG.md` in every package (1.0.0-rc.6 and rc.5; the plugin-sdk history moved there).
+      For 1.0.0: add a "1.0.0" section to each.
+- [x] READMEs of the packages: links to files outside the package are GitHub URLs (they work on
+      npm); the CDN URLs at `@1`, the JSON Schemas. For 1.0.0: drop "release candidates" from
+      the plugin-sdk README.
 - [ ] Finish workshop presentation in `docs/presentation/`: check versions, import URLs and API names (`ui.note`, no `/+esm`).
 
 ## 6. Release
 
-- [ ] `bun run test`, `cd apps/play && bun run typecheck`, `cd apps/play && bun run e2e:3d`,
-      `bun run build:packages`; generated JSON Schemas committed.
+- [x] `bun run test`, `bun run typecheck`, `cd apps/play && bun run e2e:3d`,
+      `bun run build:packages`; generated JSON Schemas committed (rc.6). The packed tarballs were
+      installed into an empty project: ESM and CommonJS imports in Node, typings with
+      `moduleResolution` `bundler` and `node16` (an ESM project), one copy of the protocol.
 - [ ] Release candidate **1.0.0-rc.6** (`npm publish --tag next --access public`, in the order
       oqse → protocol → plugin-sdk → host-sdk): check the published packages and the SDK bundle
       from jsDelivr (`…/plugin-sdk@1.0.0-rc.6`) in a browser, as students will use them.
@@ -109,6 +112,10 @@ least 1–2 days before the workshop (the guide imports `@memizy/plugin-sdk@1` f
         images and media; decide between allowing them and upgrading the URLs to `https:`.
       - LaTeX inside inline code (`` `$x$` ``) is rendered as a formula; protect code spans
         before replacing math.
+- [ ] **Typings for CommonJS TypeScript projects:** the packages are ESM with a CommonJS build;
+      `require` works at runtime, but a TypeScript project compiled to CommonJS with
+      `moduleResolution: node16` gets TS1479 (the `.d.ts` are ESM). Emit `.d.cts` for the
+      `require` condition if a consumer needs it.
 - [ ] **`GameHandle` for code outside `render` (additive):** `game.setLocal(patch)`, `game.ui` /
       `game.state` (read-only), so that document listeners, timers and 3D scenes need not keep
       `ui` in a global (Civhrad `G.ui`, Pirates `view.ui`). Perhaps `data-act-on="pointerdown"`

@@ -170,3 +170,9 @@ Note that an item belonging to the set might be entirely absent from `records`. 
 **On `setId` verification:** Importing applications MUST compare `meta.setId` against the UUID of the OQSE set being opened. If the values do not match, the application SHOULD warn the user and refrain from applying the progress data automatically to prevent data corruption.
 
 **On partial records and unseen items:** The `records` map need not contain an entry for every item in the set. Items absent from the map are treated as unseen. However, applications MAY explicitly generate a record with `bucket: 0` for an item that has never been presented if they need to store pre-study initialization data, suspended states, or `appSpecific` metadata. While permitted, applications SHOULD NOT unnecessarily synthesize placeholder records for all unseen items just to fill the file, as this bloats the file size.
+
+---
+
+## Changelog
+
+OQSEP 1.0 is part of OQSE 1.0 (2026-10-14); its changes are listed in the [OQSE changelog](./oqse.md#version-10-2026-10-14).

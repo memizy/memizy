@@ -2,8 +2,8 @@
 
 Types, Zod schemas and helpers of the **Memizy Plugin Protocol v1** – the contract between Memizy plugins (`@memizy/plugin-sdk`) and hosts (`@memizy/host-sdk`).
 
-* Specification: [SPEC.md](./SPEC.md) (1.0)
-* Plugin authors do not use this package directly – see the [AI plugin guide](../../docs/ai-plugin-guide.md).
+* Specification: [SPEC.md](./SPEC.md) (1.0); changes of the package: [CHANGELOG.md](./CHANGELOG.md)
+* Plugin authors do not use this package directly – see the [AI plugin guide](https://github.com/memizy/memizy/blob/main/docs/ai-plugin-guide.md).
 
 ```ts
 import {

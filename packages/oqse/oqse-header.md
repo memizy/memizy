@@ -54,3 +54,9 @@ An OQSEHeader represents one catalog entry that points to a full OQSE set.
 
 - OQSEH is intentionally lightweight and should remain a projection of OQSE `meta` plus `url`.
 - Header consumers should use `url` as the canonical pointer to the full set payload.
+
+---
+
+## Changelog
+
+OQSEH 1.0 is part of OQSE 1.0 (2026-10-14); its changes are listed in the [OQSE changelog](./oqse.md#version-10-2026-10-14).

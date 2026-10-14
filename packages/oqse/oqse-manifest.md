@@ -247,3 +247,9 @@ For the full semantics of the capabilities object, see [Capabilities Object](#ca
 **`capabilities.itemProperties` / `capabilities.metaProperties`:**
 - Each value SHOULD appear in the relevant registry or carry the `x-` prefix.
 - Unrecognized values without an `x-` prefix SHOULD trigger a warning but MUST NOT cause manifest rejection.
+
+---
+
+## Changelog
+
+OQSEM 1.0 is part of OQSE 1.0 (2026-10-14); its changes are listed in the [OQSE changelog](./oqse.md#version-10-2026-10-14).

@@ -2221,7 +2221,7 @@ OQSE is an open standard. Suggestions for improvements:
 
 -----
 
-### Version 1.0 (October 2026)
+### Version 1.0 (2026-10-14)
 The first stable version. From now on, 1.x versions only add (see [Versioning and Compatibility](#versioning-and-compatibility)).
 * The shape fields of a `HotspotObject` (`x`, `y`, `width`, `height`, `radius`, `points`, `targetName`) are marked required, as validators always treated them.
 * Before 1.0, two item types were aligned with the others: `math-input` has `correctAnswers` (a list, like `short-answer`) instead of `correctAnswer` + `alternativeAnswers`, and `match-complex` has `prompts` / `matches` (like `match-pairs`) instead of `leftItems` / `rightItems`. `math-input` has no `tolerance` (its answers are compared as LaTeX; numbers are `numeric-input`).

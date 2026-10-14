@@ -1,6 +1,6 @@
 # @memizy/host-sdk
 
-Run Memizy plugins in a host application (the Memizy app, the Plugin Lab): load and validate plugins, mount them in sandboxed iframes, enforce the [Memizy Plugin Protocol](../protocol/SPEC.md) and run game sessions.
+Run Memizy plugins in a host application (the Memizy app, the Plugin Lab): load and validate plugins, mount them in sandboxed iframes, enforce the [Memizy Plugin Protocol](https://github.com/memizy/memizy/blob/main/packages/protocol/SPEC.md) and run game sessions.
 
 ```ts
 import { loadOQSEFile } from '@memizy/oqse';
@@ -16,7 +16,7 @@ const session = new LocalSession({
   hostAs: 'presenter',
   players: [{ id: 'anna', name: 'Anna' }, { id: 'ben', name: 'Ben' }],
 });
-session.on((event) => console.log(event));        // ready, countdown, answer, ended, traffic, rejected…
+session.on((event) => console.log(event));        // ready, countdown, answer, result, traffic, rejected…
 
 await mountPlugin(session, 'board', boardElement); // sandboxed iframe + Penpal
 await mountPlugin(session, 'anna', annaElement);

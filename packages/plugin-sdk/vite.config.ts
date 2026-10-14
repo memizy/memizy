@@ -17,7 +17,8 @@ export default defineConfig({
       formats: ['es', 'cjs'],
     },
     rollupOptions: {
-      external: ['@memizy/oqse', '@memizy/protocol', 'penpal', 'mutative', 'marked', 'dompurify'],
+      // Subpaths too (`@memizy/protocol/internal`): one copy of the protocol, its errors and Zod.
+      external: [/^@memizy\/(oqse|protocol)(\/|$)/, 'penpal', 'mutative', 'marked', 'dompurify'],
     },
     sourcemap: true,
   },
