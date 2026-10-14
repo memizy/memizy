@@ -1,19 +1,15 @@
 {
   "name": "memizy-engine",
   "private": true,
-  "description": "Open-source Memizy engine: OQSE specification, plugin SDK, host SDK, multiplayer server and Plugin Lab.",
+  "description": "Open-source Memizy engine: OQSE specification, plugin protocol, plugin SDK, host SDK and the multiplayer relay.",
   "license": "MIT",
   "workspaces": [
     "packages/*",
-    "services/*",
-    "apps/*",
-    "plugins/*",
-    "games/*"
+    "services/*"
   ],
   "scripts": {
     "build:packages": "bun run --filter \"@memizy/oqse\" build && bun run --filter \"@memizy/protocol\" build && bun run --filter \"@memizy/plugin-sdk\" build && bun run --filter \"@memizy/host-sdk\" build",
-    "build": "bun run build:packages && bun run --filter \"@memizy/play\" build",
-    "dev:play": "bun run --filter \"@memizy/plugin-sdk\" build && bun run --filter \"@memizy/play\" dev",
+    "build": "bun run build:packages",
     "test": "bun run build:packages && bun run --filter \"*\" test && bun test scripts",
     "typecheck": "bun run build:packages && bun run --filter \"*\" typecheck",
     "dev:server": "bun run --filter \"@memizy/multiplayer-server\" dev"

@@ -1,8 +1,9 @@
 # Memizy Engine – Architecture (1.0)
 
 The open-source engine of Memizy: the **OQSE** study-set format, the **Memizy Plugin
-Protocol**, the SDKs for games and hosts, the **relay** multiplayer server and **Memizy Play**
-(the reference host with the Plugin Lab). This document explains how the parts fit
+Protocol**, the SDKs for games and hosts and the **relay** multiplayer server. The reference
+host – Memizy Play with the Plugin Lab – runs at [memizy.com/play](https://memizy.com/play/)
+and uses only the published packages. This document explains how the parts fit
 together and why. The normative texts are the specifications it links to; where this
 document and a specification differ, the specification wins.
 
@@ -24,8 +25,8 @@ document and a specification differ, the specification wins.
  @memizy/plugin-sdk    @memizy/host-sdk  ◄── what hosts use: sessions, iframes, relay client
  (inside every game)        ▲
                             │
-        apps/play (Memizy Play)        services/multiplayer-server (relay)
-        platform (../platform)         uses @memizy/protocol only
+   hosts (Memizy Play at            services/multiplayer-server (relay)
+   memizy.com/play, your app)      uses @memizy/protocol only
 ```
 
 | Part | Role |
@@ -35,7 +36,6 @@ document and a specification differ, the specification wins.
 | `@memizy/plugin-sdk` | What a game imports (`https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1`, a self-contained bundle): `defineGame` (state, actions, phases, timers, sync between devices, snapshots, reveals), the morph renderer and `ui.html`, `ui.question` (ready-made answering controls), `checkAnswer`, `createScene3d`, the standalone preview. |
 | `@memizy/host-sdk` | What a host uses: `loadPluginFromHtml`, `prepareSetForPlugin`, `LocalSession` (validates every call, routes messages, start barrier, authority, pauses, storage, learning), `mountPlugin` (the sandboxed iframe), `RelayHost` / `RelayPlayer` (multiplayer over the relay, places of a continued game). |
 | `services/multiplayer-server` | The relay: rooms by PIN, a secret host token, the game bundle store, WebSocket routing, rate limits. It never runs game rules. |
-| `apps/play` | Memizy Play: hosting (lobby, PIN / QR, saved games), joining, playing alone, and the Plugin Lab (write a game with AI, test it on simulated devices, generate question sets). The reference host for the platform. |
 
 Each package has an explicit public API (`src/index.ts`, guarded by a test). Everything
 else is internal and may change in any release.
@@ -244,12 +244,11 @@ the host.
 ## 6. Testing and deployment
 
 - `bun run test` builds the packages and runs every workspace's tests: unit tests, real SDK
-  games in `LocalSession` (jsdom), the relay end to end (a real server process), Play
-  (saved games, links, built-in games), and the OQSE conversion script.
-- `cd apps/play && bun run e2e:3d`: the 3D rules with real WebGL in Edge (SwiftShader).
-- The Plugin Lab runs automated checks of a game, including a "naughty player".
-- **Play**: Cloudflare Workers static assets (`apps/play/wrangler.jsonc`), built with
-  `PLAY_BASE` and `VITE_RELAY_URL`; deploys from `main`.
+  games in `LocalSession` (jsdom), the relay end to end (a real server process) and the
+  OQSE conversion script.
+- The Plugin Lab (memizy.com/play/lab) runs automated checks of a game, including a
+  "naughty player".
+- **OQSE validator**: GitHub Pages from `packages/oqse/docs` (`.github/workflows/oqse-pages.yml`).
 - **Relay**: Docker compose (relay + cloudflared) on a Netcup server reachable over
   Tailscale; `services/multiplayer-server/deploy/deploy.sh`.
 - **Packages**: npm (`next` for release candidates), jsDelivr serves the SDK bundle and the

@@ -29,12 +29,10 @@ with `auth` replaces it. Checking it is the host app's job.
 
 ```sh
 bun run dev:server   # from the repository root: port 8787, any origin
-bun run dev:play     # Memizy Play on http://localhost:5180/play/ (also on the LAN)
 ```
 
-Memizy Play connects to `http(s)://<same host>:8787` by default, so phones in
-the same network can join through the computer's LAN address. Set
-`VITE_RELAY_URL` when building Play for production.
+A host app in development can connect to `http(s)://<same host>:8787`, so phones
+in the same network join through the computer's LAN address.
 
 ## Configuration
 
@@ -70,13 +68,7 @@ file and runs `docker compose up -d --build`. Check `https://mp.memizy.com/api/h
 
 Logs: `ssh memizy-vps 'cd /opt/memizy && sudo docker compose logs -f relay'`.
 
-Memizy Play runs on Cloudflare Workers (static assets, `apps/play/wrangler.jsonc`),
-built by Workers Builds from `main`:
-root directory `apps/play`, build command
-`cd ../.. && bun install && bun run build:packages && cd apps/play && bun run build`,
-deploy command `npx wrangler deploy`, build variables `PLAY_BASE=/`,
-`VITE_RELAY_URL=https://mp.memizy.com`; custom domain `play.memizy.com`
-(later `PLAY_BASE=/play/` on memizy.com). The relay's `ALLOWED_ORIGINS` must
-list the app's origin.
+The relay's `ALLOWED_ORIGINS` must list the origin of every host app that uses it
+(Memizy Play runs at `https://memizy.com/play/`).
 
 Rooms live in memory: a restart closes all running games (deploy outside lessons).

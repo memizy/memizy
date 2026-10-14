@@ -42,10 +42,10 @@ This repository is a [Bun workspaces](https://bun.sh/docs/install/workspaces) mo
 | `packages/plugin-sdk` | `@memizy/plugin-sdk` – the SDK for building Memizy plugins |
 | `packages/host-sdk` | `@memizy/host-sdk` – running plugins in a host app (iframes, sessions, protocol enforcement) |
 | `services/` | Backend services (multiplayer server) |
-| `apps/` | Developer apps (Plugin Lab) |
-| `plugins/` | Official plugins |
-| `games/` | Official standalone games |
-| `docs/` | Architecture notes and public documentation |
+| `docs/` | Architecture notes and the guide for game authors |
+
+The Plugin Lab and the example games are part of Memizy Play at
+[memizy.com/play](https://memizy.com/play/).
 
 ```bash
 bun install      # install all workspaces

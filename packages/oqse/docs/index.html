@@ -165,8 +165,8 @@
         const loadSampleSetBtn = document.getElementById('loadSampleSetBtn');
         const sampleSetStatus = document.getElementById('sampleSetStatus');
 
-        // A set with every item type (OQSE 1.0), from the engine repository.
-        const OQSE_SAMPLE_SET_URL = 'https://cdn.jsdelivr.net/gh/memizy/memizy@main/apps/play/src/data/sets/test-suite.oqse.json';
+        // A set with every item type (OQSE 1.0), published next to this page.
+        const OQSE_SAMPLE_SET_URL = new URL('./test-suite.oqse.json', location.href).href;
 
         let currentValidationErrors = [];
         let lastSetState = '';

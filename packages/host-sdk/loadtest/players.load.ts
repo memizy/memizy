@@ -4,7 +4,7 @@
  * Every bot runs the real plugin SDK and the real RelayPlayer (no iframe) and
  * clicks like a person: a random option 1–4 s after a question appears.
  *
- *   PIN=123456 RELAY_URL=https://mp.memizy.com ORIGIN=https://play.memizy.com BOTS=40 \
+ *   PIN=123456 RELAY_URL=https://mp.memizy.com ORIGIN=https://memizy.com BOTS=40 \
  *     bun x vitest run -c loadtest/vitest.config.ts
  *
  * Reports: join time, how fast the game reached every bot, and the answer
@@ -22,7 +22,7 @@ import { RelayPlayer, type FrameFactory } from '../src/relay/player';
 
 const PIN = process.env.PIN ?? '';
 const RELAY_URL = process.env.RELAY_URL ?? 'https://mp.memizy.com';
-const ORIGIN = process.env.ORIGIN ?? 'https://play.memizy.com';
+const ORIGIN = process.env.ORIGIN ?? 'https://memizy.com';
 const BOTS = Number(process.env.BOTS ?? 40);
 
 /** The relay only accepts the app's origin. */
