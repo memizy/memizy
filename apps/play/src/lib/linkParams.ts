@@ -11,7 +11,7 @@
  */
 
 import { resolveSettings, type SettingDefinition, type SettingValue } from '@memizy/protocol';
-import { ALL_PLUGINS, EXAMPLE_PLUGINS, type PluginChoice } from './plugins';
+import { ALL_PLUGINS, type PluginChoice } from './plugins';
 import { NO_SET_KEY, type StudySet } from './sets';
 
 export type LinkProblem = { kind: 'game' | 'set' | 'settings'; value: string };
