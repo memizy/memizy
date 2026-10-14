@@ -35,6 +35,8 @@ describe('link parameters', () => {
     expect(findSetKey('Spanish-Verb-Tenses', BUILTIN_SETS)).toBe(spanish.key);
     expect(findSetKey(spanish.key, BUILTIN_SETS)).toBe(spanish.key);
     expect(findSetKey(spanish.file.meta.id, BUILTIN_SETS)).toBe(spanish.key);
+    expect(findSetKey('none', BUILTIN_SETS)).toBe('none');
+    expect(findSetKey('None', BUILTIN_SETS)).toBe('none');
     expect(findSetKey('nope', BUILTIN_SETS)).toBeNull();
   });
 

@@ -12,7 +12,7 @@
 
 import { resolveSettings, type SettingDefinition, type SettingValue } from '@memizy/protocol';
 import { EXAMPLE_PLUGINS, type PluginChoice } from './plugins';
-import type { StudySet } from './sets';
+import { NO_SET_KEY, type StudySet } from './sets';
 
 export type LinkProblem = { kind: 'game' | 'set' | 'settings'; value: string };
 
@@ -65,8 +65,9 @@ export function readLinkParams(query: Record<string, unknown>): LinkParams {
   return { plugin, set, settings, problems };
 }
 
-/** The key of a set named in a link: a key (`builtin:…`, a stored set's ID), or a built-in set's file name. */
+/** The key of a set named in a link: a key (`builtin:…`, a stored set's ID), `none` (no questions), or a built-in set's file name. */
 export function findSetKey(name: string, sets: StudySet[]): string | null {
+  if (name.toLowerCase() === NO_SET_KEY) return NO_SET_KEY;
   const lower = name.toLowerCase();
   return sets.find((s) => s.key === name || s.file.meta.id === name || s.slug?.toLowerCase() === lower)?.key ?? null;
 }

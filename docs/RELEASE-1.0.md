@@ -23,13 +23,40 @@ least 1–2 days before the workshop (the guide imports `@memizy/plugin-sdk@1` f
       Fine for the workshop (the platform will own progress); otherwise an IndexedDB
       `HostStorage` in Play.
 
-## 2. Test with AI-made games (2026-10-19/20)
+## 2. Play app & plugins polish
+
+- [x] **URL link parameter `set=none`:** `play.memizy.com/host?plugin=lab&set=none` now recognizes `none`
+      as `NO_SET_KEY` instead of reporting "Sadu z odkazu („none“) se nepodařilo najít".
+- [ ] **Solo & Host-as-player container size:** In `SoloView.vue` (`max-w-3xl`) and `HostView.vue` (`max-w-md`),
+      games in solo mode or when the host plays along are constrained to a narrow column. Expand to full
+      width (`w-full` / `max-w-6xl` or responsive based on manifest `orientation`), so 3D/landscape games
+      (Civhrad, Pirates) have adequate space on desktop.
+- [ ] **Pirates ship breach appearance:** In `pirates-of-memizy.html`, update the `scorch` texture from a soft
+      radial blur to splintered wood planks around the cannonball hole.
+- [ ] **Alza mascot (Alzák) removal from production:** Avoid trademark/commercial dispute with Alza.cz a.s. on
+      `memizy.com` – remove `babis-vs-alzak.html` from `EXAMPLE_PLUGINS` in production or replace the mascot
+      with a generic alien without Alza branding.
+- [ ] **Link to workshop presentation in Play:** Add a link to the presentation slides on Play's home page
+      (`HomeView.vue`).
+
+## 3. CI, Web & Deployment
+
+- [ ] **GitHub Actions:** Add `.github/workflows/ci.yml` running `bun run test`, `bun run typecheck` and
+      `apps/play` build on pull requests and pushes to `main`.
+- [ ] **Astro landing page for memizy.com:** Create a clean, modern landing page for `https://memizy.com`.
+- [ ] **Deploy Play to subpath / subdomain:** Deploy Memizy Play to `memizy.com/play/` (or `play.memizy.com`),
+      verify base URL routing, assets and CDN links.
+- [ ] **Relay server deploy:** Deploy latest relay server (`deploy.sh` on VPS `memizy-vps`).
+
+## 4. Test with AI-made games & Prompts (2026-10-19/20)
 
 - [ ] Several games written by different AI assistants from `docs/ai-plugin-guide.md`, through
       the Lab: tests including the naughty player, solo and multiplayer on real phones.
+- [ ] Compare models (Claude 3.5 Sonnet, GPT-4o, Gemini 1.5 Pro) on following the guide and formulate
+      concrete recommendations for workshop attendees.
 - [ ] Fix what the games show (guide first, then the SDK), only additively.
 
-## 3. Documentation
+## 5. Documentation & Presentation
 
 - [ ] SPEC status: "1.0" instead of "Release Candidate 4"; the changelog line "1.0 (unreleased)"
       gets the date, and covers everything since RC4 (also `phaseSeq` and `actedAt` in the
@@ -39,9 +66,9 @@ least 1–2 days before the workshop (the guide imports `@memizy/plugin-sdk@1` f
       `oqse.md`, or their own.
 - [ ] `CHANGELOG.md` in every package, starting with 1.0.0 (the plugin-sdk README has the RC history).
 - [ ] READMEs of the packages: version 1.0, the CDN URLs at `@1`, the JSON Schemas.
-- [ ] `docs/presentation/`: check versions, the import URL and API names (`ui.note`, no `/+esm`).
+- [ ] Finish workshop presentation in `docs/presentation/`: check versions, import URLs and API names (`ui.note`, no `/+esm`).
 
-## 4. Release
+## 6. Release
 
 - [ ] `bun run test`, `cd apps/play && bun run typecheck`, `cd apps/play && bun run e2e:3d`,
       `bun run build:packages`; generated JSON Schemas committed.
@@ -55,7 +82,7 @@ least 1–2 days before the workshop (the guide imports `@memizy/plugin-sdk@1` f
 - [ ] No deployments the day before the workshop; during it: relay logs open
       (`ssh memizy-vps`), a printed QR code and the address.
 
-## 5. Right after 1.0
+## 7. Right after 1.0
 
 - [ ] The platform depends on 1.0.0 (`@memizy/oqse`, `@memizy/protocol`, `@memizy/host-sdk`)
       instead of `@memizy/plugin-sdk` 0.3 / `@memizy/multiplayer-sdk`; it stores answers by the
