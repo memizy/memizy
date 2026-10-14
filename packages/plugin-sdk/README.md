@@ -30,6 +30,8 @@ Version 1.0 is a release candidate; the API follows the guide and stays backward
 
 * **1.0.0 (after 1.0.0-rc.5):**
   * Renamed `ui.renderNote` → `ui.note` (no alias; nothing used it).
+  * Removed `ui.setProgress` (progress comes from `ctx.recordAnswer`; writing it directly is reserved in SPEC 10). A flashcard's self-rating is sent as its `confidence` automatically.
+  * `ui.question` attributes use the `data-mz-` prefix: the stable styling hooks are `data-mz-type` and `data-mz-option` (were `data-type`, `data-option`).
   * State patches carry their format (`f: 1`); a device that does not know the format asks for the full state.
   * Names starting with `$` (actions, timer keys) are reserved for the SDK; `defineGame` and `ctx.after` / `ctx.cancel` reject them.
   * Links open in a new tab; the SDK can be imported without a DOM (Node).
@@ -44,7 +46,7 @@ Version 1.0 is a release candidate; the API follows the guide and stays backward
   * `ctx.actedAt`: the time of the tap (limited to 400 ms before the arrival) for points by speed.
   * `ctx.goto` takes effect immediately (the rest of the action sees the new phase; `onEnter` runs at once as the system). `playerView` gets `phase`, `phaseSeq`, `phaseEndsAt` copied (reserved fields).
   * `ctx.hide` does nothing for items that were not revealed.
-  * `ui.question`: `itemId` in every answer payload; a sent answer is shown as chosen (and locked) until the authority confirms it; stable styling hooks `data-type`, `data-option`, `--mz-q-index`; a warning (`REVEAL_WITHOUT_ANSWER`) for `reveal: true` without `ctx.reveal`.
+  * `ui.question`: `itemId` in every answer payload; a sent answer is shown as chosen (and locked) until the authority confirms it; stable styling hooks `data-mz-type`, `data-mz-option`, `--mz-q-index`; a warning (`REVEAL_WITHOUT_ANSWER`) for `reveal: true` without `ctx.reveal`.
   * `ui.now` is a number (a getter, always the current game time), like `ctx.now`.
   * `local` handlers renamed to `localActions`.
   * `ui.html`: an unquoted attribute value is quoted and escaped; `data-payload=${{ … }}` is JSON (no `JSON.stringify` needed); objects in text are JSON instead of `[object Object]`.

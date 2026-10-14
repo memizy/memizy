@@ -14,7 +14,7 @@ import {
   type InitPayload,
   type PluginApi,
   type RelayErrorCode,
-  type RelayPlayer,
+  type RoomPlayer,
   type RelayServerMessage,
 } from '@memizy/protocol';
 import type { LocalSession, PluginEndpoint, SessionEvent } from '../session';
@@ -24,7 +24,7 @@ import { RELAY_APP_VERSION, blobToJson, serializeError, unknownMethod, type Host
 
 export type RelayHostEvent =
   | { type: 'status'; status: RelayStatus }
-  | { type: 'players'; players: RelayPlayer[] }
+  | { type: 'players'; players: RoomPlayer[] }
   /** A continued game: who has which place changed. */
   | { type: 'seats'; seats: HostSeat[] }
   | { type: 'error'; code: RelayErrorCode; message: string }
@@ -46,8 +46,8 @@ export interface HostSeat {
   /** The player ID in the session (from the saved game). */
   id: string;
   name: string;
-  /** The room player on this place, or `null` when it is free. */
-  playerId: string | null;
+  /** The room player on this place (`RoomPlayer.id`), or `null` when it is free. */
+  roomPlayerId: string | null;
 }
 
 export interface AttachOptions {
@@ -80,7 +80,7 @@ const HOST_METHODS = new Set<string>(HOST_API_METHODS);
 export class RelayHost {
   readonly pin: string;
   readonly hostToken: string;
-  players: RelayPlayer[] = [];
+  players: RoomPlayer[] = [];
   /** The lobby/game state shown by the player apps. */
   state: RemoteLobbyState = { phase: 'lobby', appName: null, players: [], authorityConnected: true };
 
@@ -122,8 +122,8 @@ export class RelayHost {
     return new RelayHost(options, (await response.json()) as CreateRoomResponse);
   }
 
-  /** Re-attaches to an existing room (e.g. after a page reload). */
-  static resume(options: RelayHostOptions, room: CreateRoomResponse): RelayHost {
+  /** Re-attaches to an existing room (e.g. after a reload of the host page). */
+  static rejoin(options: RelayHostOptions, room: CreateRoomResponse): RelayHost {
     return new RelayHost(options, room);
   }
 
@@ -230,7 +230,7 @@ export class RelayHost {
     for (const seat of this.seatOf.values()) this.connectRemote(seat);
 
     this.stopSession = session.on((event) => this.onSessionEvent(event));
-    this.setState({ phase: 'loading', appName: session.plugin.manifest.appName, players: session.players, authorityConnected: true, result: undefined, countdown: undefined, ...this.seatState() });
+    this.setState({ phase: 'loading', appName: session.plugin.manifest.appName, players: [...session.players], authorityConnected: true, result: undefined, countdown: undefined, ...this.seatState() });
     if (this.seatsMode) for (const player of this.players) if (player.connected) this.sendSeat(player.id);
   }
 
@@ -257,7 +257,7 @@ export class RelayHost {
   get seats(): HostSeat[] {
     const session = this.session;
     if (!this.seatsMode || !session) return [];
-    return session.players.filter((p) => !p.isHost).map((p) => ({ id: p.id, name: p.name, playerId: this.relayIdOf(p.id) }));
+    return session.players.filter((p) => !p.isHost).map((p) => ({ id: p.id, name: p.name, roomPlayerId: this.relayIdOf(p.id) }));
   }
 
   /** Which room player has which place (room player ID -> session player ID); keep it to re-attach after a reload. */
@@ -266,20 +266,20 @@ export class RelayHost {
   }
 
   /**
-   * A continued game: puts a room player on a place (`null` = takes the place away).
-   * Whoever had that place before loses it and chooses again.
+   * A continued game: puts a room player on a place (`seatId` = a session player ID from the
+   * saved game; `null` = takes the place away). Whoever had that place before loses it.
    */
-  assignSeat(playerId: string, seat: string | null): void {
+  assignSeat(roomPlayerId: string, seatId: string | null): void {
     const session = this.session;
     if (!this.seatsMode || !session) throw new Error('Places can be assigned only in a continued game.');
-    if (!this.players.some((p) => p.id === playerId)) throw new Error(`Unknown room player "${playerId}".`);
-    if (seat !== null && !session.players.some((p) => p.id === seat && !p.isHost)) throw new Error(`Unknown place "${seat}".`);
-    if ((this.seatOf.get(playerId) ?? null) === seat) return;
-    this.unseat(playerId);
-    if (seat !== null) {
-      const holder = this.relayIdOf(seat);
+    if (!this.players.some((p) => p.id === roomPlayerId)) throw new Error(`Unknown room player "${roomPlayerId}".`);
+    if (seatId !== null && !session.players.some((p) => p.id === seatId && !p.isHost)) throw new Error(`Unknown place "${seatId}".`);
+    if ((this.seatOf.get(roomPlayerId) ?? null) === seatId) return;
+    this.unseat(roomPlayerId);
+    if (seatId !== null) {
+      const holder = this.relayIdOf(seatId);
       if (holder !== null) this.unseat(holder);
-      this.seat(playerId, seat);
+      this.seat(roomPlayerId, seatId);
     }
     this.seatsChanged();
   }
@@ -302,7 +302,7 @@ export class RelayHost {
     if (!this.seatsMode || !session) return { seats: undefined, newPlayers: undefined };
     const multiplayer = session.plugin.runtime.multiplayer;
     return {
-      seats: this.seats.map((s) => ({ id: s.id, name: s.name, taken: s.playerId !== null })),
+      seats: this.seats.map((s) => ({ id: s.id, name: s.name, taken: s.roomPlayerId !== null })),
       newPlayers: !session.ended && !!multiplayer?.lateJoin && session.players.length < multiplayer.players.max,
     };
   }
@@ -381,7 +381,7 @@ export class RelayHost {
       case 'authority':
         this.setState({ authorityConnected: event.connected });
         break;
-      case 'ended':
+      case 'result':
         this.setState({ phase: 'ended', result: event.result });
         break;
     }
@@ -500,7 +500,7 @@ export class RelayHost {
     }
   }
 
-  private onPresence(player: RelayPlayer, event: 'join' | 'connect' | 'disconnect' | 'rename' | 'leave'): void {
+  private onPresence(player: RoomPlayer, event: 'join' | 'connect' | 'disconnect' | 'rename' | 'leave'): void {
     if (event === 'leave') this.players = this.players.filter((p) => p.id !== player.id);
     else if (this.players.some((p) => p.id === player.id)) this.players = this.players.map((p) => (p.id === player.id ? player : p));
     else this.players = [...this.players, player];

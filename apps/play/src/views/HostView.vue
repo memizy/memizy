@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { SETTINGS_ADDRESS } from '@memizy/protocol';
 import { settingsForMode } from '@memizy/protocol';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import { useRoute } from 'vue-router';
@@ -20,14 +21,13 @@ import {
 import {
   LocalSession,
   RelayHost,
-  SETTINGS_ADDRESS,
   loadPluginFromHtml,
   prepareSetForPlugin,
   type HostSeat,
   type LoadedPlugin,
   type RelayHostEvent,
 } from '@memizy/host-sdk';
-import type { HostAs, RelayPlayer, SettingValue } from '@memizy/protocol';
+import type { HostAs, RoomPlayer, SettingValue } from '@memizy/protocol';
 import { resolveSettings } from '@memizy/protocol';
 import AppLogo from '@/components/AppLogo.vue';
 import LocaleSwitch from '@/components/LocaleSwitch.vue';
@@ -60,7 +60,7 @@ const ROOM_KEY = 'memizy-play:host-room';
 const room = shallowRef<RelayHost | null>(null);
 const roomStatus = ref<string>('connecting');
 const roomError = ref<string | null>(null);
-const players = ref<RelayPlayer[]>([]);
+const players = ref<RoomPlayer[]>([]);
 let stopRoom: (() => void) | null = null;
 
 function onRoomEvent(event: RelayHostEvent): void {
@@ -83,7 +83,7 @@ async function openRoom(fresh = false): Promise<boolean> {
   try {
     const saved = fresh ? null : sessionStorage.getItem(ROOM_KEY);
     const next = saved
-      ? RelayHost.resume({ serverUrl: RELAY_URL }, JSON.parse(saved))
+      ? RelayHost.rejoin({ serverUrl: RELAY_URL }, JSON.parse(saved))
       : await RelayHost.create({ serverUrl: RELAY_URL });
     sessionStorage.setItem(ROOM_KEY, JSON.stringify({ pin: next.pin, hostToken: next.hostToken }));
     stopRoom = next.on(onRoomEvent);
@@ -243,7 +243,7 @@ watch([plugin, studySet, hostAs, hostName, locale], () => {
       hostAs: hostAs.value,
       players: hostAs.value === 'player' ? [{ id: 'host', name: hostName.value, isHost: true }] : [],
       settings: settings.value,
-      config: { locale: locale.value, theme: 'light' },
+      locale: locale.value,
     });
     session.on((e) => {
       if (e.type !== 'settings') return;
@@ -381,11 +381,11 @@ function launch(
     hostAs: hostAs.value,
     players: roster,
     settings: settings.value,
-    config: { locale: locale.value, theme: 'light' },
+    locale: locale.value,
     sessionId,
     shuffleSeed: gameSeed.value,
     storage: new PersistentSnapshotStorage(),
-    resume,
+    restore: resume,
     clock,
   });
   paused.value = session.paused;
@@ -418,7 +418,7 @@ function launch(
       paused.value = e.paused;
       void record();
     }
-    else if (e.type === 'ended') {
+    else if (e.type === 'result') {
       phase.value = 'ended';
       endDialog.value = false;
       // A finished game is not continued again.
@@ -594,10 +594,10 @@ function assignSeat(seat: HostSeat, playerId: string): void {
   const r = room.value;
   if (!r) return;
   if (playerId) r.assignSeat(playerId, seat.id);
-  else if (seat.playerId) r.assignSeat(seat.playerId, null);
+  else if (seat.roomPlayerId) r.assignSeat(seat.roomPlayerId, null);
 }
 
-const takenSeats = computed(() => seats.value.filter((s) => s.playerId !== null).length);
+const takenSeats = computed(() => seats.value.filter((s) => s.roomPlayerId !== null).length);
 
 // The game runs for everybody in this tab: keep the screen on, and tell the host when the
 // tab was in the background (browsers slow hidden tabs down).
@@ -754,11 +754,11 @@ const statusClass = computed(() =>
           <p v-if="paused" class="mt-2 rounded-lg bg-amber-50 p-2 text-xs text-amber-800">{{ t('host.seats.paused') }}</p>
           <ul class="mt-3 flex flex-col gap-2">
             <li v-for="s in seats" :key="s.id" class="flex items-center gap-2">
-              <span class="size-2.5 shrink-0 rounded-full" :class="s.playerId ? 'bg-emerald-500' : 'bg-slate-300'" />
+              <span class="size-2.5 shrink-0 rounded-full" :class="s.roomPlayerId ? 'bg-emerald-500' : 'bg-slate-300'" />
               <span class="min-w-0 flex-1 truncate text-sm font-semibold">{{ s.name }}</span>
-              <select class="input w-40 py-1 text-xs" :value="s.playerId ?? ''" @change="assignSeat(s, ($event.target as HTMLSelectElement).value)">
+              <select class="input w-40 py-1 text-xs" :value="s.roomPlayerId ?? ''" @change="assignSeat(s, ($event.target as HTMLSelectElement).value)">
                 <option value="">{{ t('host.seats.free') }}</option>
-                <option v-for="pl in players.filter((pl) => pl.connected || pl.id === s.playerId)" :key="pl.id" :value="pl.id">
+                <option v-for="pl in players.filter((pl) => pl.connected || pl.id === s.roomPlayerId)" :key="pl.id" :value="pl.id">
                   {{ pl.name }}{{ room?.appVersionOf(pl.id) === 0 ? ` · ${t('host.seats.oldApp')}` : '' }}
                 </option>
               </select>

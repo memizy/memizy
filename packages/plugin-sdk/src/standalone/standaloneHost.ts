@@ -45,12 +45,13 @@ export function standaloneConnector(options: StandaloneOptions): Connector {
       host: { name: 'memizy-standalone', version: '1.0.0' },
       oqseVersion: '1.0',
       features: [],
+      services: [],
       session: { id: `standalone-${Date.now()}`, mode: 'solo', hostAs: null, view: 'solo', self: PLAYER_ID, authority: PLAYER_ID, lateJoin: false },
       players: [{ id: PLAYER_ID, name: 'Hráč', isHost: true, connected: true }],
       set: { meta: SAMPLE_META, items },
       settings: resolveSettings(options.runtime?.settings ?? []).values,
       config: { locale: navigator.language || 'cs', theme: window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light' },
-      clock: { offsetMs: 0 },
+      clock: { offsetMs: 0, pausedMs: 0, pausedAt: null },
       progress,
       data: { plugin: load('data:plugin'), set: load('data:set') },
       snapshot: null,
@@ -81,19 +82,13 @@ export function standaloneConnector(options: StandaloneOptions): Connector {
         store('progress', progress);
         console.info(`[memizy standalone] answer ${answer.itemId}: ${answer.isCorrect ? 'correct' : 'wrong'} → bucket ${bucket}`);
       },
-      saveProgress: async (records) => {
-        Object.assign(progress, records);
-        store('progress', progress);
-      },
       saveData: async (scope, value) => store(`data:${scope}`, value),
       updateSettings: async () => {},
       getAsset: async (key) => {
         throw new ProtocolError('ASSET_NOT_FOUND', `Asset "${key}" is not available in standalone mode.`);
       },
       end: async (result) => showResult(result),
-      resize: async () => {},
       reportError: async (error) => console.error(`[memizy standalone] ${error.code}: ${error.message}`),
-      exit: async () => console.info('[memizy standalone] exit requested'),
       service: async (name) => {
         throw new ProtocolError('SERVICE_UNAVAILABLE', `Service "${name}" is not available in the standalone preview (test it in Memizy).`);
       },

@@ -3638,7 +3638,7 @@
                     "type": "string",
                     "maxLength": 10000
                   },
-                  "leftItems": {
+                  "prompts": {
                     "minItems": 1,
                     "maxItems": 100,
                     "type": "array",
@@ -3667,7 +3667,7 @@
                       "additionalProperties": {}
                     }
                   },
-                  "rightItems": {
+                  "matches": {
                     "minItems": 1,
                     "maxItems": 100,
                     "type": "array",
@@ -3725,8 +3725,8 @@
                 "required": [
                   "id",
                   "type",
-                  "leftItems",
-                  "rightItems",
+                  "prompts",
+                  "matches",
                   "connections"
                 ],
                 "additionalProperties": {}
@@ -6133,10 +6133,8 @@
                     "minLength": 1,
                     "maxLength": 10000
                   },
-                  "correctAnswer": {
-                    "type": "string"
-                  },
-                  "alternativeAnswers": {
+                  "correctAnswers": {
+                    "minItems": 1,
                     "type": "array",
                     "items": {
                       "type": "string"
@@ -6151,7 +6149,7 @@
                   "id",
                   "type",
                   "question",
-                  "correctAnswer"
+                  "correctAnswers"
                 ],
                 "additionalProperties": {}
               },

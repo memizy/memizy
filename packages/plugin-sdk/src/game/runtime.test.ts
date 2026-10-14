@@ -595,6 +595,28 @@ describe('recordAnswer', () => {
       { playerId: 'anna', itemId: 'q2', isCorrect: false }, // an item of the set is not attached
     ]);
   });
+
+  it('a flashcard self-rating is also sent as the confidence', async () => {
+    const card = { id: 'card', type: 'flashcard', front: 'Hund', back: 'dog' } as any;
+    const def: GameDefinition<{ n: number }> = {
+      initialState: () => ({ n: 0 }),
+      actions: {
+        rate(state, payload, ctx) { state.n += 1; ctx.recordAnswer('card', payload.rating >= 3, { answer: payload.rating }); },
+        own(state, _p, ctx) { state.n += 1; ctx.recordAnswer('card', false, { answer: 2, confidence: 1 }); },
+      },
+      render: () => '',
+    };
+    const session = new FakeSession(def, { items: [card], mode: 'solo', players: ['anna'] } as any);
+    session.start();
+    await tick();
+    session.get('anna').dispatch('rate', { rating: 4 });
+    session.get('anna').dispatch('own', null);
+    await tick();
+    expect(session.records).toEqual([
+      { playerId: 'anna', itemId: 'card', isCorrect: true, answer: 4, confidence: 4 },
+      { playerId: 'anna', itemId: 'card', isCorrect: false, answer: 2, confidence: 1 }, // an explicit confidence wins
+    ]);
+  });
 });
 
 describe('hidden answers (ctx.reveal)', () => {

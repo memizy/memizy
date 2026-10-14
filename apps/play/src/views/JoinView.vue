@@ -219,7 +219,7 @@ function onVisible(): void {
   }
 }
 
-watch(locale, () => player.value?.updateConfig());
+watch(locale, () => player.value?.refreshConfig());
 
 onMounted(() => {
   document.addEventListener('visibilitychange', onVisible);

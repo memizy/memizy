@@ -58,7 +58,7 @@ export function checkAnswer(item: OQSEAnyItem, answer: unknown): boolean {
     case 'math-input': {
       if (typeof answer !== 'string') return false;
       const given = normalizeLatex(answer);
-      return [item.correctAnswer, ...(item.alternativeAnswers ?? [])].some((correct) => normalizeLatex(correct) === given);
+      return item.correctAnswers.some((correct) => normalizeLatex(correct) === given);
     }
 
     case 'sort-items': {

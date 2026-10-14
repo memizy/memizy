@@ -769,12 +769,12 @@ export const MatchPairsItemSchema = BaseItemSchema.extend({
 export const MatchComplexItemSchema = BaseItemSchema.extend({
   type: z.literal('match-complex'),
   question: OptionalRichContentSchema,
-  leftItems: choiceList(1, 'items on the left'),
-  rightItems: choiceList(1, 'items on the right'),
+  prompts: choiceList(1, 'prompts'),
+  matches: choiceList(1, 'matches'),
   connections: z.array(z.tuple([ChoiceIdSchema, ChoiceIdSchema])).min(1, 'Must have at least 1 connection'),
   minCorrect: z.number().int().positive().optional(),
 }).refine(
-  (data) => data.connections.every(([left, right]) => ids(data.leftItems).has(left) && ids(data.rightItems).has(right)),
+  (data) => data.connections.every(([prompt, match]) => ids(data.prompts).has(prompt) && ids(data.matches).has(match)),
   { message: 'Some connection references a non-existent item', path: ['connections'] }
 ).refine(
   (data) => new Set(data.connections.map(([l, r]) => `${l}\u0000${r}`)).size === data.connections.length,
@@ -918,8 +918,7 @@ export const MatrixItemSchema = BaseItemSchema.extend({
 export const MathInputItemSchema = BaseItemSchema.extend({
   type: z.literal('math-input'),
   question: RichContentSchema.max(10000, 'Question must not be longer than 10000 characters'),
-  correctAnswer: RawLatexSchema,
-  alternativeAnswers: z.array(RawLatexSchema).optional(),
+  correctAnswers: z.array(RawLatexSchema).min(1, 'Must have at least 1 correct answer'),
   tolerance: z.number().nonnegative().optional(),
 });
 

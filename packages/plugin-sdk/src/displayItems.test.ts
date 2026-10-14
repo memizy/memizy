@@ -13,7 +13,7 @@ const items = {
   short: { id: 's', type: 'short-answer', question: 'Q', correctAnswers: ['Praha'] },
   sort: { id: 'o', type: 'sort-items', question: 'Q', items: ch('i1', 'i2', 'i3', 'i4'), correctOrder: ['i1', 'i2', 'i3', 'i4'] },
   pairs: { id: 'p', type: 'match-pairs', prompts: ch('cz', 'sk', 'at'), matches: ch('praha', 'bratislava', 'viden'), pairs: { cz: 'praha', sk: 'bratislava', at: 'viden' } },
-  complex: { id: 'c', type: 'match-complex', leftItems: ch('l0', 'l1'), rightItems: ch('r0', 'r1', 'r2'), connections: [['l0', 'r1'], ['l1', 'r2']] },
+  complex: { id: 'c', type: 'match-complex', prompts: ch('l0', 'l1'), matches: ch('r0', 'r1', 'r2'), connections: [['l0', 'r1'], ['l1', 'r2']] },
   timeline: { id: 'tl', type: 'timeline', question: 'Q', events: [{ id: 'e1', text: 'A', date: '1900-01-01' }, { id: 'e2', text: 'B', date: '1950-01-01' }, { id: 'e3', text: 'C', date: '2000-01-01' }] },
   categorize: { id: 'cat', type: 'categorize', question: 'Q', categories: ch('x', 'y'), items: [{ id: 'i1', text: 'a', correctCategoryId: 'x' }, { id: 'i2', text: 'b', correctCategoryId: 'y' }] },
   select: { id: 'fs', type: 'fill-in-select', text: 'Hlavní město je <blank:c />.', blanks: { c: { options: ch('brno', 'praha', 'ostrava'), correctId: 'praha' } } },
@@ -46,7 +46,7 @@ const rightAnswers: Record<string, unknown> = {
 };
 
 const ids = (list: { id: string }[]) => list.map((c) => c.id);
-const LISTS = ['options', 'items', 'prompts', 'matches', 'leftItems', 'rightItems', 'events', 'labels', 'blanks'];
+const LISTS = ['options', 'items', 'prompts', 'matches', 'events', 'labels', 'blanks'];
 const withoutLists = (item: object) => JSON.stringify(Object.fromEntries(Object.entries(item).filter(([k]) => !LISTS.includes(k))));
 
 describe('display order (SPEC 4.4)', () => {

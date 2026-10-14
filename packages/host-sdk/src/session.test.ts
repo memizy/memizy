@@ -5,7 +5,8 @@ import type { HostApi, PluginApi } from '@memizy/protocol';
 import { startGame, type GameHandle } from '../../plugin-sdk/src/game/defineGame';
 import { checkAnswer } from '../../plugin-sdk/src/checkAnswer';
 import type { GameDefinition } from '../../plugin-sdk/src/types';
-import { LocalSession, SETTINGS_ADDRESS, type SessionConfig, type SessionEvent } from './session';
+import { SETTINGS_ADDRESS } from '@memizy/protocol';
+import { LocalSession, type SessionConfig, type SessionEvent } from './session';
 import { loadPluginFromHtml, prepareSetForPlugin, type LoadedPlugin } from './plugin';
 import { MemoryStorage } from './storage';
 import { leitner, type LearningAlgorithm } from './learning';
@@ -123,7 +124,7 @@ function play(session: LocalSession, address: string, def: Omit<GameDefinition<a
 /** A bare instance for calling the host API directly. */
 async function bare(session: LocalSession, address: string, overrides: Partial<PluginApi> = {}): Promise<HostApi> {
   const noop = async () => {};
-  const pluginApi: PluginApi = { start: noop, deliver: noop, playersChanged: noop, authorityChanged: noop, setChanged: noop, configChanged: noop, clockChanged: noop, sessionEnded: noop, ...overrides };
+  const pluginApi: PluginApi = { start: noop, deliver: noop, playersChanged: noop, authorityChanged: noop, configChanged: noop, clockChanged: noop, sessionEnded: noop, ...overrides };
   const instance = await session.connect(address, () => pluginApi);
   return instance.hostApi;
 }
@@ -348,7 +349,7 @@ describe('pause (RC4)', () => {
     expect(paused[1].clock.pausedAt).toBeNull();
     expect(paused[1].clock.pausedMs).toBeGreaterThan(50);
     // A reloaded host passes the stored clock on.
-    const resumed = newSession({ resume: true, clock: { pausedMs: 1234, pausedAt: null } }).session;
+    const resumed = newSession({ restore: true, clock: { pausedMs: 1234, pausedAt: null } }).session;
     expect(resumed.clock).toEqual({ offsetMs: 0, pausedMs: 1234, pausedAt: null });
   });
 });
@@ -600,7 +601,7 @@ describe('resume after a host reload', () => {
     await first.session.end('closed');
 
     // The host page reloads: a new session object resumes the game.
-    const second = newSession({ sessionId: 'room-1', storage, resume: true });
+    const second = newSession({ sessionId: 'room-1', storage, restore: true });
     const board2 = play(second.session, 'board');
     const anna2 = play(second.session, 'anna');
     await Promise.all(games.map((g) => g.ready));
@@ -612,7 +613,7 @@ describe('resume after a host reload', () => {
   });
 
   it('starts over when there is no snapshot', async () => {
-    const { session, events } = newSession({ sessionId: 'room-2', resume: true });
+    const { session, events } = newSession({ sessionId: 'room-2', restore: true });
     const board = play(session, 'board');
     const anna = play(session, 'anna');
     await Promise.all(games.map((g) => g.ready));

@@ -85,8 +85,8 @@ export function itemRichText(item: OQSEAnyItem): TextEntry[] {
       pushChoices(out, ['matches'], item.matches);
       break;
     case 'match-complex':
-      pushChoices(out, ['leftItems'], item.leftItems);
-      pushChoices(out, ['rightItems'], item.rightItems);
+      pushChoices(out, ['prompts'], item.prompts);
+      pushChoices(out, ['matches'], item.matches);
       break;
     case 'sort-items':
       pushChoices(out, ['items'], item.items);

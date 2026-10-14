@@ -140,7 +140,6 @@ export async function mountPlugin(session: LocalSession, address: string, contai
     if (event.type === 'countdown') show(texts.countdown(event.secondsLeft));
     else if (event.type === 'started') show(null);
     else if (event.type === 'authority' && address !== session.authority) show(event.connected ? null : texts.waitingForHost);
-    else if (event.type === 'resize' && event.address === address) wrapper.style.height = event.height === 'auto' ? '' : `${event.height}px`;
   });
 
   const endpoint = async (hostApi: HostApi): Promise<PluginApi> => {

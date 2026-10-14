@@ -10,7 +10,7 @@ import {
   type CreateRoomResponse,
   type RelayClientMessage,
   type RelayErrorCode,
-  type RelayPlayer,
+  type RoomPlayer,
   type RelayServerMessage,
   type RoomInfo,
 } from '@memizy/protocol';
@@ -385,7 +385,7 @@ export class RelayServer {
   // ==========================================================================
 
   /** A player as the host sees it (only the host gets `auth`). */
-  private publicPlayer(player: Player): RelayPlayer {
+  private publicPlayer(player: Player): RoomPlayer {
     return { id: player.id, name: player.name, connected: player.conn !== null, ...(player.auth !== undefined && { auth: player.auth }) };
   }
 

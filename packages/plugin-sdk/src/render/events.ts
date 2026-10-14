@@ -11,19 +11,19 @@ export interface EventHandlers {
   /** A `data-local` click (device-only handler). */
   local?(name: string, payload: unknown): void;
   setting?(id: string, value: string | number | boolean): void;
-  /** A click / change inside `ui.question` controls (`data-mzq`), or `clear` after its answer was sent. */
+  /** A click / change inside `ui.question` controls (`data-mz-q`), or `clear` after its answer was sent. */
   question?(event: Record<string, unknown>): void;
   error(message: string): void;
 }
 
-/** The answer typed into a `ui.question` form (`data-answer-from`). */
+/** The answer typed into a `ui.question` form (`data-mz-answer-from`). */
 function typedAnswer(button: Element): unknown {
-  const root = button.closest('[data-mzq-root]') ?? button.closest('form') ?? button.parentElement;
-  const from = button.getAttribute('data-answer-from');
+  const root = button.closest('[data-mz-q-root]') ?? button.closest('form') ?? button.parentElement;
+  const from = button.getAttribute('data-mz-answer-from');
   if (!root) return null;
   if (from === 'blanks') {
     const blanks: Record<string, string> = {};
-    root.querySelectorAll<HTMLInputElement>('[data-blank]').forEach((input) => (blanks[input.getAttribute('data-blank')!] = input.value));
+    root.querySelectorAll<HTMLInputElement>('[data-mz-q-blank]').forEach((input) => (blanks[input.getAttribute('data-mz-q-blank')!] = input.value));
     return blanks;
   }
   const field = root.querySelector<HTMLInputElement | HTMLTextAreaElement>('[name="answer"]');
@@ -33,7 +33,7 @@ function typedAnswer(button: Element): unknown {
 export function bindEvents(root: HTMLElement, handlers: EventHandlers): () => void {
   const questionEvent = (el: Element, extra: Record<string, unknown> = {}) => {
     try {
-      handlers.question?.({ ...JSON.parse(el.getAttribute('data-mzq')!), ...extra });
+      handlers.question?.({ ...JSON.parse(el.getAttribute('data-mz-q')!), ...extra });
     } catch {
       /* not ours */
     }
@@ -41,7 +41,7 @@ export function bindEvents(root: HTMLElement, handlers: EventHandlers): () => vo
 
   const onClick = (event: Event) => {
     const target = event.target as Element | null;
-    const q = target?.closest?.('[data-mzq]');
+    const q = target?.closest?.('[data-mz-q]');
     if (q && root.contains(q) && q.tagName !== 'SELECT' && q.tagName !== 'INPUT') {
       if ((q as HTMLButtonElement).disabled || q.hasAttribute('disabled')) return;
       event.preventDefault();
@@ -82,19 +82,19 @@ export function bindEvents(root: HTMLElement, handlers: EventHandlers): () => vo
   const dispatch = (el: Element) => {
     let payload = readPayload(el, el.getAttribute('data-act')!);
     if (payload === INVALID) return;
-    if (el.hasAttribute('data-answer-from')) {
+    if (el.hasAttribute('data-mz-answer-from')) {
       const answer = typedAnswer(el);
       if (answer === '' || answer === null) return; // nothing typed yet
       payload = { ...((payload as Record<string, unknown>) ?? {}), answer };
     }
     handlers.act(el.getAttribute('data-act')!, payload);
-    const questionRoot = el.closest('[data-mzq-root]');
-    if (questionRoot) handlers.question?.({ q: questionRoot.getAttribute('data-mzq-root'), op: 'clear' });
+    const questionRoot = el.closest('[data-mz-q-root]');
+    if (questionRoot) handlers.question?.({ q: questionRoot.getAttribute('data-mz-q-root'), op: 'clear' });
   };
 
   const onSubmit = (event: Event) => {
     const form = event.target as HTMLFormElement;
-    if (form instanceof HTMLFormElement && form.hasAttribute('data-mzq-form') && root.contains(form)) {
+    if (form instanceof HTMLFormElement && form.hasAttribute('data-mz-q-form') && root.contains(form)) {
       event.preventDefault();
       const button = form.querySelector('[data-act]');
       if (button && !(button as HTMLButtonElement).disabled) dispatch(button);
@@ -118,7 +118,7 @@ export function bindEvents(root: HTMLElement, handlers: EventHandlers): () => vo
 
   const onInput = (event: Event) => {
     const el = event.target as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
-    if (el?.hasAttribute?.('data-mzq') && root.contains(el)) {
+    if (el?.hasAttribute?.('data-mz-q') && root.contains(el)) {
       // Selects on change, sliders while moving.
       if (el instanceof HTMLSelectElement ? event.type === 'change' : event.type === 'input') questionEvent(el, { value: el.value });
       return;

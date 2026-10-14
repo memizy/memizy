@@ -46,6 +46,7 @@ export class LocalRouter {
         host: { name: 'test-router', version: '0' },
         oqseVersion: '1.0',
         features: [],
+      services: [],
         session: {
           id: 'e2e',
           mode,
@@ -59,7 +60,7 @@ export class LocalRouter {
         set: { meta: { id: 's', language: 'cs', title: 'S', createdAt: '2026-01-01', updatedAt: '2026-01-01' }, items: structuredClone(this.options.items) },
         settings: this.options.settings ?? {},
         config: { locale: 'cs', theme: 'light' },
-        clock: { offsetMs: 0 },
+        clock: { offsetMs: 0, pausedMs: 0, pausedAt: null },
         progress: {},
         data: { plugin: null, set: null },
         snapshot: null,
@@ -82,14 +83,11 @@ export class LocalRouter {
         },
         saveSnapshot: async () => {},
         recordAnswer: async (answer) => void this.records.push(answer),
-        saveProgress: async () => {},
         saveData: async (scope, value) => void this.saved.push({ address, scope, value }),
         updateSettings: async (update) => void this.settingsUpdates.push(update),
         getAsset: async () => new Blob(['x']),
         end: async () => {},
-        resize: async () => {},
         reportError: async (error) => void this.errors.push(`${address} ${error.code}: ${error.message}`),
-        exit: async () => {},
         service: async (name) => { throw new ProtocolError('SERVICE_UNAVAILABLE', `No service "${name}" in tests.`); },
       };
       return { host, init, standalone: false, destroy: () => this.plugins.delete(address) };

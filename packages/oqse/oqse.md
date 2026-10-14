@@ -481,7 +481,7 @@ If same key exists in both scopes, local definition (`item.assets`) takes preced
 
 ## Choices and Answers by ID
 
-Lists that the learner selects from or arranges are lists of **choices**: options of `mcq-single` / `mcq-multi` and of `fill-in-select` blanks, `items` of `sort-items`, `prompts` and `matches` of `match-pairs`, the sides of `match-complex`, `categories` of `categorize`, `rows` and `columns` of `matrix` and `labels` of `diagram-label`.
+Lists that the learner selects from or arranges are lists of **choices**: options of `mcq-single` / `mcq-multi` and of `fill-in-select` blanks, `items` of `sort-items`, `prompts` and `matches` of `match-pairs` and `match-complex`, `categories` of `categorize`, `rows` and `columns` of `matrix` and `labels` of `diagram-label`.
 
 ```json
 { "id": "b", "text": "Praha", "explanation": "The capital since the 10th century." }
@@ -535,7 +535,7 @@ This section defines what a learner's answer to each item type looks like and wh
 | `fill-in-blanks` | Object `{ token: string }` | For every token in `blanks`, the string matches one of its accepted answers ([Comparing Typed Answers](#comparing-typed-answers)). |
 | `fill-in-select` | Object `{ token: choiceId }` | For every token in `blanks`, the choice is its `correctId`. |
 | `match-pairs` | Object `{ promptId: matchId }` | Every prompt is mapped to its match in `pairs`. |
-| `match-complex` | Array of `[leftId, rightId]` pairs (oriented: left first) | It contains no pair outside `connections`, and at least `minCorrect` (default: all) different pairs of `connections`. |
+| `match-complex` | Array of `[promptId, matchId]` pairs (oriented: prompt first) | It contains no pair outside `connections`, and at least `minCorrect` (default: all) different pairs of `connections`. |
 | `sort-items` | Array of item IDs in the learner's order | It equals `correctOrder`. |
 | `slider` | Number | `|answer − correctAnswer| <= tolerance`. |
 | `numeric-input` | Number | `|answer − correctAnswer| <= tolerance` (see [`numeric-input`](#type-numeric-input-numeric-input)). |
@@ -544,7 +544,7 @@ This section defines what a learner's answer to each item type looks like and wh
 | `categorize` | Object `{ entryId: categoryId }` | Every entry is mapped to its `correctCategoryId`. |
 | `timeline` | Array of event IDs in the learner's order | Every event appears exactly once and the order is correct ([see TimelineEvent](#timelineevent-for-timeline)). |
 | `matrix` | Array of `[rowId, columnId]` cells | It contains exactly the cells of `correctCells` (no duplicates). |
-| `math-input` | LaTeX string | It equals `correctAnswer` or one of `alternativeAnswers` by the string comparison rules of [`math-input`](#type-math-input-math-input) (`$` delimiters typed by the learner are ignored), or is mathematically equivalent when the application checks symbolically. |
+| `math-input` | LaTeX string | It equals one of `correctAnswers` by the string comparison rules of [`math-input`](#type-math-input-math-input) (`$` delimiters typed by the learner are ignored), or is mathematically equivalent when the application checks symbolically. |
 | `diagram-label` | Object `{ zoneId: labelId }`; with `requireTyping`, `{ zoneId: string }` | Every zone gets its `correctLabelId`; with `requireTyping`, every typed string matches the text of the zone's correct label ([Comparing Typed Answers](#comparing-typed-answers)). |
 | `chess-puzzle` | Array of moves in SAN: the learner's moves and the opponent's replies, as in `correctAnswers` | It equals one of `correctAnswers` move by move, after normalizing each move ([see chess-puzzle](#type-chess-puzzle-chess-puzzle)). |
 | `flashcard` | Self-rating: integer `1`–`4` on the [OQSEP confidence scale](./oqse-progress.md#confidence-scale) | The rating is `3` or `4` (recalled). Applications SHOULD offer all four ratings. |
@@ -781,9 +781,10 @@ A set consisting only of notes can also be written as one Markdown document, see
 ### `type: "match-complex"` (Advanced Matching)
 
   * `question` (string, optional): **Rich Content.** Instructions.
-  * `leftItems` (Choice[], required): Items on left side.
-  * `rightItems` (Choice[], required): Items on right side.
-  * `connections` (string[][], required): Correct pairs as `[leftId, rightId]`.
+  * `prompts` (Choice[], required): What the learner connects from (as in `match-pairs`).
+  * `matches` (Choice[], required): What the prompts are connected to; may contain distractors.
+  * `connections` (string[][], required): Correct pairs as `[promptId, matchId]`.
+  * **Note:** The names say what the lists mean, not where they are shown: an application may lay them out side by side, one above the other, or in any other way.
   * `minCorrect` (number, optional): Minimum number of correct connections required for success. If not specified, user must find all connections in `connections`.
   * **Note:** This type explicitly supports more complex graph structures:
     * Multiple connections are allowed in both directions (`1:N`, `N:1`, `N:M`).
@@ -797,12 +798,12 @@ A set consisting only of notes can also be written as one Markdown document, see
   "id": "019aa5f5-907f-7373-aeed-128158901d17",
   "type": "match-complex",
   "question": "Match rockets to their main engines (some options are extra):",
-  "leftItems": [
+  "prompts": [
     { "id": "starship", "text": "Starship" },
     { "id": "falcon9", "text": "Falcon 9" },
     { "id": "sls", "text": "Space Launch System" }
   ],
-  "rightItems": [
+  "matches": [
     { "id": "raptor", "text": "Raptor" },
     { "id": "merlin", "text": "Merlin" },
     { "id": "rs25", "text": "RS-25" },
@@ -992,10 +993,9 @@ In the example above, `BE-4` has no connection: it is a distractor.
 ### `type: "math-input"` (Math Input)
 
   * `question` (string, required): **Rich Content.** Question text.
-  * `correctAnswer` (string, required): Correct answer as raw LaTeX **without** `$` / `$$` delimiters (e.g., `2x + 2`). Values wrapped in `$` MUST cause a validation error.
-  * `alternativeAnswers` (string[], optional): Array of other raw **LaTeX strings** (same format as `correctAnswer`, without delimiters) that should also be considered correct (e.g., `2*x + 2`, `2+2x`).
+  * `correctAnswers` (string[], required, at least 1): Correct answers as raw LaTeX **without** `$` / `$$` delimiters (e.g., `["2x + 2", "2*x + 2", "2+2x"]`); all are equally correct, as the `correctAnswers` of `short-answer`. Values wrapped in `$` MUST cause a validation error.
   * `tolerance` (number, optional): For purely numeric answers, allowed numeric deviation.
-  * **Implementation note:** Application **SHOULD** support symbolic checking of mathematical equivalence (e.g., recognize `2+2x` same as `2x+2`). All LaTeX notations MUST be compatible with web rendering libraries (KaTeX, MathJax). If application does not support symbolic checking (e.g., due to technical limitations), it **MUST** use plain string comparison. **String comparison rules:** (1) Normalize whitespace (remove all spaces inside LaTeX). (2) Compare string with `correctAnswer` and each item in `alternativeAnswers`. (3) Case-sensitive. (4) DO NOT convert symbols (e.g., `*` stays `*`, not rewritten to `\cdot`). **Recommendations for set authors:** Prefer normalized form without spaces if Application doesn't support symbolic mathematical checking (CAS). Include all common notation variants in `alternativeAnswers`. Example: `correctAnswer: '2x+2', alternativeAnswers: ['2*x+2', '2 x + 2', '2+2x']`.
+  * **Implementation note:** Application **SHOULD** support symbolic checking of mathematical equivalence (e.g., recognize `2+2x` same as `2x+2`). All LaTeX notations MUST be compatible with web rendering libraries (KaTeX, MathJax). If application does not support symbolic checking (e.g., due to technical limitations), it **MUST** use plain string comparison. **String comparison rules:** (1) Normalize whitespace (remove all spaces inside LaTeX). (2) Compare the string with each item of `correctAnswers`. (3) Case-sensitive. (4) DO NOT convert symbols (e.g., `*` stays `*`, not rewritten to `\cdot`). **Recommendations for set authors:** Prefer normalized form without spaces if Application doesn't support symbolic mathematical checking (CAS). Include all common notation variants in `correctAnswers`. Example: `correctAnswers: ['2x+2', '2*x+2', '2+2x']`.
 
 **Example:**
 
@@ -1005,8 +1005,8 @@ In the example above, `BE-4` has no connection: it is a distractor.
   "type": "math-input",
   "difficulty": 4,
   "question": "Simplify the following expression: $2(x+1)$",
-  "correctAnswer": "2x + 2",
-  "alternativeAnswers": [
+  "correctAnswers": [
+    "2x + 2",
     "2*x + 2"
   ]
 }
@@ -1472,8 +1472,8 @@ This optional object (`item.pedagogy`) serves to store advanced metadata about d
       "tags": ["Rocket Engine"],
       "difficulty": 3,
       "question": "Match countries with their main spaceports (some items are extra):",
-      "leftItems": [{ "id": "usa", "text": "USA" }, { "id": "france", "text": "France" }, { "id": "kz", "text": "Kazakhstan" }],
-      "rightItems": [{ "id": "cape", "text": "Cape Canaveral" }, { "id": "kourou", "text": "Kourou" }, { "id": "baikonur", "text": "Baikonur" }, { "id": "cornwall", "text": "Spaceport Cornwall" }],
+      "prompts": [{ "id": "usa", "text": "USA" }, { "id": "france", "text": "France" }, { "id": "kz", "text": "Kazakhstan" }],
+      "matches": [{ "id": "cape", "text": "Cape Canaveral" }, { "id": "kourou", "text": "Kourou" }, { "id": "baikonur", "text": "Baikonur" }, { "id": "cornwall", "text": "Spaceport Cornwall" }],
       "connections": [
         ["usa", "cape"],
         ["france", "kourou"],
@@ -2213,6 +2213,7 @@ OQSE is an open standard. Suggestions for improvements:
 
 ### Version 1.0 (October 2026)
 The first stable version. From now on, 1.x versions only add (see [Versioning and Compatibility](#versioning-and-compatibility)).
+* Before 1.0, two item types were aligned with the others: `math-input` has `correctAnswers` (a list, like `short-answer`) instead of `correctAnswer` + `alternativeAnswers`, and `match-complex` has `prompts` / `matches` (like `match-pairs`) instead of `leftItems` / `rightItems`.
 * Version rules for sets, manifests and progress files: applications read the MAJOR versions they support and never read another MAJOR version (including the pre-release 0.x drafts) silently as a supported one.
 * Schema URLs: `https://cdn.jsdelivr.net/npm/@memizy/oqse@1/schemas/oqse-v1.0.json` (and `oqse-manifest-v1.0.json`, `oqse-progress-v1.0.json`, `oqse-header-v1.0.json`).
 * Markdown images `![alt](https://…)` are explicitly allowed for pictures from the web (absolute URL; `<asset:key />` for everything else). Blank tags belong only in the `text` of `fill-in-blanks` and `fill-in-select` (elsewhere a warning; shown as an empty line).

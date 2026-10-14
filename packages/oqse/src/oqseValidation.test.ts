@@ -258,9 +258,20 @@ describe('OQSE 1.0 item shape', () => {
 
   it('math-input answers are raw LaTeX without $ delimiters', () => {
     const base = { id, type: 'math-input', question: 'Q' };
-    expect(OQSEItemSchema.safeParse({ ...base, correctAnswer: '2x + 2', alternativeAnswers: ['2+2x'] }).success).toBe(true);
-    expect(OQSEItemSchema.safeParse({ ...base, correctAnswer: '$2x + 2$' }).success).toBe(false);
-    expect(OQSEItemSchema.safeParse({ ...base, correctAnswer: '2x', alternativeAnswers: ['$$2x$$'] }).success).toBe(false);
+    expect(OQSEItemSchema.safeParse({ ...base, correctAnswers: ['2x + 2', '2+2x'] }).success).toBe(true);
+    expect(OQSEItemSchema.safeParse({ ...base, correctAnswers: ['$2x + 2$'] }).success).toBe(false);
+    expect(OQSEItemSchema.safeParse({ ...base, correctAnswers: ['2x', '$$2x$$'] }).success).toBe(false);
+    expect(OQSEItemSchema.safeParse({ ...base, correctAnswers: [] }).success).toBe(false);
+    expect(OQSEItemSchema.safeParse({ ...base, correctAnswer: '2x' }).success).toBe(false); // the 0.x / RC field
+  });
+
+  it('match-complex connects prompts to matches (any number per side)', () => {
+    const ch = (...ids: string[]) => ids.map((i) => ({ id: i, text: i }));
+    const base = { id, type: 'match-complex', prompts: ch('a', 'b'), matches: ch('x', 'y', 'z') };
+    expect(OQSEItemSchema.safeParse({ ...base, connections: [['a', 'x'], ['a', 'y'], ['b', 'y']] }).success).toBe(true);
+    expect(OQSEItemSchema.safeParse({ ...base, connections: [['a', 'q']] }).success).toBe(false);
+    expect(OQSEItemSchema.safeParse({ ...base, connections: [['a', 'x'], ['a', 'x']] }).success).toBe(false);
+    expect(OQSEItemSchema.safeParse({ id, type: 'match-complex', leftItems: ch('a'), rightItems: ch('x'), connections: [['a', 'x']] }).success).toBe(false);
   });
 
   it('numeric-input: an interval is correctAnswer ± tolerance (no range)', () => {

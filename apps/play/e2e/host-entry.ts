@@ -27,7 +27,7 @@ window.runGame = async (html, set, settings = {}) => {
     mode: 'solo',
     players: [{ id: 'me', name: 'Tester' }],
     settings,
-    config: { locale: 'en', theme: 'light' },
+    locale: 'en',
   });
   session.on((e) => window.sessionEvents.push(e.type === 'pluginError' ? `pluginError:${e.code}:${e.message}` : e.type));
   await mountPlugin(session, 'me', document.getElementById('app')!);

@@ -79,7 +79,6 @@ export function startGame<S>(definition: GameDefinition<S>, options: StartOption
     deliver: async (message) => controller?.deliver(message),
     playersChanged: async (players) => controller?.playersChanged(players),
     authorityChanged: async (status) => controller?.authorityChanged(status.connected),
-    setChanged: async (set) => controller?.setChanged(set),
     configChanged: async (config) => controller?.configChanged(config),
     clockChanged: async (clock) => controller?.clockChanged(clock),
     sessionEnded: async () => controller?.destroy(),
@@ -147,7 +146,6 @@ interface Controller {
   deliver(message: Parameters<PluginApi['deliver']>[0]): void;
   playersChanged(players: Parameters<PluginApi['playersChanged']>[0]): void;
   authorityChanged(connected: boolean): void;
-  setChanged(set: InitPayload['set']): void;
   configChanged(config: InitPayload['config']): void;
   clockChanged(clock: SessionClock): void;
   destroy(): void;
@@ -248,8 +246,6 @@ abstract class BaseController implements Controller {
   deliver(_message: Parameters<PluginApi['deliver']>[0]): void {}
   authorityChanged(_connected: boolean): void {}
   clockChanged(_clock: SessionClock): void {}
-  setChanged(_set: InitPayload['set']): void {}
-
   playersChanged(players: InitPayload['players']): void {
     this.init.players = players;
     this.schedule();
@@ -311,7 +307,7 @@ abstract class BaseController implements Controller {
     };
   }
 
-  protected baseUi(): Omit<GameUI, 'view' | 'self' | 'isAuthority' | 'act' | 'pending' | 'isPending' | 'timeLeft' | 'now' | 'phase' | 'paused' | 'service' | 'services' | 'item' | 'items' | 'save' | 'setProgress' | 'progress' | 'saved'> {
+  protected baseUi(): Omit<GameUI, 'view' | 'self' | 'isAuthority' | 'act' | 'pending' | 'isPending' | 'timeLeft' | 'now' | 'phase' | 'paused' | 'service' | 'services' | 'item' | 'items' | 'save' | 'progress' | 'saved'> {
     const init = this.init;
     return {
       mode: init.session.mode,
@@ -455,7 +451,6 @@ class GameController<S> extends BaseController {
       services: this.init.services ?? [],
       service: (name, payload) => this.callService(name, payload),
       save: (scope, value) => this.save(scope, value),
-      setProgress: (itemId, progress) => this.setProgress(itemId, progress),
     };
   }
 
@@ -487,23 +482,6 @@ class GameController<S> extends BaseController {
     );
   }
 
-  private setProgress(itemId: string, update: { bucket: 0 | 1 | 2 | 3 | 4; nextReviewAt?: string }): void {
-    if (this.isBoard) {
-      this.report('NOT_ALLOWED_IN_VIEW', 'ui.setProgress is not available on the board (it has no player).');
-      return;
-    }
-    if (!Number.isInteger(update?.bucket) || update.bucket < 0 || update.bucket > 4) throw new Error('ui.setProgress: bucket must be 0, 1, 2, 3 or 4');
-    const previous = this.progress[itemId];
-    if (previous && previous.bucket === update.bucket && previous.nextReviewAt === update.nextReviewAt) return;
-    const record: ProgressRecord = {
-      ...(previous ?? { stats: { attempts: 0, incorrect: 0, streak: 0 } }),
-      bucket: update.bucket,
-      ...(update.nextReviewAt !== undefined && { nextReviewAt: update.nextReviewAt }),
-    } as ProgressRecord;
-    this.progress[itemId] = record;
-    this.host.saveProgress({ [itemId]: record }).catch((e) => this.report('SAVE_FAILED', toProtocolError(e).message));
-  }
-
   start(): void {
     this.runtime.start();
   }
@@ -519,10 +497,6 @@ class GameController<S> extends BaseController {
 
   authorityChanged(connected: boolean): void {
     this.runtime.setAuthorityConnected(connected);
-  }
-
-  setChanged(set: InitPayload['set']): void {
-    this.runtime.replaceSet(set);
   }
 
   clockChanged(clock: SessionClock): void {
@@ -600,7 +574,6 @@ class SettingsController extends BaseController {
       services: [],
       service: () => Promise.reject(new ProtocolError('NOT_ALLOWED_IN_VIEW', 'Services are not available on the settings screen.')),
       save: () => this.report('NOT_ALLOWED_IN_VIEW', 'ui.save is not available on the settings screen.'),
-      setProgress: () => this.report('NOT_ALLOWED_IN_VIEW', 'ui.setProgress is not available on the settings screen.'),
     };
   }
 

@@ -81,8 +81,8 @@ export function displayItem(item: OQSEAnyItem, random: () => number): OQSEAnyIte
       it.matches = shuffled(it.matches, random);
       return it;
     case 'match-complex':
-      it.leftItems = shuffled(it.leftItems, random);
-      it.rightItems = shuffled(it.rightItems, random);
+      it.prompts = shuffled(it.prompts, random);
+      it.matches = shuffled(it.matches, random);
       return it;
     case 'timeline':
       // Never in an order that would already be correct.
@@ -118,14 +118,14 @@ const HIDDEN: Record<string, string[]> = {
   'match-complex': ['connections'],
   slider: ['correctAnswer'],
   'numeric-input': ['correctAnswer'],
-  'math-input': ['correctAnswer', 'alternativeAnswers'],
+  'math-input': ['correctAnswers'],
   matrix: ['correctCells'],
   'open-ended': ['sampleAnswer', 'rubric'],
   'chess-puzzle': ['correctAnswers'],
 };
 
 /** Lists of choices (whose `explanation` tells the answer). */
-const CHOICE_LISTS = ['options', 'items', 'prompts', 'matches', 'leftItems', 'rightItems', 'categories', 'rows', 'columns', 'labels'];
+const CHOICE_LISTS = ['options', 'items', 'prompts', 'matches', 'categories', 'rows', 'columns', 'labels'];
 
 /**
  * The item without its answer. Custom (`x-`) types lose only `solution` (where OQSE

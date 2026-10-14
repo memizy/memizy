@@ -19,7 +19,6 @@ export {
 } from './plugin';
 export {
   LocalSession,
-  SETTINGS_ADDRESS,
   type SessionConfig,
   type SessionPlayer,
   type SessionEvent,

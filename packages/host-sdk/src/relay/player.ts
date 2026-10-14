@@ -134,7 +134,7 @@ export class RelayPlayer {
   }
 
   /** Call when this device's language or theme changed (see `config`). */
-  updateConfig(): void {
+  refreshConfig(): void {
     if (!this.plugin || !this.hostConfig) return;
     this.plugin.configChanged(this.localConfig(this.hostConfig)).catch(() => {});
   }

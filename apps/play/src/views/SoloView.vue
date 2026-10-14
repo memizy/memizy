@@ -154,11 +154,11 @@ function run(record: SavedGame, resume: boolean): void {
     mode: 'solo',
     players: record.players.map(({ id, name }) => ({ id, name })),
     settings: record.settings,
-    config: { locale: locale.value, theme: 'light' },
+    locale: locale.value,
     sessionId: record.id,
     shuffleSeed: record.shuffleSeed,
     storage: new PersistentSnapshotStorage(),
-    resume,
+    restore: resume,
     // A saved game was paused when it was left; it continues right away (below).
     clock: resume ? { pausedMs: record.clock.pausedMs, pausedAt: record.clock.pausedAt ?? record.savedAt } : undefined,
   });
@@ -166,7 +166,7 @@ function run(record: SavedGame, resume: boolean): void {
     if (e.type === 'paused') {
       paused.value = e.paused;
       void store();
-    } else if (e.type === 'ended') {
+    } else if (e.type === 'result') {
       phase.value = 'ended';
       endDialog.value = false;
       // A finished game is not continued again.

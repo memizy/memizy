@@ -69,7 +69,7 @@ export interface RoomInfo {
   players: number;
 }
 
-export interface RelayPlayer {
+export interface RoomPlayer {
   id: string;
   name: string;
   connected: boolean;
@@ -124,11 +124,11 @@ export type RelayErrorCode =
 
 export type RelayServerMessage =
   /** To the host after `host`: the current roster. */
-  | { t: 'hosting'; pin: string; players: RelayPlayer[] }
+  | { t: 'hosting'; pin: string; players: RoomPlayer[] }
   /** To a player after `join`. Keep `token` to rejoin as the same player. */
   | { t: 'joined'; pin: string; playerId: string; token: string; name: string; hostConnected: boolean }
   /** To the host: a player joined, reconnected, disconnected or was renamed. */
-  | { t: 'presence'; player: RelayPlayer; event: 'join' | 'connect' | 'disconnect' | 'rename' | 'leave' }
+  | { t: 'presence'; player: RoomPlayer; event: 'join' | 'connect' | 'disconnect' | 'rename' | 'leave' }
   /** To players: the host connection state. */
   | { t: 'host-presence'; connected: boolean }
   /** Player → host. */

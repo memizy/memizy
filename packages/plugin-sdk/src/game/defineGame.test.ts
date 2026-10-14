@@ -282,8 +282,8 @@ describe('defineGame end to end', () => {
     await router.start();
     await wait();
     const root = anna.querySelector('.mz-q')!;
-    expect(root.getAttribute('data-type')).toBe('mcq-single');
-    const praha = anna.querySelector('[data-option="praha"]') as HTMLButtonElement;
+    expect(root.getAttribute('data-mz-type')).toBe('mcq-single');
+    const praha = anna.querySelector('[data-mz-option="praha"]') as HTMLButtonElement;
     expect(praha.style.getPropertyValue('--mz-q-index')).toBe('1');
     router.hold('board'); // a slow network: the answer is on the way
     praha.click();
@@ -293,7 +293,7 @@ describe('defineGame end to end', () => {
     router.release('board');
     await wait(150);
     expect(got).toEqual([{ itemId: 'q1', round: 1, answer: 'praha' }]);
-    expect((anna.querySelector('[data-option="praha"]') as HTMLElement).className).toContain('mz-q-chosen');
+    expect((anna.querySelector('[data-mz-option="praha"]') as HTMLElement).className).toContain('mz-q-chosen');
     expect(router.errors).toEqual([]);
   });
 

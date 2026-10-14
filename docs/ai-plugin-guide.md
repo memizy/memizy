@@ -209,7 +209,6 @@ phases: {
 | `ui.service(name, payload)`, `ui.services` | Call a Memizy service (section 5.4) / services available here. |
 | `ui.progress` | Learning progress of this player `{ [itemId]: { bucket: 0-4, … } }` (empty on the board). |
 | `ui.saved` / `ui.save(scope, value)` | Data saved between games for this player (section 5.3). |
-| `ui.setProgress(itemId, { bucket })` | Set this player's progress directly (self-rating). Prefer `ctx.recordAnswer` when an answer can be checked. |
 | `ui.raw(html)` | Mark HTML you wrote yourself as safe (rarely needed: `ui.html` escapes everything else). |
 | `ui.locale`, `ui.theme` | Language of the app, e.g. `'cs'`; `'light'` or `'dark'`. |
 
@@ -342,7 +341,7 @@ ui.question(item, {
 
 * An answer on the way is shown by the SDK itself; pass `chosen` once it is in the state.
 * The options are shown in the order of the item (true before false); `counts` keys are option ids (`true` / `false` for true-false).
-* **Styling** – only these hooks are stable: the CSS variables `--mz-q-accent`, `--mz-q-bg`, `--mz-q-fg`, `--mz-q-border`, `--mz-q-radius`, `--mz-q-gap`, `--mz-q-right`, `--mz-q-wrong`, `--mz-q-count-bg` (set them on a parent); the root `.mz-q` with `data-type="<item type>"`; `.mz-q-question`, `.mz-q-options` (for choices and true/false its children are in the order of the options), every option `.mz-q-opt` with `data-option="<id>"` and `--mz-q-index`; `.mz-q-submit`; the states `.mz-q-chosen`, `.mz-q-right`, `.mz-q-wrong`. Other classes may change.
+* **Styling** – only these hooks are stable: the CSS variables `--mz-q-accent`, `--mz-q-bg`, `--mz-q-fg`, `--mz-q-border`, `--mz-q-radius`, `--mz-q-gap`, `--mz-q-right`, `--mz-q-wrong`, `--mz-q-count-bg` (set them on a parent); the root `.mz-q` with `data-mz-type="<item type>"`; `.mz-q-question`, `.mz-q-options` (for choices and true/false its children are in the order of the options), every option `.mz-q-opt` with `data-mz-option="<id>"` and `--mz-q-index`; `.mz-q-submit`; the states `.mz-q-chosen`, `.mz-q-right`, `.mz-q-wrong`. Other classes may change.
 * Draw your own controls only when the game needs them (e.g. answering by shooting at a target); then send `option.id`s.
 
 ### 6.3 Canvas, WebGL and 3D Games
@@ -476,7 +475,7 @@ Lists the player chooses from or arranges are **choices** `{ id, text }`: `optio
 | `match-pairs` | `question?`, `prompts[]`, `matches[]` (may have extra matches) | `{ promptId: matchId }` |
 | `categorize` | `question`, `categories[]`, `items[]` | `{ itemId: categoryId }` |
 | `fill-in-blanks` / `fill-in-select` | `text` with blanks | `{ token: text }` / `{ token: optionId }` |
-| `match-complex` | `question?`, `leftItems[]`, `rightItems[]` | array of `[leftId, rightId]` pairs |
+| `match-complex` | `question?`, `prompts[]`, `matches[]` (any number of connections) | array of `[promptId, matchId]` pairs |
 | `timeline` | `question`, `events[]` | array of event ids in order |
 | `matrix` | `question`, `rows[]`, `columns[]` | array of `[rowId, columnId]` cells |
 | `math-input` | `question` | LaTeX string |
@@ -485,7 +484,7 @@ Lists the player chooses from or arranges are **choices** `{ id, text }`: `optio
 | `pin-on-model` | `question`, `targetAsset` (a 3D model) | mesh name (an array with `multipleCorrect`) – draw it yourself |
 | `chess-puzzle` | `fen`, `question?` | array of moves in SAN (the player's and the replies) – draw it yourself |
 | `open-ended` | `question` | text; `checkAnswer` cannot check it (a teacher does) |
-| `flashcard` | `front`, `back` | the player rates themselves 1–4 (1 no idea, 2 familiar, 3 with effort, 4 easy); `checkAnswer` → correct for 3 and 4; pass the rating also as `confidence` |
+| `flashcard` | `front`, `back` | the player rates themselves 1–4 (1 no idea, 2 familiar, 3 with effort, 4 easy); `checkAnswer` → correct for 3 and 4 (the SDK also sends the rating as the `confidence`) |
 | `note` | `title?`, `content`, `hiddenContent?` | no checking – show with `ui.note` |
 | `x-…` (custom) | defined by the set's author | the answer data is in `solution` (hidden until the reveal) |
 

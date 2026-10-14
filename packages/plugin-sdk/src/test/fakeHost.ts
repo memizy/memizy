@@ -64,6 +64,7 @@ export class FakeSession<S> {
       host: { name: 'fake', version: '0' },
       oqseVersion: '1.0',
       features: [],
+      services: [],
       session: {
         id: 'session-1',
         mode: this.options.mode,
@@ -81,7 +82,7 @@ export class FakeSession<S> {
       })(),
       settings: this.options.settings,
       config: { locale: 'cs', theme: 'light' },
-      clock: { offsetMs: 0 },
+      clock: { offsetMs: 0, pausedMs: 0, pausedAt: null },
       progress: {},
       data: { plugin: null, set: null },
       snapshot: address === this.authority ? this.snapshot : null,
@@ -132,14 +133,11 @@ export class FakeSession<S> {
       },
       saveSnapshot: async (snapshot) => { this.snapshot = structuredClone(snapshot); },
       recordAnswer: async (answer) => { this.records.push(structuredClone(answer)); },
-      saveProgress: async () => {},
       saveData: async () => {},
       updateSettings: async () => {},
       getAsset: async () => new Blob(),
       end: async (result) => { this.results.push(structuredClone(result)); },
-      resize: async () => {},
       reportError: async (error) => { this.errors.push(`${error.code}: ${error.message}`); },
-      exit: async () => {},
       service: async (name) => { throw new ProtocolError('SERVICE_UNAVAILABLE', `No service "${name}" in tests.`); },
     };
   }

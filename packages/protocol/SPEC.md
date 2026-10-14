@@ -205,7 +205,7 @@ interface InitPayload {
   settings: Record<string, unknown>;    // current values for every declared setting (defaults applied)
   config: { locale: string; theme: 'light' | 'dark' };
   clock: SessionClock;                  // session clock and pauses (below)
-  services?: string[];                  // RC4: services declared by the plugin AND offered by this host
+  services: string[];                   // services declared by the plugin AND offered by this host
   progress: Record<string, ProgressRecord>;  // learning progress of `self` (empty for board/settings)
   data: { plugin: unknown; set: unknown };   // plugin data of `self` (null when nothing saved; null for board/settings)
   snapshot: unknown | null;             // last saved snapshot, only for the authority (resume)
@@ -215,8 +215,8 @@ type Address = string;                  // player ID, "board"; "server" is reser
 
 interface SessionClock {
   offsetMs: number;                     // Date.now() + offsetMs = session time
-  pausedMs?: number;                    // RC4: total of finished pauses
-  pausedAt?: number | null;             // RC4: session time when the current pause began (null = running)
+  pausedMs: number;                     // total of finished pauses
+  pausedAt: number | null;              // session time when the current pause began (null = running)
 }
 // Game time = (pausedAt ?? session time) - pausedMs. The SDK uses game time for ctx.now,
 // timers and countdowns, so a pause stops them everywhere and nothing jumps afterwards.
@@ -243,8 +243,8 @@ interface Player {
 
 The host prepares the set once per session (`prepareDisplaySet` in `@memizy/protocol`; a future server authority does the same):
 
-1. **Display order.** With a seed (normally the session id), the host shuffles `options` (mcq, unless `shuffle: false`), the options of `fill-in-select` blanks (unless `shuffle: false`), `items` of `sort-items` (never left in the correct order), `prompts` and `matches` of `match-pairs`, the sides of `match-complex`, `events` of `timeline` (unless `shuffle: false`; never left in chronological order), the entries of `categorize` and the `labels` of `diagram-label` (unless `requireTyping`). OQSE answers refer to choice IDs, so shuffling never changes an answer. Every instance sees the same order.
-2. **Public items.** In multiplayer, every instance except the authority gets the items without the fields that give the answer away and with `answerHidden: true`: `explanation`, `incorrectFeedback`, the `explanation` of every choice, `correctId`, `correctIds`, `correctAnswer(s)`, `alternativeAnswers`, `correctOrder`, `pairs`, `connections`, `correctCells`, `correctCategoryId`, zone `correctLabelId` (and the labels when `requireTyping`), the accepted texts of `fill-in-blanks`, the `correctId` of select blanks, event `date`s, `hotspots` of pin items, `back` of a flashcard, `hiddenContent` of a note, `sampleAnswer`, `rubric` and the `quote` of every source (`sources[].quote`, which often states the answer). Custom `x-` types lose `solution` (OQSE puts everything that gives their answer away there), `explanation` and `incorrectFeedback`, and also get `answerHidden: true`. `hints` stay public: a game may show them on any device while the player answers. In relay multiplayer the bundle on the server holds only public items.
+1. **Display order.** With a seed (normally the session id), the host shuffles `options` (mcq, unless `shuffle: false`), the options of `fill-in-select` blanks (unless `shuffle: false`), `items` of `sort-items` (never left in the correct order), `prompts` and `matches` of `match-pairs` and `match-complex`, `events` of `timeline` (unless `shuffle: false`; never left in chronological order), the entries of `categorize` and the `labels` of `diagram-label` (unless `requireTyping`). OQSE answers refer to choice IDs, so shuffling never changes an answer. Every instance sees the same order.
+2. **Public items.** In multiplayer, every instance except the authority gets the items without the fields that give the answer away and with `answerHidden: true`: `explanation`, `incorrectFeedback`, the `explanation` of every choice, `correctId`, `correctIds`, `correctAnswer(s)`, `correctOrder`, `pairs`, `connections`, `correctCells`, `correctCategoryId`, zone `correctLabelId` (and the labels when `requireTyping`), the accepted texts of `fill-in-blanks`, the `correctId` of select blanks, event `date`s, `hotspots` of pin items, `back` of a flashcard, `hiddenContent` of a note, `sampleAnswer`, `rubric` and the `quote` of every source (`sources[].quote`, which often states the answer). Custom `x-` types lose `solution` (OQSE puts everything that gives their answer away there), `explanation` and `incorrectFeedback`, and also get `answerHidden: true`. `hints` stay public: a game may show them on any device while the player answers. In relay multiplayer the bundle on the server holds only public items.
 3. **Revealing.** The authority sends full items to the other instances in its own messages (the plugin SDK's `ctx.reveal`); the host does not take part.
 
 Solo instances and the authority get the full items in display order.
@@ -262,14 +262,11 @@ All methods return Promises and reject with a `ProtocolError` (section 8.2). Met
 | `send(message: OutgoingMessage): void` | Sends a game message to other instances (section 6). |
 | `saveSnapshot(snapshot: unknown): void` | *authority.* Stores the latest resumable game state (overwrites the previous one). Returned as `InitPayload.snapshot` when the authority instance is recreated (reload, crash, reconnect). After `end(result)` the host discards the snapshot: a finished game is not resumed. |
 | `recordAnswer(answer: AnswerRecord): void` | Records a learning result. The host applies its learning algorithm and stores the result in the learning progress of the given player (routing it to that player's device in multiplayer). |
-| `saveProgress(records: Record<string, ProgressRecord>): void` | *views `solo`, `controller`.* Overwrites learning progress records of `self` directly (plugins with their own rating, e.g. "traffic light" self-rating). |
 | `saveData(scope: 'plugin' \| 'set', value: unknown): void` | *views `solo`, `controller`.* Replaces the plugin data of `self` in the given scope (section 5.2). |
 | `updateSettings(update: { values: Record<string, unknown>; valid: boolean; message?: string }): void` | *view `settings`.* Replaces the settings values. The host validates them against the manifest schema; `valid: false` disables Start and shows `message`. |
 | `getAsset(key: string, itemId?: string): Blob` | Raw data of an asset (resolution: item assets, then set assets). |
 | `end(result: SessionResult): void` | *authority.* The game is over. The host shows/stores the result; instances stay open until the host closes them. |
-| `resize(request: { height: number \| 'auto' }): void` | Requests a different iframe height (embedded layouts). |
 | `reportError(error: { code: string; message: string; context?: object }): void` | Non-fatal error for logs and the Lab test report. |
-| `exit(): void` | The user wants to leave (e.g. a "Close" button inside the plugin). |
 | `service(name: string, payload: unknown): unknown` | RC4. Calls a Memizy service (section 5.3). Rejects with `SERVICE_UNAVAILABLE` unless the plugin declares it and `InitPayload.services` lists it. |
 
 ```ts
@@ -293,10 +290,7 @@ interface SessionResult {
 
 ### 5.1 Learning progress
 
-Two ways to write it:
-
-* **`recordAnswer`** – the plugin reports what happened ("player X answered item Y correctly"). The host decides the new bucket and review date with its own algorithm. This is what most plugins use, in solo and in multiplayer.
-* **`saveProgress`** – the plugin writes records of its own player directly (e.g., self-rating sets bucket 3). Only for `self`, never for other players.
+Plugins write it with **`recordAnswer`**: the plugin reports what happened ("player X answered item Y correctly"); the host decides the new bucket and review date with its own algorithm. A self-rating (a flashcard) is an answer too (OQSE Answer Formats). Writing progress records directly is reserved (`saveProgress`, section 10).
 
 RC4 additions to `recordAnswer`:
 
@@ -356,7 +350,7 @@ If the authority instance loses its connection or is being recreated (e.g., the 
 
 * The host calls `authorityChanged({ connected: false })` on all other instances and shows them a "Waiting for the host…" overlay. Messages sent `to: 'authority'` meanwhile are rejected with `AUTHORITY_UNAVAILABLE` (the SDK does not queue them).
 * When the authority is back (resumed from its snapshot), the host calls `authorityChanged({ connected: true })`; the other instances re-synchronize with it.
-* If the authority does not come back within a host-defined time, the host ends the session (`sessionEnded('host_left')`). Handing the game over to another player is a future feature (section 10).
+* If the authority does not come back within a host-defined time, the host ends the session (`sessionEnded('host-left')`). Handing the game over to another player is a future feature (section 10).
 
 ---
 
@@ -368,10 +362,9 @@ If the authority instance loses its connection or is being recreated (e.g., the 
 | `deliver(message: IncomingMessage): void` | A game message from another instance. |
 | `playersChanged(players: Player[]): void` | The roster changed (join, leave, rename, connection status). Always the full list. |
 | `authorityChanged(status: { connected: boolean }): void` | The authority became unreachable / reachable again (section 6.1). Not called on the authority itself. |
-| `setChanged(set: { meta, items }): void` | Optional for hosts (solo only): the set was edited in the host while the plugin runs. No host calls it yet; plugins must still accept it (the SDK replaces the items and re-renders). |
 | `configChanged(config: { locale, theme }): void` | Locale or theme changed. |
 | `clockChanged(clock: SessionClock): void` | Clock synchronization updated, or (RC4) the host paused / resumed the game. While `pausedAt` is set the SDK stops game time and timers, ignores actions and covers the game with a "paused" curtain. |
-| `sessionEnded(reason: 'finished' \| 'host_left' \| 'kicked' \| 'closed' \| 'error'): void` | The host is closing this instance. |
+| `sessionEnded(reason: 'finished' \| 'host-left' \| 'kicked' \| 'closed' \| 'error'): void` | The host is closing this instance. |
 
 ---
 
@@ -484,13 +477,17 @@ What was decided and why, and what is **reserved** (name and intent fixed, not i
 | Feature `teams` | Teams managed by the host (today every game handles teams itself). |
 | Hot-seat | Several players sharing one device; v1 assumes one player per instance. |
 | Host migration | Moving the authority to another device when its device is gone for good; v1 resumes the same authority from the snapshot. |
+| Host method `exit` | Leaving the game from inside it: a "back to the menu" button of a full-screen game; the host closes the game or returns to its menu. |
+| Host method `resize` | Auto height for games embedded in articles and course pages: the game reports the height of its content, the host sizes the frame (switched on in the manifest; the SDK measures it). |
+| Plugin method `setChanged` | Live set editing: the host updates the set of a running game, e.g. when the author edits it in the Lab. |
+| Host method `saveProgress` | Writing learning progress directly, e.g. a placement test ("these items are known"); the host may refuse or limit it. |
 | Feature `replay` | Recording a game and replaying it: the host keeps the session's inputs (the `InitPayload` with the seed and the display order, every action with its sender and game time, pauses) and replays the game by running the same plugin version on them. This works because the rules are deterministic (`ctx.random`, `ctx.now`, no `Math.random` / `Date.now` in actions); keep that rule. |
 
 ---
 
 ## Changelog
 
-* **1.0 (unreleased):** state patches carry their format (`f`); reserved names `$…`, `data-mz-…`, `mz-…` and opt-in state fields; `@memizy/protocol/internal`; Zod 4 (9). Renamed before 1.0: `ui.renderNote` → `ui.note` (SDK), the type `Theme` → `HostConfig`. Player names and personal data: plugins MUST NOT ask for real names or other personal data (3.3); `setChanged` is optional for hosts (7); `replay` reserved (10). The sandbox allows popups that escape it, links open in a new tab (8.4). Error code `UNKNOWN_METHOD` (8.2). Continuing a saved game is described (3.3; host feature, no protocol change). After `end(result)` the host discards the snapshot (5). The transport (Penpal 8), the SDK message format and the protocol declaration of plugins using 1.x additions are fixed rules (4, 4.3, 9); plugins load the SDK from `…/plugin-sdk@1`. `appSpecific.memizy.set` (`required` / `optional` / `none`): games without questions; OQSEM `capabilities` and `actions` may be omitted. Public items (4.4) also lose `sources[].quote`; custom `x-` items lose `solution`, `explanation` and `incorrectFeedback` and get `answerHidden: true` (they were passed unchanged); `hints` stay public. `recordAnswer.answer` follows OQSE Answer Formats (a flashcard answer is a self-rating 1–4; `ui.question` offers four ratings). OQSE 1.0 sets and OQSEM 1.0 manifests (`"version": "1.0"`; other MAJOR versions are not read as 1.x). A host may support several protocol MAJOR versions at once (4.3); supporting older ones is a SHOULD instead of a MUST.
+* **1.0 (unreleased):** removed before 1.0 and reserved (10): `exit`, `resize`, `setChanged`, `saveProgress` (a self-rating is an answer). `InitPayload.services` and the pause fields of `SessionClock` are always present; `sessionEnded` reason `host-left` (was `host_left`); `SETTINGS_ADDRESS` is defined here; the relay type of a room player is `RoomPlayer`. State patches carry their format (`f`); reserved names `$…`, `data-mz-…`, `mz-…` and opt-in state fields; `@memizy/protocol/internal`; Zod 4 (9). Renamed before 1.0: `ui.renderNote` → `ui.note` (SDK), the type `Theme` → `HostConfig`. Player names and personal data: plugins MUST NOT ask for real names or other personal data (3.3); `setChanged` is optional for hosts (7); `replay` reserved (10). The sandbox allows popups that escape it, links open in a new tab (8.4). Error code `UNKNOWN_METHOD` (8.2). Continuing a saved game is described (3.3; host feature, no protocol change). After `end(result)` the host discards the snapshot (5). The transport (Penpal 8), the SDK message format and the protocol declaration of plugins using 1.x additions are fixed rules (4, 4.3, 9); plugins load the SDK from `…/plugin-sdk@1`. `appSpecific.memizy.set` (`required` / `optional` / `none`): games without questions; OQSEM `capabilities` and `actions` may be omitted. Public items (4.4) also lose `sources[].quote`; custom `x-` items lose `solution`, `explanation` and `incorrectFeedback` and get `answerHidden: true` (they were passed unchanged); `hints` stay public. `recordAnswer.answer` follows OQSE Answer Formats (a flashcard answer is a self-rating 1–4; `ui.question` offers four ratings). OQSE 1.0 sets and OQSEM 1.0 manifests (`"version": "1.0"`; other MAJOR versions are not read as 1.x). A host may support several protocol MAJOR versions at once (4.3); supporting older ones is a SHOULD instead of a MUST.
 * **RC1 (2026-10-04):** first release candidate.
 * **RC2 (2026-10-06):** `SettingDefinition.modes`; the host may show solo settings before the start (section 3.3). Additive: RC1 plugins and hosts keep working.
 * **RC4 (2026-10-07):** OQSE 0.3 sets (choices with IDs; the RC3 `correctOrder` / `correctMatches` display fields are gone because answers refer to IDs); `recordAnswer.answer` and generated items (5.1); services (5.3, `service`, `InitPayload.services`, `SERVICE_UNAVAILABLE`); pauses (`SessionClock`); `permissions` with a Content Security Policy and device grants (8.4); decisions and reservations (section 10). Additive for the protocol except the OQSE version: plugins must read choices (`option.text`, `option.id`).

@@ -180,8 +180,6 @@ export interface GameUI {
   note(note: NoteItem, options?: { titleLevel?: number }): SafeHtml;
   /** Save data between games (`'plugin'`: across sets, `'set'`: this set). */
   save(scope: DataScope, value: unknown): void;
-  /** Set this player's learning progress directly (bucket 0–4). */
-  setProgress(itemId: string, progress: { bucket: 0 | 1 | 2 | 3 | 4; nextReviewAt?: string }): void;
 }
 
 export type RenderResult = string | SafeHtml | void | undefined | null;

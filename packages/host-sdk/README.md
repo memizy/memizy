@@ -31,13 +31,14 @@ await session.start();                              // waits for everyone, count
 * **`prepareSetForPlugin`** – keeps only the item types the plugin declares, puts options, pairs… in display order (seeded) and makes the public copy without answers (SPEC 4.4). Which plugins can play a set: `checkCompatibility` in `@memizy/oqse`.
 * **`HOST_SDK_VERSION`** – the version of this package (sent to plugins in `hello`).
 
-The exports listed in `src/index.ts` are the public API; everything else is internal. Without `config.locale` the host uses `'en'`.
+The exports listed in `src/index.ts` are the public API; everything else is internal. Without `locale` the host uses `'en'` (`new LocalSession({ …, locale, theme })`; change them later with `setConfig`).
 
 **Within 1.x** (for apps that implement or consume the interfaces):
 
 * New methods of `HostStorage` and `LearningAlgorithm` are always optional (`deleteSnapshot?` is one); new parameters come last.
 * `SessionEvent` and `RelayHostEvent` may get new event types: ignore types you do not know (no exhaustive `switch` that fails on them).
-* The language and theme of a session are a `HostConfig` (`config`).
+* The language and theme of a session are a `HostConfig` (`session.config`, read-only; `setConfig` changes it). The session's `players`, `settings`, `started` and `ended` are read-only too: change them through the methods.
+* The game's result arrives as the `result` event (`session.end()` then closes the session).
 
 ## Multiplayer over the relay
 
@@ -60,6 +61,6 @@ const player = new RelayPlayer({ serverUrl: 'https://mp.memizy.com', pin, name: 
 
 `uploadBundle` takes the `PreparedSet` and uploads only its `publicSet`: anyone with the PIN can download the bundle, so answers never leave the host. Use the same seed for the bundle and `shuffleSeed`, so every device shows the same order.
 
-**Continuing a saved game** (SPEC 3.3): create the session with the saved players (their old IDs), the same `sessionId`, `shuffleSeed` and storage, `resume: true` and a paused `clock`, then `host.attach(session, { seats: true })`. Devices see the earlier places in `state.seats` and take one with `player.claimSeat(id)` (or `claimSeat(null)` to join as a new player when the game allows late joins); the host can change it with `host.assignSeat(playerId, seat)`. Keep `host.seatAssignments` and pass it as `taken` to attach again after a reload of the host page. Memizy Play (`apps/play`, `HostView` and `JoinView`) is the reference host.
+**Continuing a saved game** (SPEC 3.3): create the session with the saved players (their old IDs), the same `sessionId`, `shuffleSeed` and storage, `restore: true` and a paused `clock`, then `host.attach(session, { seats: true })`. Devices see the earlier places in `state.seats` and take one with `player.claimSeat(id)` (or `claimSeat(null)` to join as a new player when the game allows late joins); the host can change it with `host.assignSeat(roomPlayerId, seatId)` (`host.seats` lists the places with their `roomPlayerId`). Keep `host.seatAssignments` and pass it as `taken` to attach again after a reload of the host page. Memizy Play (`apps/play`, `HostView` and `JoinView`) is the reference host.
 
 Iframes are sandboxed with `allow-scripts allow-forms allow-modals allow-pointer-lock allow-popups allow-popups-to-escape-sandbox` (`PLUGIN_SANDBOX`; links open in a new tab) and **never** `allow-same-origin` or `allow-top-navigation`.

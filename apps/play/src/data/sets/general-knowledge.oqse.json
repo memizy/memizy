@@ -466,8 +466,8 @@
       "type": "math-input",
       "topic": "Matematika",
       "question": "Zjednoduš výraz $2x + 3x$.",
-      "correctAnswer": "5x",
-      "alternativeAnswers": [
+      "correctAnswers": [
+        "5x",
         "5\\cdot x",
         "5*x"
       ]

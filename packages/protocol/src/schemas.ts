@@ -4,7 +4,7 @@
  */
 
 import { z } from 'zod';
-import { ProgressRecordSchema, formatOQSEErrors } from '@memizy/oqse';
+import { formatOQSEErrors } from '@memizy/oqse';
 import { ProtocolError } from './errors';
 import type { HostApi } from './types';
 
@@ -36,7 +36,6 @@ export const AnswerRecordSchema = z.looseObject({
   item: z.looseObject({ id: ShortText(128), type: ShortText(64) }).optional(),
 }).refine((r) => !r.item || r.item.id === r.itemId, { message: 'item.id must equal itemId', path: ['item', 'id'] });
 
-export const ProgressRecordsSchema = z.record(ShortText(128), ProgressRecordSchema);
 
 export const DataScopeSchema = z.enum(['plugin', 'set']);
 
@@ -49,10 +48,6 @@ export const SettingsUpdateSchema = z.looseObject({
 export const SessionResultSchema = z.looseObject({
   scores: z.record(AddressSchema, z.number().finite()).optional(),
   summary: z.string().max(1000).optional(),
-});
-
-export const ResizeRequestSchema = z.looseObject({
-  height: z.union([z.number().positive().max(100_000), z.literal('auto')]),
 });
 
 export const ErrorReportSchema = z.looseObject({
@@ -68,14 +63,11 @@ export const HOST_API_ARGS = {
   send: z.tuple([OutgoingMessageSchema]),
   saveSnapshot: z.tuple([z.unknown()]),
   recordAnswer: z.tuple([AnswerRecordSchema]),
-  saveProgress: z.tuple([ProgressRecordsSchema]),
   saveData: z.tuple([DataScopeSchema, z.unknown()]),
   updateSettings: z.tuple([SettingsUpdateSchema]),
   getAsset: z.tuple([ShortText(200), ShortText(128).optional()]),
   end: z.tuple([SessionResultSchema]),
-  resize: z.tuple([ResizeRequestSchema]),
   reportError: z.tuple([ErrorReportSchema]),
-  exit: z.tuple([]),
   service: z.tuple([ShortText(100), z.unknown()]),
 } satisfies Record<keyof HostApi, z.ZodType>;
 

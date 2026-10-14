@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { SETTINGS_ADDRESS } from '@memizy/protocol';
 import { settingsForMode } from '@memizy/protocol';
 import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -15,7 +16,7 @@ import {
 } from '@heroicons/vue/20/solid';
 import type { OQSEFile } from '@memizy/oqse';
 import type { Player, SettingValue } from '@memizy/protocol';
-import { LocalSession, SETTINGS_ADDRESS, type LoadedPlugin, type SessionEvent } from '@memizy/host-sdk';
+import { LocalSession, type LoadedPlugin, type SessionEvent } from '@memizy/host-sdk';
 import { generateName, generateNames } from '@/lib/names';
 import { useFocusMode } from '@/lib/focusMode';
 import PluginFrame from './PluginFrame.vue';
@@ -77,7 +78,7 @@ function handle(event: SessionEvent): void {
       phase.value = 'running';
       addLog({ kind: 'info', text: t('lab.preview.started') });
       break;
-    case 'ended':
+    case 'result':
       emit('played', 'end');
       phase.value = 'ended';
       addLog({ kind: 'info', text: `${t('lab.preview.ended')}: ${JSON.stringify(event.result)}` });
@@ -107,11 +108,6 @@ function handle(event: SessionEvent): void {
       break;
     case 'authority':
       addLog({ kind: 'info', text: `authority ${event.connected ? 'connected' : 'disconnected'}` });
-      break;
-    case 'exit':
-      addLog({ kind: 'info', text: `${event.address}: exit` });
-      break;
-    case 'resize':
       break;
   }
 }
@@ -147,10 +143,10 @@ function build(): void {
       hostAs: mode.value === 'solo' ? undefined : mode.value,
       players: roster,
       settings: settings.value,
-      config: pluginConfig.value,
+      ...pluginConfig.value,
     });
     stopListening = next.on(handle);
-    players.value = next.players;
+    players.value = [...next.players];
     session.value = next;
     generation.value++;
   } catch (error) {

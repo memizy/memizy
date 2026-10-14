@@ -252,6 +252,15 @@ function itemTo10(item: Rec, index: number, latex: boolean, changes: Set<string>
       }
     }
   }
+  if (item.type === 'math-input' && 'correctAnswer' in item && !('correctAnswers' in item)) {
+    const answers = [item.correctAnswer, ...(Array.isArray(item.alternativeAnswers) ? item.alternativeAnswers : [])].map(stripDollars);
+    rewrite(item, { correctAnswer: ['correctAnswers', answers], alternativeAnswers: null });
+    changes.add('math-input: correctAnswer + alternativeAnswers → correctAnswers');
+  }
+  if (item.type === 'match-complex' && 'leftItems' in item && !('prompts' in item)) {
+    rewrite(item, { leftItems: ['prompts', item.leftItems], rightItems: ['matches', item.rightItems] });
+    changes.add('match-complex: leftItems / rightItems → prompts / matches');
+  }
   fillAltTexts(item.assets, `${where}.assets`, changes, review);
 }
 

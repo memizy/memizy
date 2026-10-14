@@ -58,7 +58,6 @@ export async function runChaosPlayer(session: LocalSession, address: string, plu
     },
     playersChanged: noop,
     authorityChanged: noop,
-    setChanged: noop,
     configChanged: noop,
     clockChanged: noop,
     sessionEnded: noop,

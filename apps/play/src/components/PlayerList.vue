@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
 import { UserGroupIcon, XMarkIcon } from '@heroicons/vue/20/solid';
-import type { RelayPlayer } from '@memizy/protocol';
+import type { RoomPlayer } from '@memizy/protocol';
 
-defineProps<{ players: RelayPlayer[]; hostName?: string | null }>();
+defineProps<{ players: RoomPlayer[]; hostName?: string | null }>();
 defineEmits<{ kick: [string] }>();
 const { t } = useI18n();
 </script>

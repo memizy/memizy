@@ -33,7 +33,7 @@ describe('AI guide example plugin', () => {
     if (option) option.click();
     else {
       const input = app.querySelector<HTMLInputElement>('input[name="answer"]');
-      const firstToggle = app.querySelector<HTMLButtonElement>('.mz-q-opt[data-mzq]');
+      const firstToggle = app.querySelector<HTMLButtonElement>('.mz-q-opt[data-mz-q]');
       if (input) input.value = '1';
       else firstToggle?.click();
       await wait(100);

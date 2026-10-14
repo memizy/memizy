@@ -14,7 +14,6 @@ describe('public API', () => {
       'RELAY_APP_VERSION',
       'RelayHost',
       'RelayPlayer',
-      'SETTINGS_ADDRESS',
       'createEmptySet',
       'leitner',
       'loadPluginFromHtml',

@@ -7,7 +7,8 @@
  */
 
 import type { OQSEFile } from '@memizy/oqse';
-import { LocalSession, SETTINGS_ADDRESS, mountPlugin, prepareSetForPlugin, type LoadedPlugin, type MountedPlugin, type SessionConfig, type SessionEvent } from '@memizy/host-sdk';
+import { SETTINGS_ADDRESS } from '@memizy/protocol';
+import { LocalSession, mountPlugin, prepareSetForPlugin, type LoadedPlugin, type MountedPlugin, type SessionConfig, type SessionEvent } from '@memizy/host-sdk';
 import { actionNames, runChaosPlayer } from './chaosPlayer';
 
 export type LabTestStatus = 'pass' | 'warn' | 'fail' | 'skip';

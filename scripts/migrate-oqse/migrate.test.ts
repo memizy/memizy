@@ -66,9 +66,24 @@ describe('migrateSet', () => {
     expect(result.items[0]).toMatchObject({ correctAnswer: true });
     expect(result.items[1]).toMatchObject({ correctAnswers: ['Praha'] });
     expect(result.items[2]).toMatchObject({ shuffle: false, correctId: 'b' });
-    expect(result.items[3]).toMatchObject({ correctAnswer: '2x+2', alternativeAnswers: ['2+2x'] });
+    expect(result.items[3]).toMatchObject({ correctAnswers: ['2x+2', '2+2x'] });
+    expect(result.items[3]).not.toHaveProperty('alternativeAnswers');
     expect(review).toEqual([]); // latex is declared now
     expect(safeValidateOQSEFile(result)).toMatchObject({ success: true, errors: [] });
+  });
+
+  it('match-complex: lists of a 0.2 set and of a 1.0 release candidate become prompts / matches', () => {
+    const meta = { id: id(0), language: 'en', title: 'Engines', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' };
+    const old02 = { version: '0.2', meta, items: [{ id: id(1), type: 'match-complex', leftItems: ['Starship', 'Falcon 9'], rightItems: ['Raptor', 'Merlin'], connections: [[0, 0], [1, 1]] }] };
+    const rc = { version: '1.0', meta, items: [{ id: id(2), type: 'match-complex', leftItems: [{ id: 's', text: 'Starship' }], rightItems: [{ id: 'r', text: 'Raptor' }], connections: [['s', 'r']] }] };
+    for (const input of [old02, rc]) {
+      const { result, changes } = migrateSet(input);
+      const item = result.items[0];
+      expect(Object.keys(item)).toEqual(['id', 'type', 'prompts', 'matches', 'connections']);
+      expect(item.connections.every(([p, m]: [string, string]) => item.prompts.some((c: { id: string }) => c.id === p) && item.matches.some((c: { id: string }) => c.id === m))).toBe(true);
+      expect(changes).toContain('match-complex: leftItems / rightItems → prompts / matches');
+      expect(safeValidateOQSEFile(result).success).toBe(true);
+    }
   });
 
   it('leaves a 1.0 set unchanged', () => {

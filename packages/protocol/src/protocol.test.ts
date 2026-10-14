@@ -250,7 +250,6 @@ describe('host call validation', () => {
     expect(() => parseHostCall('send', [{ to: 'nobody-list', data: 1 }])).toThrow(/\[INVALID_ARGUMENT\] send:/);
     expect(() => parseHostCall('saveData', ['global', {}])).toThrow(/INVALID_ARGUMENT/);
     expect(() => parseHostCall('recordAnswer', [{ itemId: 'x', isCorrect: true, confidence: 5 }])).toThrow(/INVALID_ARGUMENT/);
-    expect(() => parseHostCall('resize', [{ height: -1 }])).toThrow(/INVALID_ARGUMENT/);
     expect(() => parseHostCall('hello', [{ protocol: 'one', sdk: {}, plugin: {}, features: [] }])).toThrow(/INVALID_ARGUMENT/);
   });
 });

@@ -136,7 +136,7 @@ describe('ui.question', () => {
     });
     expect(num.record).toMatchObject({ isCorrect: true, answer: '9,8' });
     const blanks = await play({ id: id(11), type: 'fill-in-blanks', text: 'Voda je <blank:a /> a <blank:b />.', blanks: { a: ['H2O'], b: ['kapalina'] } } as OQSEAnyItem, async (r) => {
-      const inputs = r.querySelectorAll('input[data-blank]');
+      const inputs = r.querySelectorAll('input[data-mz-q-blank]');
       type(inputs[0], 'h2o');
       type(inputs[1], 'Kapalina');
       await click(r.querySelector('.mz-q-submit'));

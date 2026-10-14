@@ -965,13 +965,13 @@ export interface MatchComplexItem extends BaseItem {
   /** Instructions (Rich Content) */
   question?: string;
 
-  /** Items on left side. Min 1. */
-  leftItems: Choice[];
+  /** What the learner connects from (like the prompts of `match-pairs`). Min 1. */
+  prompts: Choice[];
 
-  /** Items on right side. Min 1. */
-  rightItems: Choice[];
+  /** What the prompts are connected to (may include distractors). Min 1. */
+  matches: Choice[];
 
-  /** Correct connections as `[leftId, rightId]`. Min 1. */
+  /** Correct connections as `[promptId, matchId]` (any number per prompt and per match). Min 1. */
   connections: Array<[string, string]>;
 
   /** Minimum number of correct connections required for success */
@@ -1110,11 +1110,8 @@ export interface MathInputItem extends BaseItem {
   /** Question text (Rich Content) */
   question: string;
 
-  /** Correct answer as raw LaTeX without `$` delimiters (e.g., "2x + 2") */
-  correctAnswer: string;
-
-  /** Other raw LaTeX answers (without `$` delimiters) that should also be considered correct */
-  alternativeAnswers?: string[];
+  /** Correct answers as raw LaTeX without `$` delimiters (e.g., ["2x+2", "2+2x"]). Min 1. */
+  correctAnswers: string[];
 
   /** For purely numeric answers, allowed numeric deviation */
   tolerance?: number;

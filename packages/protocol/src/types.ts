@@ -17,6 +17,8 @@ export const BOARD_ADDRESS = 'board';
 
 /** Reserved for a future server-side authority (SPEC 3.1). */
 export const SERVER_ADDRESS = 'server';
+/** Address of the plugin's own settings screen in the lobby (view `settings`). */
+export const SETTINGS_ADDRESS = 'settings';
 
 export type SessionMode = 'solo' | 'multiplayer';
 
@@ -83,11 +85,8 @@ export interface InitPayload {
   config: HostConfig;
   /** The session clock and its pauses (see {@link SessionClock}). */
   clock: SessionClock;
-  /**
-   * RC4: Memizy services this host offers to the plugin (declared in its manifest and
-   * available here); call them with `service()`. Absent on older hosts.
-   */
-  services?: string[];
+  /** Memizy services this host offers to the plugin (declared in its manifest and available here); call them with `service()`. */
+  services: string[];
   /** Learning progress of `self` (empty for board/settings). */
   progress: Record<string, ProgressRecord>;
   /** Plugin data of `self` (`null` values for board/settings). */
@@ -104,8 +103,10 @@ export interface InitPayload {
  */
 export interface SessionClock {
   offsetMs: number;
-  pausedMs?: number;
-  pausedAt?: number | null;
+  /** Total length of finished pauses (ms). */
+  pausedMs: number;
+  /** Session time when the current pause started, or `null` while the game runs. */
+  pausedAt: number | null;
 }
 
 // ============================================================================
@@ -147,10 +148,6 @@ export interface SettingsUpdate {
   message?: string;
 }
 
-export interface ResizeRequest {
-  height: number | 'auto';
-}
-
 export interface ErrorReport {
   code: string;
   message: string;
@@ -171,7 +168,7 @@ export interface IncomingMessage {
   sentAt: number;
 }
 
-export type SessionEndReason = 'finished' | 'host_left' | 'kicked' | 'closed' | 'error';
+export type SessionEndReason = 'finished' | 'host-left' | 'kicked' | 'closed' | 'error';
 
 // ============================================================================
 // RPC interfaces
@@ -184,14 +181,11 @@ export interface HostApi {
   send(message: OutgoingMessage): Promise<void>;
   saveSnapshot(snapshot: unknown): Promise<void>;
   recordAnswer(answer: AnswerRecord): Promise<void>;
-  saveProgress(records: Record<string, ProgressRecord>): Promise<void>;
   saveData(scope: DataScope, value: unknown): Promise<void>;
   updateSettings(update: SettingsUpdate): Promise<void>;
   getAsset(key: string, itemId?: string): Promise<Blob>;
   end(result: SessionResult): Promise<void>;
-  resize(request: ResizeRequest): Promise<void>;
   reportError(error: ErrorReport): Promise<void>;
-  exit(): Promise<void>;
   /** RC4: calls a Memizy service (one of `InitPayload.services`); returns its JSON result. */
   service(name: string, payload: unknown): Promise<unknown>;
 }
@@ -202,7 +196,6 @@ export interface PluginApi {
   deliver(message: IncomingMessage): Promise<void>;
   playersChanged(players: Player[]): Promise<void>;
   authorityChanged(status: { connected: boolean }): Promise<void>;
-  setChanged(set: { meta: OQSEMeta; items: OQSEAnyItem[] }): Promise<void>;
   configChanged(config: HostConfig): Promise<void>;
   /** The clock was corrected, or the game was paused / resumed (RC4). */
   clockChanged(clock: SessionClock): Promise<void>;
@@ -210,10 +203,10 @@ export interface PluginApi {
 }
 
 export const HOST_API_METHODS = [
-  'hello', 'ready', 'send', 'saveSnapshot', 'recordAnswer', 'saveProgress', 'saveData',
-  'updateSettings', 'getAsset', 'end', 'resize', 'reportError', 'exit', 'service',
+  'hello', 'ready', 'send', 'saveSnapshot', 'recordAnswer', 'saveData',
+  'updateSettings', 'getAsset', 'end', 'reportError', 'service',
 ] as const satisfies readonly (keyof HostApi)[];
 
 export const PLUGIN_API_METHODS = [
-  'start', 'deliver', 'playersChanged', 'authorityChanged', 'setChanged', 'configChanged', 'clockChanged', 'sessionEnded',
+  'start', 'deliver', 'playersChanged', 'authorityChanged', 'configChanged', 'clockChanged', 'sessionEnded',
 ] as const satisfies readonly (keyof PluginApi)[];

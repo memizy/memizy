@@ -320,13 +320,6 @@ export class GameRuntime<S = unknown> {
     }
   }
 
-  /** `PluginApi.setChanged` – the set was edited in the host (solo). */
-  replaceSet(set: InitPayload['set']): void {
-    this.init.set = set;
-    this.itemsById.clear();
-    for (const item of set.items) this.itemsById.set(item.id, item);
-    this.onChange();
-  }
 
   /** Stops timers and pending work (instance closing). */
   dispose(): void {
@@ -697,6 +690,11 @@ export class GameRuntime<S = unknown> {
             break;
           }
           const { playerId: _ignored, ...rest } = effect.options;
+          // A flashcard's answer is the self-rating 1–4 (OQSE): it is also the confidence.
+          const rating = rest.answer;
+          if (rest.confidence === undefined && this.itemsById.get(effect.itemId)?.type === 'flashcard' && (rating === 1 || rating === 2 || rating === 3 || rating === 4)) {
+            rest.confidence = rating;
+          }
           this.host
             .recordAnswer({ playerId, itemId: effect.itemId, isCorrect: effect.isCorrect, ...rest, ...(effect.item ? { item: effect.item as never } : {}) })
             .catch((e) => this.warn('recordAnswer', e));

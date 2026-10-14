@@ -41,11 +41,9 @@ export {
   HandshakeSchema,
   OutgoingMessageSchema,
   AnswerRecordSchema,
-  ProgressRecordsSchema,
   DataScopeSchema,
   SettingsUpdateSchema,
   SessionResultSchema,
-  ResizeRequestSchema,
   ErrorReportSchema,
 } from './schemas';
 export {
@@ -53,7 +51,7 @@ export {
   type RelayBundle,
   type CreateRoomResponse,
   type RoomInfo,
-  type RelayPlayer,
+  type RoomPlayer,
   type RelayClientMessage,
   type RelayErrorCode,
   type RelayServerMessage,

@@ -166,7 +166,7 @@ describe('relayed multiplayer', () => {
       hostAs: 'presenter',
       players: host.players.map((p) => ({ id: p.id, name: p.name })),
       countdownMs: 0,
-      config: { locale: 'cs' },
+      locale: 'cs',
     });
     const events: SessionEvent[] = [];
     session.on((e) => events.push(e));
@@ -271,7 +271,7 @@ describe('relayed multiplayer', () => {
     const eva = joinPlayer(host2.pin, 'Eva');
     const filip = joinPlayer(host2.pin, 'Filip');
     await until(() => host2.players.length === 3 && host2.players.every((p) => p.connected));
-    const second = new LocalSession({ plugin, set: setFile, mode: 'multiplayer', hostAs: 'presenter', players: saved.players, countdownMs: 0, sessionId, storage, shuffleSeed: 'seed-1', resume: true, clock: saved.clock });
+    const second = new LocalSession({ plugin, set: setFile, mode: 'multiplayer', hostAs: 'presenter', players: saved.players, countdownMs: 0, sessionId, storage, shuffleSeed: 'seed-1', restore: true, clock: saved.clock });
     expect(second.paused).toBe(true); // continued games start paused
     await host2.uploadBundle(plugin.html, second.prepared);
     host2.attach(second, { seats: true });
@@ -302,7 +302,7 @@ describe('relayed multiplayer', () => {
     host2.assignSeat(filip.player.playerId!, benId);
     await until(() => filip.player.seat === benId && filip.player.name === 'Ben');
     await until(() => !!filip.root()?.querySelector('button'));
-    expect(host2.seats.find((s) => s.id === benId)?.playerId).toBe(filip.player.playerId);
+    expect(host2.seats.find((s) => s.id === benId)?.roomPlayerId).toBe(filip.player.playerId);
     expect(host2.seatAssignments).toMatchObject({ [dana.player.playerId!]: annaId, [filip.player.playerId!]: benId });
 
     // Paused: nothing happens. The teacher continues, and Anna's place plays on.
@@ -325,7 +325,7 @@ describe('relayed multiplayer', () => {
     host2.assignSeat(filip.player.playerId!, null);
     await until(() => filip.player.seat === null);
     expect(second.players.find((p) => p.id === benId)?.connected).toBe(false);
-    expect(seatEvents.at(-1)!.find((s) => s.id === benId)?.playerId).toBeNull();
+    expect(seatEvents.at(-1)!.find((s) => s.id === benId)?.roomPlayerId).toBeNull();
 
     host2.close();
     for (const p of [ben, dana, eva, filip]) p.player.leave();
@@ -369,7 +369,7 @@ describe('relayed multiplayer', () => {
     const statuses: string[] = [];
     first.on((e) => e.type === 'status' && statuses.push(e.status));
     // e.g. the host page opened again in another tab (the room is resumed from sessionStorage)
-    const second = RelayHost.resume({ serverUrl, WebSocket: WebSocketImpl }, { pin: first.pin, hostToken: first.hostToken });
+    const second = RelayHost.rejoin({ serverUrl, WebSocket: WebSocketImpl }, { pin: first.pin, hostToken: first.hostToken });
     await until(() => second.status === 'online');
     await until(() => first.status === 'replaced');
     await wait(2000); // the old one must not reconnect and push the new one out

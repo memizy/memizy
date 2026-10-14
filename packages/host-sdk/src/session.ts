@@ -11,6 +11,7 @@
 
 import {
   BOARD_ADDRESS,
+  SETTINGS_ADDRESS,
   LIMITS,
   PROTOCOL_VERSION,
   ProtocolError,
@@ -65,7 +66,10 @@ export interface SessionConfig {
   loadAsset?: (key: string, itemId: string | undefined) => Promise<Blob>;
   /** Maps a player to the key of their stored progress and data (default: the player ID). */
   userKeyFor?: (playerId: string) => string;
-  config?: Partial<HostConfig>;
+  /** Language of the app (default `'en'`). */
+  locale?: string;
+  /** Theme of the app (default `'light'`). */
+  theme?: HostConfig['theme'];
   sessionId?: string;
   /**
    * Seed of the display order of options, pairs… (SPEC 4.4; default: the session id).
@@ -82,7 +86,7 @@ export interface SessionConfig {
    * same `sessionId` and a persistent `storage`). The authority resumes from its
    * last snapshot; without a snapshot the game starts again right away.
    */
-  resume?: boolean;
+  restore?: boolean;
   /** When resuming: the pauses so far (from the `paused` events), so timers stay right. */
   clock?: { pausedMs?: number; pausedAt?: number | null };
   /**
@@ -106,16 +110,16 @@ export type SessionEvent =
    * which is not repeated); `skills` / `tags` come from the item (for statistics).
    */
   | { type: 'answer'; playerId: string; record: ProgressRecord | null; answer: AnswerRecord; generated: boolean; skills: string[]; tags: string[] }
-  | { type: 'ended'; result: SessionResult }
+  /** The game reported its result (`end(result)`); the session itself ends with `end()`. */
+  | { type: 'result'; result: SessionResult }
   | { type: 'players'; players: Player[] }
   | { type: 'authority'; connected: boolean }
   | { type: 'traffic'; from: string; to: string; bytes: number; data: unknown }
   | { type: 'rejected'; address: string; method: string; code: string; message: string }
   | { type: 'pluginError'; address: string; code: string; message: string; context?: Record<string, unknown> }
-  | { type: 'resize'; address: string; height: number | 'auto' }
   /** The host paused or resumed the game (store `clock` to resume a reloaded host). */
-  | { type: 'paused'; paused: boolean; clock: { pausedMs: number; pausedAt: number | null } }
-  | { type: 'exit'; address: string };
+  | { type: 'paused'; paused: boolean; clock: { pausedMs: number; pausedAt: number | null } };
+
 
 /** Creates the plugin side of an instance for a given host API (iframe + Penpal, or a direct connection in tests). */
 export type PluginEndpoint = (hostApi: HostApi) => PluginApi | Promise<PluginApi>;
@@ -138,7 +142,6 @@ interface Instance extends SessionInstance {
   serviceLimiter: RateLimiter;
 }
 
-export const SETTINGS_ADDRESS = 'settings';
 
 /** Deep copy of JSON data that also works for proxies (which structuredClone rejects). */
 function plainCopy<T>(value: T): T {
@@ -157,12 +160,12 @@ export class LocalSession {
   readonly hostAs: HostAs | null;
   readonly authority: string;
   readonly prepared: PreparedSet;
-  players: Player[];
-  settings: Record<string, unknown>;
-  settingsValid = true;
-  config: HostConfig;
-  started = false;
-  ended = false;
+  private roster: Player[];
+  private settingValues: Record<string, unknown>;
+  private settingsOk = true;
+  private hostConfig: HostConfig;
+  private isStarted = false;
+  private isEnded = false;
   /** Pauses of the game (game time = session time without them). */
   private pauseState: { pausedMs: number; pausedAt: number | null } = { pausedMs: 0, pausedAt: null };
 
@@ -182,6 +185,34 @@ export class LocalSession {
   private snapshotTimer: ReturnType<typeof setTimeout> | undefined;
   private readonly pendingData = new Map<string, { playerId: string; scope: DataScope; value: unknown; timer: ReturnType<typeof setTimeout> }>();
 
+  /** The players (the presenter is not one). Change them with `addPlayer`, `removePlayer`, `renamePlayer`, `setConnected`. */
+  get players(): readonly Player[] {
+    return this.roster;
+  }
+
+  /** Values of the settings (defaults applied; the plugin's own settings screen may change them in the lobby). */
+  get settings(): Readonly<Record<string, unknown>> {
+    return this.settingValues;
+  }
+
+  /** Whether the settings are valid (the plugin's own settings screen reports it). */
+  get settingsValid(): boolean {
+    return this.settingsOk;
+  }
+
+  /** Language and theme of the app (change them with `setConfig`). */
+  get config(): Readonly<HostConfig> {
+    return this.hostConfig;
+  }
+
+  get started(): boolean {
+    return this.isStarted;
+  }
+
+  get ended(): boolean {
+    return this.isEnded;
+  }
+
   constructor(config: SessionConfig) {
     this.options = config;
     this.id = config.sessionId ?? `session-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -190,7 +221,7 @@ export class LocalSession {
     this.mode = config.mode;
     this.storage = config.storage ?? new MemoryStorage();
     this.algorithm = config.algorithm ?? leitner;
-    this.config = { locale: config.config?.locale ?? 'en', theme: config.config?.theme ?? 'light' };
+    this.hostConfig = { locale: config.locale ?? 'en', theme: config.theme ?? 'light' };
 
     if (config.mode === 'solo') {
       if (!this.runtime.solo) throw new Error('The plugin does not support solo mode.');
@@ -206,24 +237,24 @@ export class LocalSession {
     if (config.mode === 'solo' && roster.length !== 1) throw new Error('A solo session has exactly one player.');
     if (new Set(roster.map((p) => p.id)).size !== roster.length) throw new Error('Player IDs must be unique.');
     if (roster.some((p) => p.id === BOARD_ADDRESS || p.id === SETTINGS_ADDRESS || p.id === 'server')) throw new Error('Player IDs "board", "settings" and "server" are reserved.');
-    this.players = roster.map((p) => ({ id: p.id, name: p.name, isHost: config.mode === 'solo' ? true : p.isHost ?? false, connected: true }));
+    this.roster = roster.map((p) => ({ id: p.id, name: p.name, isHost: config.mode === 'solo' ? true : p.isHost ?? false, connected: true }));
 
-    if (config.mode === 'solo') this.authority = this.players[0].id;
+    if (config.mode === 'solo') this.authority = this.roster[0].id;
     else if (this.hostAs === 'presenter') this.authority = BOARD_ADDRESS;
     else {
-      const host = this.players.find((p) => p.isHost);
+      const host = this.roster.find((p) => p.isHost);
       if (!host) throw new Error('With hostAs "player", one player must have isHost: true.');
       this.authority = host.id;
     }
 
     const resolved = resolveSettings(this.runtime.settings, config.settings ?? {});
     if (resolved.errors.length > 0) throw new Error(`Invalid settings: ${resolved.errors.join('; ')}`);
-    this.settings = resolved.values;
+    this.settingValues = resolved.values;
     // A plain copy: the set may be a framework proxy (Vue reactive) that structuredClone rejects.
     const seed = config.shuffleSeed === null ? undefined : config.shuffleSeed ?? this.id;
     this.prepared = prepareSetForPlugin(plainCopy(config.set), config.plugin.manifest, { seed });
-    if (config.resume) {
-      this.started = true;
+    if (config.restore) {
+      this.isStarted = true;
       this.resumeStartPending = true;
     }
     if (config.clock) this.pauseState = { pausedMs: config.clock.pausedMs ?? 0, pausedAt: config.clock.pausedAt ?? null };
@@ -261,7 +292,7 @@ export class LocalSession {
 
   /** Addresses that have a game instance in this session (board and players). */
   addresses(): string[] {
-    return [...(this.hostAs === 'presenter' ? [BOARD_ADDRESS] : []), ...this.players.map((p) => p.id)];
+    return [...(this.hostAs === 'presenter' ? [BOARD_ADDRESS] : []), ...this.roster.map((p) => p.id)];
   }
 
   /**
@@ -272,11 +303,11 @@ export class LocalSession {
     const view = this.viewOf(address);
     if (view === 'settings') {
       if (!this.runtime.multiplayer || !this.runtime.settingsScreen) throw new Error('The plugin has no settings screen (settingsScreen).');
-      if (this.started) throw new Error('The settings screen is only available before the game starts.');
+      if (this.isStarted) throw new Error('The settings screen is only available before the game starts.');
     } else if (!this.addresses().includes(address)) {
       throw new Error(`Unknown address "${address}" in this session.`);
     }
-    if (this.ended) throw new Error('The session has ended.');
+    if (this.isEnded) throw new Error('The session has ended.');
 
     this.disposeInstance(address);
     const instance: Instance = {
@@ -295,7 +326,7 @@ export class LocalSession {
     };
     (instance as { hostApi: HostApi }).hostApi = this.createHostApi(instance);
     this.instances.set(address, instance);
-    if (address === this.authority && this.started) this.setAuthorityConnected(false);
+    if (address === this.authority && this.isStarted) this.setAuthorityConnected(false);
     try {
       instance.plugin = await endpoint(instance.hostApi);
     } catch (error) {
@@ -317,7 +348,7 @@ export class LocalSession {
   /** Removes the instance at `address` (the player stays in the roster). */
   disconnect(address: string): void {
     this.disposeInstance(address);
-    if (address === this.authority && this.started) this.setAuthorityConnected(false);
+    if (address === this.authority && this.isStarted) this.setAuthorityConnected(false);
   }
 
   private disposeInstance(address: string): void {
@@ -347,9 +378,9 @@ export class LocalSession {
    */
   start(): Promise<void> {
     if (this.mode === 'solo') return Promise.resolve();
-    if (this.started && !this.startPromise) return Promise.resolve(); // resumed session
-    if (!this.settingsValid) return Promise.reject(new Error('The settings are not valid.'));
-    const count = this.players.length;
+    if (this.isStarted && !this.startPromise) return Promise.resolve(); // resumed session
+    if (!this.settingsOk) return Promise.reject(new Error('The settings are not valid.'));
+    const count = this.roster.length;
     const limits = this.runtime.multiplayer!.players;
     if (count < limits.min || count > limits.max) {
       return Promise.reject(new Error(`This plugin needs ${limits.min}–${limits.max} players (now ${count}).`));
@@ -364,7 +395,7 @@ export class LocalSession {
     const allReady = () => [...this.instances.values()].every((i) => i.ready);
     const authorityReady = () => this.instances.get(this.authority)?.ready === true;
     while (!(allReady() && authorityReady()) && (Date.now() < deadline || !authorityReady())) {
-      if (this.ended) return;
+      if (this.isEnded) return;
       await sleep(25);
     }
     const countdownMs = this.options.countdownMs ?? 3000;
@@ -372,32 +403,32 @@ export class LocalSession {
       this.emit({ type: 'countdown', secondsLeft: left });
       await sleep(Math.min(1000, countdownMs - (Math.ceil(countdownMs / 1000) - left) * 1000));
     }
-    if (this.ended) return;
-    this.started = true;
+    if (this.isEnded) return;
+    this.isStarted = true;
     this.emit({ type: 'started' });
     await this.callPlugin(this.authority, (p) => p.start());
   }
 
   addPlayer(player: SessionPlayer): void {
     if (this.mode === 'solo') throw new Error('Players cannot join a solo session.');
-    if (this.players.some((p) => p.id === player.id) || [BOARD_ADDRESS, SETTINGS_ADDRESS, 'server'].includes(player.id)) {
+    if (this.roster.some((p) => p.id === player.id) || [BOARD_ADDRESS, SETTINGS_ADDRESS, 'server'].includes(player.id)) {
       throw new Error(`Player ID "${player.id}" is already used or reserved.`);
     }
-    if (this.started && !this.runtime.multiplayer!.lateJoin) throw new Error('This game does not allow joining after the start.');
-    if (this.players.length >= this.runtime.multiplayer!.players.max) throw new Error('The game is full.');
-    this.players = [...this.players, { id: player.id, name: player.name, isHost: false, connected: true }];
+    if (this.isStarted && !this.runtime.multiplayer!.lateJoin) throw new Error('This game does not allow joining after the start.');
+    if (this.roster.length >= this.runtime.multiplayer!.players.max) throw new Error('The game is full.');
+    this.roster = [...this.roster, { id: player.id, name: player.name, isHost: false, connected: true }];
     this.broadcastPlayers();
   }
 
   removePlayer(id: string): void {
     if (id === this.authority) throw new Error('The host cannot be removed.');
     this.disposeInstance(id);
-    this.players = this.players.filter((p) => p.id !== id);
+    this.roster = this.roster.filter((p) => p.id !== id);
     this.broadcastPlayers();
   }
 
   renamePlayer(id: string, name: string): void {
-    this.players = this.players.map((p) => (p.id === id ? { ...p, name } : p));
+    this.roster = this.roster.map((p) => (p.id === id ? { ...p, name } : p));
     this.broadcastPlayers();
   }
 
@@ -409,8 +440,8 @@ export class LocalSession {
   setConnected(address: string, connected: boolean): void {
     const instance = this.instances.get(address);
     if (instance) instance.connected = connected;
-    if (this.players.some((p) => p.id === address)) {
-      this.players = this.players.map((p) => (p.id === address ? { ...p, connected } : p));
+    if (this.roster.some((p) => p.id === address)) {
+      this.roster = this.roster.map((p) => (p.id === address ? { ...p, connected } : p));
       this.broadcastPlayers();
     }
     if (address === this.authority) this.setAuthorityConnected(connected);
@@ -434,7 +465,7 @@ export class LocalSession {
 
   /** Pauses the game: timers and countdowns stop, players cannot act (the SDK shows "Paused"). */
   pause(): void {
-    if (!this.started || this.ended || this.paused) return;
+    if (!this.isStarted || this.isEnded || this.paused) return;
     this.pauseState = { ...this.pauseState, pausedAt: Date.now() };
     this.broadcastClock();
   }
@@ -453,14 +484,14 @@ export class LocalSession {
   }
 
   setConfig(config: Partial<HostConfig>): void {
-    this.config = { ...this.config, ...config };
-    for (const address of this.instances.keys()) void this.callPlugin(address, (p) => p.configChanged(this.config));
+    this.hostConfig = { ...this.hostConfig, ...config };
+    for (const address of this.instances.keys()) void this.callPlugin(address, (p) => p.configChanged(this.hostConfig));
   }
 
   /** Ends the session for all instances (they stay mounted until the app removes them). */
   async end(reason: SessionEndReason = 'closed'): Promise<void> {
-    if (this.ended) return;
-    this.ended = true;
+    if (this.isEnded) return;
+    this.isEnded = true;
     if (reason === 'finished') await this.discardSnapshot();
     else await this.flushSnapshot(); // a closed game can be continued later
     await this.flushData();
@@ -475,7 +506,7 @@ export class LocalSession {
     const call = <T>(method: string, fn: () => Promise<T> | T): Promise<T> => {
       return (async () => {
         if (instance.disposed) throw new ProtocolError('SESSION_ENDED', 'This instance has been closed.');
-        if (this.ended && method !== 'reportError') throw new ProtocolError('SESSION_ENDED', 'The session has ended.');
+        if (this.isEnded && method !== 'reportError') throw new ProtocolError('SESSION_ENDED', 'The session has ended.');
         return fn();
       })().catch((error) => {
         const e = toProtocolError(error);
@@ -512,11 +543,11 @@ export class LocalSession {
           instance.ready = true;
           this.emit({ type: 'ready', address: instance.address });
           if (instance.address === this.authority) {
-            if (this.mode === 'solo' && !this.started && !instance.resumed) {
-              this.started = true;
+            if (this.mode === 'solo' && !this.isStarted && !instance.resumed) {
+              this.isStarted = true;
               this.emit({ type: 'started' });
               void this.callPlugin(instance.address, (p) => p.start());
-            } else if (this.started) {
+            } else if (this.isStarted) {
               if (this.resumeStartPending) {
                 this.resumeStartPending = false;
                 // Resumed without a snapshot: nothing to continue from, start over.
@@ -568,11 +599,11 @@ export class LocalSession {
       recordAnswer: (...args) =>
         call('recordAnswer', async () => {
           const [answer] = parseHostCall('recordAnswer', args);
-          const self = this.players.some((p) => p.id === instance.address) ? instance.address : null;
+          const self = this.roster.some((p) => p.id === instance.address) ? instance.address : null;
           const playerId = answer.playerId ?? self;
           if (!playerId) throw new ProtocolError('INVALID_ARGUMENT', 'recordAnswer needs a playerId on the board.');
           if (playerId !== self) requireAuthority('recordAnswer for another player');
-          if (!this.players.some((p) => p.id === playerId)) throw new ProtocolError('INVALID_ARGUMENT', `Unknown player "${playerId}".`);
+          if (!this.roster.some((p) => p.id === playerId)) throw new ProtocolError('INVALID_ARGUMENT', `Unknown player "${playerId}".`);
           if (answer.answer !== undefined) assertJsonWithin(answer.answer, LIMITS.answerBytes, 'DATA_TOO_LARGE', 'answer');
           const known = this.prepared.set.items.find((i) => i.id === answer.itemId);
           const listOf = (value: unknown) => (Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : []);
@@ -590,16 +621,6 @@ export class LocalSession {
           const record = this.algorithm.apply(progress[answer.itemId], stored, new Date(), structuredClone(known));
           await this.storage.saveProgress(userKey, setId, { [answer.itemId]: record });
           this.emit({ type: 'answer', playerId, record, answer: stored, generated: false, skills: listOf(known.skills), tags: listOf(known.tags) });
-        }),
-
-      saveProgress: (...args) =>
-        call('saveProgress', async () => {
-          const [records] = parseHostCall('saveProgress', args);
-          requireView('saveProgress', isPlayerView());
-          const known = new Set(this.prepared.set.items.map((i) => i.id));
-          const unknown = Object.keys(records).filter((id) => !known.has(id));
-          if (unknown.length > 0) throw new ProtocolError('INVALID_ARGUMENT', `Unknown items: ${unknown.join(', ')}.`);
-          await this.storage.saveProgress(this.userKey(instance.address), this.prepared.set.meta.id, records);
         }),
 
       saveData: (...args) =>
@@ -626,10 +647,10 @@ export class LocalSession {
           const [update] = parseHostCall('updateSettings', args);
           requireView('updateSettings', instance.view === 'settings');
           const { values, errors } = resolveSettings(this.runtime.settings, update.values);
-          this.settings = values;
-          this.settingsValid = update.valid && errors.length === 0;
+          this.settingValues = values;
+          this.settingsOk = update.valid && errors.length === 0;
           const message = update.message ?? errors[0];
-          this.emit({ type: 'settings', values, valid: this.settingsValid, ...(message && { message }) });
+          this.emit({ type: 'settings', values, valid: this.settingsOk, ...(message && { message }) });
         }),
 
       getAsset: (...args) =>
@@ -651,25 +672,13 @@ export class LocalSession {
           const [result] = parseHostCall('end', args);
           requireAuthority('end');
           await this.discardSnapshot(); // a finished game is not resumed (SPEC 5)
-          this.emit({ type: 'ended', result });
-        }),
-
-      resize: (...args) =>
-        call('resize', () => {
-          const [request] = parseHostCall('resize', args);
-          this.emit({ type: 'resize', address: instance.address, height: request.height });
+          this.emit({ type: 'result', result });
         }),
 
       reportError: (...args) =>
         call('reportError', () => {
           const [error] = parseHostCall('reportError', args);
           this.emit({ type: 'pluginError', address: instance.address, code: error.code, message: error.message, ...(error.context && { context: error.context }) });
-        }),
-
-      exit: (...args) =>
-        call('exit', () => {
-          parseHostCall('exit', args);
-          this.emit({ type: 'exit', address: instance.address });
         }),
 
       service: (...args) =>
@@ -679,7 +688,7 @@ export class LocalSession {
           if (!handler) throw new ProtocolError('SERVICE_UNAVAILABLE', `Service "${name}" is not available here (declare it in the manifest "services"; this host offers: ${this.services.join(', ') || 'none'}).`);
           assertJsonWithin(payload, LIMITS.serviceBytes, 'MESSAGE_TOO_LARGE', `service ${name} request`);
           if (!instance.serviceLimiter.tryTake()) throw new ProtocolError('RATE_LIMITED', `More than ${LIMITS.servicesPerMinute} service calls per minute.`);
-          const playerId = this.players.some((p) => p.id === instance.address) ? instance.address : null;
+          const playerId = this.roster.some((p) => p.id === instance.address) ? instance.address : null;
           const result = await handler(plainCopy(payload), { playerId, address: instance.address, pluginId: this.plugin.manifest.id, setId: this.prepared.set.meta.id });
           assertJsonWithin(result ?? null, LIMITS.messageBytes * 4, 'MESSAGE_TOO_LARGE', `service ${name} result`);
           return plainCopy(result ?? null);
@@ -709,13 +718,13 @@ export class LocalSession {
         view: instance.view,
         self: instance.address,
         authority: this.authority,
-        lateJoin: this.started && instance.view !== 'settings',
+        lateJoin: this.isStarted && instance.view !== 'settings',
       },
-      players: this.players,
+      players: this.roster,
       // Answers only for the authority (and solo); the others get the items without them.
       set: structuredClone(this.mode === 'multiplayer' && instance.address !== this.authority ? this.prepared.publicSet : this.prepared.set),
-      settings: { ...this.settings },
-      config: this.config,
+      settings: { ...this.settingValues },
+      config: this.hostConfig,
       clock: this.clock,
       services: this.services,
       progress: userKey ? await this.storage.loadProgress(userKey, setId) : {},
@@ -746,8 +755,8 @@ export class LocalSession {
   }
 
   private broadcastPlayers(): void {
-    this.emit({ type: 'players', players: this.players });
-    for (const address of this.instances.keys()) void this.callPlugin(address, (p) => p.playersChanged(this.players));
+    this.emit({ type: 'players', players: this.roster });
+    for (const address of this.instances.keys()) void this.callPlugin(address, (p) => p.playersChanged(this.roster));
   }
 
   private setAuthorityConnected(connected: boolean): void {

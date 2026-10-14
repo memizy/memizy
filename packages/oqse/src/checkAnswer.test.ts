@@ -55,7 +55,7 @@ describe('checkAnswer', () => {
   });
 
   it('math-input ignores whitespace and $ delimiters', () => {
-    const math = item({ type: 'math-input', question: 'Q', correctAnswer: '2x+2', alternativeAnswers: ['2+2x'] });
+    const math = item({ type: 'math-input', question: 'Q', correctAnswers: ['2x+2', '2+2x'] });
     expect(checkAnswer(math, '2x + 2')).toBe(true);
     expect(checkAnswer(math, '$2 + 2x$')).toBe(true);
     expect(checkAnswer(math, '2X+2')).toBe(false);
@@ -70,7 +70,7 @@ describe('checkAnswer', () => {
     expect(checkAnswer(pairs, { sk: 'bratislava', cz: 'praha' })).toBe(true);
     expect(checkAnswer(pairs, { cz: 'praha', sk: 'viden' })).toBe(false);
     expect(checkAnswer(pairs, { cz: 'praha' })).toBe(false);
-    const complex = item({ type: 'match-complex', leftItems: ch('a', 'b'), rightItems: ch('x', 'y'), connections: [['a', 'x'], ['b', 'y'], ['b', 'x']], minCorrect: 2 });
+    const complex = item({ type: 'match-complex', prompts: ch('a', 'b'), matches: ch('x', 'y'), connections: [['a', 'x'], ['b', 'y'], ['b', 'x']], minCorrect: 2 });
     expect(checkAnswer(complex, [['a', 'x'], ['b', 'y']])).toBe(true);
     expect(checkAnswer(complex, [['a', 'x'], ['a', 'y']])).toBe(false);
     const matrix = item({ type: 'matrix', question: 'Q', rows: ch('r1', 'r2'), columns: ch('c1', 'c2'), correctCells: [['r1', 'c2'], ['r2', 'c1']] });
