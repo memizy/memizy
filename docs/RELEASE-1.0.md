@@ -29,9 +29,9 @@ least 1–2 days before the workshop (the guide imports `@memizy/plugin-sdk@1` f
       (Civhrad, Pirates) have adequate space on desktop.
 - [x] **Pirates ship breach appearance:** In `pirates-of-memizy.html`, update the `scorch` texture from a soft
       radial blur to splintered wood planks around the cannonball hole. And maybe also put damage somwhere else on the ship than just where it is now, somewhere more visible on the deck, use Claude in new context for this
-- [ ] **Alza mascot (Alzák) removal from production:** Avoid trademark/commercial dispute with Alza.cz a.s. on
-      `memizy.com` – remove `babis-vs-alzak.html` from `EXAMPLE_PLUGINS` in production or replace the mascot
-      with a generic alien without Alza branding.
+- [x] **Alza mascot (Alzák) removal from production:** Avoid trademark/commercial dispute with Alza.cz a.s. on
+      `memizy.com` – sanitized to "Kobliha vs. Zelenáč" with cosmic blue antenna tips, removed from public
+      `EXAMPLE_PLUGINS` menus, but accessible via direct link (`?plugin=kobliha`).
 - [x] **Link to workshop presentation in Play:** Add a link to the presentation slides on Play's home page
       (`HomeView.vue`).
 

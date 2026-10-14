@@ -39,7 +39,7 @@ import StartScreen from '@/components/StartScreen.vue';
 import { RELAY_URL } from '@/lib/config';
 import { generateName } from '@/lib/names';
 import { persisted, setUnsaved } from '@/lib/persisted';
-import { EXAMPLE_PLUGINS, exampleKey, fetchPluginHtml, withSdkSource, type PluginChoice } from '@/lib/plugins';
+import { EXAMPLE_PLUGINS, exampleKey, findPlugin, fetchPluginHtml, withSdkSource, type PluginChoice } from '@/lib/plugins';
 import { applyLinkSettings, findSetKey, readLinkParams, type LinkProblem } from '@/lib/linkParams';
 import { BUILTIN_SETS, NO_SET_KEY, loadSetFromUrl, loadStoredSets, noSet, type StudySet } from '@/lib/sets';
 import { PersistentSnapshotStorage, clearHostGame, loadHostGame, saveHostGame } from '@/lib/hostGame';
@@ -175,7 +175,7 @@ async function loadChoice(): Promise<void> {
   pluginErrors.value = [];
   let raw = '';
   try {
-    if (c.kind === 'example') raw = EXAMPLE_PLUGINS.find((p) => p.key === c.key)?.html ?? EXAMPLE_PLUGINS[0].html;
+    if (c.kind === 'example') raw = findPlugin(c.key)?.html ?? EXAMPLE_PLUGINS[0].html;
     else if (c.kind === 'lab') raw = labCode();
     else if (c.url) raw = await fetchPluginHtml(c.url);
   } catch (error) {

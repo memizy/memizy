@@ -4,12 +4,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <title>Babiš vs. Alzák: Válka týmů</title>
+  <title>Kobliha vs. Zelenáč: Válka týmů</title>
   <script type="application/oqse-manifest+json">
 {
   "version": "1.0",
-  "id": "https://memizy.com/plugins/babis-vs-alzak-teams",
-  "appName": "Babiš vs. Alzák: Válka týmů",
+  "id": "https://memizy.com/plugins/kobliha-vs-zelenac-teams",
+  "appName": "Kobliha vs. Zelenáč: Válka týmů",
   "pluginVersion": "2.0.0",
   "description": "Parodická týmová kvízová bitva: kampaň o peníze, obchod s nesmysly a souboj odpovědí.",
   "locales": ["cs"],
@@ -488,7 +488,7 @@
       font-size: 1.9em;
     }
 
-    /* Answer tiles: the SDK's ui.question in Babiš's colours (6 colours by position, green/red for true/false). */
+    /* Answer tiles: the SDK's ui.question in Kobliha's colours (6 colours by position, green/red for true/false). */
     .answers .mz-q {
       --mz-q-radius: 14px;
       --mz-q-gap: 10px;
@@ -938,8 +938,8 @@
        Content: teams, shop, quotes (parody — every quote at most once per game)
        ═════════════════════════════════════════════════════════ */
     const TEAMS = {
-      babis: { name: 'Tým Babiš', hero: 'Andrej Babiš', slogan: 'Koblihy, řepka a Čapí hnízdo!' },
-      alzak: { name: 'Tým Alzák', hero: 'Alzák', slogan: 'Sto tabletů týdně a masakr cen!' },
+      babis: { name: 'Tým Kobliha', hero: 'Andrej Kobliha', slogan: 'Koblihy, řepka a Čapí farma!' },
+      alzak: { name: 'Tým Zelenáč', hero: 'Zelenáč', slogan: 'Tisíc mobilů denně a masakr cen!' },
     };
     const other = (t) => (t === 'babis' ? 'alzak' : 'babis');
 
@@ -948,12 +948,12 @@
      * Team effects are multiplied by the crew power, so a smaller team is not weaker.
      */
     const SHOP = [
-      { id: 'koblizek', icon: '🍩', name: 'Agrofert koblížek', cost: 220, kind: 'team', desc: 'Týmu doplní 35 HP. „Koblížek pro každého!“' },
-      { id: 'alzabox', icon: '📦', name: 'Pancéřovaný Alzabox', cost: 280, kind: 'team', desc: 'Štít 40 pro tým. Bez kódu z SMS se nikdo nedostane dovnitř.' },
-      { id: 'capi', icon: '🪺', name: 'Čapí hnízdo', cost: 400, kind: 'team', desc: 'Štít 65. „To není moje, na to nemůžou!“' },
+      { id: 'koblizek', icon: '🍩', name: 'Holdingový koblížek', cost: 220, kind: 'team', desc: 'Týmu doplní 35 HP. „Koblížek pro každého!“' },
+      { id: 'alzabox', icon: '📦', name: 'Pancéřovaný Ufobox', cost: 280, kind: 'team', desc: 'Štít 40 pro tým. Bez tajného PINu se nikdo nedostane dovnitř.' },
+      { id: 'capi', icon: '🪺', name: 'Čapí farma', cost: 400, kind: 'team', desc: 'Štít 65. „Nejlepší rekreační statek široko daleko!“' },
       { id: 'motyli', icon: '🦋', name: 'Motýle a včely', cost: 320, kind: 'team', desc: 'Týmu léčí 12 HP každé kolo, čtyři kola po sobě.' },
       { id: 'tiskovka', icon: '🎤', name: 'Tisková konference', cost: 300, kind: 'team', desc: 'Příští kolo dá tvůj tým o 40 % větší ránu.' },
-      { id: 'tablety', icon: '📱', name: 'Sto tabletů týdně', cost: 420, kind: 'self', desc: 'Každý tvůj zásah +12 poškození až do konce hry.' },
+      { id: 'tablety', icon: '📱', name: 'Tisíc mobilů denně', cost: 420, kind: 'self', desc: 'Každý tvůj zásah +12 poškození až do konce hry.' },
       { id: 'repka', icon: '🌻', name: 'Řepkové dělo', cost: 330, kind: 'self', desc: 'Každý tvůj zásah +8 poškození až do konce hry.' },
       { id: 'zaruka', icon: '🧾', name: 'Prodloužená záruka', cost: 180, kind: 'self', desc: 'Dvě tvoje chyby v bitvě se počítají aspoň jako poloviční zásah.' },
       { id: 'magnet', icon: '🧲', name: 'Slevový magnet', cost: 200, kind: 'self', desc: 'Každá tvoje správná odpověď v bitvě přinese +80 Kč navíc.' },
@@ -966,11 +966,11 @@
     const QUOTES = {
       babis: {
         intro: [
-          'Všeci kradnú, iba ja čerpám! Poďte do Týmu Babiš, vybudujeme lepšie Slovensko… teda Česko!',
-          'Já jsem do politiky nechtěl! To Kalousek a novináři mě vyprovokovali!',
-          'Čapí hnízdo byla nejlepší farma v Evropě! Žádný dotační podvod!',
+          'Všeci len kecajú, iba ja makám! Poďte do Týmu Kobliha, vybudujeme lepšie Slovensko… teda Česko!',
+          'Já jsem do této bitvy nechtěl! To opozice a novináři mě vyprovokovali!',
+          'Čapí farma byl nejhezčí statek v Evropě! Každý oslík tam měl vlastní výběh!',
           'Já jsem postavil dálnice, školy, nemocnice, obchvaty, všechno!',
-          'Moje firmy zaměstnávají tisíce lidí! Kdo nevolí Babiše, nerozumí ekonomice!',
+          'Moje pekárny pečou tisíce koblih! Kdo nejí koblihy, nerozumí ekonomice!',
         ],
         quiz: [
           'Bleskově odpovězte! Záleží na každé setině vteřiny! Kdo spí, ten nevydělá!',
@@ -986,13 +986,13 @@
           'Perfektní! Postavil jsem dálnice, školy a vy jste odpověděli za vteřinu!',
           'Neskutečný úspěch naší vlády! Motýle a včely se radují!',
           'Mně nikdo nebude diktovat! Takhle se maká pro Českou republiku!',
-          'Takhle se vydělávají dotace! Rychle, poctivě a bez korupce!',
+          'Takhle se buduje holding! Rychle, efektivně a na plný plyn!',
           'Geniální tah! Takhle efektivně nefunguje ani ministerstvo financí!',
           'Přesně tak! Žádné zbytečné kecy, jen čistá práce a plný rozpočet!',
         ],
         bad: [
-          'Sorry jako! To je totální účelovka a provokace České televize!',
-          'Zkorumpovaná pakáž toto! Kdo vás to učil? Kalousek?!',
+          'Sorry jako! To je totální účelovka a provokace televizních moderátorů!',
+          'Neschopná opozice toto! Kdo vás to učil? Amatéři?!',
           'Vy jste nemehlo! Vy neumíte ani řídit traktor, natož odpovědět!',
           'Já jsem nikdy neodstoupil a toto jsem nikdy neřekl! Penále za chybu!',
           'Kde jsou motýle?! Včely! Řepka! Příroda! Vy nevíte vůbec nic!',
@@ -1000,17 +1000,17 @@
           'Katastrofa! Vy jste snad na výplatní pásce opozice, ne?!',
         ],
         shop: [
-          'Nakupujte! Ale fakturujte to přes moji firmu!',
+          'Nakupujte! Ale berte jen čerstvé zboží z naší pekárny!',
           'Kdo odpovídal rychle, ten má na koblihy!',
           'Neplýtvejte! Každou korunu jsem si vydřel!',
           'Kupte pořádné zásoby! Dotace jsou od toho, aby se utrácely!',
-          'Megastore nebo Agrofert, hlavní je mít na účtu dost kapitálu!',
+          'Megastore nebo Agro-holding, hlavní je mít na účtu dost kapitálu!',
           'Investujte chytře! Kdo šetří na obraně, ten spláče nad výdělkem!',
         ],
         battle_intro: [
-          'Tým Babiš nastupuje v plné polní! Motýle a řepka vás vymažou z politiky i z trhu!',
+          'Tým Kobliha nastupuje v plné polní! Motýle a řepka vás vymažou z politiky i z trhu!',
           'Jdeme do finále! Ukážeme zelenému skřetovi, kdo tady doopravdy řídí stát!',
-          'Bitva začíná! Moje divize Agrofertu nenechá na zeleném skladu kámen na kameni!',
+          'Bitva začíná! Moje koblihová divize nenechá na zeleném skladu kámen na kameni!',
           'Armáda traktorů startuje motory! Zelený mužíček půjde k zemi!',
         ],
         battle: [
@@ -1019,36 +1019,36 @@
           'Odpovědět a zaútočit! Motýle letí přímo na cíl!',
           'Nenechte je vydechnout! Správná odpověď je nejlepší zbraň naší vlády!',
           'Tohle je rozhodující střet! Každá rána se počítá do statistik!',
-          'Zamiřte koblihy na Alzaboxy! Plnou parou vpřed, žádné váhání!',
+          'Zamiřte koblihy na Ufoboxy! Plnou parou vpřed, žádné váhání!',
           'Správně odpovědět a rozdrtit konkurenci na prach!',
-          'Žádné slitování! Tým Babiš útočí na plný plyn!',
+          'Žádné slitování! Tým Kobliha útočí na plný plyn!',
         ],
         attack: [
           'Tady máte koblížek přímo do ksichtu! Motýle vás smetou!',
           'My máme výsledky a postavili jsme dálnice, vy nemáte nic!',
           'Já vám dám takový rozpočet, že se z toho zelený skřet zblázní!',
-          'Všeci kradnú, ale Tým Babiš rozdrtí zelené sklady na prach!',
-          'Tato debata je řízená lidem! Tady máte salvu z Agrofertu!',
+          'Ostatní jen mluví, ale Tým Kobliha rozdrtí zelené sklady na prach!',
+          'Tato debata je řízená lidem! Tady máte salvu z naší pekárny!',
           'Dotační salva přímo na komoru! Zelený mimozemšťan letí do vesmíru!',
           'Tohle je síla holdingu! Přímý zásah za miliardu korun!',
         ],
         hit: [
-          'To je kampaň! Kalousek poslal hackery na náš tým!',
+          'To je kampaň! Opozice poslala hackery na náš tým!',
           'Sorry jako! Kdo vám dal právo do mě takhle střílet?!',
-          'Já na vás podám trestní oznámení! To je organizovaný zločin!',
+          'Já si na vás budu stěžovat! Tohle je totální sabotáž a provokace!',
           'Nech si to všichni zapamatují: Nikdy neodstoupím! Nikdy!',
           'Neskákejte mi do řeči! Já tady mluvím k lidem, nechte mě domluvit!',
           'Pane moderátore, ať mi neskáče do řeči! Mě nikdo nebude přerušovat!',
-          'To je spiknutí mafie a novinářů! Bolí to, ale já vydržím!',
+          'To je spiknutí konkurence a novinářů! Bolí to, ale já vydržím!',
         ],
         tie: [
           'Plichta? To je jako koaliční vyjednávání!',
           'Nikdo nevyhrál, tak to aspoň nikdo nemůže zdanit!',
           'Remíza. Ale morálně jsme vyhráli my!',
-          'Nerozhodně? Kalousek za to určitě může taky!',
+          'Nerozhodně? Opozice za to určitě může taky!',
         ],
         win: [
-          'Vyhráli jsme! Všeci kradnú, ale Tým Babiš makal nejvíc ze všech!',
+          'Vyhráli jsme! Ostatní jen kecají, ale Tým Kobliha makal nejvíc ze všech!',
           'Koblížky pro celou republiku! Zelený skřet byl vymazán z trhu!',
           'Tohle je historické vítězství! Motýle slaví po celé zemi!',
           'Vidíte ty preference? Absolutní triumf naší tvrdé práce!',
@@ -1057,13 +1057,13 @@
           'Já jsem to nevzdal, to oni podváděli!',
           'Prohráli jsme, ale jen o kousek. Moje čísla říkají něco jiného!',
           'To byla kampaň. Příště to bude jinak!',
-          'Zmanipulované volby! Na tohle si budu stěžovat u Ústavního soudu!',
+          'Špatně spočítané hlasy! Na tenhle kvíz podám oficiální reklamaci!',
         ],
       },
       alzak: {
         intro: [
-          'Sto tabletů týdně! Přidej se k Týmu Alzák a ovládneme e-shopy!',
-          'Do půlnoci objednáš, ráno v Alzaboxu máš! Žádné trapné koblihy!',
+          'Tisíc mobilů denně! Přidej se k Týmu Zelenáč a ovládneme e-shopy!',
+          'V noci klikneš, ráno v Ufoboxu pípneš! Žádné trapné koblihy!',
           'Pozor! Akce platí jen do vyprodání zásob! Tisíce slev!',
           'Černý pátek celej rok! Na tvé koblihy ti kašlu, Andreji!',
           'Kde máš VIP kartu? Rychle nakupuj, nebo tě předběhnou!',
@@ -1078,9 +1078,9 @@
           'Expresní objednávka startuje! Ukaž své nákupní reflexy!',
         ],
         good: [
-          'Máš to v Alzaboxu bleskovou rychlostí! Kačky se sypou na účet!',
+          'Máš to v Ufoboxu bleskovou rychlostí! Kačky se sypou na účet!',
           'Máááme slevu! Masakr cen! Takhle bleskově se nakupuje!',
-          'Sto tabletů letí přímo k tobě! Expresní doručení na monitor!',
+          'Tisíc mobilů letí přímo k tobě! Expresní doručení na monitor!',
           'Zelená karta schválena! Špičkový nákupní reflex, hejblátko!',
           'Skladník hlásí plný košík! Kačky jsou tvoje, hejblátko!',
           'Blesková platba prošla! Jsi jednička mezi zákazníky!',
@@ -1090,7 +1090,7 @@
           'Chyba lávky, hejblátko! Sleva vypršela před nosem! Všechno pryč!',
           'Reklamace se zamítá! Zboží poškozeno špatnou odpovědí!',
           'Žádný tablet pro tebe! Vrať se do fronty k pokladně!',
-          'Tohle ti v Alzaboxu nevyzvednu, to je totální šunt! Nula kaček!',
+          'Tohle ti v Ufoboxu nevyzvednu, to je totální šunt! Nula kaček!',
           'Pomalý jako doručovatel na šlapacím kole! Peníze pryč!',
           'Chyba 404: Správná odpověď nenalezena! Účet je na suchu!',
           'Košík vysypán na podlahu! Tohle byla hodně drahá minela!',
@@ -1104,7 +1104,7 @@
           'Černý pátek přímo v aréně! Levnější už to nikdy nebude!',
         ],
         battle_intro: [
-          'Tým Alzák tasí sto tabletů týdně! Válka začíná a milost nečekejte!',
+          'Tým Zelenáč tasí tisíc mobilů denně! Válka začíná a milost nečekejte!',
           'Zelená armáda útočí! Dneska doručíme Andrejovi expresní porážku!',
           'Masakr cen právě propuká! Zabalíme vás do bublinkové fólie a pošleme zpátky!',
           'Laserové skenery aktivovány! Andrejovy koblihy rozmetáme na atomy!',
@@ -1112,15 +1112,15 @@
         battle: [
           'Zamiřte tablety přímo na Andreje! Kdo odpoví, ten střílí!',
           'Palte ze všech e-shopů! Správná volba pálí plnou parou!',
-          'Útok na Čapí hnízdo! Rychle odpověz a vystřel z kanónu!',
+          'Útok na Čapí farmu! Rychle odpověz a vystřel z kanónu!',
           'Naložte mu co se do něj vejde! Zelený laser nabíjí!',
           'Zaměřit cíl a kliknout! Slevová vlna ho smete!',
-          'Sto tabletů nabíto! Vypalte další salvu, hejblátka!',
+          'Tisíc mobilů nabito! Vypalte další salvu, hejblátka!',
           'Zelený blesk připraven! Správná odpověď drtí soupeře!',
-          'Expresní doručení škod přímo do Agrofertu!',
+          'Expresní doručení škod přímo do koblihové pekárny!',
         ],
         attack: [
-          'Sto tabletů týdně přímo do hlavy! Masakr cen!',
+          'Tisíc mobilů denně přímo do hlavy! Masakr cen!',
           'Zelená síla útočí! Moje gigabajty tě rozmetají na kousky!',
           'Expresní doručení raketou přímo na Andreje! Bzzzt!',
           'Kup si prodlouženou záruku, Andreji, budeš ji potřebovat!',
@@ -1129,7 +1129,7 @@
           'Kód na slevu 100 % explodoval v tvém revíru! Konec legrace!',
         ],
         hit: [
-          'Pozor! Alzabox hlásí poruchu! Sleva byla brutálně zasažena!',
+          'Pozor! Ufobox hlásí poruchu! Sleva byla brutálně zasažena!',
           'Chyba lávky! Kdo po mně hází ty zkažené koblihy?!',
           'A máme tu nového mistra světa ve skoku do řeči! Reklamace!',
           'Hejblátko mi skočilo do řeči! Kde máš záruční list na slušné chování?!',
@@ -1144,9 +1144,9 @@
           'Bzzzt! Remíza! Oba týmy dostanou voucher na útěchu!',
         ],
         win: [
-          'Vítězství zelené síly! Sto tabletů zdarma pro celý vítězný tým!',
+          'Vítězství zelené síly! Tisíc mobilů zdarma pro celý vítězný tým!',
           'Masakr cen dokonal svůj osud! Andrejovy koblihy zplesnivěly!',
-          'E-shop ovládl republiku! Alzabox na každém rohu a vítězství je naše!',
+          'E-shop ovládl republiku! Ufobox na každém rohu a vítězství je naše!',
           'Konkurence zkrachovala! Zelená planeta slaví největší výprodej!',
         ],
         lose: [
@@ -1570,7 +1570,7 @@
         return;
       }
       if (isSpeaking) {
-        // The active dialogue exchange (e.g. both Babiš and Alzák) finishes its turn;
+        // The active dialogue exchange (e.g. both Kobliha and Zelenáč) finishes its turn;
         // only the most recent incoming dialogue lines are queued next.
         pendingLines = lines;
         return;
@@ -1597,8 +1597,8 @@
     }
     function alzakSvg(cls = 'bobbing') {
       return `<svg viewBox="0 0 100 100" class="${cls}" aria-hidden="true">
-        <path d="M30 32 Q16 12 12 22 Q9 32 26 38" fill="#22c55e" stroke="#15803d" stroke-width="2.5"/><circle cx="12" cy="22" r="5" fill="#fbbf24"/>
-        <path d="M70 32 Q84 12 88 22 Q91 32 74 38" fill="#22c55e" stroke="#15803d" stroke-width="2.5"/><circle cx="88" cy="22" r="5" fill="#fbbf24"/>
+        <path d="M30 32 Q16 12 12 22 Q9 32 26 38" fill="#22c55e" stroke="#15803d" stroke-width="2.5"/><circle cx="12" cy="22" r="5" fill="#38bdf8"/>
+        <path d="M70 32 Q84 12 88 22 Q91 32 74 38" fill="#22c55e" stroke="#15803d" stroke-width="2.5"/><circle cx="88" cy="22" r="5" fill="#38bdf8"/>
         <ellipse cx="50" cy="58" rx="36" ry="33" fill="#22c55e" stroke="#15803d" stroke-width="3"/>
         <ellipse cx="38" cy="50" rx="10" ry="13" fill="#fff"/><circle cx="40" cy="51" r="5" fill="#111"/><circle cx="42" cy="48" r="2" fill="#fff"/>
         <ellipse cx="62" cy="50" rx="10" ry="13" fill="#fff"/><circle cx="60" cy="51" r="5" fill="#111"/><circle cx="62" cy="48" r="2" fill="#fff"/>
@@ -1620,7 +1620,7 @@
         return ui.html`<div class="side ${team}">
           <div class="avatar">${ui.raw(avatar)}</div>
           <div class="who">
-            <div class="name"><span class="long">${teamLabel(state, team)}</span><span class="short">${team === 'babis' ? 'Babiš' : 'Alzák'}${state.ai === team ? ' 🤖' : ''}</span></div>
+            <div class="name"><span class="long">${teamLabel(state, team)}</span><span class="short">${team === 'babis' ? 'Kobliha' : 'Zelenáč'}${state.ai === team ? ' 🤖' : ''}</span></div>
             <div class="hp"><i style="width:${pct}%"></i><b>${state.hp[team]} / ${state.maxHp[team]}</b></div>
             <div class="chips"><span class="chip">${n}</span>${state.shield[team] > 0 ? ui.html`<span class="chip">🛡️ ${state.shield[team]}</span>` : ''}${state.regen[team].rounds > 0 ? ui.html`<span class="chip">🦋 ${state.regen[team].rounds}×</span>` : ''}${state.boost[team] ? ui.html`<span class="chip">🎤 +40 %</span>` : ''}${state.weak[team] ? ui.html`<span class="chip">📺 −30 %</span>` : ''}</div>
           </div>
@@ -1685,7 +1685,7 @@
       const players = ui.players.filter((p) => p.connected && state.teams[p.id]);
       const answered = Object.keys(state.answers).length;
       const battle = state.stage === 'battle';
-      // The tiles: the SDK's controls (answer format, locking, a sent answer, reveal) in Babiš's colours (CSS).
+      // The tiles: the SDK's controls (answer format, locking, a sent answer, reveal) in Kobliha's colours (CSS).
       const controls = ui.question(item, {
         chosen: mine?.answer,
         reveal: revealed,
@@ -1765,7 +1765,7 @@
         const p = mvp(t);
         return ui.html`<div class="result ${t === w ? 'good' : 'wait'}">${TEAMS[t].name}<br>${p ? ui.html`⭐ ${p.name} · ${state.dealt[p.id]} poškození` : state.ai === t ? '🤖 počítač' : '—'}</div>`;
       })}</div>
-        <div class="rank">${ranking.map((p, i) => ui.html`<div class="${i === 0 ? 'first' : ''}"><span>${i === 0 ? '🏆 ' : `${i + 1}. `}${p.name} <span class="muted">· ${state.teams[p.id] === 'babis' ? 'Babiš' : 'Alzák'}</span></span><span>${state.scores[p.id] ?? 0} b.</span></div>`)}</div>
+        <div class="rank">${ranking.map((p, i) => ui.html`<div class="${i === 0 ? 'first' : ''}"><span>${i === 0 ? '🏆 ' : `${i + 1}. `}${p.name} <span class="muted">· ${state.teams[p.id] === 'babis' ? 'Kobliha' : 'Zelenáč'}</span></span><span>${state.scores[p.id] ?? 0} b.</span></div>`)}</div>
       </div>`;
     }
 

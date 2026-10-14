@@ -45,12 +45,24 @@ function guideExample(): string {
   return match[1];
 }
 
-/** The built-in games offered in Play (hosting, playing alone, the Lab's "Insert a game"). */
+/** The built-in games offered in Play public menus (hosting, playing alone, the Lab's "Insert a game"). */
 export const EXAMPLE_PLUGINS: ExamplePlugin[] = [
   { key: 'pirates', title: 'Pirates of Memizy 🏴‍☠️', html: pirates },
-  { key: 'babis', title: 'Babiš vs. Alzák 🍩👽', html: babis },
   { key: 'civhrad', title: 'Hexagon Empires / Civhrad 🏰', html: civhrad },
 ];
+
+/** Hidden/parody games accessible via URL parameters (e.g. ?plugin=kobliha), not shown in public menus. */
+export const HIDDEN_PLUGINS: ExamplePlugin[] = [
+  { key: 'kobliha', title: 'Kobliha vs. Zelenáč 🍩👽', html: babis },
+  { key: 'babis', title: 'Kobliha vs. Zelenáč 🍩👽', html: babis },
+];
+
+/** All known built-in plugins (public and hidden). */
+export const ALL_PLUGINS: ExamplePlugin[] = [...EXAMPLE_PLUGINS, ...HIDDEN_PLUGINS];
+
+export function findPlugin(key: string): ExamplePlugin | undefined {
+  return ALL_PLUGINS.find((p) => p.key === key);
+}
 
 /**
  * The complete example of the AI guide (section 8). Not offered in the menus: it is the
@@ -58,9 +70,9 @@ export const EXAMPLE_PLUGINS: ExamplePlugin[] = [
  */
 export const GUIDE_EXAMPLE: ExamplePlugin = { key: 'quiz-race', title: 'Quiz Race (AI guide example)', html: guideExample() };
 
-/** A remembered choice of a game that is no longer offered falls back to the first one. */
+/** A remembered choice of a game: accepts public or hidden key, otherwise falls back to first example. */
 export function exampleKey(key: string): string {
-  return EXAMPLE_PLUGINS.some((p) => p.key === key) ? key : EXAMPLE_PLUGINS[0].key;
+  return ALL_PLUGINS.some((p) => p.key === key) ? key : EXAMPLE_PLUGINS[0].key;
 }
 
 export const AI_GUIDE = guide;

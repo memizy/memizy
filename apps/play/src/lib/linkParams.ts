@@ -11,7 +11,7 @@
  */
 
 import { resolveSettings, type SettingDefinition, type SettingValue } from '@memizy/protocol';
-import { EXAMPLE_PLUGINS, type PluginChoice } from './plugins';
+import { ALL_PLUGINS, EXAMPLE_PLUGINS, type PluginChoice } from './plugins';
 import { NO_SET_KEY, type StudySet } from './sets';
 
 export type LinkProblem = { kind: 'game' | 'set' | 'settings'; value: string };
@@ -39,7 +39,7 @@ export function readLinkParams(query: Record<string, unknown>): LinkParams {
     else problems.push({ kind: 'game', value: pluginUrl });
   } else if (pluginKey === 'lab') plugin = { kind: 'lab' };
   else if (pluginKey) {
-    if (EXAMPLE_PLUGINS.some((p) => p.key === pluginKey)) plugin = { kind: 'example', key: pluginKey };
+    if (ALL_PLUGINS.some((p) => p.key === pluginKey)) plugin = { kind: 'example', key: pluginKey };
     else problems.push({ kind: 'game', value: pluginKey });
   }
 
