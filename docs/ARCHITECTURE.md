@@ -98,7 +98,17 @@ device) and makes **public items** without the fields that give answers away
 multiplayer get public items. Answers are checked only in actions (`checkAnswer`, which
 refuses public items). Answers refer to **choice IDs**, so shuffling never changes them.
 
-### 2.5 Solo, local multiplayer and relay multiplayer
+### 2.5 Canonical and authoring formats
+
+The OQSE JSON file is the **canonical** form: it is what applications store, exchange and
+validate, and item IDs, progress and statistics refer to it. People and AI assistants write
+in **authoring formats** that a tool converts to it – OQSE Markdown for notes (lossless, the IDs
+live in metadata comments), and in Memizy Play a JSON shorthand of AI-made question sets
+(options as texts, the right answer by index; converted once, with new IDs). Every authoring
+format keeps item IDs across edits, or is used only once. A documented shorthand for questions
+in `@memizy/oqse` is planned after 1.0 (section 7).
+
+### 2.6 Solo, local multiplayer and relay multiplayer
 
 - **Solo and the Lab**: all instances run in one page. `LocalSession` + `mountPlugin`
   connect each iframe to the session.
@@ -113,7 +123,7 @@ refuses public items). Answers refer to **choice IDs**, so shuffling never chang
   `mount`, so a host can see an older cached player app). Both are additive within 1.x;
   unknown methods are answered with `UNKNOWN_METHOD`.
 
-### 2.6 Lobby, start, pauses
+### 2.7 Lobby, start, pauses
 
 The host shows the lobby (players join with **random nicknames**; the game's settings in a
 generated form or in the game's own settings screen), waits until every instance has loaded
@@ -122,7 +132,7 @@ current state from the authority. The host can **pause**: the session clock (`Se
 `offsetMs`, `pausedMs`, `pausedAt`) stands still on every device, timers and phases wait,
 actions are ignored.
 
-### 2.7 Saving and continuing a game
+### 2.8 Saving and continuing a game
 
 A host may save a game that has not ended – the last snapshot, the settings, the
 display-order seed and the players – and continue it later (SPEC 3.3). The continued
@@ -132,7 +142,7 @@ each device takes the place of an earlier player (`RelayHost.attach(session, { s
 the device picks the earlier nickname, the host can change it with `assignSeat`). A game that
 ended with a result is not continued (its snapshot is deleted).
 
-### 2.8 Learning progress, plugin data, services
+### 2.9 Learning progress, plugin data, services
 
 - **Learning progress** belongs to the host: the game reports answers with
   `recordAnswer` (what was answered, in the OQSE Answer Formats; a flashcard self-rating is
@@ -256,6 +266,10 @@ Reserved in the contract (section 3.3) and planned:
 - **SDK** (1.x, no contract change): actions on `pointerdown`, late-action protection for
   games without phases, more languages of the SDK's texts, keyboard shortcuts in
   `ui.question`, sounds.
+- **Authoring formats**: a documented shorthand for questions in `@memizy/oqse`
+  (`compileShorthand`: options as texts, the right answer by text or index, IDs generated and
+  kept), starting from the conversion Play does for AI-made sets; later perhaps OQSE Markdown
+  for the most common question types, and a sister specification once the shorthand settles.
 - **Content**: converting the existing course sets to OQSE 1.0
   (`bun scripts/migrate-oqse/cli.ts <dir> [--apply]`), importing general Markdown as notes, a
   sister specification for courses, an Obsidian plugin.

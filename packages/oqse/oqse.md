@@ -33,6 +33,7 @@ In this specification, the keywords **MUST**, **MUST NOT**, **SHOULD**, **SHOULD
 *   [Item Types](#item-types-itemtype)
 *   [Helper Data Structures](#helper-data-structures)
 *   [Complete Example File](#complete-example-file)
+*   [Canonical and Authoring Formats](#canonical-and-authoring-formats)
 *   [OQSE Markdown (Note Sets)](#oqse-markdown-note-sets)
 *   [Validation Rules and Constraints](#validation-rules-and-constraints)
 *   [Error Handling](#error-handling-error-handling-policy)
@@ -1530,6 +1531,15 @@ This optional object (`item.pedagogy`) serves to store advanced metadata about d
 
 -----
 
+## Canonical and Authoring Formats
+
+The JSON file described in this document is the **canonical** form of a study set. Applications store it, exchange it and validate it; item IDs, learning progress and statistics refer to it.
+
+People and AI assistants may write sets in **authoring formats** that are easier to write – today [OQSE Markdown](#oqse-markdown-note-sets) for notes; tools may offer others (e.g., a shorthand with options as plain texts). An authoring format is only an input: a tool converts it to the canonical form, and applications are not required to read it. Two rules apply to every authoring format:
+
+1. **The canonical form is what is stored and exchanged.** An authoring file is never a substitute for it.
+2. **Item IDs survive edits.** Progress and statistics are bound to item IDs (and answers to choice IDs). Converting an edited source again MUST keep the IDs of existing items and choices: the source keeps them (as OQSE Markdown does in its metadata comments), or the authoring format is used once and the canonical file is edited afterwards.
+
 ## OQSE Markdown (Note Sets)
 
 A set that contains only `note` items MAY be written as a single Markdown document (RECOMMENDED extension `.oqse.md`, UTF-8). Each note is a section under a heading. The representation is **losslessly equivalent** to the JSON file (see the normalization rules below) and exists so that notes with complex content (Mermaid diagrams, LaTeX, code) can be written and edited without escaping them inside JSON strings. It follows the common Markdown convention of a single top-level heading (as recommended by markdownlint and GitHub) and works well in editors such as Obsidian.
@@ -2213,6 +2223,7 @@ OQSE is an open standard. Suggestions for improvements:
 ### Version 1.0 (October 2026)
 The first stable version. From now on, 1.x versions only add (see [Versioning and Compatibility](#versioning-and-compatibility)).
 * Before 1.0, two item types were aligned with the others: `math-input` has `correctAnswers` (a list, like `short-answer`) instead of `correctAnswer` + `alternativeAnswers`, and `match-complex` has `prompts` / `matches` (like `match-pairs`) instead of `leftItems` / `rightItems`. `math-input` has no `tolerance` (its answers are compared as LaTeX; numbers are `numeric-input`).
+* [Canonical and Authoring Formats](#canonical-and-authoring-formats): the JSON file is the canonical form that is stored and exchanged; authoring formats (OQSE Markdown for notes, tool-specific shorthands) are converted to it and keep item IDs across edits.
 * Version rules for sets, manifests and progress files: applications read the MAJOR versions they support and never read another MAJOR version (including the pre-release 0.x drafts) silently as a supported one.
 * Schema URLs: `https://cdn.jsdelivr.net/npm/@memizy/oqse@1/schemas/oqse-v1.0.json` (and `oqse-manifest-v1.0.json`, `oqse-progress-v1.0.json`, `oqse-header-v1.0.json`).
 * Markdown images `![alt](https://…)` are explicitly allowed for pictures from the web (absolute URL; `<asset:key />` for everything else). Blank tags belong only in the `text` of `fill-in-blanks` and `fill-in-select` (elsewhere a warning; shown as an empty line).

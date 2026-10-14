@@ -95,6 +95,10 @@ least 1–2 days before the workshop (the guide imports `@memizy/plugin-sdk@1` f
       OQSE Answer Formats.
 - [ ] Convert the course sets to OQSE 1.0: `bun scripts/migrate-oqse/cli.ts <dir>` (dry run),
       then `--apply`.
+- [ ] Authoring shorthand for questions: move `upgradeItem` / `normalizeAiAnswer` from
+      `apps/play/src/lib/aiSets.ts` into `@memizy/oqse` as a documented, tested function
+      (`compileShorthand`), used by Play, the platform and scripts; IDs kept across edits
+      (OQSE "Canonical and Authoring Formats").
 - [ ] **AI tooling & micro-prompts (discussion):** Consider dedicated AI tooling (e.g. `@memizy/ai` or
       platform/CLI helpers) that export modular micro-prompts and partial JSON Schemas on demand
       (e.g. generating specific question types like `match-pairs` or `sort-items` without prompt bloating).
