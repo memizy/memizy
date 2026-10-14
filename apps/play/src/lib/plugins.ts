@@ -30,6 +30,9 @@ export function withSdkSource(html: string, source: SdkSource): string {
   return source === 'local' ? html.replace(CDN_SDK_URL_RE, localSdkUrl()) : html;
 }
 
+/** Which game a page has chosen: a built-in one, the Lab's code, or a URL. */
+export type PluginChoice = { kind: 'example'; key: string } | { kind: 'lab' } | { kind: 'url'; url: string };
+
 export interface ExamplePlugin {
   key: string;
   title: string;

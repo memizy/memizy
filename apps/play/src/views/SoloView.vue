@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { settingsForMode, resolveSettings, type SettingValue } from '@memizy/protocol';
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import {
   ArrowLeftIcon,
@@ -20,9 +21,10 @@ import LocaleSwitch from '@/components/LocaleSwitch.vue';
 import PluginFrame from '@/components/PluginFrame.vue';
 import SettingsForm from '@/components/SettingsForm.vue';
 import { generateName } from '@/lib/names';
-import { persisted } from '@/lib/persisted';
-import { EXAMPLE_PLUGINS, exampleKey, fetchPluginHtml, withSdkSource } from '@/lib/plugins';
-import { BUILTIN_SETS, NO_SET_KEY, loadStoredSets, noSet, type StudySet } from '@/lib/sets';
+import { persisted, setUnsaved } from '@/lib/persisted';
+import { EXAMPLE_PLUGINS, exampleKey, fetchPluginHtml, withSdkSource, type PluginChoice } from '@/lib/plugins';
+import { applyLinkSettings, findSetKey, readLinkParams, type LinkProblem } from '@/lib/linkParams';
+import { BUILTIN_SETS, NO_SET_KEY, loadSetFromUrl, loadStoredSets, noSet, type StudySet } from '@/lib/sets';
 import { PersistentSnapshotStorage } from '@/lib/hostGame';
 import { deleteSavedGame, listSavedGames, saveGame, type SavedGame } from '@/lib/savedGames';
 import { useFocusMode } from '@/lib/focusMode';
@@ -33,18 +35,21 @@ import { useFocusMode } from '@/lib/focusMode';
  * tab can be continued; "End game" asks whether to keep it.
  */
 
-type PluginChoice = { kind: 'example'; key: string } | { kind: 'lab' } | { kind: 'url'; url: string };
 type Phase = 'setup' | 'running' | 'ended';
 
 const { t, locale } = useI18n();
 const PLAYER_ID = 'me';
 const focus = useFocusMode();
 
-// --- choice -------------------------------------------------------------------------------
+// --- choice (a link may preselect it for this visit: lib/linkParams.ts) ----------------------
+const link = readLinkParams(useRoute().query);
+const linkProblems = ref<LinkProblem[]>([...link.problems]);
+let linkSettings = link.settings;
 const sets = shallowRef<StudySet[]>(BUILTIN_SETS);
-const setKey = persisted('solo-set', BUILTIN_SETS[0].key);
-const choice = persisted<PluginChoice>('solo-plugin', { kind: 'example', key: EXAMPLE_PLUGINS[0].key });
-if (choice.value.kind === 'example') choice.value = { kind: 'example', key: exampleKey(choice.value.key) };
+const linkSetName = link.set && 'name' in link.set ? link.set.name : null;
+const setKey = persisted('solo-set', BUILTIN_SETS[0].key, linkSetName ? (findSetKey(linkSetName, BUILTIN_SETS) ?? linkSetName) : undefined);
+const choice = persisted<PluginChoice>('solo-plugin', { kind: 'example', key: EXAMPLE_PLUGINS[0].key }, link.plugin ?? undefined);
+if (choice.value.kind === 'example' && exampleKey(choice.value.key) !== choice.value.key) choice.value = { kind: 'example', key: exampleKey(choice.value.key) };
 const pluginUrl = ref(choice.value.kind === 'url' ? choice.value.url : '');
 const pluginRaw = ref<string | null>(null);
 const plugin = shallowRef<LoadedPlugin | null>(null);
@@ -90,7 +95,15 @@ async function loadChoice(): Promise<void> {
   pluginRaw.value = raw;
   plugin.value = result.success ? result.plugin : null;
   pluginErrors.value = result.success ? (result.plugin.runtime.solo ? [] : [t('solo.soloOnly')]) : result.errors;
-  if (result.success) settings.value = resolveSettings(result.plugin.runtime.settings, {}).values;
+  if (result.success) {
+    settings.value = resolveSettings(result.plugin.runtime.settings, {}).values;
+    if (linkSettings) {
+      const applied = applyLinkSettings(result.plugin.runtime.settings, settings.value, linkSettings);
+      settings.value = applied.values;
+      if (applied.rejected.length) linkProblems.value = [...linkProblems.value, { kind: 'settings', value: applied.rejected.join(', ') }];
+      linkSettings = null;
+    }
+  }
 }
 watch(choice, loadChoice, { deep: true, immediate: true });
 
@@ -245,9 +258,28 @@ function onVisibility(): void {
 
 watch(locale, () => game.value?.setConfig({ locale: locale.value }));
 
+/** The set of a link: a set from a URL (for this visit, not stored) or a stored set by its ID. */
+async function applyLinkSet(): Promise<void> {
+  if (!link.set) return;
+  if ('url' in link.set) {
+    const loaded = await loadSetFromUrl(link.set.url);
+    if (!loaded.success) {
+      linkProblems.value = [...linkProblems.value, { kind: 'set', value: link.set.url }];
+      return;
+    }
+    sets.value = [...sets.value.filter((s) => s.key !== loaded.set.key), loaded.set];
+    setUnsaved(setKey, loaded.set.key);
+  } else {
+    const key = findSetKey(link.set.name, sets.value);
+    if (key) setUnsaved(setKey, key);
+    else linkProblems.value = [...linkProblems.value, { kind: 'set', value: link.set.name }];
+  }
+}
+
 onMounted(async () => {
   document.addEventListener('visibilitychange', onVisibility);
   sets.value = [...BUILTIN_SETS, ...(await loadStoredSets())];
+  await applyLinkSet();
   await refreshSaved();
 });
 
@@ -317,6 +349,12 @@ onBeforeUnmount(() => {
       </header>
 
       <main class="mx-auto grid max-w-6xl gap-5 px-4 py-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
+        <div v-if="linkProblems.length" class="flex items-start gap-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-800 lg:col-span-2" role="status">
+          <ul class="flex-1">
+            <li v-for="(p, i) in linkProblems" :key="i">{{ t(`link.${p.kind}`, { value: p.value }) }}</li>
+          </ul>
+          <button type="button" class="btn-ghost px-2 py-1 text-xs" @click="linkProblems = []">{{ t('common.close') }}</button>
+        </div>
         <!-- Left: saved games -->
         <div class="flex flex-col gap-5">
           <section class="card p-5">

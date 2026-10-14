@@ -22,6 +22,7 @@ import type { OQSEAnyItem } from '@memizy/oqse';
 import type { GameContext, GameDefinition, RecordAnswerOptions } from '../types';
 import { diffJson } from './diff';
 import { SeededRandom, seedFromString } from './random';
+import { shortTimeout } from './timers';
 
 /**
  * Messages exchanged between SDK instances (inside protocol `send` / `deliver`).
@@ -153,7 +154,8 @@ export class GameRuntime<S = unknown> {
   private pending: Patches = [];
   private needFullState = false;
   private sentVersion = 0;
-  private flushHandle: ReturnType<typeof setTimeout> | undefined;
+  /** Cancels the scheduled flush (`shortTimeout`: not slowed down in a hidden tab). */
+  private flushHandle: (() => void) | undefined;
   private snapshotHandle: ReturnType<typeof setTimeout> | undefined;
   /** This device's actions waiting for the authority (controllers only). */
   private pendingActions: (PendingAction & { id: number })[] = [];
@@ -306,7 +308,8 @@ export class GameRuntime<S = unknown> {
   /** Stops timers and pending work (instance closing). */
   dispose(): void {
     for (const timer of this.timers.values()) clearTimeout(timer.handle);
-    clearTimeout(this.flushHandle);
+    this.flushHandle?.();
+    this.flushHandle = undefined;
     clearTimeout(this.snapshotHandle);
     clearTimeout(this.pendingTimer);
   }
@@ -726,7 +729,7 @@ export class GameRuntime<S = unknown> {
   private scheduleFlush(): void {
     if (this.init.session.mode === 'solo' || this.flushHandle !== undefined) return;
     const delay = Math.max(this.options.flushMs, MIN_FLUSH_INTERVAL_MS - (Date.now() - this.lastFlush));
-    this.flushHandle = setTimeout(() => {
+    this.flushHandle = shortTimeout(() => {
       this.flushHandle = undefined;
       this.lastFlush = Date.now();
       this.flush();

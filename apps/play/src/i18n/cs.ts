@@ -187,6 +187,8 @@ export default {
     newRoom: 'Nová místnost',
     fullscreen: 'Celá obrazovka',
     playersOnline: '{n} hráčů',
+    keepOpen: 'Hra pro ostatní běží v tomto okně, nechte ho otevřené.',
+    cameBack: 'Hra běžela na pozadí a mohla se zpomalit. Nechte toto okno otevřené.',
     saved: {
       title: 'Rozehrané hry',
       hint: 'Uložené v tomhle prohlížeči. Pokračování otevře hru tady; hráči si na mobilu vyberou své jméno z minula.',
@@ -243,6 +245,11 @@ export default {
       new: 'Jsem tu nový/nová',
       teacher: 'Nevíš? Učitel ti místo přidělí na tabuli.',
     },
+  },
+  link: {
+    game: 'Hru z odkazu („{value}“) neznám, vyber ji prosím ručně.',
+    set: 'Sadu z odkazu („{value}“) se nepodařilo najít ani načíst, vyber ji prosím ručně.',
+    settings: 'Některá nastavení z odkazu nešla použít: {value}',
   },
   focus: {
     enter: 'Celá plocha',

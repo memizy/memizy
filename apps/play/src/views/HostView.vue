@@ -38,15 +38,16 @@ import SettingsForm from '@/components/SettingsForm.vue';
 import StartScreen from '@/components/StartScreen.vue';
 import { RELAY_URL } from '@/lib/config';
 import { generateName } from '@/lib/names';
-import { persisted } from '@/lib/persisted';
-import { EXAMPLE_PLUGINS, exampleKey, fetchPluginHtml, withSdkSource } from '@/lib/plugins';
-import { BUILTIN_SETS, NO_SET_KEY, loadStoredSets, noSet, type StudySet } from '@/lib/sets';
+import { persisted, setUnsaved } from '@/lib/persisted';
+import { EXAMPLE_PLUGINS, exampleKey, fetchPluginHtml, withSdkSource, type PluginChoice } from '@/lib/plugins';
+import { applyLinkSettings, findSetKey, readLinkParams, type LinkProblem } from '@/lib/linkParams';
+import { BUILTIN_SETS, NO_SET_KEY, loadSetFromUrl, loadStoredSets, noSet, type StudySet } from '@/lib/sets';
 import { PersistentSnapshotStorage, clearHostGame, loadHostGame, saveHostGame } from '@/lib/hostGame';
 import { deleteSavedGame, listSavedGames, loadSavedGame, saveGame, type SavedGame } from '@/lib/savedGames';
+import { useKeepAwake } from '@/lib/keepAwake';
 import type { OQSEFile } from '@memizy/oqse';
 
 type Phase = 'lobby' | 'starting' | 'running' | 'ended' | 'closed';
-type PluginChoice = { kind: 'example'; key: string } | { kind: 'lab' } | { kind: 'url'; url: string };
 
 const { t, locale } = useI18n();
 const route = useRoute();
@@ -111,9 +112,14 @@ function endSession(): void {
 // Set and game
 // ---------------------------------------------------------------------------
 
+// A link may preselect the game, the set and settings for this visit (lib/linkParams.ts).
+const link = readLinkParams(route.query);
+const linkProblems = ref<LinkProblem[]>([...link.problems]);
+let linkSettings = link.settings;
+
 const sets = shallowRef<StudySet[]>(BUILTIN_SETS);
-const setKey = persisted('host-set', typeof route.query.set === 'string' ? route.query.set : BUILTIN_SETS[0].key);
-if (typeof route.query.set === 'string') setKey.value = route.query.set;
+const linkSetName = link.set && 'name' in link.set ? link.set.name : null;
+const setKey = persisted('host-set', BUILTIN_SETS[0].key, linkSetName ? (findSetKey(linkSetName, BUILTIN_SETS) ?? linkSetName) : undefined);
 /** Whether the chosen game uses a set (`appSpecific.memizy.set`); `none` = a game without questions. */
 const setMode = computed(() => plugin.value?.runtime.set ?? 'required');
 const emptySet = computed(() => noSet(t('host.noSet'), locale.value));
@@ -127,9 +133,8 @@ const studySet = computed<StudySet | null>(() => {
     : (sets.value.find((s) => s.key === setKey.value) ?? null);
 });
 
-const choice = persisted<PluginChoice>('host-plugin', { kind: 'example', key: EXAMPLE_PLUGINS[0].key });
-if (choice.value.kind === 'example') choice.value = { kind: 'example', key: exampleKey(choice.value.key) };
-if (route.query.plugin === 'lab') choice.value = { kind: 'lab' };
+const choice = persisted<PluginChoice>('host-plugin', { kind: 'example', key: EXAMPLE_PLUGINS[0].key }, link.plugin ?? undefined);
+if (choice.value.kind === 'example' && exampleKey(choice.value.key) !== choice.value.key) choice.value = { kind: 'example', key: exampleKey(choice.value.key) };
 const pluginUrl = ref(choice.value.kind === 'url' ? choice.value.url : '');
 const pluginRaw = ref<string | null>(null);
 const plugin = shallowRef<LoadedPlugin | null>(null);
@@ -222,6 +227,12 @@ watch([plugin, studySet, hostAs, hostName, locale], () => {
   const p = plugin.value;
   if (!p || !multi.value || !studySet.value) return;
   settings.value = resolveSettings(p.runtime.settings, settings.value).values;
+  if (linkSettings) {
+    const applied = applyLinkSettings(p.runtime.settings, settings.value, linkSettings);
+    settings.value = applied.values;
+    if (applied.rejected.length) linkProblems.value = [...linkProblems.value, { kind: 'settings', value: applied.rejected.join(', ') }];
+    linkSettings = null;
+  }
   settingsValid.value = true;
   if (!p.runtime.settingsScreen) return;
   try {
@@ -588,6 +599,17 @@ function assignSeat(seat: HostSeat, playerId: string): void {
 
 const takenSeats = computed(() => seats.value.filter((s) => s.playerId !== null).length);
 
+// The game runs for everybody in this tab: keep the screen on, and tell the host when the
+// tab was in the background (browsers slow hidden tabs down).
+const gameActive = computed(() => !!game.value && (phase.value === 'running' || phase.value === 'starting'));
+const { cameBack } = useKeepAwake(gameActive);
+let cameBackTimer: ReturnType<typeof setTimeout> | undefined;
+watch(cameBack, (now) => {
+  if (!now) return;
+  clearTimeout(cameBackTimer);
+  cameBackTimer = setTimeout(() => (cameBack.value = false), 6000);
+});
+
 function backToLobby(): void {
   if (room.value) void clearHostGame(room.value.pin);
   room.value?.detach();
@@ -628,9 +650,28 @@ function useUrl(): void {
   if (pluginUrl.value.trim()) choice.value = { kind: 'url', url: pluginUrl.value.trim() };
 }
 
+/** The set of a link: a set from a URL (for this visit, not stored) or a stored set by its ID. */
+async function applyLinkSet(): Promise<void> {
+  if (!link.set) return;
+  if ('url' in link.set) {
+    const loaded = await loadSetFromUrl(link.set.url);
+    if (!loaded.success) {
+      linkProblems.value = [...linkProblems.value, { kind: 'set', value: link.set.url }];
+      return;
+    }
+    sets.value = [...sets.value.filter((s) => s.key !== loaded.set.key), loaded.set];
+    setUnsaved(setKey, loaded.set.key);
+  } else {
+    const key = findSetKey(link.set.name, sets.value);
+    if (key) setUnsaved(setKey, key);
+    else linkProblems.value = [...linkProblems.value, { kind: 'set', value: link.set.name }];
+  }
+}
+
 onMounted(async () => {
   window.addEventListener('storage', onStorage);
   sets.value = [...BUILTIN_SETS, ...(await loadStoredSets())];
+  await applyLinkSet();
   void refreshSaved();
   if (await openRoom()) await restoreGame();
 });
@@ -640,6 +681,7 @@ onBeforeUnmount(() => {
   clearTimeout(labNoticeTimer);
   stopRoom?.();
   clearTimeout(uploadTimer);
+  clearTimeout(cameBackTimer);
   stopSeats?.();
   void game.value?.end('closed').catch(() => {});
   void lobbySession.value?.end('closed').catch(() => {});
@@ -680,6 +722,7 @@ const statusClass = computed(() =>
         <button v-if="continuing" type="button" class="badge bg-orange-50 py-1 text-accent-orange-dark hover:bg-orange-100" @click="showSeats = !showSeats">
           <UsersIcon class="size-4" /> {{ t('host.seats.button', { taken: takenSeats, total: seats.length }) }}
         </button>
+        <span v-if="gameActive" class="hidden truncate text-xs text-text-gray lg:inline">{{ t('host.keepOpen') }}</span>
         <span class="ml-auto flex gap-2">
           <button v-if="hostAs === 'presenter'" type="button" class="btn-ghost" :title="t('host.fullscreen')" @click="fullscreen">
             <ArrowsPointingOutIcon class="size-4" />
@@ -694,6 +737,9 @@ const statusClass = computed(() =>
       <div class="relative min-h-0 flex-1">
         <div ref="stage" class="mx-auto size-full bg-white" :class="hostAs === 'player' ? 'max-w-md' : ''">
           <PluginFrame :session="game" :address="hostAs === 'presenter' ? 'board' : 'host'" :overlays="false" />
+        </div>
+        <div v-if="cameBack" class="absolute top-2 left-1/2 z-20 -translate-x-1/2 rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-white shadow-lg" role="status">
+          {{ t('host.cameBack') }}
         </div>
         <div v-if="showPlayers" class="absolute top-2 right-2 w-80 max-w-[90vw]">
           <PlayerList :players="players" @kick="kick" />
@@ -746,6 +792,12 @@ const statusClass = computed(() =>
       </main>
 
       <main v-else class="mx-auto grid max-w-6xl gap-5 px-4 py-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
+        <div v-if="linkProblems.length" class="flex items-start gap-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-800 lg:col-span-2" role="status">
+          <ul class="flex-1">
+            <li v-for="(p, i) in linkProblems" :key="i">{{ t(`link.${p.kind}`, { value: p.value }) }}</li>
+          </ul>
+          <button type="button" class="btn-ghost px-2 py-1 text-xs" @click="linkProblems = []">{{ t('common.close') }}</button>
+        </div>
         <!-- Left: joining and players -->
         <div class="flex flex-col gap-5">
           <JoinInfo :pin="room?.pin ?? null" />

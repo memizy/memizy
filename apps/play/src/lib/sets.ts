@@ -21,6 +21,8 @@ export interface StudySet {
   title: string;
   file: OQSEFile;
   warnings: OQSEIssue[];
+  /** Built-in sets: the file name without extension (`spanish-verb-tenses`), for links. */
+  slug?: string;
 }
 
 export type LoadSetResult = { success: true; set: StudySet } | { success: false; errors: string[] };
@@ -55,7 +57,7 @@ export function parseSetText(text: string, fileName: string, source: StudySet['s
 function builtin(data: unknown, name: string): StudySet {
   const result = parseSetText(typeof data === 'string' ? data : JSON.stringify(data), name, 'builtin');
   if (!result.success) throw new Error(`Built-in set ${name} is invalid: ${result.errors.join('; ')}`);
-  return result.set;
+  return { ...result.set, slug: name.replace(/\.oqse\.(json|md)$/i, '') };
 }
 
 export const BUILTIN_SETS: StudySet[] = [
@@ -94,8 +96,8 @@ export async function importSetText(text: string, name: string): Promise<LoadSet
   return result;
 }
 
-/** Downloads, parses and stores a set from a URL (e.g. the open library on GitHub). */
-export async function importSetFromUrl(url: string): Promise<LoadSetResult> {
+/** Downloads and parses a set from a URL without storing it (e.g. a set from a link). */
+export async function loadSetFromUrl(url: string): Promise<LoadSetResult & { text?: string; name?: string }> {
   let text: string;
   try {
     const response = await fetch(url);
@@ -105,7 +107,12 @@ export async function importSetFromUrl(url: string): Promise<LoadSetResult> {
     return { success: false, errors: [(e as Error).message] };
   }
   const name = new URL(url, location.href).pathname.split('/').pop() ?? 'set.json';
-  const result = parseSetText(text, name, 'url');
+  return { ...parseSetText(text, name, 'url'), text, name };
+}
+
+/** Downloads, parses and stores a set from a URL (e.g. the open library on GitHub). */
+export async function importSetFromUrl(url: string): Promise<LoadSetResult> {
+  const { text, name, ...result } = await loadSetFromUrl(url);
   if (result.success) await idbSet(result.set.key, { source: 'url', text, name }, store).catch(() => {});
   return result;
 }

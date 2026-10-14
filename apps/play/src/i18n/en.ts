@@ -189,6 +189,8 @@ const en: typeof cs = {
     newRoom: 'New room',
     fullscreen: 'Full screen',
     playersOnline: '{n} players',
+    keepOpen: 'The game runs for everybody in this window – keep it open.',
+    cameBack: 'The game ran in the background and may have slowed down. Keep this window open.',
     saved: {
       title: 'Saved games',
       hint: 'Saved in this browser. Continuing opens the game here; players pick their name from last time on their phones.',
@@ -245,6 +247,11 @@ const en: typeof cs = {
       new: 'I am new here',
       teacher: 'Not sure? The teacher can give you your place on the board.',
     },
+  },
+  link: {
+    game: 'The game from the link ("{value}") is unknown – please choose one.',
+    set: 'The set from the link ("{value}") could not be found or loaded – please choose one.',
+    settings: 'Some settings from the link could not be used: {value}',
   },
   focus: {
     enter: 'Full screen',

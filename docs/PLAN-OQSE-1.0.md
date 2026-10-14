@@ -321,10 +321,15 @@ Práce na větvi `sdk-1.0`. **Nic se neodkládá kvůli termínu** (rozhodnutí 
       první hru. Test: každá vestavěná hra jde sólo i v multiplayeru.
 - [x] Režim celé plochy v náhledu Labu a ve hře o samotě (tenká lišta, iframe na celou plochu,
       nastavení a panely skryté, Fullscreen API kde jde; iframy se nepřenačítají). Ověřeno v Edge.
-- [ ] Hostitel v kartě na pozadí: Wake Lock + ochrana proti omezování časovačů – čeká na rozhodnutí
-      (tichý zvuk s hlasitostí 0 prohlížeč za zvuk nepovažuje; viz návrh).
-- [ ] Odkazy s parametry (`plugin`, `pluginUrl`, `set`, `setUrl`, `settings`, `autostart`) – čeká na
-      rozhodnutí o bezpečnosti `pluginUrl` + `autostart`.
+- [x] Hostitel v kartě na pozadí (hra trvá 3–5 min, 5minutové omezení neřešíme): Wake Lock po dobu
+      hry (znovu po návratu na kartu), SDK odesílá změny stavu ve skryté kartě bez zpomalení
+      (`shortTimeout`: MessageChannel jen když je stránka skrytá, jinak dávkování 16–40 ms),
+      v liště hostitele „Hra pro ostatní běží v tomto okně…“ a po delším skrytí krátká zpráva.
+- [x] Odkazy s parametry pro `/host` i `/solo` (bez `autostart`: jen předvyplní, hru spustí vždy
+      člověk): `plugin` / `pluginUrl`, `set` (krátké jméno vestavěné sady, klíč, ID) / `setUrl`
+      (načte se jen pro návštěvu), `settings` (JSON, každá hodnota přes `resolveSettings`, neplatné
+      se ohlásí). Uložené volby v localStorage se nepřepisují (`persisted` s `override`,
+      `setUnsaved`). Ověřeno v Edge.
 
 ### Část F – Soulad SPEC s rozhodnutími
 

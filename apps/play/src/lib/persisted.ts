@@ -1,7 +1,13 @@
 import { ref, watch, type Ref } from 'vue';
 
-/** A ref kept in localStorage (per-browser convenience only; fails silently). */
-export function persisted<T>(key: string, initial: T): Ref<T> {
+const quiet = new WeakSet<Ref<unknown>>();
+
+/**
+ * A ref kept in localStorage (per-browser convenience only; fails silently). With
+ * `override` (e.g. a choice from a link) the ref starts with it and the stored value is
+ * kept: only a later change by the user is saved.
+ */
+export function persisted<T>(key: string, initial: T, override?: T): Ref<T> {
   let value = initial;
   try {
     const raw = localStorage.getItem(`memizy-play:${key}`);
@@ -9,11 +15,15 @@ export function persisted<T>(key: string, initial: T): Ref<T> {
   } catch {
     /* storage unavailable or corrupted */
   }
-  const state = ref(value) as Ref<T>;
+  const state = ref(override !== undefined ? override : value) as Ref<T>;
   let timer: ReturnType<typeof setTimeout> | undefined;
   watch(
     state,
     (next) => {
+      if (quiet.has(state)) {
+        quiet.delete(state);
+        return;
+      }
       clearTimeout(timer);
       timer = setTimeout(() => {
         try {
@@ -26,4 +36,11 @@ export function persisted<T>(key: string, initial: T): Ref<T> {
     { deep: true },
   );
   return state;
+}
+
+/** Changes a `persisted` ref for this visit only (the stored value stays). */
+export function setUnsaved<T>(state: Ref<T>, value: T): void {
+  if (state.value === value) return;
+  quiet.add(state as Ref<unknown>);
+  state.value = value;
 }
