@@ -139,8 +139,6 @@ const pluginUrl = ref(choice.value.kind === 'url' ? choice.value.url : '');
 const pluginRaw = ref<string | null>(null);
 const plugin = shallowRef<LoadedPlugin | null>(null);
 const pluginErrors = ref<string[]>([]);
-/** On a big screen landscape and 3D games get room; games for an upright phone stay a column. */
-const stageWidth = computed(() => (plugin.value?.runtime.orientation === 'portrait' ? 'max-w-lg' : 'max-w-6xl'));
 
 function labCode(): string {
   try {
@@ -737,7 +735,7 @@ const statusClass = computed(() =>
         </span>
       </div>
       <div class="relative min-h-0 flex-1">
-        <div ref="stage" class="mx-auto size-full bg-white" :class="hostAs === 'player' ? stageWidth : ''">
+        <div ref="stage" class="size-full bg-white">
           <PluginFrame :session="game" :address="hostAs === 'presenter' ? 'board' : 'host'" :overlays="false" />
         </div>
         <div v-if="cameBack" class="absolute top-2 left-1/2 z-20 -translate-x-1/2 rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-white shadow-lg" role="status">
