@@ -32,7 +32,7 @@ least 1–2 days before the workshop (the guide imports `@memizy/plugin-sdk@1` f
       width (`w-full` / `max-w-6xl` or responsive based on manifest `orientation`), so 3D/landscape games
       (Civhrad, Pirates) have adequate space on desktop.
 - [ ] **Pirates ship breach appearance:** In `pirates-of-memizy.html`, update the `scorch` texture from a soft
-      radial blur to splintered wood planks around the cannonball hole.
+      radial blur to splintered wood planks around the cannonball hole. And maybe also put damage somwhere else on the ship than just where it is now, somewhere more visible on the deck, use Claude in new context for this
 - [ ] **Alza mascot (Alzák) removal from production:** Avoid trademark/commercial dispute with Alza.cz a.s. on
       `memizy.com` – remove `babis-vs-alzak.html` from `EXAMPLE_PLUGINS` in production or replace the mascot
       with a generic alien without Alza branding.
@@ -99,4 +99,18 @@ least 1–2 days before the workshop (the guide imports `@memizy/plugin-sdk@1` f
       OQSE Answer Formats.
 - [ ] Convert the course sets to OQSE 1.0: `bun scripts/migrate-oqse/cli.ts <dir>` (dry run),
       then `--apply`.
+- [ ] **AI tooling & micro-prompts (discussion):** Consider dedicated AI tooling (e.g. `@memizy/ai` or
+      platform/CLI helpers) that export modular micro-prompts and partial JSON Schemas on demand
+      (e.g. generating specific question types like `match-pairs` or `sort-items` without prompt bloating).
 - Planned features: [ARCHITECTURE.md, section 7](./ARCHITECTURE.md#7-after-10).
+
+
+## Promyslet
+Ověřit pak před vydanim ze typescript validace sedí na specifikaci a na to co chceme
+
+Vyřešit pryč ty migrační skripty z play, zeptat se ho jestli přišel v průběhu ještě na nějaké věci co by bylo dobré změnit před v1.0 kdyby to dělal znova obzvláště ty kritické časti jako ty capabilities, markdown, math, html, assety atd. a jestli nezapomněl na nic co jsme chtěli udělat, Dát z Play pryč nějaký ty upgrade item možnosti
+
+Zeptat se agentů jestli už je nenapadá co vylepšit a jeslti už pluginy nepoužívají žádný hacky na nějaký věci jesli už je na nich nenapadá jak sdk změnit co by pak nešlo snadno přidat 
+Zafixovat ty knihovny a vydat je na npm vyzkoušet že to pak funguje i standalone
+
+Skvělý plán, pojďme nejdříve přesně naformulovat ten prompt pro Clauda na ten audit ten další krok zatím nezmiňujme ta příprava dokumentu, soustředmě se jen na ten autdit napsal bych mu to nějak jako že tohle je poslední audit co nenajde tady už se tam dostane
