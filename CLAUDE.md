@@ -18,8 +18,9 @@ its library (see "Using the engine from the platform").
   editing, GDPR); no modal after a correct answer (a short toast instead); a review screen
   after a wrong answer is liked; fairness model "a lone player counts as the whole crew"
   (a smaller team's hits, repairs and shop items are multiplied by `bigger / own`).
-- The contract is **Release Candidate 4** (frozen for the workshop, 2026-10-22; 1.0 after it). Change it only additively, record every change
-  in the SPEC changelog and in the AI guide.
+- The contract is **1.0** (SPEC 9, OQSE 1.0): change it only additively, record every change
+  in the SPEC (or OQSE) changelog and in the AI guide. Reserved names and planned features: SPEC 10,
+  `docs/ARCHITECTURE.md` section 3.3.
 
 ## Layout
 
@@ -32,9 +33,8 @@ its library (see "Using the engine from the platform").
 | `services/multiplayer-server` | Relay: rooms by PIN, host token, bundle store, WebSocket routing, rate limits. Bun; deployed with Docker + Cloudflare Tunnel (`deploy/`). |
 | `apps/play` | Memizy Play (Vue 3 + Tailwind + vue-i18n): Lab (write/test plugins, AI question sets), host and join pages. Example plugins in `src/data/plugins`, sample sets in `src/data/sets`. |
 | `docs/ai-plugin-guide.md` | The guide students paste into their AI (rules, API, item table, full example). The Lab copies it into prompts. |
-| `docs/ARCHITEKTURA-A-PLAN.md` | Architecture and plan (Czech). `docs/presentation/` = the workshop talk. |
-| `docs/PLAN-RC4.md` | **Current plan** (Czech): RC4 contract, SDK additions, decisions and what is reserved. Check it before changing the contract. |
-| `docs/PLAN-OQSE-1.0.md` | **Current plan to 1.0** (Czech): OQSE 1.0 decisions, set migration, host-sdk review, guide, docs, release. |
+| `docs/ARCHITECTURE.md` | How the parts fit together and why: packages, how a game runs, the 1.0 contract and its versions, security, decisions, what comes after 1.0. |
+| `docs/RELEASE-1.0.md` | **What is left** before and right after releasing 1.0.0 (decisions, AI test, docs, release steps). `docs/presentation/` = the workshop talk. |
 
 ## Commands
 
@@ -70,13 +70,16 @@ After changing a package, rebuild it (`bun run build:packages`) before testing t
   `shuffleSeed`). The authority and solo get full items in that order; other instances
   in multiplayer get **public items** (`answerHidden: true`, answer fields removed). The
   authority shows answers with `ctx.reveal(itemId, { to? })`. `checkAnswer` runs in
-  actions and understands `correctOrder` / `correctMatches`. Upload `prepared.publicSet`
+  actions and understands every OQSE answer format (orders, pairs, connections…). Upload `prepared.publicSet`
   to the relay, never the full set.
 - OQSE 1.0: choices `{ id, text }`, answers by ID, `skills`; pre-release 0.x files are refused
   (the repo-only tool `bun scripts/migrate-oqse/cli.ts <dir> [--apply]` converts 0.1–0.3).
-- RC4 protocol: `recordAnswer.answer` and generated items, pauses (`SessionClock`),
-  `permissions` (CSP + device grants), `service()` + `InitPayload.services`; SPEC §10
-  lists decisions and reserved names – read it before extending the contract.
+- Protocol 1.0: `recordAnswer.answer` and generated items, pauses (`SessionClock`),
+  `permissions` (CSP + device grants), `service()` + `InitPayload.services`, saving and
+  continuing games (places in `RelayHost.attach(session, { seats: true })`); SPEC §9 lists what
+  is frozen and the reserved prefixes (`$…`, `data-mz-…`, `mz-…`), §10 decisions and reserved
+  names – read them before extending the contract. Helpers shared by the packages are in
+  `@memizy/protocol/internal` (not public).
 - SDK: `phases` + `ctx.goto`, `ui.html` (escaping templates), `ui.question` (ready-made
   controls), `playerView`, `ui.setLocal`, `ctx.reveal` / `ctx.hide`, `ui.service`,
   `createScene3d` (3D helper), plus older `ui.pending`, `afterRender`, `data-keep`,
@@ -129,7 +132,7 @@ After changing a package, rebuild it (`bun run build:packages`) before testing t
 The platform (`../platform`, e.g. `memizy-app`) should not reimplement any of this:
 
 1. Depend on `@memizy/oqse`, `@memizy/protocol`, `@memizy/host-sdk` (workspace link or
-   published `1.0.0-rc.3`); serve the plugin-sdk bundle (or use the CDN URL plugins import).
+   published `1.0.0` / `next`); serve the plugin-sdk bundle (or use the CDN URL plugins import).
 2. Load plugins with `loadPluginFromHtml`, sets with `loadOQSEFile`, and run games with
    `LocalSession` + `mountPlugin` (solo, Lab-like previews) or `RelayHost` (multiplayer;
    upload `prepareSetForPlugin(set, manifest, { seed }).publicSet` and pass the same seed
