@@ -9,7 +9,7 @@
  */
 
 import { z } from 'zod';
-import { validateJsonDepth } from './utils';
+import { MAX_JSON_DEPTH, validateJsonDepth } from './utils';
 import { isTimelineDate } from './answers';
 import type { OQSEAnyItem } from './oqse';
 
@@ -23,11 +23,13 @@ import type { OQSEAnyItem } from './oqse';
 export const UUIDSchema = z.string().uuid({ message: 'Invalid UUID format' });
 
 /**
- * BCP 47 language code (e.g., "en", "en-US", "cs", "zh-Hans")
+ * BCP 47 language tag (e.g. "en", "en-US", "cs", "zh-Hans", "es-419", "de-CH-1996"):
+ * subtags of letters and digits joined by hyphens, case-insensitive. `loadOQSEFile`
+ * converts underscores ("cs_CZ") with a warning.
  */
-export const LanguageCodeSchema = z.string().min(2, 'Language code must have at least 2 characters').regex(
-  /^[a-z]{2,3}(-[A-Z][a-z]{3})?(-[A-Z]{2})?$/,
-  'Invalid BCP 47 format (e.g. "cs", "en-US")'
+export const LanguageCodeSchema = z.string().regex(
+  /^[a-zA-Z]{2,8}(-[a-zA-Z0-9]{1,8})*$/,
+  'Invalid BCP 47 language tag (e.g. "cs", "en-US", "es-419")'
 );
 
 /**
@@ -39,7 +41,7 @@ export const SPDXLicenseSchema = z.string().min(1, 'License identifier must not 
  * ISO 8601 date/time string (RFC 3339 subset)
  */
 export const ISO8601DateTimeSchema = z.string().regex(
-  /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d{3})?(Z|[+-]\d{2}:\d{2})?)?$/,
+  /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?)?$/,
   'Invalid ISO 8601 format (e.g. "2025-11-21T14:30:00Z")'
 );
 
@@ -48,7 +50,7 @@ export const ISO8601DateTimeSchema = z.string().regex(
  * Common Era in historical numbering ("-0480-08-01" = 480 BC; there is no year 0).
  */
 export const TimelineDateSchema = z.string().regex(
-  /^-?\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d{3})?(Z|[+-]\d{2}:\d{2})?)?$/,
+  /^-?\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?)?$/,
   'Invalid date (e.g. "1969-07-20", or "-0480-08-01" for 480 BC)'
 ).refine(isTimelineDate, 'Year 0000 does not exist (1 BC is "-0001", AD 1 is "0001")');
 
@@ -150,7 +152,8 @@ export const OpenValueSchema = z
  */
 export const SubtitleTrackSchema = z.looseObject({
   lang: LanguageCodeSchema,
-  value: z.string().min(1, 'Subtitle URI must not be empty').regex(/\.(vtt|srt)(\?.*)?$/i, 'Subtitle URI must end with .vtt or .srt'),
+  /** URI of a WebVTT (recommended) or SRT file; another format is not offered by applications that cannot read it. */
+  value: z.string().min(1, 'Subtitle URI must not be empty'),
   label: z.string().optional(),
   kind: OpenValueSchema.optional(),
 });
@@ -1114,7 +1117,7 @@ function createSecurityZodError(error: unknown): z.ZodError {
  * Does not check rules that need the whole set (references, assets, raw HTML).
  */
 export function validateOQSEItem(data: unknown): OQSEAnyItem {
-  validateJsonDepth(data, 10);
+  validateJsonDepth(data, MAX_JSON_DEPTH);
   return getItemSchema(data).parse(data) as OQSEAnyItem;
 }
 
@@ -1127,7 +1130,7 @@ export function safeValidateOQSEItem(data: unknown): {
   error?: z.ZodError;
 } {
   try {
-    validateJsonDepth(data, 10);
+    validateJsonDepth(data, MAX_JSON_DEPTH);
   } catch (error) {
     return { success: false, error: createSecurityZodError(error) };
   }

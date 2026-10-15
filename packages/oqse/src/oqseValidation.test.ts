@@ -21,7 +21,9 @@ describe('OQSE Validation Schemas', () => {
     expect(LanguageCodeSchema.safeParse('cs-CZ').success).toBe(true);
     
     expect(LanguageCodeSchema.safeParse('e').success).toBe(false); // Too short
-    expect(LanguageCodeSchema.safeParse('english').success).toBe(false); // Invalid format
+    expect(LanguageCodeSchema.safeParse('es-419').success).toBe(true); // Numeric region (Latin America)
+    expect(LanguageCodeSchema.safeParse('en US').success).toBe(false); // Invalid format
+    expect(LanguageCodeSchema.safeParse('cs_CZ').success).toBe(false); // Underscore (loadOQSEFile converts it)
   });
 
   it('ISO8601DateTimeSchema: ensures strict ISO date formats', () => {
@@ -46,22 +48,12 @@ describe('OQSE Validation Schemas', () => {
     }
   });
 
-  it('MediaObjectSchema: subtitles must use .vtt or .srt files', () => {
-    const invalidSubtitles = {
-      type: 'video',
-      value: 'https://example.com/video.mp4',
-      subtitles: [{ lang: 'en', value: 'https://example.com/subtitles.docx' }],
-    };
-
-    const result = MediaObjectSchema.safeParse(invalidSubtitles);
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.error.issues.some(i => i.message.includes('Subtitle URI must end with .vtt or .srt'))).toBe(true);
-    }
+  it('MediaObjectSchema: subtitles may come from any URI (other formats are not offered)', () => {
+    const video = { type: 'video', value: 'https://example.com/video.mp4', subtitles: [{ lang: 'en', value: 'https://api.example.com/subs?id=1' }] };
+    expect(MediaObjectSchema.safeParse(video).success).toBe(true);
+    expect(MediaObjectSchema.safeParse({ ...video, subtitles: [{ lang: 'en', value: '' }] }).success).toBe(false);
   });
-});
 
-describe('Complex Constraints & Referential Integrity', () => {
   it('validateOQSEFile: relatedItems integrity (non-existent item)', () => {
     const invalidFile = {
       version: '1.0',

@@ -250,7 +250,10 @@ describe('requirements', () => {
       'Unknown property "newProperty" in requirements.itemProperties (ignored).',
     ]);
     expect(safeValidateOQSEFile(file([], { requirements: { features: ['future-feature'] } })).success).toBe(true);
-    expect(loadOQSEFile(file([], { requirements: { features: ['Not A Key'] } })).success).toBe(false);
+    // Not a key at all: the invalid requirements are removed (an error), the set still loads.
+    const invalid = loadOQSEFile(file([], { requirements: { features: ['Not A Key'] } }));
+    expect(invalid.success).toBe(true);
+    expect(invalid.errors.map((e) => e.code)).toEqual(['INVALID_META_FIELD']);
   });
 });
 

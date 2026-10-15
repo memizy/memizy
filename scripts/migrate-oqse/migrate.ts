@@ -8,7 +8,7 @@
  * need a human decision are reported in `review`, never changed.
  */
 
-import { convertLegacySource, detectFeatures, looksLikeLatex, normalizeAnswerText, type OQSEFile } from '../../packages/oqse/dist/index.js';
+import { detectFeatures, looksLikeLatex, normalizeAnswerText, type OQSEFile } from '../../packages/oqse/dist/index.js';
 
 export const SCHEMA_URL = 'https://cdn.jsdelivr.net/npm/@memizy/oqse@1/schemas/oqse-v1.0.json';
 
@@ -269,6 +269,36 @@ function itemTo10(item: Rec, index: number, latex: boolean, changes: Set<string>
 }
 
 /** Converts an OQSE set (0.2, 0.3 or 1.x) to 1.0. The input is not changed. */
+/** The draft / release-candidate shape `{ type, value }` of a source → kind, url / doi / isbn. */
+const LEGACY_SOURCE_TYPES: Record<string, { kind: string | null; key: 'url' | 'doi' | 'isbn' | null; mimeType?: string }> = {
+  url: { kind: 'web', key: 'url' },
+  pdf: { kind: null, key: 'url', mimeType: 'application/pdf' },
+  video: { kind: 'video', key: 'url' },
+  audio: { kind: 'audio', key: 'url' },
+  image: { kind: 'image', key: 'url' },
+  model: { kind: 'model', key: 'url' },
+  doi: { kind: 'article', key: 'doi' },
+  isbn: { kind: 'book', key: 'isbn' },
+  textbook: { kind: 'book', key: null },
+  other: { kind: 'other', key: null },
+};
+
+/** Converts a source of the old shape; `null` when it already has the 1.0 shape. */
+export function convertLegacySource(source: Rec): Rec | null {
+  if (typeof source.type !== 'string' || !('value' in source)) return null;
+  if (['kind', 'url', 'doi', 'isbn', 'set'].some((key) => key in source)) return null;
+  const legacy = LEGACY_SOURCE_TYPES[source.type] ?? { kind: 'other', key: null };
+  const { type: _type, value, ...rest } = source;
+  const converted: Rec = { ...rest };
+  if (legacy.kind) converted.kind = legacy.kind;
+  if (legacy.key) converted[legacy.key] = value;
+  else if (typeof value === 'string' && value && value !== source.title) {
+    converted.description = typeof rest.description === 'string' && rest.description ? `${rest.description} (${value})` : value;
+  }
+  if (legacy.mimeType && converted.mimeType === undefined) converted.mimeType = legacy.mimeType;
+  return converted;
+}
+
 export function migrateSet(input: unknown): MigrationResult<Rec> {
   const json = structuredClone(input) as Rec;
   const changes = new Set<string>();

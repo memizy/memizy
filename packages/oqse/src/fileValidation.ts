@@ -20,7 +20,7 @@ import { OQSEMetaSchema, SourceMaterialSchema, UnknownTypeItemSchema, getItemSch
 import { BLOOM_LEVELS, COGNITIVE_LOADS, MEDIA_TYPES, OFFICIAL_ITEM_TYPES, SOURCE_KINDS, SUBTITLE_KINDS } from './oqse';
 import { OFFICIAL_FEATURE_KEYS, OFFICIAL_ITEM_PROPERTIES, OFFICIAL_META_PROPERTIES } from './manifest';
 import { findAssetKeys, findRawHtml } from './richTextProcessor';
-import { formatPath, validateJsonDepth } from './utils';
+import { MAX_JSON_DEPTH, formatPath, validateJsonDepth } from './utils';
 import { resolveAsset } from './assets';
 import { findHeadings, splitLines } from './markdownUtils';
 import { itemRichText, metaRichText } from './richTextFields';
@@ -42,7 +42,8 @@ export type OQSEIssueCode =
   | 'UNKNOWN_ITEM_TYPE'
   | 'UNKNOWN_VALUE'
   | 'INVALID_SOURCE'
-  | 'LEGACY_SOURCE'
+  | 'INVALID_META_FIELD'
+  | 'LANGUAGE_NORMALIZED'
   | 'SOURCE_WITHOUT_LOCATOR'
   | 'DUPLICATE_ID'
   | 'DANGLING_REFERENCE'
@@ -220,7 +221,7 @@ function analyze(input: unknown, mode: Mode): OQSELoadResult {
 
   // --- Root ------------------------------------------------------------------
   try {
-    validateJsonDepth(input, 10);
+    validateJsonDepth(input, MAX_JSON_DEPTH);
   } catch (e) {
     log.add('error', 'SECURITY_LIMIT', (e as Error).message, []);
     return critical();
@@ -254,15 +255,15 @@ function analyze(input: unknown, mode: Mode): OQSELoadResult {
   }
 
   // --- Meta ------------------------------------------------------------------
-  if (mode === 'load' && !normalizeAssetKeys(root.meta, ['meta', 'assets'], log)) return critical();
-  // Sources one by one: a bad source never makes the whole set unreadable.
-  checkSources(root.meta, log, mode, recoverable);
-  const metaResult = OQSEMetaSchema.safeParse(root.meta);
-  if (!metaResult.success) {
-    log.addZod(metaResult.error, 'INVALID_META', ['meta']);
-    return critical();
+  if (mode === 'load') {
+    if (!normalizeAssetKeys(root.meta, ['meta', 'assets'], log)) return critical();
+    normalizeLanguage(root.meta, 'language', ['meta', 'language'], log);
+    root.items.forEach((raw, index) => isRecord(raw) && normalizeLanguage(raw, 'lang', ['items', index, 'lang'], log, typeof raw.id === 'string' ? raw.id : undefined));
   }
-  const meta = metaResult.data as OQSEMeta;
+  // Sources one by one: a bad source never makes the whole set unreadable.
+  checkSources(root.meta, log, mode);
+  const meta = parseMeta(root.meta, log);
+  if (!meta) return critical();
   // Values from a newer 1.x version (or typos): ignored, with a warning.
   const known: Record<'features' | 'itemProperties' | 'metaProperties', readonly string[]> = {
     features: OFFICIAL_FEATURE_KEYS,
@@ -395,54 +396,13 @@ function analyze(input: unknown, mode: Mode): OQSELoadResult {
 // Sources and open values
 // ============================================================================
 
-/** The pre-release shape `{ type, value }` of a source, converted to the 1.0 shape. */
-const LEGACY_SOURCE_TYPES: Record<string, { kind: string | null; key: 'url' | 'doi' | 'isbn' | null; mimeType?: string }> = {
-  url: { kind: 'web', key: 'url' },
-  pdf: { kind: null, key: 'url', mimeType: 'application/pdf' },
-  video: { kind: 'video', key: 'url' },
-  audio: { kind: 'audio', key: 'url' },
-  image: { kind: 'image', key: 'url' },
-  model: { kind: 'model', key: 'url' },
-  doi: { kind: 'article', key: 'doi' },
-  isbn: { kind: 'book', key: 'isbn' },
-  textbook: { kind: 'book', key: null },
-  other: { kind: 'other', key: null },
-};
-
-/**
- * Converts a source of the release-candidate shape (`type` + `value`) to the 1.0 shape.
- * Returns `null` when the source does not use the old shape.
- */
-export function convertLegacySource(source: Record<string, unknown>): Record<string, unknown> | null {
-  if (typeof source.type !== 'string' || !('value' in source)) return null;
-  if (['kind', 'url', 'doi', 'isbn', 'set'].some((key) => key in source)) return null;
-  const legacy = LEGACY_SOURCE_TYPES[source.type] ?? { kind: 'other', key: null };
-  const { type: _type, value, ...rest } = source;
-  const converted: Record<string, unknown> = { ...rest };
-  if (legacy.kind) converted.kind = legacy.kind;
-  if (legacy.key) converted[legacy.key] = value;
-  else if (typeof value === 'string' && value && value !== source.title) {
-    converted.description = typeof rest.description === 'string' && rest.description ? `${rest.description} (${value})` : value;
-  }
-  if (legacy.mimeType && converted.mimeType === undefined) converted.mimeType = legacy.mimeType;
-  return converted;
-}
-
-/** Validates `meta.sourceMaterials` one source at a time (and converts the old shape). */
-function checkSources(meta: Record<string, unknown>, log: IssueLog, mode: Mode, recoverable: OQSEIssueSeverity): void {
+/** Validates `meta.sourceMaterials` one source at a time. */
+function checkSources(meta: Record<string, unknown>, log: IssueLog, mode: Mode): void {
   if (!Array.isArray(meta.sourceMaterials)) return;
   const kept: unknown[] = [];
   meta.sourceMaterials.forEach((raw, i) => {
     const path: Path = ['meta', 'sourceMaterials', i];
-    let source = raw;
-    if (isRecord(raw)) {
-      const converted = convertLegacySource(raw);
-      if (converted) {
-        log.add(recoverable, 'LEGACY_SOURCE', `Source "${String(raw.id)}" uses the pre-release shape "type" + "value"; OQSE 1.0 uses "kind" and "url" / "doi" / "isbn" / "set".`, path);
-        source = converted;
-      }
-    }
-    const parsed = SourceMaterialSchema.safeParse(source);
+    const parsed = SourceMaterialSchema.safeParse(raw);
     if (!parsed.success) {
       log.addZod(parsed.error, 'INVALID_SOURCE', path);
       if (mode === 'strict') kept.push(raw);
@@ -452,9 +412,60 @@ function checkSources(meta: Record<string, unknown>, log: IssueLog, mode: Mode, 
     if (s.url === undefined && s.doi === undefined && s.isbn === undefined && s.set === undefined) {
       log.add('warning', 'SOURCE_WITHOUT_LOCATOR', `Source "${s.id}" has none of url, doi, isbn, set: it can be cited only by its title.`, path);
     }
-    kept.push(mode === 'load' ? source : raw);
+    kept.push(raw);
   });
   if (mode === 'load') meta.sourceMaterials = kept;
+}
+
+/** Required meta fields: an invalid one makes the set unreadable (a critical error). */
+const REQUIRED_META = new Set(['id', 'title', 'language', 'createdAt', 'updatedAt']);
+/** Meta lists and maps whose entries are dropped one by one. */
+const META_COLLECTIONS = new Set(['assets', 'tagDefinitions', 'translations', 'prerequisites', 'relatedSets', 'contributors', 'sourceMaterials']);
+
+/**
+ * Validates `meta`. An invalid required field is critical (returns `null`). An invalid
+ * optional field – or one entry of a list or map such as `assets` – is an error that removes
+ * just that part (like a skipped item), so a typo in an author's e-mail or a broken link
+ * never makes the whole set unreadable. The input is not changed (a copy is checked).
+ */
+function parseMeta(input: Record<string, unknown>, log: IssueLog): OQSEMeta | null {
+  const meta = structuredClone(input);
+  for (let attempt = 0; attempt < 50; attempt++) {
+    const result = OQSEMetaSchema.safeParse(meta);
+    if (result.success) return result.data as OQSEMeta;
+    const removable: Path[] = [];
+    for (const issue of result.error.issues) {
+      const [key, entry] = issue.path as Path;
+      if (key === undefined || REQUIRED_META.has(String(key))) {
+        log.add('error', 'INVALID_META', issue.message, ['meta', ...(issue.path as Path)]);
+        return null;
+      }
+      log.add('error', 'INVALID_META_FIELD', `${issue.message} (removed)`, ['meta', ...(issue.path as Path)]);
+      removable.push(META_COLLECTIONS.has(String(key)) && entry !== undefined ? [key, entry] : [key]);
+    }
+    // Remove list entries from the end, so the indexes of the others stay valid.
+    removable.sort((a, b) => Number(b[1] ?? 0) - Number(a[1] ?? 0));
+    const done = new Set<string>();
+    for (const path of removable) {
+      const id = path.join('.');
+      if (done.has(id)) continue;
+      done.add(id);
+      const [key, entry] = path;
+      const container = meta[key as string];
+      if (entry === undefined) delete meta[key as string];
+      else if (Array.isArray(container)) container.splice(Number(entry), 1);
+      else if (isRecord(container)) delete container[entry as string];
+    }
+  }
+  return null;
+}
+
+/** `cs_CZ` → `cs-CZ` (OQSE: applications are tolerant when reading language tags). */
+function normalizeLanguage(owner: Record<string, unknown>, key: string, path: Path, log: IssueLog, itemId?: string): void {
+  const value = owner[key];
+  if (typeof value !== 'string' || !value.includes('_')) return;
+  owner[key] = value.replace(/_/g, '-');
+  log.add('warning', 'LANGUAGE_NORMALIZED', `Language tag "${value}" written as "${owner[key]}" (BCP 47 uses hyphens).`, path, itemId);
 }
 
 /** Values of open fields that this library does not know: warnings (the application uses the fallback). */

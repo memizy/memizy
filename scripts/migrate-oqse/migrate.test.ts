@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 import { safeValidateOQSEFile } from '../../packages/oqse/dist/index.js';
-import { migrateMarkdownSet, migratePluginHtml, migrateSet, SCHEMA_URL } from './migrate';
+import { convertLegacySource, migrateMarkdownSet, migratePluginHtml, migrateSet, SCHEMA_URL } from './migrate';
 
 const meta = { id: '0192f0c4-7a1e-7c3b-9a52-2f1d8e4b6a00', language: 'cs', title: 'Test', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' };
 const id = (n: number) => `0192f0c4-7a1e-7c3b-9a52-2f1d8e4b6a${String(n).padStart(2, '0')}`;
@@ -87,13 +87,25 @@ describe('migrateSet', () => {
   });
 
   it('converts sources of the pre-release shape', () => {
+    const legacy = [
+      { id: 'w', type: 'url', value: 'https://example.com', title: 'Web' },
+      { id: 'p', type: 'pdf', value: 'https://example.com/a.pdf', title: 'PDF' },
+      { id: 'i', type: 'isbn', value: '978-80-7357-124-7', title: 'Book' },
+      { id: 't', type: 'textbook', value: 'Physics (8th edition)', title: 'Physics' },
+    ];
     const set = {
       version: '1.0',
-      meta: { id: '0192f0c4-7a1e-7c3b-9a52-2f1d8e4b6c00', language: 'en', title: 'S', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z', sourceMaterials: [{ id: 'w', type: 'url', value: 'https://example.com', title: 'Web' }] },
+      meta: { id: '0192f0c4-7a1e-7c3b-9a52-2f1d8e4b6c00', language: 'en', title: 'S', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z', sourceMaterials: legacy },
       items: [],
     };
     const { result, changes } = migrateSet(set);
-    expect(result.meta.sourceMaterials).toEqual([{ id: 'w', kind: 'web', url: 'https://example.com', title: 'Web' }]);
+    expect(result.meta.sourceMaterials).toEqual([
+      { id: 'w', kind: 'web', url: 'https://example.com', title: 'Web' },
+      { id: 'p', url: 'https://example.com/a.pdf', mimeType: 'application/pdf', title: 'PDF' },
+      { id: 'i', kind: 'book', isbn: '978-80-7357-124-7', title: 'Book' },
+      { id: 't', kind: 'book', title: 'Physics', description: 'Physics (8th edition)' },
+    ]);
+    expect(convertLegacySource({ id: 'x', kind: 'web', title: 'T', url: 'https://e.com' })).toBeNull();
     expect(changes).toContain('sourceMaterials type/value → kind, url / doi / isbn');
     expect(safeValidateOQSEFile(result).errors).toEqual([]);
   });

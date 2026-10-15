@@ -247,7 +247,7 @@ Contains all information describing the entire set.
 | Key | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
 | `id` | string | Yes | Unique UUID of the set. |
-| `language` | string | Yes | Language code of the set according to BCP 47 (e.g., `cs`, `en-US`, `zh-Hans`). Application SHOULD be tolerant when reading formatting (e.g., accept and normalize `cs_CZ` and `cs-CZ`). |
+| `language` | string | Yes | Language tag of the set according to BCP 47 (e.g., `cs`, `en-US`, `zh-Hans`, `es-419`): subtags of letters and digits joined by hyphens, compared case-insensitively. Application SHOULD be tolerant when reading formatting (e.g., accept and normalize `cs_CZ` to `cs-CZ`). |
 | `title` | string | Yes | **Plain Text.** Title of the study set. |
 | `description` | string | No | **Rich Content.** Short description of the set. |
 | `thumbnail` | string | No | **Plain Text.** Key from `meta.assets` that defines the cover image of the set. If the specified key does not exist in `meta.assets`, the Application MUST continue loading the set (without a cover image). |
@@ -304,8 +304,6 @@ A source SHOULD have at least one of `url`, `doi`, `isbn`, `set`; a source witho
   { "id": "course", "kind": "lesson", "title": "Spanish A2 – Past Tenses", "set": "019aa608-07c5-71c9-87b2-d03ab3364000" }
 ]
 ```
-
-**Pre-release shape:** sets written for the 1.0 release candidates used `type` + `value` (`url` → `url` with `kind: "web"`; `video`, `audio`, `image`, `model` → `url` with the `kind` of that name; `pdf` → `url` with `mimeType: "application/pdf"`; `doi` → `doi` with `kind: "article"`; `isbn` → `isbn` with `kind: "book"`; `textbook` → `kind: "book"`; `other` → `kind: "other"`; a `value` that is not a locator goes to `description`). Applications MAY read that shape and convert it (with a warning); they write only the shape above. The reference implementation `loadOQSEFile` converts it.
 
 ### The `TagDefinition` Object (as value in `tagDefinitions`)
 
@@ -375,7 +373,7 @@ Standardized object for embedding media. Used:
 | `start` | number | No | Time in seconds where media playback should start (for audio/video). Default: 0. |
 | `end` | number | No | Time in seconds where media playback should end. If not specified, plays to the end. |
 | `loop` | boolean | No | For audio/video only. Determines whether media should loop. Default value is `false`. **Rules for combination with `start`/`end`:** (1) `loop: true` + `end`: Loop from `start` to `end`. (2) `loop: true` without `end`: Loop entire file from `start`. (3) `loop: false` + `end`: Play once from `start` to `end`. (4) `loop: false` without `end`: Play once from `start` to end of file (default behavior). **Validation rules:** `start` MUST be >= 0. If `end` is specified, `end > start` MUST hold. If `end` > file length, use end of file. If `start >= end`, Application MUST declare error. If `loop: true` and `start == end`, Application MUST declare error (empty segment). |
-| `subtitles` | array | No | For audio/video only. Array of objects defining subtitles. Each object contains: `lang` (string, required): Language code (BCP 47, e.g., `cs`, `en`), `value` (string, required): URI to `.vtt` or `.srt` file (absolute URL or relative path in `.oqse` package), `label` (string, optional): Display name (e.g., "Czech", "English"), `kind` (string, optional): Subtitle type - `captions`, `subtitles`, or `descriptions` per WebVTT specification (default: `subtitles`). Example: `[{"lang": "cs", "value": "assets/subtitles/cs.vtt", "label": "Czech", "kind": "captions"}, {"lang": "en", "value": "assets/subtitles/en.vtt", "label": "English"}]`. **Validation rules:** File format MUST be `.vtt` (recommended) or `.srt`. `kind` is **open**: an application that does not know the value does not offer that track (warning). If `label` is missing, use value of `lang`. Application MUST ignore invalid formats with warning. |
+| `subtitles` | array | No | For audio/video only. Array of objects defining subtitles. Each object contains: `lang` (string, required): Language code (BCP 47, e.g., `cs`, `en`), `value` (string, required): URI to `.vtt` or `.srt` file (absolute URL or relative path in `.oqse` package), `label` (string, optional): Display name (e.g., "Czech", "English"), `kind` (string, optional): Subtitle type - `captions`, `subtitles`, or `descriptions` per WebVTT specification (default: `subtitles`). Example: `[{"lang": "cs", "value": "assets/subtitles/cs.vtt", "label": "Czech", "kind": "captions"}, {"lang": "en", "value": "assets/subtitles/en.vtt", "label": "English"}]`. **Validation rules:** The file SHOULD be WebVTT (recommended) or SRT; an application that cannot read the format of a track does not offer it (warning) – the URI may have any form (e.g., an API address without an extension). `kind` is **open**: an application that does not know the value does not offer that track (warning). If `label` is missing, use value of `lang`. Application MUST ignore invalid formats with warning. |
 | `license` | string | No | SPDX license for this specific media (if different from set). |
 | `attribution` | string | No | **Plain Text.** Media author/source attribution (e.g., "Photo: NASA"). |
 | `checksums` | object | No | Object for file integrity verification. Key is algorithm name (`"sha256"`, `"sha512"`, `"md5"`, etc.) and value is hexadecimal hash. Example: `{"sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "md5": "098f6bcd4621d373cade4e832627b4f6"}`. Hash is calculated from original **binary data** of file (not from URI string). **Security rules:** For files in `.oqse` package, Application MUST calculate hash after unpacking and compare with values in object. Application MUST support at minimum the `sha256` algorithm. For external URLs: If file is small (< 10 MB), Application MAY download and verify. If file is large (>= 10 MB), Application MAY skip validation and display warning. Application SHOULD allow user to disable checksum validation for streaming media. If hash does not match, Application MUST reject asset and display security warning. If `checksums` is missing, Application MAY use file and MAY display warning about unverified integrity. |
@@ -1666,9 +1664,9 @@ To ensure consistency and practical implementability, the specification defines 
 | `prompts[]` / `matches[]` (match-pairs) | 100 items each | `matches` may contain more choices than `prompts` (distractors) |
 | `hints[]` (hints array) | 20 hints | Per one item |
 | File in `assets/` (.oqse) | 25 MB | Host larger media externally (set fragmentation is not recommended and not supported, [see Performance](#performance)) |
-| `customData` / `appSpecific` | 10 levels depth | Prevention of stack overflows |
+| Nesting of the whole file | 32 levels (the root object is level 0) | Prevention of stack overflows; a deeper file is a critical error. `customData` / `appSpecific` SHOULD stay within 10 levels of their own. |
 
-**Note:** Applications SHOULD support at least these limits. If specific environment doesn't allow same or higher values, it MUST be documented and user must be warned before import.
+**Fixed for 1.x:** files MUST stay within these limits and applications MUST accept everything within them. The limits – like the ranges of scales such as `difficulty` (1–5), progress buckets (0–4) and confidence (1–4) – do not change within MAJOR version 1, because an older application would reject or misread content beyond them.
 
 ### Validation Rules for Choices and Answers
 
@@ -1781,7 +1779,7 @@ To ensure maximum application compatibility and correct chronological ordering, 
 
 * **Required format:** Must use so-called **Extended Format** (with separators `-` and `:`).
     * Date: `YYYY-MM-DD` (e.g., `2025-11-21`)
-    * Date and time: `YYYY-MM-DDTHH:MM:SS` plus time zone (e.g., `2025-11-21T14:30:00Z` or `2025-11-21T15:30:00+01:00`).
+    * Date and time: `YYYY-MM-DDTHH:MM:SS` plus time zone (e.g., `2025-11-21T14:30:00Z` or `2025-11-21T15:30:00+01:00`), optionally with a fraction of a second of any length (`2025-11-21T14:30:00.123456Z`, as databases write it).
 * **Forbidden formats:**
     * Basic format without separators (e.g., `20251121` is **INVALID**).
     * Week dates (e.g., `2025-W47` is **INVALID**).
@@ -1851,7 +1849,7 @@ Applications processing `.oqse` packages (ZIP) MUST implement following protecti
 - Example: `{"memizy": {"editorState": {...}, "lastPosition": 42}}`
 
 **Constraints:**
-- Maximum depth: 10 nesting levels (stack overflow prevention)
+- Maximum depth: SHOULD stay within 10 nesting levels of its own (the whole file may nest at most 32 levels)
 - Recommended maximum size: 50 KB serialized JSON
 - MUST NOT contain sensitive data (passwords, tokens)
 
@@ -1921,7 +1919,7 @@ To ensure consistent behavior across implementations, specification defines foll
 ### Critical Errors (Application MUST abort loading)
 
 1. **Invalid JSON syntax:** Immediate failure with error message about error position.
-2. **Missing required field in `meta`:** Error with list of all missing fields (`id`, `title`, `language`, `createdAt`, `updatedAt`).
+2. **Missing or invalid required field in `meta`** (`id`, `title`, `language`, `createdAt`, `updatedAt`): Error with list of all such fields. An invalid **optional** field of `meta` is not critical (see below).
 3. **Missing, malformed or unsupported `version`:** a missing or malformed value, or a MAJOR version the application does not support (an application MAY offer best-effort loading instead, see [Versioning and Compatibility](#versioning-and-compatibility)).
 
 ### Recoverable Errors (Application continues with warning)
@@ -1953,7 +1951,10 @@ To ensure consistent behavior across implementations, specification defines foll
    - **Soft limit:** Warning on import, data preserved
    - **Hard limit:** Offer trimming or rejection
 
-7. **Empty `items` array:**
+7. **Invalid optional field of `meta`** (e.g., a malformed author e-mail, a `licenseUrl` that is not a URL, one broken entry of `assets`, `sourceMaterials` or `tagDefinitions`):
+   - Application MUST remove just that field or that entry, record an error, and continue loading – an optional detail never makes the whole set unreadable
+
+8. **Empty `items` array:**
    - The set may be a template or work-in-progress
    - Application MUST load the set successfully and display an appropriate empty-state message
    - Record warning (e.g., "Set loaded with 0 items")
@@ -2019,7 +2020,7 @@ These rules apply to OQSE sets and equally to [OQSEM manifests](./oqse-manifest.
 
 **Version format:** `MAJOR.MINOR` (regex `^\d+\.\d+$`, e.g., `1.0`, `1.3`, `2.0`). Both parts are non-negative integers and are compared numerically (`1.10` is greater than `1.9`).
 
-  * **MINOR change** (e.g., 1.0 → 1.1): only additions – new optional fields, item types, feature flags, tags, or values of open fields. The meaning of existing keys and their defaults never changes, so every 1.x application can read every 1.y file. Two kinds of additions are therefore **not** allowed in a MINOR version, because older applications would silently get them wrong: a field that changes which answers to an existing item type are correct (e.g., extra accepted answers – older applications would mark them wrong), and a new place for answer data in an existing item type (older applications that hide answers would show it). Such changes come as a new item type or in a new MAJOR version.
+  * **MINOR change** (e.g., 1.0 → 1.1): only additions – new optional fields, item types, feature flags, tags, or values of open fields. The meaning of existing keys and their defaults never changes, so every 1.x application can read every 1.y file. Two kinds of additions are therefore **not** allowed in a MINOR version, because older applications would silently get them wrong: a field that changes which answers to an existing item type are correct (e.g., extra accepted answers – older applications would mark them wrong), and a new place for answer data in an existing item type (older applications that hide answers would show it). Such changes come as a new item type or in a new MAJOR version. Likewise fixed for 1.x: the [size limits and the ranges of scales](#length-and-size-constraints), the tags allowed without the `html` feature, and the formats of IDs, dates and language tags.
   * **MAJOR change** (e.g., 1.x → 2.0): anything that changes the meaning of existing data (removed or renamed fields, other defaults, other rules for checking answers).
   * **Versions 0.x** were pre-release drafts. Their fields may mean something else than in 1.0 (e.g., other defaults), so they are treated like any other unsupported MAJOR version.
 
@@ -2057,7 +2058,7 @@ These rules apply to OQSE sets and equally to [OQSEM manifests](./oqse-manifest.
 ### Security
   * **Strict HTML Validation and Sanitization:** To ensure security and interoperability, applications MUST enforce the following processing policy:
     * **What counts as raw HTML:** HTML tags written by the author. Not counted: content of code spans and fenced code blocks, LaTeX math (when `latex` is declared), Markdown autolinks (`<https://…>`, `<user@example.com>`), HTML comments and OQSE tags (`<asset:… />`, `<blank:… />`).
-    * **Without the `html` feature:** raw HTML in text fields, other than `<sub>`, `<sup>` and `<br>` without attributes, MUST cause a **Validation Error** of the affected item (Atomic Validation: the item is skipped on import, and the set MUST NOT be saved or exported in this state). Only structural HTML generated by the Markdown parser is permitted.
+    * **Without the `html` feature:** raw HTML in text fields, other than `<sub>`, `<sup>` and `<br>` without attributes, MUST cause a **Validation Error** of the affected item (Atomic Validation: the item is skipped on import, and the set MUST NOT be saved or exported in this state). Only structural HTML generated by the Markdown parser is permitted. This list does not grow within 1.x: any other tag always needs the `html` feature (an older application would otherwise reject the item).
     * **With the `html` feature:** raw HTML is permitted.
     * **Always sanitize:** in both cases (even pure Markdown can produce unsafe links), the application MUST sanitize the rendered HTML (e.g., via DOMPurify) against a whitelist of safe typographic, semantic and tabular elements (e.g., `span`, `div`, `ruby`, `rt`, `rp`, `sub`, `sup`, `table`) and MUST strip the following:
         1. **Executable Content:** `<script>`, `<object>`, `<embed>`, `<applet>`.
@@ -2248,8 +2249,9 @@ OQSE is an open standard. Suggestions for improvements:
 ### Version 1.0 (2026-10-14)
 The first stable version. From now on, 1.x versions only add (see [Versioning and Compatibility](#versioning-and-compatibility)).
 * Forward compatibility, so that later 1.x versions can add without breaking older applications: [Open Values](#global-rules-and-root-structure) (`MediaObject.type`, `subtitles[].kind`, `pedagogy.bloomLevel`, `pedagogy.cognitiveLoad`, `SourceMaterial.kind`; another value uses the field's fallback and is a warning, never an error); unknown keys, values, tags and items of unknown types are preserved on export; an item of an unknown type is a warning in strict validation (it is kept, not shown); the [reserved tag syntax](#media-reference-syntax-media-tags) `<name:key />`; a MINOR version never changes which answers are correct nor adds new places for answer data; hiding answers keeps only known fields (fail closed).
-* `SourceMaterial` has a new shape: `kind` (what), `url` / `doi` / `isbn` / `set` (where, any number of them), `mimeType` (how to open) instead of `type` + `value`; a source can be a lesson in an OQSE set (`set`), `SourceReference.itemId` points to the lesson item, and `quote` locates the passage in it. Sets of the release candidates are converted on load.
+* `SourceMaterial` has a new shape: `kind` (what), `url` / `doi` / `isbn` / `set` (where, any number of them), `mimeType` (how to open) instead of `type` + `value`; a source can be a lesson in an OQSE set (`set`), `SourceReference.itemId` points to the lesson item, and `quote` locates the passage in it. The reference tool `scripts/migrate-oqse` converts sets of the release candidates.
 * OQSEP: `starred` (the learner's star) and `lastAnswer.answer` (the last answer, OQSE Answer Formats, at most 4 KB); unknown keys are preserved, also when a record is updated. OQSEM: item types, actions, asset categories, `studyMode` and `questionDensity` of a later 1.x version are ignored instead of rejected; unknown keys are preserved. OQSEH: unknown keys are preserved.
+* Tolerant reading of real data: BCP 47 tags with numeric regions and variants (`es-419`), fractions of a second of any length, subtitles from any URI; an invalid optional `meta` field or entry is removed instead of making the set unreadable; the nesting limit of a whole file is 32 levels (it was 10, which counted from the root and broke deep `appSpecific` data). Limits, ranges, the HTML tags allowed without `html`, and the formats of IDs, dates and language tags are fixed for 1.x.
 * The shape fields of a `HotspotObject` (`x`, `y`, `width`, `height`, `radius`, `points`, `targetName`) are marked required, as validators always treated them.
 * Before 1.0, two item types were aligned with the others: `math-input` has `correctAnswers` (a list, like `short-answer`) instead of `correctAnswer` + `alternativeAnswers`, and `match-complex` has `prompts` / `matches` (like `match-pairs`) instead of `leftItems` / `rightItems`. `math-input` has no `tolerance` (its answers are compared as LaTeX; numbers are `numeric-input`).
 * [Canonical and Authoring Formats](#canonical-and-authoring-formats): the JSON file is the canonical form that is stored and exchanged; authoring formats (OQSE Markdown for notes, tool-specific shorthands) are converted to it and keep item IDs across edits.

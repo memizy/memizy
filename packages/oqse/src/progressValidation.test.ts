@@ -35,34 +35,14 @@ describe('Progress Validation Schemas', () => {
     expect(OQSEProgressSchema.safeParse(progress('2.0')).success).toBe(false);
   });
 
-  it('OQSEProgressSchema: rejects non-UUID record keys', () => {
-    const invalidFile = {
-      version: "1.0",
-      meta: {
-        setId: "123e4567-e89b-12d3-a456-426614174000",
-        exportedAt: "2025-01-01T00:00:00Z"
-      },
-      records: {
-        "123e4567-e89b-12d3-a456-426614174000": {
-          bucket: 1,
-          stats: { attempts: 1, incorrect: 0, streak: 1 }
-        },
-        "invalid-key": {
-          bucket: 1,
-          stats: { attempts: 1, incorrect: 0, streak: 1 }
-        }
-      }
+  it('OQSEProgressSchema: record keys are item IDs (generated items may have non-UUID IDs)', () => {
+    const file = {
+      version: '1.0',
+      meta: { setId: '123e4567-e89b-12d3-a456-426614174000', exportedAt: '2025-01-01T00:00:00Z' },
+      records: { 'lichess-00AbC': { bucket: 1, stats: { attempts: 1, incorrect: 0, streak: 1 } } },
     };
-    
-    const result = OQSEProgressSchema.safeParse(invalidFile);
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(
-        result.error.issues.some(issue => 
-          issue.message.includes('UUID') || issue.message.includes('Invalid')
-        )
-      ).toBe(true);
-    }
+    expect(safeValidateOQSEProgress(file).success).toBe(true);
+    expect(safeValidateOQSEProgress({ ...file, records: { '': file.records['lichess-00AbC'] } }).success).toBe(false);
   });
 
   it('safeValidateOQSEProgress + formatOQSEErrors: returns readable issue list', () => {

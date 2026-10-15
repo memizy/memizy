@@ -34,7 +34,7 @@ An OQSEP document is a single JSON object with the following structure.
 | `$schema` | string | No | **Recommended.** URL reference to the JSON Schema for the OQSEP format for automatic validation. |
 | `version` | string | Yes | Version of the OQSEP format. MUST follow `"MAJOR.MINOR"` format (e.g., `"1.0"`). The current format version is `"1.0"`. The [version rules](./oqse.md#versioning-and-compatibility) of OQSE apply. |
 | `meta` | object | Yes | Metadata block describing the origin of this progress data. See [Progress Meta Object](#progress-meta-object). |
-| `records` | object | Yes | A map of item UUIDs (strings) to their individual [Progress Record](#progress-record) objects. The absence of an item from this map implicitly signals an unseen state (equivalent to bucket 0). An explicit record with `bucket: 0` MAY, however, appear when an application stores pre-study initialization data or algorithm-specific state for an item the user has not yet encountered. |
+| `records` | object | Yes | A map of item IDs (strings: the UUIDs of the set's items; other IDs, e.g. of generated items from a service, are allowed and ignored by applications that do not know them) to their individual [Progress Record](#progress-record) objects. The absence of an item from this map implicitly signals an unseen state (equivalent to bucket 0). An explicit record with `bucket: 0` MAY, however, appear when an application stores pre-study initialization data or algorithm-specific state for an item the user has not yet encountered. |
 
 ##### Progress Meta Object
 
@@ -46,7 +46,7 @@ An OQSEP document is a single JSON object with the following structure.
 
 ##### Progress Record
 
-Each entry in the `records` map is keyed by an item UUID and contains the following object. The absence of an item in the `records` map implicitly means it is unseen and has no stored state. However, an explicit record MAY exist even for unseen items if an application needs to store pre-study initialization data or specific `appSpecific` state.
+Each entry in the `records` map is keyed by an item ID and contains the following object. The absence of an item in the `records` map implicitly means it is unseen and has no stored state. However, an explicit record MAY exist even for unseen items if an application needs to store pre-study initialization data or specific `appSpecific` state.
 
 | Key | Type | Required | Description |
 | :--- | :--- | :--- | :--- |

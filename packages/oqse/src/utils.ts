@@ -24,6 +24,13 @@ export function generateUUID(): UUID {
  * Checks if an object exceeds the maximum allowed nesting depth.
  * OQSE specification requires a limit of 10 levels for customData and appSpecific.
  */
+/**
+ * Deepest nesting of an OQSE file (the root is level 0). A security limit against stack
+ * overflows, fixed for OQSE 1.x; free-form data (`customData`, `appSpecific`) SHOULD stay
+ * within 10 levels of its own.
+ */
+export const MAX_JSON_DEPTH = 32;
+
 export function validateJsonDepth(
   data: unknown,
   maxDepth: number = 10,

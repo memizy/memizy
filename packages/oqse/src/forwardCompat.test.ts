@@ -5,7 +5,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { loadOQSEFile, safeValidateOQSEFile, withUnsupportedItems, convertLegacySource } from './fileValidation';
+import { loadOQSEFile, safeValidateOQSEFile, withUnsupportedItems } from './fileValidation';
+import { MAX_JSON_DEPTH } from './utils';
 import { safeValidateOQSEProgress } from './progressValidation';
 import { safeValidateOQSEManifest } from './manifestValidation';
 import { safeValidateOQSEHeader } from './headerValidation';
@@ -118,24 +119,11 @@ describe('sources', () => {
     expect(safeValidateOQSEFile(other).errors).toEqual([]);
   });
 
-  it('the pre-release shape is converted on load and refused on save', () => {
-    const legacy = [
-      { id: 'a', type: 'url', value: 'https://example.com', title: 'Web' },
-      { id: 'b', type: 'pdf', value: 'https://example.com/a.pdf', title: 'PDF' },
-      { id: 'c', type: 'isbn', value: '978-80-7357-124-7', title: 'Book' },
-      { id: 'd', type: 'textbook', value: 'Physics (8th edition)', title: 'Physics' },
-    ];
-    const loaded = loadOQSEFile(set({ sourceMaterials: legacy }));
-    expect(loaded.success).toBe(true);
-    expect(loaded.data!.meta.sourceMaterials).toEqual([
-      { id: 'a', kind: 'web', url: 'https://example.com', title: 'Web' },
-      { id: 'b', url: 'https://example.com/a.pdf', mimeType: 'application/pdf', title: 'PDF' },
-      { id: 'c', kind: 'book', isbn: '978-80-7357-124-7', title: 'Book' },
-      { id: 'd', kind: 'book', title: 'Physics', description: 'Physics (8th edition)' },
-    ]);
-    expect(codes(loaded.warnings).filter((c) => c === 'LEGACY_SOURCE')).toHaveLength(4);
-    expect(codes(safeValidateOQSEFile(set({ sourceMaterials: legacy })).errors)).toContain('LEGACY_SOURCE');
-    expect(convertLegacySource({ id: 'x', kind: 'web', title: 'T', url: 'https://e.com' })).toBeNull();
+  it('the release-candidate shape is not converted here (scripts/migrate-oqse does it): the source stays, cited by its title', () => {
+    const result = loadOQSEFile(set({ sourceMaterials: [{ id: 'a', type: 'url', value: 'https://example.com', title: 'Web' }] }));
+    expect(result.success).toBe(true);
+    expect(result.data!.meta.sourceMaterials).toEqual([{ id: 'a', type: 'url', value: 'https://example.com', title: 'Web' }]);
+    expect(codes(result.warnings)).toContain('SOURCE_WITHOUT_LOCATOR');
   });
 
   it('a bad source never makes the set unreadable; unknown kinds and missing locators are warnings', () => {
@@ -149,6 +137,60 @@ describe('sources', () => {
     expect(loaded.data!.meta.sourceMaterials!.map((s) => s.id)).toEqual(['future', 'printed']);
     expect(codes(loaded.errors)).toEqual(['INVALID_SOURCE']);
     expect(codes(loaded.warnings)).toEqual(expect.arrayContaining(['UNKNOWN_VALUE', 'SOURCE_WITHOUT_LOCATOR']));
+  });
+});
+
+describe('real-world data never makes a set unreadable for an optional detail', () => {
+  const deep = (levels: number) => {
+    let value: Record<string, unknown> = { leaf: 1 };
+    for (let i = 0; i < levels; i++) value = { next: value };
+    return value;
+  };
+
+  it('accepts BCP 47 tags with numeric regions and variants, and converts underscores', () => {
+    for (const language of ['es-419', 'en-gb', 'zh-Hant-TW', 'de-CH-1996', 'yue']) {
+      expect(safeValidateOQSEFile(set({ language })).errors, language).toEqual([]);
+    }
+    const loaded = loadOQSEFile(set({ language: 'cs_CZ' }, [{ ...mcq(1), lang: 'en_US' }]));
+    expect(loaded.data!.meta.language).toBe('cs-CZ');
+    expect(loaded.data!.items[0].lang).toBe('en-US');
+    expect(codes(loaded.warnings).filter((c) => c === 'LANGUAGE_NORMALIZED')).toHaveLength(2);
+  });
+
+  it('accepts RFC 3339 times with any fraction of a second (databases write microseconds)', () => {
+    const result = safeValidateOQSEFile(set({ createdAt: '2026-01-01T00:00:00.123456Z', updatedAt: '2026-01-02T00:00:00.5+01:00' }));
+    expect(result.errors).toEqual([]);
+  });
+
+  it('removes an invalid optional meta field or entry instead of refusing the set', () => {
+    const result = loadOQSEFile(
+      set({
+        author: { name: 'A', email: 'a(at)b.cz' },
+        licenseUrl: 'see the website',
+        description: 'x'.repeat(5001),
+        tags: ['a'],
+        tagDefinitions: { a: { wikidataId: 'q42' }, b: { wikidataId: 'Q42' } },
+        assets: { ok: { type: 'image', value: 'https://example.com/a.png', altText: 'A' }, bad: { type: 'image' } },
+      }),
+    );
+    expect(result.success).toBe(true);
+    const meta = result.data!.meta as unknown as Record<string, any>;
+    expect([meta.author, meta.licenseUrl, meta.description]).toEqual([undefined, undefined, undefined]);
+    expect(Object.keys(meta.tagDefinitions)).toEqual(['b']);
+    expect(Object.keys(meta.assets)).toEqual(['ok']);
+    expect(new Set(codes(result.errors))).toEqual(new Set(['INVALID_META_FIELD']));
+    // A required field still has to be right.
+    expect(loadOQSEFile(set({ createdAt: 'yesterday' })).success).toBe(false);
+  });
+
+  it('allows deep free-form data up to the fixed depth limit', () => {
+    expect(loadOQSEFile(set({ customData: deep(8) }, [{ ...mcq(1), appSpecific: { memizy: deep(10) } }])).success).toBe(true);
+    expect(codes(loadOQSEFile(set({ customData: deep(MAX_JSON_DEPTH) })).errors)).toEqual(['SECURITY_LIMIT']);
+  });
+
+  it('accepts subtitles from any URI (a format the application cannot read is not offered)', () => {
+    const video = { type: 'video', value: 'https://example.com/v.mp4', subtitles: [{ lang: 'en', value: 'https://api.example.com/subtitles?id=1' }] };
+    expect(safeValidateOQSEFile(set({ assets: { v: video } })).errors).toEqual([]);
   });
 });
 
@@ -176,6 +218,13 @@ describe('progress, manifests and headers of a later 1.x version', () => {
     expect(record.starred).toBe(true);
     expect(record.lastAnswer.answer).toEqual(['x']);
     expect([data.futureRoot, data.meta.futureMeta, record.futureField, record.stats.futureStat, record.lastAnswer.futureAnswerField]).toEqual([1, 1, 'x', 3, 1]);
+  });
+
+  it('OQSEP accepts records of any item ID (generated items) and fractions of seconds', () => {
+    const p = progress();
+    (p.records as Record<string, unknown>)['lichess-00AbC'] = { bucket: 1, stats: { attempts: 1, incorrect: 0, streak: 1 } };
+    p.meta.exportedAt = '2026-01-01T00:00:00.123456Z';
+    expect(safeValidateOQSEProgress(p).success).toBe(true);
   });
 
   it('OQSEP limits the stored answer to 4 KB', () => {

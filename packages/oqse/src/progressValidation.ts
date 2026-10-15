@@ -58,7 +58,8 @@ export const OQSEProgressSchema: z.ZodType<OQSEProgress> = z.looseObject({
     $schema: z.url().optional(), 
     version: z.string().regex(/^1\.\d+$/, 'Unsupported progress version: this library reads OQSEP 1.x (write "version": "1.0")'),
     meta: ProgressMetaSchema,
-    records: z.record(UUIDSchema, ProgressRecordSchema),
+    /** Item IDs (UUIDs for items of the set; generated items may have other IDs). */
+    records: z.record(z.string().min(1).max(128), ProgressRecordSchema),
 });
 
 function jsonBytes(value: unknown): number {
