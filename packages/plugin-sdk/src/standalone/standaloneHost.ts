@@ -49,7 +49,7 @@ export function standaloneConnector(options: StandaloneOptions): Connector {
       session: { id: `standalone-${Date.now()}`, mode: 'solo', hostAs: null, view: 'solo', self: PLAYER_ID, authority: PLAYER_ID, lateJoin: false },
       players: [{ id: PLAYER_ID, name: 'Hráč', isHost: true, connected: true }],
       set: { meta: SAMPLE_META, items },
-      settings: resolveSettings(options.runtime?.settings ?? []).values,
+      settings: resolveSettings(options.runtime?.settings ?? [], {}, options.runtime?.unknownSettings ?? []).values,
       config: { locale: navigator.language || 'cs', theme: window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light' },
       clock: { offsetMs: 0, pausedMs: 0, pausedAt: null },
       progress,

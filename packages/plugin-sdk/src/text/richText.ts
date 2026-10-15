@@ -94,6 +94,7 @@ const marked = new Marked({
   },
 });
 
+const UNKNOWN_OQSE_TAG_RE = /<[a-z][a-z0-9-]*:[a-zA-Z0-9_-]+\s*\/>/g;
 const DISPLAY_MATH_RE = /\$\$([\s\S]+?)\$\$/g;
 // Inline math: no space after the opening / before the closing `$`, not escaped, single line.
 const INLINE_MATH_RE = /(^|[^\\$])\$(?!\s)([^$\n]*?[^\s\\$])\$(?!\d)/g;
@@ -110,7 +111,10 @@ export function escapeHtml(value: unknown): string {
 /** Renders Rich Content to sanitized HTML. */
 export function renderRichText(source: string | null | undefined, ctx: RichTextContext, options: { inline?: boolean } = {}): string {
   if (source === null || source === undefined || source === '') return '';
-  const { text: withoutTags, tokens } = tokenizeOqseTags(String(source));
+  const tokenized = tokenizeOqseTags(String(source));
+  const tokens = tokenized.tokens;
+  // OQSE tags of a later version (`<name:key />` other than asset / blank) are removed (OQSE "Reserved tag syntax").
+  const withoutTags = tokenized.text.replace(UNKNOWN_OQSE_TAG_RE, '');
 
   // Protect math from the Markdown parser (underscores, asterisks, backslashes).
   const math = new Map<string, { tex: string; display: boolean }>();
@@ -164,8 +168,12 @@ function renderMedia(key: string, media: MediaObject | undefined): string {
     case 'video':
       element = `<video controls src="${src}"${size}></video>`;
       break;
-    default:
+    case 'model':
       element = `<span class="mz-asset-model">${escapeHtml(media.altText ?? key)}</span>`;
+      break;
+    default:
+      // A media type of a later OQSE version: a link (its fallback, OQSE "Open Values").
+      element = `<a class="mz-asset-link" href="${src}" target="_blank" rel="noopener noreferrer">${escapeHtml(media.altText ?? media.caption ?? key)}</a>`;
   }
   return caption ? `<figure class="mz-media">${element}${caption}</figure>` : element;
 }

@@ -9,7 +9,7 @@
  * @see ../oqse-manifest.md#oqsem-application-manifest
  */
 
-import type { FeatureProfile, PersonObject } from './oqse';
+import type { FeatureProfile, OpenValue, PersonObject } from './oqse';
 
 // Re-export FeatureProfile so consumers can import everything from this module.
 export type { FeatureProfile } from './oqse';
@@ -37,9 +37,10 @@ export type OfficialAction = typeof OFFICIAL_ACTIONS[number];
 export type CustomAction = `x-${string}`;
 
 /**
- * Any action value: official from the Action Registry or a custom `x-` prefixed action.
+ * Any action value: official from the Action Registry, a custom `x-` prefixed action, or
+ * an action of a later 1.x version (hosts ignore actions they do not know).
  */
-export type OQSEAction = OfficialAction | CustomAction;
+export type OQSEAction = OpenValue<OfficialAction | CustomAction>;
 
 // ============================================================================
 // Study Mode & Question Density  Section 2.1.1
@@ -516,19 +517,18 @@ export interface OQSEManifest {
   emoji?: string;
 
   /**
-   * Primary experience type of the application.
-   * MUST be one of `"game"`, `"fun"`, or `"drill"`.
-   * If absent, no assumption is made.
+   * Primary experience type of the application (open: `"game"`, `"fun"`, `"drill"`;
+   * another value is treated as absent). If absent, no assumption is made.
    */
-  studyMode?: OQSEStudyMode;
+  studyMode?: OpenValue<OQSEStudyMode>;
 
   /**
    * Ratio of quiz questions relative to other game elements.
-   * MUST be one of `"low"`, `"medium"`, or `"high"`.
+   * Open: `"low"`, `"medium"`, `"high"`; another value is treated as absent.
    * If `studyMode` is `"drill"`, hosts SHOULD treat this as `"high"`.
    * If absent, no assumption is made.
    */
-  questionDensity?: OQSEQuestionDensity;
+  questionDensity?: OpenValue<OQSEQuestionDensity>;
 
   /**
    * Object for application-specific metadata not covered by standard fields.

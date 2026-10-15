@@ -86,6 +86,18 @@ describe('migrateSet', () => {
     }
   });
 
+  it('converts sources of the pre-release shape', () => {
+    const set = {
+      version: '1.0',
+      meta: { id: '0192f0c4-7a1e-7c3b-9a52-2f1d8e4b6c00', language: 'en', title: 'S', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z', sourceMaterials: [{ id: 'w', type: 'url', value: 'https://example.com', title: 'Web' }] },
+      items: [],
+    };
+    const { result, changes } = migrateSet(set);
+    expect(result.meta.sourceMaterials).toEqual([{ id: 'w', kind: 'web', url: 'https://example.com', title: 'Web' }]);
+    expect(changes).toContain('sourceMaterials type/value → kind, url / doi / isbn');
+    expect(safeValidateOQSEFile(result).errors).toEqual([]);
+  });
+
   it('leaves a 1.0 set unchanged', () => {
     const v10 = { version: '1.0', meta, items: [{ id: id(1), type: 'note', content: 'Plain text.' }] };
     expect(migrateSet(v10)).toMatchObject({ result: v10, changes: [], review: [] });

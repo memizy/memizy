@@ -2,6 +2,17 @@
 
 The format itself has its own changelog at the end of [oqse.md](https://github.com/memizy/memizy/blob/main/packages/oqse/oqse.md#version-10-2026-10-14) (OQSE 1.0, 2026-10-14). This file lists the releases of the npm package.
 
+## Unreleased (next release candidate)
+
+Forward compatibility of OQSE 1.0 (see the "Version 1.0" changelog in `oqse.md`), checked by `forwardCompat.test.ts` with files of a "later 1.x version".
+
+* Open values: `MediaObject.type`, `subtitles[].kind`, `pedagogy.bloomLevel` / `cognitiveLoad`, `SourceMaterial.kind`, OQSEM `studyMode` / `questionDensity` accept values of later versions (`OpenValueSchema`, warning `UNKNOWN_VALUE`); `MEDIA_TYPES`, `SOURCE_KINDS`, `SUBTITLE_KINDS`, `BLOOM_LEVELS`, `COGNITIVE_LOADS` list the known ones; the type `OpenValue<T>`. Before, a new media type or source type made the whole set unreadable and a new Bloom level removed the question.
+* Items of unknown types: `loadOQSEFile` and `safeValidateOQSEFile` return them unchanged in `unsupportedItems` (a warning, no longer an error in strict validation); `withUnsupportedItems(file, unsupportedItems)` puts them back for saving.
+* `SourceMaterial`: `kind`, `url`, `doi`, `isbn`, `set`, `mimeType` replace `type` + `value` (`SourceMaterialType` / `SourceMaterialTypeSchema` removed; `SourceKind`, `SOURCE_KINDS`); `SourceReference.itemId`. The old shape is converted on load (warning `LEGACY_SOURCE`, an error in strict validation; `convertLegacySource`); every source is validated on its own, so a bad source no longer makes the set unreadable (`INVALID_SOURCE`); `SOURCE_WITHOUT_LOCATOR` warns about a source cited by title only; an `itemId` into this very set must exist.
+* OQSEP: `starred`, `lastAnswer.answer` (≤ 4 KB, `MAX_LAST_ANSWER_BYTES`); all OQSEP schemas keep unknown keys (they used to drop them, and the JSON Schema had `additionalProperties: false`).
+* OQSEM: `capabilities.types` / `actions` accept lowercase names of later versions; unknown keys and asset categories are kept. OQSEH: unknown keys are kept.
+* `checkCompatibility` does not report media of an unknown type as unsupported (they fall back to a link).
+
 ## 1.0.0-rc.6 (2026-10-14)
 
 Release candidate of OQSE 1.0; the format is frozen (1.x only adds).

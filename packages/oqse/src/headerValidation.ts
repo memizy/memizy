@@ -4,7 +4,7 @@ import { AbsoluteURLSchema, OQSEMetaSchema } from './oqseValidation';
 
 // OQSEMetaSchema contains object-level refinements, which block .pick() in Zod 4.
 // Rebuild the base object from its shape, then pick the projection fields.
-const OQSEMetaPickableSchema = z.object(OQSEMetaSchema.shape);
+const OQSEMetaPickableSchema = z.looseObject(OQSEMetaSchema.shape);
 
 const OQSEHeaderMetaSchema = OQSEMetaPickableSchema.pick({
   id: true,

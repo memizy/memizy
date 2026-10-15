@@ -47,12 +47,22 @@ export type ISO8601DateTime = string;
 export type MediaType = 'image' | 'audio' | 'video' | 'model';
 
 /**
+ * A value of an **open** field: one of the known values, or a value from a later 1.x
+ * version that the application does not know (it uses the field's fallback). The
+ * `string & {}` keeps editor completion for the known values.
+ */
+export type OpenValue<T extends string> = T | (string & {});
+
+/** Media types of OQSE 1.0 (`MediaObject.type` is open: other values fall back to a link). */
+export const MEDIA_TYPES = ['image', 'audio', 'video', 'model'] as const;
+
+/**
  * Media object for embedding media in items or set metadata.
  * Used in `meta.assets` and `item.assets`.
  */
 export interface MediaObject {
-  /** Media type */
-  type: MediaType;
+  /** Media type (open: an unknown type is shown as a link to `value`). */
+  type: OpenValue<MediaType>;
 
   /**
    * URI of the resource.
@@ -126,9 +136,13 @@ export interface SubtitleTrack {
   /** Display name (e.g., "Czech", "English") */
   label?: string;
 
-  /** Subtitle type per WebVTT specification. Default: "subtitles" */
-  kind?: 'captions' | 'subtitles' | 'descriptions';
+  /** Subtitle type per WebVTT specification (open: an unknown kind is not offered). Default: "subtitles" */
+  kind?: OpenValue<SubtitleKind>;
 }
+
+/** Subtitle track kinds of OQSE 1.0. */
+export type SubtitleKind = 'captions' | 'subtitles' | 'descriptions';
+export const SUBTITLE_KINDS = ['captions', 'subtitles', 'descriptions'] as const;
 
 /**
  * Dictionary of media objects.
@@ -162,22 +176,15 @@ export interface PersonObject {
 // ============================================================================
 
 /**
- * Source material type
+ * What a source is (open; another value falls back to `other`), for icons and labels.
  */
-export type SourceMaterialType =
-  | 'url'
-  | 'doi'
-  | 'isbn'
-  | 'pdf'
-  | 'textbook'
-  | 'video'
-  | 'audio'
-  | 'image'
-  | 'model'
-  | 'other';
+export type SourceKind = 'book' | 'article' | 'web' | 'video' | 'audio' | 'image' | 'model' | 'lesson' | 'other';
+export const SOURCE_KINDS = ['book', 'article', 'web', 'video', 'audio', 'image', 'model', 'lesson', 'other'] as const;
 
 /**
- * Source material object describing sources from which the set draws
+ * A source the set draws from or points the learner to. **What** it is (`kind`),
+ * **where** to find it (`url`, `doi`, `isbn`, `set` – any number of them) and **how**
+ * to open it (`mimeType`). It SHOULD have at least one of `url`, `doi`, `isbn`, `set`.
  */
 export interface SourceMaterial {
   /**
@@ -186,18 +193,26 @@ export interface SourceMaterial {
    */
   id: string;
 
-  /** Source type */
-  type: SourceMaterialType;
-
-  /**
-   * Source value.
-   * For 'url', 'pdf', 'video', 'audio', 'image': absolute URL
-   * For 'doi', 'isbn', 'textbook', 'other': identifier string
-   */
-  value: string;
-
   /** Source title */
   title: string;
+
+  /** What the source is (open). */
+  kind?: OpenValue<SourceKind>;
+
+  /** Absolute URL where the source can be opened. */
+  url?: string;
+
+  /** MIME type of the resource at `url` (e.g. `application/pdf`). */
+  mimeType?: string;
+
+  /** Digital Object Identifier, without the `https://doi.org/` prefix. */
+  doi?: string;
+
+  /** ISBN-10 or ISBN-13, with or without hyphens. */
+  isbn?: string;
+
+  /** UUID (`meta.id`) of an OQSE set that teaches the topic (a lesson); may be this set. */
+  set?: string;
 
   /** Additional source description */
   description?: string;
@@ -222,12 +237,18 @@ export interface SourceReference {
   /** ID of source defined in meta.sourceMaterials */
   id: string;
 
-  /** Specification of place in source (e.g., "page 42", "time 12:30") */
+  /**
+   * ID of an item (usually a `note`) in the set named by the source's `set`: the lesson
+   * to open. Ignored when it cannot be resolved.
+   */
+  itemId?: string;
+
+  /** Specification of place in source for people (e.g., "page 42", "time 12:30") */
   location?: string;
 
   /**
-   * Exact citation or text segment from source.
-   * Rich Content (Markdown, LaTeX).
+   * Exact citation or text segment from source. Rich Content (Markdown, LaTeX).
+   * With `itemId`, also the passage to scroll to and highlight in that item.
    */
   quote?: string;
 }
@@ -353,12 +374,15 @@ export type BloomLevel =
  */
 export type CognitiveLoad = 'low' | 'medium' | 'high';
 
+export const BLOOM_LEVELS = ['remember', 'understand', 'apply', 'analyze', 'evaluate', 'create'] as const;
+export const COGNITIVE_LOADS = ['low', 'medium', 'high'] as const;
+
 /**
  * Pedagogy object for advanced data for adaptive learning and psychometrics
  */
 export interface Pedagogy {
-  /** Level according to revised Bloom's taxonomy */
-  bloomLevel?: BloomLevel;
+  /** Level according to revised Bloom's taxonomy (open: another value is ignored) */
+  bloomLevel?: OpenValue<BloomLevel>;
 
   /** IRT Parameter b (Difficulty). Typically range -3.0 to +3.0 */
   irtDifficulty?: number;
@@ -372,8 +396,8 @@ export interface Pedagogy {
   /** Average time (in seconds) students actually need to solve */
   avgTime?: number;
 
-  /** Subjective cognitive load */
-  cognitiveLoad?: CognitiveLoad;
+  /** Subjective cognitive load (open: another value is ignored) */
+  cognitiveLoad?: OpenValue<CognitiveLoad>;
 
   /** Whether item supports partial scoring */
   partialCredit?: boolean;

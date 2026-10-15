@@ -182,7 +182,7 @@ phases: {
 | `ctx.random()` / `ctx.shuffle(array)` | Random number 0–1 / shuffled copy of an array. |
 | `ctx.goto(phase)` | Move to another phase (section 4.2). |
 | `ctx.after(ms, action, payload?, { key }?)` / `ctx.cancel(key)` | Run an action later / cancel a timer. A timer with the same `key` replaces the previous one. |
-| `ctx.recordAnswer(itemId, isCorrect, { playerId?, answer? }?)` | Save learning progress (default player: `ctx.playerId`). Call it for every answered question and pass `answer` (what the player chose) – teachers see it. For a question that is not in the set (from a service or your own generator) pass the item itself instead of its id. |
+| `ctx.recordAnswer(itemId, isCorrect, { playerId?, answer?, score? }?)` | Save learning progress (default player: `ctx.playerId`). Call it for every answered question and pass `answer` (what the player chose) – teachers see it. For partial credit (2 of 3 pairs right) add `score` between 0 and 1. For a question that is not in the set (from a service or your own generator) pass the item itself instead of its id. |
 | `ctx.reveal(itemId \| ids, { to? }?)` | Send the answer (correct option, explanation, back of a flashcard) to the players' devices: to everyone, or `{ to: playerId }`. |
 | `ctx.hide(itemId \| ids, { to? }?)` | Take a reveal back (e.g. before the same question is asked again). |
 | `ctx.end({ scores, summary? })` | The game is over. `scores` = `{ [playerId]: points }`; `summary` = an optional short text for the app. |

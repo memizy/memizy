@@ -3,7 +3,7 @@
  * can an application (or plugin) described by a manifest process a given set?
  */
 
-import type { MediaObject, OQSEFile } from './oqse';
+import { MEDIA_TYPES, type MediaObject, type OQSEFile } from './oqse';
 import type { OQSEManifest } from './manifest';
 import { isVersionCompatible, withManifestDefaults } from './manifest';
 import { effectiveFeatures } from './features';
@@ -60,7 +60,9 @@ export function checkCompatibility(file: OQSEFile, manifest: OQSEManifest): Comp
   const unverifiedAssets: UnsupportedAsset[] = [];
   const checkAssets = (assets: Record<string, MediaObject> | undefined, prefix: string) => {
     for (const [key, media] of Object.entries(assets ?? {})) {
-      const list = caps.assets?.[media.type] as readonly string[] | null | undefined;
+      // A media type of a later version is shown as a link (its fallback): nothing to check.
+      if (!(MEDIA_TYPES as readonly string[]).includes(media.type)) continue;
+      const list = (caps.assets as Record<string, readonly string[] | null | undefined> | undefined)?.[media.type];
       const entry: UnsupportedAsset = { path: `${prefix}.${key}`, type: media.type, mimeType: media.mimeType };
       if (!list || list.length === 0) unsupportedAssets.push(entry);
       else if (list.includes('*')) continue;

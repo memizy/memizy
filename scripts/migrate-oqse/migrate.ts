@@ -8,7 +8,7 @@
  * need a human decision are reported in `review`, never changed.
  */
 
-import { detectFeatures, looksLikeLatex, normalizeAnswerText, type OQSEFile } from '../../packages/oqse/dist/index.js';
+import { convertLegacySource, detectFeatures, looksLikeLatex, normalizeAnswerText, type OQSEFile } from '../../packages/oqse/dist/index.js';
 
 export const SCHEMA_URL = 'https://cdn.jsdelivr.net/npm/@memizy/oqse@1/schemas/oqse-v1.0.json';
 
@@ -290,6 +290,15 @@ export function migrateSet(input: unknown): MigrationResult<Rec> {
   const latex = (meta.requirements?.features ?? []).includes('latex');
   (json.items ?? []).forEach((item: Rec, i: number) => itemTo10(item, i, latex, changes, review));
   fillAltTexts(meta.assets, 'meta.assets', changes, review);
+  // Sources: `type` + `value` of the drafts and release candidates → kind, url / doi / isbn.
+  if (Array.isArray(meta.sourceMaterials)) {
+    meta.sourceMaterials = meta.sourceMaterials.map((source: Rec) => {
+      const converted = source && typeof source === 'object' ? convertLegacySource(source) : null;
+      if (!converted) return source;
+      changes.add('sourceMaterials type/value → kind, url / doi / isbn');
+      return converted;
+    });
+  }
 
   // Declare the features the content uses (as an editor does when saving).
   const declared: string[] = meta.requirements?.features ?? [];

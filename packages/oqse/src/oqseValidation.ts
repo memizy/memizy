@@ -136,20 +136,30 @@ export const SkillIdSchema = z
 // ============================================================================
 
 /**
+ * A value of an **open** field: a lowercase name. Known values are listed in `oqse.ts`
+ * (`MEDIA_TYPES`, `SOURCE_KINDS`…); another value is a value of a later 1.x version, which
+ * `loadOQSEFile` reports as a warning (`UNKNOWN_VALUE`) and applications handle by the
+ * field's fallback. It is never an error.
+ */
+export const OpenValueSchema = z
+  .string()
+  .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, 'Must be a lowercase name (letters, digits and hyphens)');
+
+/**
  * Subtitle track for audio/video
  */
 export const SubtitleTrackSchema = z.looseObject({
   lang: LanguageCodeSchema,
   value: z.string().min(1, 'Subtitle URI must not be empty').regex(/\.(vtt|srt)(\?.*)?$/i, 'Subtitle URI must end with .vtt or .srt'),
   label: z.string().optional(),
-  kind: z.enum(['captions', 'subtitles', 'descriptions']).optional(),
+  kind: OpenValueSchema.optional(),
 });
 
 /**
  * Media object
  */
 export const MediaObjectSchema = z.looseObject({
-  type: z.enum(['image', 'audio', 'video', 'model']),
+  type: OpenValueSchema,
   value: z.string().min(1, 'Media URI must not be empty'),
   mimeType: z.string().optional(),
   altText: z.string().optional(),
@@ -199,51 +209,29 @@ export const PersonObjectSchema = z.looseObject({
 // Source Material
 // ============================================================================
 
-export const SourceMaterialTypeSchema = z.enum([
-  'url',
-  'doi',
-  'isbn',
-  'pdf',
-  'textbook',
-  'video',
-  'audio',
-  'image',
-  'model',
-  'other',
-]);
-
 export const SourceMaterialSchema = z.looseObject({
   id: PlainTextSchema,
-  type: SourceMaterialTypeSchema,
-  value: PlainTextSchema,
   title: PlainTextSchema,
+  /** What the source is (open, see `SOURCE_KINDS`). */
+  kind: OpenValueSchema.optional(),
+  url: AbsoluteURLSchema.optional(),
+  mimeType: z.string().regex(/^[a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+$/i, 'mimeType must be a MIME type such as "application/pdf"').optional(),
+  doi: z.string().regex(/^10\.\d{4,9}\/\S+$/, 'doi must look like "10.1038/s41586-021-04106-z" (without https://doi.org/)').optional(),
+  isbn: z
+    .string()
+    .refine((v) => /^(\d{9}[\dXx]|\d{13})$/.test(v.replace(/[\s-]/g, '')), 'isbn must be an ISBN-10 or ISBN-13 (hyphens allowed)')
+    .optional(),
+  set: UUIDSchema.optional(),
   description: z.string().optional(),
   authors: z.array(PlainTextSchema).optional(),
   publishedDate: ISO8601DateTimeSchema.optional(),
   retrievedAt: ISO8601DateTimeSchema.optional(),
   license: SPDXLicenseSchema.optional(),
-}).refine(
-  (data) => {
-    // For URL-based types, value must be a valid URL
-    const urlTypes = ['url', 'pdf', 'video', 'audio', 'image'];
-    if (urlTypes.includes(data.type)) {
-      try {
-        new URL(data.value);
-        return true;
-      } catch {
-        return false;
-      }
-    }
-    return true;
-  },
-  {
-    message: 'For url, pdf, video, audio and image types, value must be a valid URL',
-    path: ['value'],
-  }
-);
+});
 
 export const SourceReferenceSchema = z.looseObject({
   id: PlainTextSchema,
+  itemId: UUIDSchema.optional(),
   location: z.string().optional(),
   quote: RichContentSchema.optional(),
 });
@@ -306,16 +294,11 @@ export const LinkedSetObjectSchema = z.looseObject({
 // Pedagogy Object
 // ============================================================================
 
-export const BloomLevelSchema = z.enum([
-  'remember',
-  'understand',
-  'apply',
-  'analyze',
-  'evaluate',
-  'create',
-]);
+/** Open (see `BLOOM_LEVELS`): another value is a warning and is ignored. */
+export const BloomLevelSchema = OpenValueSchema;
 
-export const CognitiveLoadSchema = z.enum(['low', 'medium', 'high']);
+/** Open (see `COGNITIVE_LOADS`): another value is a warning and is ignored. */
+export const CognitiveLoadSchema = OpenValueSchema;
 
 export const PedagogySchema = z.looseObject({
   bloomLevel: BloomLevelSchema.optional(),
@@ -1073,6 +1056,14 @@ export const CustomItemSchema = BaseItemSchema.extend({
 
 /** Any item: an official item type or a custom `x-` item. */
 export const AnyOQSEItemSchema = z.union([OQSEItemSchema, CustomItemSchema]);
+
+/**
+ * An item of a type this library does not know (from a later 1.x version). Like a custom
+ * item, only the common properties are validated and every other field is preserved.
+ */
+export const UnknownTypeItemSchema = BaseItemSchema.extend({
+  type: z.string().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, 'An item type is a lowercase name (letters, digits and hyphens)'),
+});
 
 /** Returns the schema that applies to the given raw item (official or custom). */
 export function getItemSchema(data: unknown): typeof OQSEItemSchema | typeof CustomItemSchema {

@@ -161,6 +161,24 @@ describe('settings', () => {
     expect(SettingDefinitionSchema.safeParse({ ...defs[0], type: 'color' }).success).toBe(false);
   });
 
+  it('a manifest may use setting types of a later version: they get their default (SPEC 2)', () => {
+    const manifest = {
+      version: '1.0', id: 'https://example.com/p', appName: 'P', capabilities: { actions: ['render'], types: ['mcq-single'] },
+      appSpecific: { memizy: { protocol: '1.0', modes: { solo: {} }, settings: [defs[0], { id: 'palette', type: 'color', label: 'Colour', default: '#ff0000' }] } },
+    };
+    const read = safeParsePluginManifest(manifest);
+    if (!read.success) throw new Error(read.errors.join('; '));
+    expect(read.runtime.settings.map((s) => s.id)).toEqual(['time']);
+    expect(read.runtime.unknownSettings).toEqual([{ id: 'palette', type: 'color', label: 'Colour', default: '#ff0000' }]);
+    const resolved = resolveSettings(read.runtime.settings, { palette: '#00ff00' }, read.runtime.unknownSettings);
+    expect(resolved).toEqual({ values: { time: defs[0].default, palette: '#ff0000' }, errors: [] });
+    // A known type still gets clear messages; an unknown one needs a default.
+    const bad = { ...manifest, appSpecific: { memizy: { ...manifest.appSpecific.memizy, settings: [{ ...defs[0], default: 500 }] } } };
+    expect(safeParsePluginManifest(bad)).toMatchObject({ success: false, errors: [expect.stringMatching(/default is outside min\/max/)] });
+    const noDefault = { ...manifest, appSpecific: { memizy: { ...manifest.appSpecific.memizy, settings: [{ id: 'p', type: 'color', label: 'C' }] } } };
+    expect(safeParsePluginManifest(noDefault).success).toBe(false);
+  });
+
   it('resolves values with defaults and reports problems', () => {
     expect(resolveSettings(defs)).toEqual({ values: { time: 20, sound: true, map: 'eu', title: '' }, errors: [] });
     const result = resolveSettings(defs, { time: 300, map: 'cz', extra: 1 });
@@ -185,6 +203,7 @@ describe('plugin manifest', () => {
       solo: true,
       multiplayer: null,
       settings: [],
+      unknownSettings: [],
       settingsScreen: null,
       orientation: 'any',
       views: ['solo'],

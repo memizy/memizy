@@ -254,7 +254,7 @@ export class LocalSession {
       this.authority = host.id;
     }
 
-    const resolved = resolveSettings(this.runtime.settings, config.settings ?? {});
+    const resolved = resolveSettings(this.runtime.settings, config.settings ?? {}, this.runtime.unknownSettings);
     if (resolved.errors.length > 0) throw new Error(`Invalid settings: ${resolved.errors.join('; ')}`);
     this.settingValues = resolved.values;
     // A plain copy: the set may be a framework proxy (Vue reactive) that structuredClone rejects.
@@ -662,7 +662,7 @@ export class LocalSession {
         call('updateSettings', () => {
           const [update] = parseHostCall('updateSettings', args);
           requireView('updateSettings', instance.view === 'settings');
-          const { values, errors } = resolveSettings(this.runtime.settings, update.values);
+          const { values, errors } = resolveSettings(this.runtime.settings, update.values, this.runtime.unknownSettings);
           this.settingValues = values;
           this.settingsOk = update.valid && errors.length === 0;
           const message = update.message ?? errors[0];

@@ -6,7 +6,29 @@
 
 import type { LocalizedText, SettingDefinition } from './settingsSchema';
 
-export type SettingValue = string | number | boolean;
+/** Setting types of this protocol version. */
+export const SETTING_TYPES = ['number', 'boolean', 'select', 'text'] as const;
+
+/**
+ * A setting of a type from a later protocol version (SPEC 2): hosts do not show it and pass
+ * its `default` to the plugin.
+ */
+export interface UnknownSettingDefinition {
+  id: string;
+  type: string;
+  default: unknown;
+  label: LocalizedText;
+  description?: LocalizedText;
+  modes?: ('solo' | 'multiplayer')[];
+}
+
+/** Whether a manifest setting is of a type this protocol version defines. */
+export function isKnownSetting(def: SettingDefinition | UnknownSettingDefinition): def is SettingDefinition {
+  return (SETTING_TYPES as readonly string[]).includes(def.type);
+}
+
+/** A setting value: a number, boolean or text, or any JSON (a setting type of a later version). */
+export type SettingValue = string | number | boolean | null | SettingValue[] | { [key: string]: SettingValue };
 
 // ============================================================================
 // Values
@@ -39,6 +61,8 @@ export function validateSettingValue(def: SettingDefinition, value: unknown): st
 export function resolveSettings(
   definitions: SettingDefinition[],
   input: Record<string, unknown> = {},
+  /** Settings of types from a later version: always their default; input values are ignored. */
+  unknownSettings: UnknownSettingDefinition[] = [],
 ): { values: Record<string, SettingValue>; errors: string[] } {
   const values: Record<string, SettingValue> = {};
   const errors: string[] = [];
@@ -56,8 +80,9 @@ export function resolveSettings(
       values[def.id] = input[def.id] as SettingValue;
     }
   }
+  for (const def of unknownSettings) values[def.id] = structuredClone(def.default) as SettingValue;
   for (const key of Object.keys(input)) {
-    if (!definitions.some((def) => def.id === key)) errors.push(`${key}: unknown setting`);
+    if (!definitions.some((def) => def.id === key) && !unknownSettings.some((def) => def.id === key)) errors.push(`${key}: unknown setting`);
   }
   return { values, errors };
 }

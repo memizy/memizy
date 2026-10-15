@@ -116,5 +116,5 @@
     "updatedAt",
     "url"
   ],
-  "additionalProperties": false
+  "additionalProperties": {}
 }

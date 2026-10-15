@@ -96,6 +96,16 @@ device) and makes **public items** without the fields that give answers away
 (`answerHidden: true`; SPEC 4.4). The authority and solo get full items; other instances in
 multiplayer get public items. Answers are checked only in actions (`checkAnswer`, which
 refuses public items). Answers refer to **choice IDs**, so shuffling never changes them.
+Public items are **fail closed**: they keep only the fields the OQSE schema of the type
+lists, so a field added by a later OQSE version can never reveal an answer through an older
+host.
+
+**Questions have two axes** (SPEC 10). *Whose content*: one shared set (today; the
+authority checks, answers stay hidden, the game can be fair) or each player's own set
+(planned "personal sets": the player's device checks, a relaxed game based on trust).
+*How they are chosen*: the same for everyone or different per player (randomly, at their
+own pace, or by their progress – the planned host method `pickItems`). Progress always
+belongs to each player.
 
 ### 2.5 Canonical and authoring formats
 
@@ -145,8 +155,14 @@ ended with a result is not continued (its snapshot is deleted).
 
 - **Learning progress** belongs to the host: the game reports answers with
   `recordAnswer` (what was answered, in the OQSE Answer Formats; a flashcard self-rating is
-  an answer), the host's `LearningAlgorithm` (Leitner by default) decides the new record and
-  stores it through `HostStorage`.
+  an answer; `score` for partial credit), the host's `LearningAlgorithm` (Leitner by
+  default) decides the new record and stores it through `HostStorage`. The OQSEP record
+  keeps the last answer and the learner's `starred`; a history of attempts (for teachers'
+  statistics) belongs in the platform's database.
+- **Lessons and mistakes**: an item's `sources` may point to a lesson – a `note` in an OQSE
+  set (`SourceMaterial.set` + `SourceReference.itemId`, the `quote` marks the passage). Hosts
+  show "where to learn this" in their review of mistakes after a game; from inside a game it
+  is the planned `openSource`.
 - **Plugin data** (`ui.save` / `ui.saved`): small JSON per player across sets (`plugin`) or
   per set (`set`), for unlocked levels or best scores.
 - **Services** (`ui.service`): things a set cannot contain (AI answers, fresh exercises),
@@ -170,16 +186,24 @@ ended with a result is not continued (its snapshot is deleted).
 ### 3.2 What may change in 1.x
 
 New optional fields, new methods guarded by a feature (`features` in the handshake), new
-setting types, new enum values where receivers must ignore unknown ones (error codes,
-`sessionEnded` reasons, `Player` fields), larger limits. Libraries inside the SDKs may be
-updated. Everything else in SPEC 9 is frozen.
+setting types (older hosts pass their default), new enum values where receivers must ignore
+unknown ones (error codes, `sessionEnded` reasons, `Player` fields), larger limits. Libraries
+inside the SDKs may be updated. Everything else in SPEC 9 is frozen.
+
+**OQSE can grow without breaking older applications** because 1.0 already says what to do
+with the unknown: unknown keys, tags and items of unknown types are ignored and **preserved**
+on export (the reference loader returns such items in `unsupportedItems`); **open** fields
+(media type, source kind, Bloom level…) fall back to a defined behavior; OQSEM ignores item
+types, actions and asset categories it does not know. What 1.x may not do: change which
+answers are correct, or put answer data in a new place of an existing item type.
 
 ### 3.3 Reserved names
 
 - **Stable names for later features** (SPEC 10): the address `"server"`, the host methods
-  `exit`, `resize`, `saveProgress`, `uploadAsset`, the plugin method `setChanged`, the
-  features `edit-set`, `teams`, `replay`, `Player.active`, hot-seat, host migration, item
-  field `generated`.
+  `exit`, `resize`, `saveProgress`, `uploadAsset`, `pickItems`, `openSource`, `markItem`, the
+  plugin method `setChanged`, the features `edit-set`, `teams`, `replay`, `personal-sets`
+  (with the manifest key `modes.multiplayer.sets` and `Player.set`), `Player.active`,
+  hot-seat, host migration, item field `generated`.
 - **SDK namespaces** (SPEC 9): action names and timer keys starting with `$`; HTML
   attributes `data-mz-…` (besides `data-act`, `data-local`, `data-payload`, `data-setting`,
   `data-keep`, `data-key`); CSS classes `mz-…`. State fields of the SDK exist only on request
@@ -265,6 +289,15 @@ Reserved in the contract (section 3.3) and planned:
   its own older SDKs; Play's flows are the reference.
 - **Server authority** for official games (graded homework, larger games), running the
   same rules and `prepareDisplaySet` on the server.
+- **Personal sets and adaptive questions** (1.1): each player brings their own set and the
+  player's device checks the answers (`modes.multiplayer.sets: ["personal"]`, `Player.set`,
+  an SDK flow for "a local question"); the host chooses questions by each player's progress
+  (`pickItems`). Acceptance test: Hexagon Empires (Civhrad) with personal sets.
+- **Learning from mistakes**: "where to learn this" from inside a game (`openSource`), stars
+  from inside a game (`markItem`); the platform's review of mistakes, "practise only starred",
+  teachers' statistics from a history of answers.
+- **OQSE additions** (additive): an author's `importance` of an item; further source
+  identifiers.
 - **Embedding** games in articles and courses (`resize`), leaving from inside a game (`exit`),
   live set editing (`setChanged`), placement tests (`saveProgress`), recording and replaying
   games (`replay`), teams, hot-seat, host migration.

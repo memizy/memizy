@@ -47,12 +47,7 @@
             "properties": {
               "type": {
                 "type": "string",
-                "enum": [
-                  "image",
-                  "audio",
-                  "video",
-                  "model"
-                ]
+                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
               },
               "value": {
                 "type": "string",
@@ -113,11 +108,7 @@
                     },
                     "kind": {
                       "type": "string",
-                      "enum": [
-                        "captions",
-                        "subtitles",
-                        "descriptions"
-                      ]
+                      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                     }
                   },
                   "required": [
@@ -329,26 +320,32 @@
               "id": {
                 "type": "string"
               },
-              "type": {
-                "type": "string",
-                "enum": [
-                  "url",
-                  "doi",
-                  "isbn",
-                  "pdf",
-                  "textbook",
-                  "video",
-                  "audio",
-                  "image",
-                  "model",
-                  "other"
-                ]
-              },
-              "value": {
-                "type": "string"
-              },
               "title": {
                 "type": "string"
+              },
+              "kind": {
+                "type": "string",
+                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+              },
+              "url": {
+                "type": "string",
+                "format": "uri"
+              },
+              "mimeType": {
+                "type": "string",
+                "pattern": "^[a-z0-9!#$&^_.+-]+\\/[a-z0-9!#$&^_.+-]+$"
+              },
+              "doi": {
+                "type": "string",
+                "pattern": "^10\\.\\d{4,9}\\/\\S+$"
+              },
+              "isbn": {
+                "type": "string"
+              },
+              "set": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
               },
               "description": {
                 "type": "string"
@@ -374,8 +371,6 @@
             },
             "required": [
               "id",
-              "type",
-              "value",
               "title"
             ],
             "additionalProperties": {}
@@ -489,12 +484,7 @@
                       "properties": {
                         "type": {
                           "type": "string",
-                          "enum": [
-                            "image",
-                            "audio",
-                            "video",
-                            "model"
-                          ]
+                          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                         },
                         "value": {
                           "type": "string",
@@ -555,11 +545,7 @@
                               },
                               "kind": {
                                 "type": "string",
-                                "enum": [
-                                  "captions",
-                                  "subtitles",
-                                  "descriptions"
-                                ]
+                                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                               }
                             },
                             "required": [
@@ -651,6 +637,11 @@
                         "id": {
                           "type": "string"
                         },
+                        "itemId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
                         "location": {
                           "type": "string"
                         },
@@ -686,14 +677,7 @@
                     "properties": {
                       "bloomLevel": {
                         "type": "string",
-                        "enum": [
-                          "remember",
-                          "understand",
-                          "apply",
-                          "analyze",
-                          "evaluate",
-                          "create"
-                        ]
+                        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                       },
                       "irtDifficulty": {
                         "type": "number"
@@ -712,11 +696,7 @@
                       },
                       "cognitiveLoad": {
                         "type": "string",
-                        "enum": [
-                          "low",
-                          "medium",
-                          "high"
-                        ]
+                        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                       },
                       "partialCredit": {
                         "type": "boolean"
@@ -787,12 +767,7 @@
                       "properties": {
                         "type": {
                           "type": "string",
-                          "enum": [
-                            "image",
-                            "audio",
-                            "video",
-                            "model"
-                          ]
+                          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                         },
                         "value": {
                           "type": "string",
@@ -853,11 +828,7 @@
                               },
                               "kind": {
                                 "type": "string",
-                                "enum": [
-                                  "captions",
-                                  "subtitles",
-                                  "descriptions"
-                                ]
+                                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                               }
                             },
                             "required": [
@@ -949,6 +920,11 @@
                         "id": {
                           "type": "string"
                         },
+                        "itemId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
                         "location": {
                           "type": "string"
                         },
@@ -984,14 +960,7 @@
                     "properties": {
                       "bloomLevel": {
                         "type": "string",
-                        "enum": [
-                          "remember",
-                          "understand",
-                          "apply",
-                          "analyze",
-                          "evaluate",
-                          "create"
-                        ]
+                        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                       },
                       "irtDifficulty": {
                         "type": "number"
@@ -1010,11 +979,7 @@
                       },
                       "cognitiveLoad": {
                         "type": "string",
-                        "enum": [
-                          "low",
-                          "medium",
-                          "high"
-                        ]
+                        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                       },
                       "partialCredit": {
                         "type": "boolean"
@@ -1083,12 +1048,7 @@
                       "properties": {
                         "type": {
                           "type": "string",
-                          "enum": [
-                            "image",
-                            "audio",
-                            "video",
-                            "model"
-                          ]
+                          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                         },
                         "value": {
                           "type": "string",
@@ -1149,11 +1109,7 @@
                               },
                               "kind": {
                                 "type": "string",
-                                "enum": [
-                                  "captions",
-                                  "subtitles",
-                                  "descriptions"
-                                ]
+                                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                               }
                             },
                             "required": [
@@ -1245,6 +1201,11 @@
                         "id": {
                           "type": "string"
                         },
+                        "itemId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
                         "location": {
                           "type": "string"
                         },
@@ -1280,14 +1241,7 @@
                     "properties": {
                       "bloomLevel": {
                         "type": "string",
-                        "enum": [
-                          "remember",
-                          "understand",
-                          "apply",
-                          "analyze",
-                          "evaluate",
-                          "create"
-                        ]
+                        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                       },
                       "irtDifficulty": {
                         "type": "number"
@@ -1306,11 +1260,7 @@
                       },
                       "cognitiveLoad": {
                         "type": "string",
-                        "enum": [
-                          "low",
-                          "medium",
-                          "high"
-                        ]
+                        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                       },
                       "partialCredit": {
                         "type": "boolean"
@@ -1377,12 +1327,7 @@
                       "properties": {
                         "type": {
                           "type": "string",
-                          "enum": [
-                            "image",
-                            "audio",
-                            "video",
-                            "model"
-                          ]
+                          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                         },
                         "value": {
                           "type": "string",
@@ -1443,11 +1388,7 @@
                               },
                               "kind": {
                                 "type": "string",
-                                "enum": [
-                                  "captions",
-                                  "subtitles",
-                                  "descriptions"
-                                ]
+                                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                               }
                             },
                             "required": [
@@ -1539,6 +1480,11 @@
                         "id": {
                           "type": "string"
                         },
+                        "itemId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
                         "location": {
                           "type": "string"
                         },
@@ -1574,14 +1520,7 @@
                     "properties": {
                       "bloomLevel": {
                         "type": "string",
-                        "enum": [
-                          "remember",
-                          "understand",
-                          "apply",
-                          "analyze",
-                          "evaluate",
-                          "create"
-                        ]
+                        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                       },
                       "irtDifficulty": {
                         "type": "number"
@@ -1600,11 +1539,7 @@
                       },
                       "cognitiveLoad": {
                         "type": "string",
-                        "enum": [
-                          "low",
-                          "medium",
-                          "high"
-                        ]
+                        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                       },
                       "partialCredit": {
                         "type": "boolean"
@@ -1705,12 +1640,7 @@
                       "properties": {
                         "type": {
                           "type": "string",
-                          "enum": [
-                            "image",
-                            "audio",
-                            "video",
-                            "model"
-                          ]
+                          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                         },
                         "value": {
                           "type": "string",
@@ -1771,11 +1701,7 @@
                               },
                               "kind": {
                                 "type": "string",
-                                "enum": [
-                                  "captions",
-                                  "subtitles",
-                                  "descriptions"
-                                ]
+                                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                               }
                             },
                             "required": [
@@ -1867,6 +1793,11 @@
                         "id": {
                           "type": "string"
                         },
+                        "itemId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
                         "location": {
                           "type": "string"
                         },
@@ -1902,14 +1833,7 @@
                     "properties": {
                       "bloomLevel": {
                         "type": "string",
-                        "enum": [
-                          "remember",
-                          "understand",
-                          "apply",
-                          "analyze",
-                          "evaluate",
-                          "create"
-                        ]
+                        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                       },
                       "irtDifficulty": {
                         "type": "number"
@@ -1928,11 +1852,7 @@
                       },
                       "cognitiveLoad": {
                         "type": "string",
-                        "enum": [
-                          "low",
-                          "medium",
-                          "high"
-                        ]
+                        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                       },
                       "partialCredit": {
                         "type": "boolean"
@@ -2047,12 +1967,7 @@
                       "properties": {
                         "type": {
                           "type": "string",
-                          "enum": [
-                            "image",
-                            "audio",
-                            "video",
-                            "model"
-                          ]
+                          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                         },
                         "value": {
                           "type": "string",
@@ -2113,11 +2028,7 @@
                               },
                               "kind": {
                                 "type": "string",
-                                "enum": [
-                                  "captions",
-                                  "subtitles",
-                                  "descriptions"
-                                ]
+                                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                               }
                             },
                             "required": [
@@ -2209,6 +2120,11 @@
                         "id": {
                           "type": "string"
                         },
+                        "itemId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
                         "location": {
                           "type": "string"
                         },
@@ -2244,14 +2160,7 @@
                     "properties": {
                       "bloomLevel": {
                         "type": "string",
-                        "enum": [
-                          "remember",
-                          "understand",
-                          "apply",
-                          "analyze",
-                          "evaluate",
-                          "create"
-                        ]
+                        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                       },
                       "irtDifficulty": {
                         "type": "number"
@@ -2270,11 +2179,7 @@
                       },
                       "cognitiveLoad": {
                         "type": "string",
-                        "enum": [
-                          "low",
-                          "medium",
-                          "high"
-                        ]
+                        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                       },
                       "partialCredit": {
                         "type": "boolean"
@@ -2354,12 +2259,7 @@
                       "properties": {
                         "type": {
                           "type": "string",
-                          "enum": [
-                            "image",
-                            "audio",
-                            "video",
-                            "model"
-                          ]
+                          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                         },
                         "value": {
                           "type": "string",
@@ -2420,11 +2320,7 @@
                               },
                               "kind": {
                                 "type": "string",
-                                "enum": [
-                                  "captions",
-                                  "subtitles",
-                                  "descriptions"
-                                ]
+                                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                               }
                             },
                             "required": [
@@ -2516,6 +2412,11 @@
                         "id": {
                           "type": "string"
                         },
+                        "itemId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
                         "location": {
                           "type": "string"
                         },
@@ -2551,14 +2452,7 @@
                     "properties": {
                       "bloomLevel": {
                         "type": "string",
-                        "enum": [
-                          "remember",
-                          "understand",
-                          "apply",
-                          "analyze",
-                          "evaluate",
-                          "create"
-                        ]
+                        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                       },
                       "irtDifficulty": {
                         "type": "number"
@@ -2577,11 +2471,7 @@
                       },
                       "cognitiveLoad": {
                         "type": "string",
-                        "enum": [
-                          "low",
-                          "medium",
-                          "high"
-                        ]
+                        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                       },
                       "partialCredit": {
                         "type": "boolean"
@@ -2672,12 +2562,7 @@
                       "properties": {
                         "type": {
                           "type": "string",
-                          "enum": [
-                            "image",
-                            "audio",
-                            "video",
-                            "model"
-                          ]
+                          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                         },
                         "value": {
                           "type": "string",
@@ -2738,11 +2623,7 @@
                               },
                               "kind": {
                                 "type": "string",
-                                "enum": [
-                                  "captions",
-                                  "subtitles",
-                                  "descriptions"
-                                ]
+                                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                               }
                             },
                             "required": [
@@ -2834,6 +2715,11 @@
                         "id": {
                           "type": "string"
                         },
+                        "itemId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
                         "location": {
                           "type": "string"
                         },
@@ -2869,14 +2755,7 @@
                     "properties": {
                       "bloomLevel": {
                         "type": "string",
-                        "enum": [
-                          "remember",
-                          "understand",
-                          "apply",
-                          "analyze",
-                          "evaluate",
-                          "create"
-                        ]
+                        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                       },
                       "irtDifficulty": {
                         "type": "number"
@@ -2895,11 +2774,7 @@
                       },
                       "cognitiveLoad": {
                         "type": "string",
-                        "enum": [
-                          "low",
-                          "medium",
-                          "high"
-                        ]
+                        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                       },
                       "partialCredit": {
                         "type": "boolean"
@@ -3020,12 +2895,7 @@
                       "properties": {
                         "type": {
                           "type": "string",
-                          "enum": [
-                            "image",
-                            "audio",
-                            "video",
-                            "model"
-                          ]
+                          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                         },
                         "value": {
                           "type": "string",
@@ -3086,11 +2956,7 @@
                               },
                               "kind": {
                                 "type": "string",
-                                "enum": [
-                                  "captions",
-                                  "subtitles",
-                                  "descriptions"
-                                ]
+                                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                               }
                             },
                             "required": [
@@ -3182,6 +3048,11 @@
                         "id": {
                           "type": "string"
                         },
+                        "itemId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
                         "location": {
                           "type": "string"
                         },
@@ -3217,14 +3088,7 @@
                     "properties": {
                       "bloomLevel": {
                         "type": "string",
-                        "enum": [
-                          "remember",
-                          "understand",
-                          "apply",
-                          "analyze",
-                          "evaluate",
-                          "create"
-                        ]
+                        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                       },
                       "irtDifficulty": {
                         "type": "number"
@@ -3243,11 +3107,7 @@
                       },
                       "cognitiveLoad": {
                         "type": "string",
-                        "enum": [
-                          "low",
-                          "medium",
-                          "high"
-                        ]
+                        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                       },
                       "partialCredit": {
                         "type": "boolean"
@@ -3380,12 +3240,7 @@
                       "properties": {
                         "type": {
                           "type": "string",
-                          "enum": [
-                            "image",
-                            "audio",
-                            "video",
-                            "model"
-                          ]
+                          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                         },
                         "value": {
                           "type": "string",
@@ -3446,11 +3301,7 @@
                               },
                               "kind": {
                                 "type": "string",
-                                "enum": [
-                                  "captions",
-                                  "subtitles",
-                                  "descriptions"
-                                ]
+                                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                               }
                             },
                             "required": [
@@ -3542,6 +3393,11 @@
                         "id": {
                           "type": "string"
                         },
+                        "itemId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
                         "location": {
                           "type": "string"
                         },
@@ -3577,14 +3433,7 @@
                     "properties": {
                       "bloomLevel": {
                         "type": "string",
-                        "enum": [
-                          "remember",
-                          "understand",
-                          "apply",
-                          "analyze",
-                          "evaluate",
-                          "create"
-                        ]
+                        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                       },
                       "irtDifficulty": {
                         "type": "number"
@@ -3603,11 +3452,7 @@
                       },
                       "cognitiveLoad": {
                         "type": "string",
-                        "enum": [
-                          "low",
-                          "medium",
-                          "high"
-                        ]
+                        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                       },
                       "partialCredit": {
                         "type": "boolean"
@@ -3754,12 +3599,7 @@
                       "properties": {
                         "type": {
                           "type": "string",
-                          "enum": [
-                            "image",
-                            "audio",
-                            "video",
-                            "model"
-                          ]
+                          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                         },
                         "value": {
                           "type": "string",
@@ -3820,11 +3660,7 @@
                               },
                               "kind": {
                                 "type": "string",
-                                "enum": [
-                                  "captions",
-                                  "subtitles",
-                                  "descriptions"
-                                ]
+                                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                               }
                             },
                             "required": [
@@ -3916,6 +3752,11 @@
                         "id": {
                           "type": "string"
                         },
+                        "itemId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
                         "location": {
                           "type": "string"
                         },
@@ -3951,14 +3792,7 @@
                     "properties": {
                       "bloomLevel": {
                         "type": "string",
-                        "enum": [
-                          "remember",
-                          "understand",
-                          "apply",
-                          "analyze",
-                          "evaluate",
-                          "create"
-                        ]
+                        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                       },
                       "irtDifficulty": {
                         "type": "number"
@@ -3977,11 +3811,7 @@
                       },
                       "cognitiveLoad": {
                         "type": "string",
-                        "enum": [
-                          "low",
-                          "medium",
-                          "high"
-                        ]
+                        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                       },
                       "partialCredit": {
                         "type": "boolean"
@@ -4082,12 +3912,7 @@
                       "properties": {
                         "type": {
                           "type": "string",
-                          "enum": [
-                            "image",
-                            "audio",
-                            "video",
-                            "model"
-                          ]
+                          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                         },
                         "value": {
                           "type": "string",
@@ -4148,11 +3973,7 @@
                               },
                               "kind": {
                                 "type": "string",
-                                "enum": [
-                                  "captions",
-                                  "subtitles",
-                                  "descriptions"
-                                ]
+                                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                               }
                             },
                             "required": [
@@ -4244,6 +4065,11 @@
                         "id": {
                           "type": "string"
                         },
+                        "itemId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
                         "location": {
                           "type": "string"
                         },
@@ -4279,14 +4105,7 @@
                     "properties": {
                       "bloomLevel": {
                         "type": "string",
-                        "enum": [
-                          "remember",
-                          "understand",
-                          "apply",
-                          "analyze",
-                          "evaluate",
-                          "create"
-                        ]
+                        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                       },
                       "irtDifficulty": {
                         "type": "number"
@@ -4305,11 +4124,7 @@
                       },
                       "cognitiveLoad": {
                         "type": "string",
-                        "enum": [
-                          "low",
-                          "medium",
-                          "high"
-                        ]
+                        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                       },
                       "partialCredit": {
                         "type": "boolean"
@@ -4396,12 +4211,7 @@
                       "properties": {
                         "type": {
                           "type": "string",
-                          "enum": [
-                            "image",
-                            "audio",
-                            "video",
-                            "model"
-                          ]
+                          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                         },
                         "value": {
                           "type": "string",
@@ -4462,11 +4272,7 @@
                               },
                               "kind": {
                                 "type": "string",
-                                "enum": [
-                                  "captions",
-                                  "subtitles",
-                                  "descriptions"
-                                ]
+                                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                               }
                             },
                             "required": [
@@ -4558,6 +4364,11 @@
                         "id": {
                           "type": "string"
                         },
+                        "itemId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
                         "location": {
                           "type": "string"
                         },
@@ -4593,14 +4404,7 @@
                     "properties": {
                       "bloomLevel": {
                         "type": "string",
-                        "enum": [
-                          "remember",
-                          "understand",
-                          "apply",
-                          "analyze",
-                          "evaluate",
-                          "create"
-                        ]
+                        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                       },
                       "irtDifficulty": {
                         "type": "number"
@@ -4619,11 +4423,7 @@
                       },
                       "cognitiveLoad": {
                         "type": "string",
-                        "enum": [
-                          "low",
-                          "medium",
-                          "high"
-                        ]
+                        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                       },
                       "partialCredit": {
                         "type": "boolean"
@@ -4823,12 +4623,7 @@
                       "properties": {
                         "type": {
                           "type": "string",
-                          "enum": [
-                            "image",
-                            "audio",
-                            "video",
-                            "model"
-                          ]
+                          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                         },
                         "value": {
                           "type": "string",
@@ -4889,11 +4684,7 @@
                               },
                               "kind": {
                                 "type": "string",
-                                "enum": [
-                                  "captions",
-                                  "subtitles",
-                                  "descriptions"
-                                ]
+                                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                               }
                             },
                             "required": [
@@ -4985,6 +4776,11 @@
                         "id": {
                           "type": "string"
                         },
+                        "itemId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
                         "location": {
                           "type": "string"
                         },
@@ -5020,14 +4816,7 @@
                     "properties": {
                       "bloomLevel": {
                         "type": "string",
-                        "enum": [
-                          "remember",
-                          "understand",
-                          "apply",
-                          "analyze",
-                          "evaluate",
-                          "create"
-                        ]
+                        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                       },
                       "irtDifficulty": {
                         "type": "number"
@@ -5046,11 +4835,7 @@
                       },
                       "cognitiveLoad": {
                         "type": "string",
-                        "enum": [
-                          "low",
-                          "medium",
-                          "high"
-                        ]
+                        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                       },
                       "partialCredit": {
                         "type": "boolean"
@@ -5171,12 +4956,7 @@
                       "properties": {
                         "type": {
                           "type": "string",
-                          "enum": [
-                            "image",
-                            "audio",
-                            "video",
-                            "model"
-                          ]
+                          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                         },
                         "value": {
                           "type": "string",
@@ -5237,11 +5017,7 @@
                               },
                               "kind": {
                                 "type": "string",
-                                "enum": [
-                                  "captions",
-                                  "subtitles",
-                                  "descriptions"
-                                ]
+                                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                               }
                             },
                             "required": [
@@ -5333,6 +5109,11 @@
                         "id": {
                           "type": "string"
                         },
+                        "itemId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
                         "location": {
                           "type": "string"
                         },
@@ -5368,14 +5149,7 @@
                     "properties": {
                       "bloomLevel": {
                         "type": "string",
-                        "enum": [
-                          "remember",
-                          "understand",
-                          "apply",
-                          "analyze",
-                          "evaluate",
-                          "create"
-                        ]
+                        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                       },
                       "irtDifficulty": {
                         "type": "number"
@@ -5394,11 +5168,7 @@
                       },
                       "cognitiveLoad": {
                         "type": "string",
-                        "enum": [
-                          "low",
-                          "medium",
-                          "high"
-                        ]
+                        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                       },
                       "partialCredit": {
                         "type": "boolean"
@@ -5500,12 +5270,7 @@
                       "properties": {
                         "type": {
                           "type": "string",
-                          "enum": [
-                            "image",
-                            "audio",
-                            "video",
-                            "model"
-                          ]
+                          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                         },
                         "value": {
                           "type": "string",
@@ -5566,11 +5331,7 @@
                               },
                               "kind": {
                                 "type": "string",
-                                "enum": [
-                                  "captions",
-                                  "subtitles",
-                                  "descriptions"
-                                ]
+                                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                               }
                             },
                             "required": [
@@ -5662,6 +5423,11 @@
                         "id": {
                           "type": "string"
                         },
+                        "itemId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
                         "location": {
                           "type": "string"
                         },
@@ -5697,14 +5463,7 @@
                     "properties": {
                       "bloomLevel": {
                         "type": "string",
-                        "enum": [
-                          "remember",
-                          "understand",
-                          "apply",
-                          "analyze",
-                          "evaluate",
-                          "create"
-                        ]
+                        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                       },
                       "irtDifficulty": {
                         "type": "number"
@@ -5723,11 +5482,7 @@
                       },
                       "cognitiveLoad": {
                         "type": "string",
-                        "enum": [
-                          "low",
-                          "medium",
-                          "high"
-                        ]
+                        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                       },
                       "partialCredit": {
                         "type": "boolean"
@@ -5874,12 +5629,7 @@
                       "properties": {
                         "type": {
                           "type": "string",
-                          "enum": [
-                            "image",
-                            "audio",
-                            "video",
-                            "model"
-                          ]
+                          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                         },
                         "value": {
                           "type": "string",
@@ -5940,11 +5690,7 @@
                               },
                               "kind": {
                                 "type": "string",
-                                "enum": [
-                                  "captions",
-                                  "subtitles",
-                                  "descriptions"
-                                ]
+                                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                               }
                             },
                             "required": [
@@ -6036,6 +5782,11 @@
                         "id": {
                           "type": "string"
                         },
+                        "itemId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
                         "location": {
                           "type": "string"
                         },
@@ -6071,14 +5822,7 @@
                     "properties": {
                       "bloomLevel": {
                         "type": "string",
-                        "enum": [
-                          "remember",
-                          "understand",
-                          "apply",
-                          "analyze",
-                          "evaluate",
-                          "create"
-                        ]
+                        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                       },
                       "irtDifficulty": {
                         "type": "number"
@@ -6097,11 +5841,7 @@
                       },
                       "cognitiveLoad": {
                         "type": "string",
-                        "enum": [
-                          "low",
-                          "medium",
-                          "high"
-                        ]
+                        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                       },
                       "partialCredit": {
                         "type": "boolean"
@@ -6172,12 +5912,7 @@
                       "properties": {
                         "type": {
                           "type": "string",
-                          "enum": [
-                            "image",
-                            "audio",
-                            "video",
-                            "model"
-                          ]
+                          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                         },
                         "value": {
                           "type": "string",
@@ -6238,11 +5973,7 @@
                               },
                               "kind": {
                                 "type": "string",
-                                "enum": [
-                                  "captions",
-                                  "subtitles",
-                                  "descriptions"
-                                ]
+                                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                               }
                             },
                             "required": [
@@ -6334,6 +6065,11 @@
                         "id": {
                           "type": "string"
                         },
+                        "itemId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
                         "location": {
                           "type": "string"
                         },
@@ -6369,14 +6105,7 @@
                     "properties": {
                       "bloomLevel": {
                         "type": "string",
-                        "enum": [
-                          "remember",
-                          "understand",
-                          "apply",
-                          "analyze",
-                          "evaluate",
-                          "create"
-                        ]
+                        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                       },
                       "irtDifficulty": {
                         "type": "number"
@@ -6395,11 +6124,7 @@
                       },
                       "cognitiveLoad": {
                         "type": "string",
-                        "enum": [
-                          "low",
-                          "medium",
-                          "high"
-                        ]
+                        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                       },
                       "partialCredit": {
                         "type": "boolean"
@@ -6663,12 +6388,7 @@
                       "properties": {
                         "type": {
                           "type": "string",
-                          "enum": [
-                            "image",
-                            "audio",
-                            "video",
-                            "model"
-                          ]
+                          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                         },
                         "value": {
                           "type": "string",
@@ -6729,11 +6449,7 @@
                               },
                               "kind": {
                                 "type": "string",
-                                "enum": [
-                                  "captions",
-                                  "subtitles",
-                                  "descriptions"
-                                ]
+                                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                               }
                             },
                             "required": [
@@ -6825,6 +6541,11 @@
                         "id": {
                           "type": "string"
                         },
+                        "itemId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
                         "location": {
                           "type": "string"
                         },
@@ -6860,14 +6581,7 @@
                     "properties": {
                       "bloomLevel": {
                         "type": "string",
-                        "enum": [
-                          "remember",
-                          "understand",
-                          "apply",
-                          "analyze",
-                          "evaluate",
-                          "create"
-                        ]
+                        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                       },
                       "irtDifficulty": {
                         "type": "number"
@@ -6886,11 +6600,7 @@
                       },
                       "cognitiveLoad": {
                         "type": "string",
-                        "enum": [
-                          "low",
-                          "medium",
-                          "high"
-                        ]
+                        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                       },
                       "partialCredit": {
                         "type": "boolean"
@@ -7000,12 +6710,7 @@
                       "properties": {
                         "type": {
                           "type": "string",
-                          "enum": [
-                            "image",
-                            "audio",
-                            "video",
-                            "model"
-                          ]
+                          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                         },
                         "value": {
                           "type": "string",
@@ -7066,11 +6771,7 @@
                               },
                               "kind": {
                                 "type": "string",
-                                "enum": [
-                                  "captions",
-                                  "subtitles",
-                                  "descriptions"
-                                ]
+                                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                               }
                             },
                             "required": [
@@ -7162,6 +6863,11 @@
                         "id": {
                           "type": "string"
                         },
+                        "itemId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
                         "location": {
                           "type": "string"
                         },
@@ -7197,14 +6903,7 @@
                     "properties": {
                       "bloomLevel": {
                         "type": "string",
-                        "enum": [
-                          "remember",
-                          "understand",
-                          "apply",
-                          "analyze",
-                          "evaluate",
-                          "create"
-                        ]
+                        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                       },
                       "irtDifficulty": {
                         "type": "number"
@@ -7223,11 +6922,7 @@
                       },
                       "cognitiveLoad": {
                         "type": "string",
-                        "enum": [
-                          "low",
-                          "medium",
-                          "high"
-                        ]
+                        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                       },
                       "partialCredit": {
                         "type": "boolean"
@@ -7301,12 +6996,7 @@
                       "properties": {
                         "type": {
                           "type": "string",
-                          "enum": [
-                            "image",
-                            "audio",
-                            "video",
-                            "model"
-                          ]
+                          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                         },
                         "value": {
                           "type": "string",
@@ -7367,11 +7057,7 @@
                               },
                               "kind": {
                                 "type": "string",
-                                "enum": [
-                                  "captions",
-                                  "subtitles",
-                                  "descriptions"
-                                ]
+                                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                               }
                             },
                             "required": [
@@ -7463,6 +7149,11 @@
                         "id": {
                           "type": "string"
                         },
+                        "itemId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
                         "location": {
                           "type": "string"
                         },
@@ -7498,14 +7189,7 @@
                     "properties": {
                       "bloomLevel": {
                         "type": "string",
-                        "enum": [
-                          "remember",
-                          "understand",
-                          "apply",
-                          "analyze",
-                          "evaluate",
-                          "create"
-                        ]
+                        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                       },
                       "irtDifficulty": {
                         "type": "number"
@@ -7524,11 +7208,7 @@
                       },
                       "cognitiveLoad": {
                         "type": "string",
-                        "enum": [
-                          "low",
-                          "medium",
-                          "high"
-                        ]
+                        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                       },
                       "partialCredit": {
                         "type": "boolean"
@@ -7675,12 +7355,7 @@
                       "properties": {
                         "type": {
                           "type": "string",
-                          "enum": [
-                            "image",
-                            "audio",
-                            "video",
-                            "model"
-                          ]
+                          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                         },
                         "value": {
                           "type": "string",
@@ -7741,11 +7416,7 @@
                               },
                               "kind": {
                                 "type": "string",
-                                "enum": [
-                                  "captions",
-                                  "subtitles",
-                                  "descriptions"
-                                ]
+                                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                               }
                             },
                             "required": [
@@ -7837,6 +7508,11 @@
                         "id": {
                           "type": "string"
                         },
+                        "itemId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
                         "location": {
                           "type": "string"
                         },
@@ -7872,14 +7548,7 @@
                     "properties": {
                       "bloomLevel": {
                         "type": "string",
-                        "enum": [
-                          "remember",
-                          "understand",
-                          "apply",
-                          "analyze",
-                          "evaluate",
-                          "create"
-                        ]
+                        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                       },
                       "irtDifficulty": {
                         "type": "number"
@@ -7898,11 +7567,7 @@
                       },
                       "cognitiveLoad": {
                         "type": "string",
-                        "enum": [
-                          "low",
-                          "medium",
-                          "high"
-                        ]
+                        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                       },
                       "partialCredit": {
                         "type": "boolean"
@@ -7988,12 +7653,7 @@
                   "properties": {
                     "type": {
                       "type": "string",
-                      "enum": [
-                        "image",
-                        "audio",
-                        "video",
-                        "model"
-                      ]
+                      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                     },
                     "value": {
                       "type": "string",
@@ -8054,11 +7714,7 @@
                           },
                           "kind": {
                             "type": "string",
-                            "enum": [
-                              "captions",
-                              "subtitles",
-                              "descriptions"
-                            ]
+                            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                           }
                         },
                         "required": [
@@ -8150,6 +7806,11 @@
                     "id": {
                       "type": "string"
                     },
+                    "itemId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
                     "location": {
                       "type": "string"
                     },
@@ -8185,14 +7846,7 @@
                 "properties": {
                   "bloomLevel": {
                     "type": "string",
-                    "enum": [
-                      "remember",
-                      "understand",
-                      "apply",
-                      "analyze",
-                      "evaluate",
-                      "create"
-                    ]
+                    "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                   },
                   "irtDifficulty": {
                     "type": "number"
@@ -8211,11 +7865,7 @@
                   },
                   "cognitiveLoad": {
                     "type": "string",
-                    "enum": [
-                      "low",
-                      "medium",
-                      "high"
-                    ]
+                    "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                   },
                   "partialCredit": {
                     "type": "boolean"

@@ -52,6 +52,7 @@ An OQSEHeader represents one catalog entry that points to a full OQSE set.
 
 ## Validation Notes
 
+- A header may contain keys from a later 1.x version (e.g., a new `meta` field). Readers ignore keys they do not know; tools that copy or rewrite headers preserve them unchanged.
 - OQSEH is intentionally lightweight and should remain a projection of OQSE `meta` plus `url`.
 - Header consumers should use `url` as the canonical pointer to the full set payload.
 

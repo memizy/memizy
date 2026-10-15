@@ -119,7 +119,7 @@ describe('Complex Constraints & Referential Integrity', () => {
         createdAt: '2025-01-01T00:00:00Z',
         updatedAt: '2025-01-01T00:00:00Z',
         language: 'en',
-        sourceMaterials: [{ id: 'src1', type: 'other', value: 'a', title: 'a' }]
+        sourceMaterials: [{ id: 'src1', kind: 'other', title: 'a' }]
       },
       items: [
         {

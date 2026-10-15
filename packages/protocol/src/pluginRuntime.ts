@@ -5,6 +5,7 @@
 
 import type { MemizyRuntimeManifest } from './manifestSchema';
 import type { SettingDefinition } from './settingsSchema';
+import { isKnownSetting, type UnknownSettingDefinition } from './settings';
 
 export type HostAs = 'presenter' | 'player';
 
@@ -22,6 +23,11 @@ export interface PluginRuntime {
     lateJoin: boolean;
   };
   settings: SettingDefinition[];
+  /**
+   * Settings of types from a later protocol version (SPEC 2): not shown; the plugin gets
+   * their `default` (pass them to `resolveSettings`).
+   */
+  unknownSettings: UnknownSettingDefinition[];
   settingsScreen: null | { size: 'compact' | 'large' };
   orientation: 'any' | 'portrait' | 'landscape';
   /** Views the plugin must render (SPEC 3.2). */
@@ -70,7 +76,8 @@ export function toRuntime(memizy: MemizyRuntimeManifest): PluginRuntime {
     set: memizy.set ?? 'required',
     solo: memizy.modes.solo !== undefined,
     multiplayer,
-    settings: memizy.settings ?? [],
+    settings: (memizy.settings ?? []).filter(isKnownSetting),
+    unknownSettings: (memizy.settings ?? []).filter((def) => !isKnownSetting(def)),
     settingsScreen: memizy.settingsScreen ? { size: memizy.settingsScreen.size } : null,
     orientation: memizy.display?.orientation ?? 'any',
     views,

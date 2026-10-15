@@ -565,6 +565,28 @@ describe('leitner', () => {
     expect(skipped.bucket).toBe(1);
     expect(skipped.stats.attempts).toBe(2);
   });
+
+  it("keeps the learner's star and fields of a later OQSEP version, stores the answer", () => {
+    const now = new Date('2026-10-04T10:00:00Z');
+    const previous = { bucket: 2, starred: true, futureField: 1, stats: { attempts: 1, incorrect: 0, streak: 1, futureStat: 2 } } as any;
+    const next = leitner.apply(previous, { itemId: 'x', isCorrect: false, answer: 'x', score: 0.5 }, now, setFile.items[0]) as any;
+    expect(next).toMatchObject({ bucket: 1, starred: true, futureField: 1, stats: { attempts: 2, futureStat: 2 }, lastAnswer: { isCorrect: false, answer: 'x' } });
+  });
+});
+
+describe('settings of a later protocol version', () => {
+  it('are not shown, get their default and ignore sent values', async () => {
+    const html = pluginHtml.replace(
+      '"settings":[',
+      '"settings":[{"id":"palette","type":"color","label":"Colour","default":{"r":1,"g":2,"b":3}},',
+    );
+    const loaded = loadPluginFromHtml(html);
+    if (!loaded.success) throw new Error(loaded.errors.join('; '));
+    expect(loaded.plugin.runtime.settings.map((s) => s.id)).toEqual(['rounds']);
+    expect(loaded.plugin.runtime.unknownSettings.map((s) => s.id)).toEqual(['palette']);
+    const session = new LocalSession({ plugin: loaded.plugin, set: setFile, mode: 'solo' });
+    expect(session.settings).toEqual({ palette: { r: 1, g: 2, b: 3 }, rounds: 2 });
+  });
 });
 
 describe('sandbox', () => {

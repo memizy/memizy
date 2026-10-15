@@ -10,12 +10,8 @@
  */
 
 import { z } from 'zod';
-import { OFFICIAL_ITEM_TYPES } from './oqse';
-import {
-  OFFICIAL_ACTIONS,
-  type OQSEManifest,
-} from './manifest';
-import { FeatureKeySchema, FeatureProfileSchema, PersonObjectSchema, PropertyKeySchema } from './oqseValidation';
+import type { OQSEManifest } from './manifest';
+import { FeatureKeySchema, FeatureProfileSchema, OpenValueSchema, PersonObjectSchema, PropertyKeySchema } from './oqseValidation';
 
 // ============================================================================
 // Primitive helpers
@@ -59,40 +55,36 @@ const SupportedManifestVersionSchema = z
   .regex(/^1\.\d+$/, 'Unsupported manifest version: this library reads OQSEM 1.x manifests (write "version": "1.0")');
 
 
-const OQSEItemTypeSchema = NonEmptyStringSchema.refine(
-  (v) =>
-    (OFFICIAL_ITEM_TYPES as ReadonlyArray<string>).includes(v) ||
-    v.startsWith('x-'),
-  { message: 'Custom types MUST use the "x-" prefix' }
-);
+/**
+ * An item type in `capabilities.types`: an official type, an `x-` custom type, or a type of
+ * a later 1.x version (a lowercase name; hosts ignore types they do not know).
+ */
+const OQSEItemTypeSchema = z
+  .string()
+  .regex(/^(x-)?[a-z0-9]+(-[a-z0-9]+)*$/, 'An item type is a lowercase name; custom types use the "x-" prefix');
 
 // ============================================================================
 // Actions
 // ============================================================================
 
 /**
- * A valid OQSE action: one of the five official actions, or a vendor-specific
- * action prefixed with `x-` (e.g. `x-acme-grade`).
+ * An OQSE action: one of the official actions (`render`, `edit`, `validate`, `import`,
+ * `export`), a vendor-specific action prefixed with `x-` (e.g. `x-acme-grade`), or an action
+ * of a later 1.x version (a lowercase name; hosts ignore actions they do not know).
  */
 export const OQSEActionSchema = z
   .string()
-  .refine(
-    (v) => (OFFICIAL_ACTIONS as ReadonlyArray<string>).includes(v) || v.startsWith('x-'),
-    {
-      message:
-        'Action must be one of [render, edit, validate, import, export] or have prefix "x-"',
-    }
-  );
+  .regex(/^(x-)?[a-z0-9]+(-[a-z0-9]+)*$/, 'An action is a lowercase name such as "render"; custom actions use the "x-" prefix');
 
 // ============================================================================
 // Study Mode & Question Density
 // ============================================================================
 
-/** Recommended study modality for a set of items. */
-export const OQSEStudyModeSchema = z.enum(['game', 'fun', 'drill']);
+/** Recommended study modality (open: `game`, `fun`, `drill`; hosts treat another value as absent). */
+export const OQSEStudyModeSchema = OpenValueSchema;
 
-/** Recommended question density per session. */
-export const OQSEQuestionDensitySchema = z.enum(['low', 'medium', 'high']);
+/** Recommended question density (open: `low`, `medium`, `high`; hosts treat another value as absent). */
+export const OQSEQuestionDensitySchema = OpenValueSchema;
 
 // ============================================================================
 // Feature Flags
@@ -169,7 +161,7 @@ export const ModelMimeTypeSchema = z
  * `null` means the category is not supported; `['*']` means all MIME types
  * within that category are accepted; an array lists explicit MIME types.
  */
-export const ManifestAssetsSchema = z.object({
+export const ManifestAssetsSchema = z.looseObject({
   image: wildcardOrExplicit(ImageMimeTypeSchema).optional(),
   audio: wildcardOrExplicit(AudioMimeTypeSchema).optional(),
   video: wildcardOrExplicit(VideoMimeTypeSchema).optional(),
@@ -217,7 +209,7 @@ export const ManifestCapabilitiesSchema = FeatureProfileSchema.extend({
  * - `capabilities` (default `{}`) and `capabilities.actions` (default `["render"]`) may be omitted
  */
 export const OQSEManifestSchema = z
-  .object({
+  .looseObject({
     // Recommended schema URL: https://cdn.jsdelivr.net/npm/@memizy/oqse@1/schemas/oqse-manifest-v1.0.json
     $schema: AbsoluteURLSchema.optional(),
     // --- Identity ---

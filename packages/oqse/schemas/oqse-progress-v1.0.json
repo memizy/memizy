@@ -31,7 +31,7 @@
         "setId",
         "exportedAt"
       ],
-      "additionalProperties": false
+      "additionalProperties": {}
     },
     "records": {
       "type": "object",
@@ -95,7 +95,7 @@
               "incorrect",
               "streak"
             ],
-            "additionalProperties": false
+            "additionalProperties": {}
           },
           "lastAnswer": {
             "type": "object",
@@ -140,14 +140,18 @@
               },
               "isSkipped": {
                 "type": "boolean"
-              }
+              },
+              "answer": {}
             },
             "required": [
               "isCorrect",
               "answeredAt",
               "hintsUsed"
             ],
-            "additionalProperties": false
+            "additionalProperties": {}
+          },
+          "starred": {
+            "type": "boolean"
           },
           "appSpecific": {
             "type": "object",
@@ -161,7 +165,7 @@
           "bucket",
           "stats"
         ],
-        "additionalProperties": false
+        "additionalProperties": {}
       }
     }
   },
@@ -170,5 +174,5 @@
     "meta",
     "records"
   ],
-  "additionalProperties": false
+  "additionalProperties": {}
 }

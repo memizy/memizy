@@ -20,6 +20,8 @@ export interface LastAnswerObject {
 	timeSpent?: number;
 	hintsUsed?: number;
 	isSkipped?: boolean;
+	/** What the learner answered (OQSE Answer Formats), at most 4 KB as JSON. */
+	answer?: unknown;
 }
 
 /** Progress state for one item from the linked OQSE set. */
@@ -28,6 +30,8 @@ export interface ProgressRecord {
 	nextReviewAt?: string;
 	stats: StatsObject;
 	lastAnswer?: LastAnswerObject;
+	/** The learner starred the item (practise it on purpose). Default `false`; algorithms keep it. */
+	starred?: boolean;
 	appSpecific?: Record<string, unknown>;
 }
 

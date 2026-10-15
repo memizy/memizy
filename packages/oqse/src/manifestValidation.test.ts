@@ -3,10 +3,11 @@ import { OQSEActionSchema, FeatureFlagSchema, ManifestCapabilitiesSchema, OQSEMa
 import { formatOQSEErrors } from './utils';
 
 describe('Manifest Validation Schemas', () => {
-  it('OQSEActionSchema: allows official actions and x- prefixes', () => {
+  it('OQSEActionSchema: allows official actions, x- prefixes and actions of a later 1.x', () => {
     expect(OQSEActionSchema.safeParse('render').success).toBe(true); // Official
     expect(OQSEActionSchema.safeParse('x-custom-action').success).toBe(true); // Custom
-    expect(OQSEActionSchema.safeParse('unknown').success).toBe(false); // Invalid
+    expect(OQSEActionSchema.safeParse('review').success).toBe(true); // From a newer 1.x: hosts ignore it
+    expect(OQSEActionSchema.safeParse('Not An Action').success).toBe(false); // Not a name
   });
 
   it('FeatureFlagSchema: allows official features and x- prefixes', () => {
@@ -189,7 +190,7 @@ describe('Manifest Validation Schemas', () => {
     expect(invalid.success).toBe(false);
   });
 
-  it('ManifestCapabilitiesSchema: requires x- prefix for custom types', () => {
+  it('ManifestCapabilitiesSchema: types are lowercase names (official, x- or of a later 1.x)', () => {
     expect(
       ManifestCapabilitiesSchema.safeParse({
         actions: ['render'],
@@ -197,12 +198,9 @@ describe('Manifest Validation Schemas', () => {
       }).success
     ).toBe(true);
 
-    const invalid = ManifestCapabilitiesSchema.safeParse({
-      actions: ['render'],
-      types: ['custom-card'],
-    });
-
-    expect(invalid.success).toBe(false);
+    // A type of a later 1.x version: hosts that do not know it ignore it.
+    expect(ManifestCapabilitiesSchema.safeParse({ actions: ['render'], types: ['audio-response'] }).success).toBe(true);
+    expect(ManifestCapabilitiesSchema.safeParse({ actions: ['render'], types: ['Custom Card'] }).success).toBe(false);
   });
 
   it('ManifestCapabilitiesSchema: rejects mixed wildcard and explicit item types', () => {

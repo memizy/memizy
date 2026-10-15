@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod';
+import { SETTING_TYPES, type UnknownSettingDefinition } from './settings';
 
 // ============================================================================
 // Schemas
@@ -68,6 +69,7 @@ const TextSettingSchema = z
   })
   .refine((s) => s.maxLength === undefined || s.default.length <= s.maxLength, { message: 'default is longer than maxLength', path: ['default'] });
 
+/** A setting of a type this protocol version defines (SPEC 2). */
 export const SettingDefinitionSchema = z.discriminatedUnion('type', [
   NumberSettingSchema,
   BooleanSettingSchema,
@@ -76,3 +78,31 @@ export const SettingDefinitionSchema = z.discriminatedUnion('type', [
 ]);
 
 export type SettingDefinition = z.infer<typeof SettingDefinitionSchema>;
+
+/**
+ * A setting of a type from a later protocol version (SPEC 2): hosts do not show it and
+ * pass its `default` (any JSON value) to the plugin.
+ */
+export const UnknownSettingSchema = z.looseObject({
+  ...SettingBase,
+  type: z
+    .string()
+    .regex(/^[a-z][a-z0-9-]*$/, 'A setting type is a lowercase name')
+    .refine((type) => !(SETTING_TYPES as readonly string[]).includes(type), 'A known setting type'),
+  default: z.unknown().refine((value) => value !== undefined, 'A setting needs a default'),
+});
+
+/**
+ * One entry of `settings` in a manifest: a known setting (validated by its type, with clear
+ * messages) or a setting of a later version (only `id`, `label`, `default`).
+ */
+export const SettingEntrySchema = z.unknown().transform((value, ctx): SettingDefinition | UnknownSettingDefinition => {
+  const type = typeof value === 'object' && value !== null ? (value as { type?: unknown }).type : undefined;
+  const known = typeof type === 'string' && (SETTING_TYPES as readonly string[]).includes(type);
+  const result = (known ? SettingDefinitionSchema : UnknownSettingSchema).safeParse(value);
+  if (!result.success) {
+    for (const issue of result.error.issues) ctx.addIssue({ code: 'custom', message: issue.message, path: issue.path as PropertyKey[] });
+    return z.NEVER;
+  }
+  return result.data as SettingDefinition | UnknownSettingDefinition;
+});

@@ -18,8 +18,8 @@ export {
 } from './version';
 export { PROTOCOL_ERROR_CODES, ProtocolError, isProtocolErrorCode, toProtocolError, type ProtocolErrorCode } from './errors';
 export { LIMITS, type Limits } from './limits';
-export { LocalizedTextSchema, SettingDefinitionSchema, type LocalizedText, type SettingDefinition } from './settingsSchema';
-export { validateSettingValue, resolveSettings, settingsForMode, localize, type SettingValue } from './settings';
+export { LocalizedTextSchema, SettingDefinitionSchema, UnknownSettingSchema, type LocalizedText, type SettingDefinition } from './settingsSchema';
+export { validateSettingValue, resolveSettings, settingsForMode, localize, isKnownSetting, SETTING_TYPES, type SettingValue, type UnknownSettingDefinition } from './settings';
 export {
   HostAsSchema,
   MultiplayerModeSchema,

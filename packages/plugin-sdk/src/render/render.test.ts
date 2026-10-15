@@ -61,6 +61,12 @@ describe('rich text', () => {
     expect(renderRichText('<asset:a />', media('data:image/png;base64,AAAA'))).toContain('mz-missing-asset');
   });
 
+  it('shows media of an unknown type as a link and drops unknown OQSE tags', () => {
+    const html = renderRichText('Read <asset:doc /> and <term:photosynthesis />.', ctx({ resolveMedia: () => ({ type: 'document', value: 'https://example.com/a.pdf', altText: 'The article' }) }));
+    expect(html).toContain('<a class="mz-asset-link" href="https://example.com/a.pdf" target="_blank" rel="noopener noreferrer">The article</a>');
+    expect(html).not.toContain('term:');
+  });
+
   it('renders inline text without paragraphs', () => {
     expect(renderRichText('*a*', ctx(), { inline: true })).toBe('<em>a</em>');
   });

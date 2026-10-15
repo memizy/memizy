@@ -56,7 +56,8 @@ In this specification, the keywords **MUST**, **MUST NOT**, **SHOULD**, **SHOULD
     * **Plain Text:** Fields intended for metadata and identifiers (e.g., titles, tags, alt texts). Interpreted as plain text without any formatting.
     * **Rich Content:** Fields intended for educational content. Always written as **GitHub Flavored Markdown (GFM)** (plain text is valid Markdown), with media references using Media Tag syntax `<asset:key />` and the tags `<sub>`, `<sup>`, `<br>` without attributes. **LaTeX** mathematics compatible with KaTeX/MathJax (inline `$x^2$` and blocks `$$...$$` rendered as display style on a separate line) only when the `latex` feature is declared, otherwise `$` is a literal character. Raw HTML only with the `html` feature. See the [Official Feature Registry](#official-feature-registry).
   * **Media Embedding System (Assets):** The format uses a centralized "assets" system for embedding media in Rich Content fields. Media are defined in `item.assets` and referenced using the special tag `<asset:key />`. **[(See Media Reference Syntax)](#media-reference-syntax-media-tags)**.
-  * **Backward Compatibility:** Applications MUST ignore unknown keys (forward compatibility). New specification versions MUST NOT change the meaning of existing keys within the same MAJOR version.
+  * **Backward Compatibility:** Applications MUST ignore unknown keys (forward compatibility) and, when they save or export a file they read, MUST preserve them unchanged; the same holds for items of unknown types (see [Error Handling](#error-handling-error-handling-policy)). New specification versions MUST NOT change the meaning of existing keys within the same MAJOR version.
+  * **Open Values:** Some fields take a value from a list that a newer 1.x version may extend; they are marked **open** (e.g., `MediaObject.type`, `SourceMaterial.kind`). An application that does not know such a value uses the fallback the field defines and records a warning; it never rejects the set or the item because of it, and preserves the value on export. Lists that are not marked open (e.g., `TimelineEvent.precision`) are closed: another value is an error.
   * **Case Sensitivity of Files:** All keys in `assets` and filenames within the OQSE container (ZIP) MUST be written in lowercase. Application MUST immediately convert all filenames and asset keys to lowercase during import (with a warning on change) and MUST reject colliding names that match after conversion. On export, only lowercase names may be generated. References `<asset:... />` are case-insensitive; applications MUST convert the token to lowercase before lookup to maintain consistency across platforms.
 
 **Note on Field Types:** Throughout the specification, each text field is explicitly marked as either "Plain Text" or "Rich Content."
@@ -273,34 +274,38 @@ Contains all information describing the entire set.
 
 ### The `SourceMaterial` Object (in `sourceMaterials`)
 
+A source the set draws from or points the learner to: a book, an article, a web page, a video, or a lesson in another OQSE set (or in this one). Each property answers one question: **what** the source is (`kind`), **where** to find it (`url`, `doi`, `isbn`, `set` – any number of them) and **how** to open it (`mimeType`).
+
 | Key | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
 | `id` | string | Yes | **Plain Text.** Unique ID (within the file) for this source (e.g., `src-1`, `book-physics`). Not a global identifier. |
-| `type` | string | Yes | Source type from selection (`url`, `doi`, `isbn`, `pdf`, `textbook`, `video`, `audio`, `image`, `model`, `other`). |
-| `value` | string | Yes | **Plain Text** (for identifiers: `doi`, `isbn`, `textbook`, `other`) or **URI (absolute URL)** (for types: `url`, `pdf`, `video`, `audio`, `image`, `model`). MUST match the type specified in `type`. |
 | `title` | string | Yes | **Plain Text.** Source title (e.g., "Wikipedia: Raptor", "Physics for High Schools"). |
+| `kind` | string | No | What the source is (**open**), for icons and labels: `book`, `article`, `web`, `video`, `audio`, `image`, `model`, `lesson`, `other`. Fallback for another value: `other`. When absent, applications MAY guess it from the other fields (e.g., `set` → `lesson`, `isbn` → `book`). |
+| `url` | string | No | **URI (absolute URL).** Where the source can be opened (a web page, a PDF, a video, a model file…). |
+| `mimeType` | string | No | MIME type of the resource at `url` (e.g., `application/pdf`, `video/mp4`, `model/gltf-binary`), so that an application can open it in a suitable viewer. Without it, `url` is opened as a link. |
+| `doi` | string | No | **Plain Text.** Digital Object Identifier (e.g., `10.1038/s41586-021-04106-z`), without the `https://doi.org/` prefix. |
+| `isbn` | string | No | **Plain Text.** ISBN-10 or ISBN-13, with or without hyphens (e.g., `978-80-7357-124-7`). |
+| `set` | string | No | UUID (`meta.id`) of an OQSE set that teaches the topic, typically a set of `note` items (a lesson or a course chapter). It MAY be the `meta.id` of this set. Items of that set are referenced by `SourceReference.itemId`. |
 | `description` | string | No | **Plain Text.** Additional source description (e.g., "Chapter 5, pp. 42-50", "Official SpaceX website"). |
 | `authors` | string[] | No | **Plain Text.** Source authors. |
 | `publishedDate` | string | No | Source publication date (ISO 8601 - UTC recommended). |
 | `retrievedAt` | string | No | Date (ISO 8601 - UTC recommended) when the source was used (important for online sources). |
 | `license` | string | No | License of the original source (SPDX ID). |
 
-### Description of Source Material Types (`type` in `SourceMaterial`)
+A source SHOULD have at least one of `url`, `doi`, `isbn`, `set`; a source without them (e.g., a printed textbook without an ISBN, an internal document) is cited by its `title` and `description`. A later 1.x version may add further identifiers as new optional keys.
 
-The following table defines what content we expect in the `value` field for individual types:
+**Examples:**
 
-| Type (`type`) | Expected content in `value` | Example `value` |
-| :--- | :--- | :--- |
-| `url` | Full URI address of the source. | `https://en.wikipedia.org/wiki/Raptor...` |
-| `doi` | **Digital Object Identifier** – permanent identifier for scientific articles. | `10.1038/s41586-021-04106-z` |
-| `isbn` | **International Standard Book Number** – unique book number. | `978-80-7357-124-7` |
-| `pdf` | Direct URI address to PDF file. | `https://example.com/study.pdf` |
-| `textbook` | Book title (if ISBN is not available or unknown, e.g., old scripts). | `Physics for High Schools (8th edition)` |
-| `video` | URI address to video (e.g., YouTube, Vimeo). | `https://www.youtube.com/watch?v=...` |
-| `audio` | URI address to audio file/stream (podcast, lecture recording). | `https://example.com/podcast/ep1.mp3` |
-| `image` | URI address to image (infographic, map, artwork). | `https://example.com/map.png` |
-| `model` | URI address to 3D model file (glTF/GLB). | `https://example.com/anatomy.glb` |
-| `other` | Descriptive string for any other source type. | `Internal company document no. 123` |
+```json
+"sourceMaterials": [
+  { "id": "wiki", "kind": "web", "title": "Wikipedia: Raptor (rocket engine)", "url": "https://en.wikipedia.org/wiki/SpaceX_Raptor", "retrievedAt": "2025-11-14T08:00:00Z" },
+  { "id": "textbook", "kind": "book", "title": "Physics for High Schools", "isbn": "978-80-7196-123-4", "url": "https://example.com/physics.pdf", "mimeType": "application/pdf" },
+  { "id": "paper", "kind": "article", "title": "Full-flow staged combustion", "doi": "10.1038/s41586-021-04106-z" },
+  { "id": "course", "kind": "lesson", "title": "Spanish A2 – Past Tenses", "set": "019aa608-07c5-71c9-87b2-d03ab3364000" }
+]
+```
+
+**Pre-release shape:** sets written for the 1.0 release candidates used `type` + `value` (`url` → `url` with `kind: "web"`; `video`, `audio`, `image`, `model` → `url` with the `kind` of that name; `pdf` → `url` with `mimeType: "application/pdf"`; `doi` → `doi` with `kind: "article"`; `isbn` → `isbn` with `kind: "book"`; `textbook` → `kind: "book"`; `other` → `kind: "other"`; a `value` that is not a locator goes to `description`). Applications MAY read that shape and convert it (with a warning); they write only the shape above. The reference implementation `loadOQSEFile` converts it.
 
 ### The `TagDefinition` Object (as value in `tagDefinitions`)
 
@@ -359,7 +364,7 @@ Standardized object for embedding media. Used:
 
 | Key | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
-| `type` | string | Yes | Media type from selection (`image`, `audio`, `video`, `model`). The specific allowed file formats are negotiated via the [OQSEM (`capabilities.assets`)](./oqse-manifest.md#capabilities-object-extends-featureprofile). For the `model` type, the glTF format (`model/gltf-binary` for `.glb` or `model/gltf+json` for `.gltf`) is highly RECOMMENDED as the universal baseline for interoperability. However, applications and sets MAY use other formats (like `.obj` or `.fbx`) provided they are explicitly declared and matched during the capability handshake. |
+| `type` | string | Yes | Media type (**open**): `image`, `audio`, `video`, `model`. Fallback for a type the application does not know: a link to `value` with `altText` (or `caption`, or the asset key) as its text. The specific allowed file formats are negotiated via the [OQSEM (`capabilities.assets`)](./oqse-manifest.md#capabilities-object-extends-featureprofile). For the `model` type, the glTF format (`model/gltf-binary` for `.glb` or `model/gltf+json` for `.gltf`) is highly RECOMMENDED as the universal baseline for interoperability. However, applications and sets MAY use other formats (like `.obj` or `.fbx`) provided they are explicitly declared and matched during the capability handshake. |
 | `value` | string | Yes | URI of the resource. Can be **absolute URL** (e.g., `https://.../image.png`) or **relative path** to file in package (e.g., `assets/diagram.png`). |
 | `mimeType` | string | Recommended | MIME type of file (e.g., `image/png`, `audio/mpeg`, `video/mp4`, `model/gltf-binary`). |
 | `altText` | string | **Required for images** (on save), optional for audio/video/model | **Plain Text.** Alternative text for accessibility. Must be plain text without formatting for screen readers. A set with an image without `altText` MUST NOT be saved or exported; on import it is a warning and the application derives the text from the file name (e.g., `cell-diagram.png` → "cell diagram") or uses a placeholder. |
@@ -370,7 +375,7 @@ Standardized object for embedding media. Used:
 | `start` | number | No | Time in seconds where media playback should start (for audio/video). Default: 0. |
 | `end` | number | No | Time in seconds where media playback should end. If not specified, plays to the end. |
 | `loop` | boolean | No | For audio/video only. Determines whether media should loop. Default value is `false`. **Rules for combination with `start`/`end`:** (1) `loop: true` + `end`: Loop from `start` to `end`. (2) `loop: true` without `end`: Loop entire file from `start`. (3) `loop: false` + `end`: Play once from `start` to `end`. (4) `loop: false` without `end`: Play once from `start` to end of file (default behavior). **Validation rules:** `start` MUST be >= 0. If `end` is specified, `end > start` MUST hold. If `end` > file length, use end of file. If `start >= end`, Application MUST declare error. If `loop: true` and `start == end`, Application MUST declare error (empty segment). |
-| `subtitles` | array | No | For audio/video only. Array of objects defining subtitles. Each object contains: `lang` (string, required): Language code (BCP 47, e.g., `cs`, `en`), `value` (string, required): URI to `.vtt` or `.srt` file (absolute URL or relative path in `.oqse` package), `label` (string, optional): Display name (e.g., "Czech", "English"), `kind` (string, optional): Subtitle type - `captions`, `subtitles`, or `descriptions` per WebVTT specification (default: `subtitles`). Example: `[{"lang": "cs", "value": "assets/subtitles/cs.vtt", "label": "Czech", "kind": "captions"}, {"lang": "en", "value": "assets/subtitles/en.vtt", "label": "English"}]`. **Validation rules:** File format MUST be `.vtt` (recommended) or `.srt`. Value `kind` MUST be one of: `captions`, `subtitles`, `descriptions`. If `label` is missing, use value of `lang`. Application MUST ignore invalid formats with warning. |
+| `subtitles` | array | No | For audio/video only. Array of objects defining subtitles. Each object contains: `lang` (string, required): Language code (BCP 47, e.g., `cs`, `en`), `value` (string, required): URI to `.vtt` or `.srt` file (absolute URL or relative path in `.oqse` package), `label` (string, optional): Display name (e.g., "Czech", "English"), `kind` (string, optional): Subtitle type - `captions`, `subtitles`, or `descriptions` per WebVTT specification (default: `subtitles`). Example: `[{"lang": "cs", "value": "assets/subtitles/cs.vtt", "label": "Czech", "kind": "captions"}, {"lang": "en", "value": "assets/subtitles/en.vtt", "label": "English"}]`. **Validation rules:** File format MUST be `.vtt` (recommended) or `.srt`. `kind` is **open**: an application that does not know the value does not offer that track (warning). If `label` is missing, use value of `lang`. Application MUST ignore invalid formats with warning. |
 | `license` | string | No | SPDX license for this specific media (if different from set). |
 | `attribution` | string | No | **Plain Text.** Media author/source attribution (e.g., "Photo: NASA"). |
 | `checksums` | object | No | Object for file integrity verification. Key is algorithm name (`"sha256"`, `"sha512"`, `"md5"`, etc.) and value is hexadecimal hash. Example: `{"sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "md5": "098f6bcd4621d373cade4e832627b4f6"}`. Hash is calculated from original **binary data** of file (not from URI string). **Security rules:** For files in `.oqse` package, Application MUST calculate hash after unpacking and compare with values in object. Application MUST support at minimum the `sha256` algorithm. For external URLs: If file is small (< 10 MB), Application MAY download and verify. If file is large (>= 10 MB), Application MAY skip validation and display warning. Application SHOULD allow user to disable checksum validation for streaming media. If hash does not match, Application MUST reject asset and display security warning. If `checksums` is missing, Application MAY use file and MAY display warning about unverified integrity. |
@@ -408,6 +413,7 @@ Given support for GFM (which allows HTML) and custom `<asset />` tags, applicati
 * Tag functions as placeholder. Application MUST completely replace it with corresponding HTML element according to `MediaObject.type` (e.g., `<img>`, `<audio>`, `<video>`).
 * Rich Content fields never contain direct HTML tags for media – only these references, or Markdown images (below).
 * Application MUST NOT support other syntaxes for assets (e.g., Markdown links `[...](asset://...)`).
+* **Reserved tag syntax:** self-closing tags of the form `<name:key />` (a lowercase name, a colon, a key) are reserved for OQSE; 1.0 defines `asset` and `blank` (`fill-in-blanks`, `fill-in-select`). A later 1.x version may define more tags, each written so that the text stays readable without it. An application that does not know a tag removes it when rendering (with a warning) and preserves it in the text on export.
 * **Markdown images:** an image from the web MAY also be written as a Markdown image `![alternative text](https://…)`. The text in brackets is the alternative text (it SHOULD NOT be empty), and the URL MUST be absolute (`https://`; `http://` only with a warning, see [URI and Path Security Validation Rules](#uri-and-path-security-validation-rules)). Files in an `.oqse` container, audio, video, 3D models and media with a license, attribution, caption or subtitles use `<asset:key />`.
 * Visible media caption is rendered from `MediaObject.caption`, alternative text from `MediaObject.altText`.
 * **Time parameters:** If `start` or `end` parameters are defined for YouTube/Vimeo videos, Application **SHOULD** attempt to project them into embed URL (e.g., `?start=30`), since standard HTML attributes for `<iframe>` don't handle this.
@@ -1295,8 +1301,22 @@ Defines reference to translated version of this set.
 | Key | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
 | `id` | string | Yes | **Plain Text.** ID of source defined in `meta.sourceMaterials`. All `id` in `SourceReference` MUST exist in `meta.sourceMaterials`. Application MUST ignore non-existent references with warning. Application SHOULD NOT block item display due to missing source. |
-| `location` | string | No | **Plain Text.** Specification of place in source (e.g., "page 42", "time 12:30", "paragraph 3"). |
+| `itemId` | string | No | ID of an item (usually a `note`) in the set named by the source's `set`. The learner can open exactly that lesson. Applications MUST ignore an `itemId` they cannot resolve (the other set is not available, or the item does not exist) and still show the source. |
+| `location` | string | No | **Plain Text.** Specification of place in source for people (e.g., "page 42", "time 12:30", "Lesson 2, paragraph 3"). |
 | `quote` | string | No | **Rich Content.** Exact citation or text segment from source that directly supports correctness of answer. MAY contain formatting (bold text, italics) and mathematical formulas in LaTeX. This key is critical for automated fact-checking and AI systems like RAG (Retrieval Augmented Generation), so they can verify that generated question corresponds to source materials. |
+
+**Pointing to a passage:** `quote` is also how an application finds the passage. When a reference has `itemId` and the text of that item (its Rich Content converted to plain text) contains `quote` (also converted to plain text; compared with whitespace collapsed and letter case ignored), applications SHOULD open the item scrolled to the passage and highlight it. No anchors or paragraph numbers are needed, and the link survives edits of the text around the passage.
+
+**Example – "where to learn this":**
+
+```json
+"sourceMaterials": [{ "id": "course", "kind": "lesson", "title": "Spanish A2", "set": "019aa608-07c5-71c9-87b2-d03ab3364000" }]
+```
+```json
+"sources": [{ "id": "course", "itemId": "019aa608-07c5-71c9-87b2-d03ab3364011", "location": "Lesson 2", "quote": "The preterite is used for completed actions." }]
+```
+
+After a wrong answer, an application can offer "Where to learn this: Spanish A2 – Lesson 2" and open the lesson at the highlighted sentence.
 
 ### The `Pedagogy` Object (Adaptive Difficulty)
 
@@ -1304,12 +1324,12 @@ This optional object (`item.pedagogy`) serves to store advanced metadata about d
 
 | Key | Type | Description |
 | :--- | :--- | :--- |
-| `bloomLevel` | string | Level according to revised Bloom's taxonomy. Allowed values: `remember`, `understand`, `apply`, `analyze`, `evaluate`, `create`. Application MUST declare error for other value (including typos like `analyse`). |
+| `bloomLevel` | string | Level according to revised Bloom's taxonomy (**open**): `remember`, `understand`, `apply`, `analyze`, `evaluate`, `create`. Fallback for another value: the field is ignored. Validators MUST warn about it, so that typos like `analyse` are found. |
 | `irtDifficulty` | number | IRT Parameter *b* (Difficulty). Determines what level of student ability is needed for 50% chance of correct answer. Typically range -3.0 to +3.0. If present and application supports IRT, takes precedence over simple `item.difficulty`. |
 | `irtDiscrimination` | number | IRT Parameter *a* (Discrimination). How well question distinguishes between strong and weak students. |
 | `irtGuessing` | number | IRT Parameter *c* (Pseudo-guessing). Probability of guessing answer by chance (e.g., 0.25 for ABCD test). |
 | `avgTime` | number | Average time (in seconds) students actually need to solve (measured from data). |
-| `cognitiveLoad` | string | Subjective cognitive load (`low`, `medium`, `high`). |
+| `cognitiveLoad` | string | Subjective cognitive load (**open**): `low`, `medium`, `high`. Fallback for another value: the field is ignored (warning). |
 | `partialCredit` | boolean | Whether item supports partial scoring (e.g., 2 out of 3 correct answers in `mcq-multi`). |
 | `penaltyPerWrong` | number | Penalty for each wrong choice (0.0 - 1.0). E.g., 0.5 means loss of half of total question points for wrong answer. |
 
@@ -1387,10 +1407,10 @@ This optional object (`item.pedagogy`) serves to store advanced metadata about d
     "sourceMaterials": [
       {
         "id": "srcWikiRaptor",
-        "type": "url",
+        "kind": "web",
         "title": "Wikipedia: Raptor (rocket engine)",
         "description": "Main article on English Wikipedia.",
-        "value": "https://en.wikipedia.org/wiki/SpaceX_Raptor",
+        "url": "https://en.wikipedia.org/wiki/SpaceX_Raptor",
         "retrievedAt": "2025-11-14T08:00:00Z"
       }
     ],
@@ -1728,7 +1748,7 @@ To ensure consistency and practical implementability, the specification defines 
 
 ### URI and Path Security Validation Rules
 
-- All fields marked as URI for remote resources (e.g., `licenseUrl`, `SourceMaterial.value` with types `url|pdf|video|audio|image`, `MediaObject.value` referencing external media) MUST use absolute URI including protocol. `https://` is recommended, `http://` is acceptable only with warning to user.
+- All fields marked as URI for remote resources (e.g., `licenseUrl`, `SourceMaterial.url`, `MediaObject.value` referencing external media) MUST use absolute URI including protocol. `https://` is recommended, `http://` is acceptable only with warning to user.
 
 - **Security rules for URI schemes:**
   * Application MUST reject URI schemes: `javascript:`, `data:`, `vbscript:`, `file:`
@@ -1906,10 +1926,11 @@ To ensure consistent behavior across implementations, specification defines foll
 
 ### Recoverable Errors (Application continues with warning)
 
-1. **Unknown `item.type`:** 
-   - Application MUST skip item
+1. **Unknown `item.type`** (a type from a newer 1.x version, or a custom `x-` type the application does not support):
+   - Application MUST skip the item when rendering or playing
    - Record warning with `item.id` and unknown type
    - Continue processing other items
+   - An application that saves or exports the set MUST keep the item unchanged (it never deletes items it does not understand). Strict validation (save / export) reports such an item as a warning, not an error: it checks only the common item properties. A type that does not have the form of a type name (`^(x-)?[a-z0-9]+(-[a-z0-9]+)*$`) is an error.
 
 2. **Missing asset reference:** 
    - When `<asset:key />` references non-existent media
@@ -1939,9 +1960,10 @@ To ensure consistent behavior across implementations, specification defines foll
 
 ### Fallback Strategies
 
-**For unknown fields:**
+**For unknown fields and values:**
 - Application MUST ignore unknown keys (forward compatibility)
-- On re-export, unknown data MUST be preserved unchanged
+- On re-export, unknown data MUST be preserved unchanged (keys, values of open fields, tags, items of unknown types)
+- An unknown value of an **open** field (see [Open Values](#global-rules-and-root-structure)) uses the fallback that field defines and produces a warning, never an error
 
 **For incomplete data:**
 - Missing optional fields: use default values per specification
@@ -1989,13 +2011,15 @@ Applications may define custom item types using `x-` prefix (e.g., `x-code-chall
   * MUST NOT collide with future official types
   * SHOULD put everything that gives the answer away (correct answers, solutions) into the reserved field `solution` (any JSON value). Applications that hide answers from learners (e.g., from other players' devices in a multiplayer game) remove `solution`, together with `explanation` and `incorrectFeedback`. Validators preserve `solution` unchanged.
 
+**Hiding answers safely:** an application that shows an item of an official type without its answer (e.g., to other players' devices in a multiplayer game) MUST keep only the fields it knows are not part of the answer, and remove every other field – fields it does not know (from a newer version, vendor keys), unknown fields of nested objects such as choices, and free-form data (`appSpecific`, `customData`). Unknown data can then never reveal an answer. Items of custom `x-` types keep their fields except `solution`, `explanation` and `incorrectFeedback` (their authors put the answer into `solution`, see above).
+
 ### Versioning and Compatibility
 
 These rules apply to OQSE sets and equally to [OQSEM manifests](./oqse-manifest.md) and [OQSEP progress files](./oqse-progress.md). ([OQSEH headers](./oqse-header.md) carry no version of their own.)
 
 **Version format:** `MAJOR.MINOR` (regex `^\d+\.\d+$`, e.g., `1.0`, `1.3`, `2.0`). Both parts are non-negative integers and are compared numerically (`1.10` is greater than `1.9`).
 
-  * **MINOR change** (e.g., 1.0 → 1.1): only additions – new optional fields, item types, feature flags or registry values. The meaning of existing keys and their defaults never changes, so every 1.x application can read every 1.y file.
+  * **MINOR change** (e.g., 1.0 → 1.1): only additions – new optional fields, item types, feature flags, tags, or values of open fields. The meaning of existing keys and their defaults never changes, so every 1.x application can read every 1.y file. Two kinds of additions are therefore **not** allowed in a MINOR version, because older applications would silently get them wrong: a field that changes which answers to an existing item type are correct (e.g., extra accepted answers – older applications would mark them wrong), and a new place for answer data in an existing item type (older applications that hide answers would show it). Such changes come as a new item type or in a new MAJOR version.
   * **MAJOR change** (e.g., 1.x → 2.0): anything that changes the meaning of existing data (removed or renamed fields, other defaults, other rules for checking answers).
   * **Versions 0.x** were pre-release drafts. Their fields may mean something else than in 1.0 (e.g., other defaults), so they are treated like any other unsupported MAJOR version.
 
@@ -2223,6 +2247,9 @@ OQSE is an open standard. Suggestions for improvements:
 
 ### Version 1.0 (2026-10-14)
 The first stable version. From now on, 1.x versions only add (see [Versioning and Compatibility](#versioning-and-compatibility)).
+* Forward compatibility, so that later 1.x versions can add without breaking older applications: [Open Values](#global-rules-and-root-structure) (`MediaObject.type`, `subtitles[].kind`, `pedagogy.bloomLevel`, `pedagogy.cognitiveLoad`, `SourceMaterial.kind`; another value uses the field's fallback and is a warning, never an error); unknown keys, values, tags and items of unknown types are preserved on export; an item of an unknown type is a warning in strict validation (it is kept, not shown); the [reserved tag syntax](#media-reference-syntax-media-tags) `<name:key />`; a MINOR version never changes which answers are correct nor adds new places for answer data; hiding answers keeps only known fields (fail closed).
+* `SourceMaterial` has a new shape: `kind` (what), `url` / `doi` / `isbn` / `set` (where, any number of them), `mimeType` (how to open) instead of `type` + `value`; a source can be a lesson in an OQSE set (`set`), `SourceReference.itemId` points to the lesson item, and `quote` locates the passage in it. Sets of the release candidates are converted on load.
+* OQSEP: `starred` (the learner's star) and `lastAnswer.answer` (the last answer, OQSE Answer Formats, at most 4 KB); unknown keys are preserved, also when a record is updated. OQSEM: item types, actions, asset categories, `studyMode` and `questionDensity` of a later 1.x version are ignored instead of rejected; unknown keys are preserved. OQSEH: unknown keys are preserved.
 * The shape fields of a `HotspotObject` (`x`, `y`, `width`, `height`, `radius`, `points`, `targetName`) are marked required, as validators always treated them.
 * Before 1.0, two item types were aligned with the others: `math-input` has `correctAnswers` (a list, like `short-answer`) instead of `correctAnswer` + `alternativeAnswers`, and `match-complex` has `prompts` / `matches` (like `match-pairs`) instead of `leftItems` / `rightItems`. `math-input` has no `tolerance` (its answers are compared as LaTeX; numbers are `numeric-input`).
 * [Canonical and Authoring Formats](#canonical-and-authoring-formats): the JSON file is the canonical form that is stored and exchanged; authoring formats (OQSE Markdown for notes, tool-specific shorthands) are converted to it and keep item IDs across edits.

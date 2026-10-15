@@ -2,6 +2,12 @@
 
 Plugins import `https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1`; release candidates are reached only by their exact version (`@1.0.0-rc.6`).
 
+## Unreleased (next release candidate)
+
+* `ctx.recordAnswer(item, isCorrect, { score })`: partial credit 0–1.
+* Media of a type from a later OQSE version are shown as a link; OQSE tags of a later version (`<name:key />`) are removed from the text.
+* The standalone preview gives settings of a later protocol version their default.
+
 ## 1.0.0-rc.6 (2026-10-14)
 
 Implements the final protocol 1.0 ([SPEC](https://github.com/memizy/memizy/blob/main/packages/protocol/SPEC.md)).

@@ -9,13 +9,15 @@
  * - {@link validateOQSEFile} / {@link safeValidateOQSEFile} – strict validation for
  *   saving and exporting. Every rule violation is an error and nothing is modified.
  *
- * Unknown keys are always preserved (forward compatibility).
+ * Unknown keys are always preserved (forward compatibility). Unknown values of open
+ * fields are warnings (`UNKNOWN_VALUE`); items of unknown types are kept unchanged in
+ * `unsupportedItems`, so that an editor can write them back.
  */
 
 import type { z } from 'zod';
 import type { MediaObject, OQSEAnyItem, OQSEFile, OQSEMeta } from './oqse';
-import { OQSEMetaSchema, getItemSchema } from './oqseValidation';
-import { OFFICIAL_ITEM_TYPES } from './oqse';
+import { OQSEMetaSchema, SourceMaterialSchema, UnknownTypeItemSchema, getItemSchema } from './oqseValidation';
+import { BLOOM_LEVELS, COGNITIVE_LOADS, MEDIA_TYPES, OFFICIAL_ITEM_TYPES, SOURCE_KINDS, SUBTITLE_KINDS } from './oqse';
 import { OFFICIAL_FEATURE_KEYS, OFFICIAL_ITEM_PROPERTIES, OFFICIAL_META_PROPERTIES } from './manifest';
 import { findAssetKeys, findRawHtml } from './richTextProcessor';
 import { formatPath, validateJsonDepth } from './utils';
@@ -38,6 +40,10 @@ export type OQSEIssueCode =
   | 'TOO_MANY_ITEMS'
   | 'INVALID_ITEM'
   | 'UNKNOWN_ITEM_TYPE'
+  | 'UNKNOWN_VALUE'
+  | 'INVALID_SOURCE'
+  | 'LEGACY_SOURCE'
+  | 'SOURCE_WITHOUT_LOCATOR'
   | 'DUPLICATE_ID'
   | 'DANGLING_REFERENCE'
   | 'MISSING_ASSET'
@@ -69,11 +75,24 @@ export interface OQSEIssue {
   itemId?: string;
 }
 
+/**
+ * An item of a type this library does not know (from a later 1.x version), unchanged.
+ * Applications skip it when rendering; an editor that saves the set writes it back
+ * (see {@link withUnsupportedItems}).
+ */
+export interface UnsupportedItem {
+  /** Position in the original `items` array. */
+  index: number;
+  item: Record<string, unknown>;
+}
+
 export interface OQSELoadResult {
   /** `false` only for critical errors (the set cannot be loaded at all). */
   success: boolean;
-  /** The loaded set: only valid items, recoverable problems removed. Present when `success`. */
+  /** The loaded set: only valid items of known types, recoverable problems removed. Present when `success`. */
   data?: OQSEFile;
+  /** Items of types this library does not know, unchanged (not in `data.items`). */
+  unsupportedItems: UnsupportedItem[];
   /** Critical errors and item-level errors (each skipped item has at least one). */
   errors: OQSEIssue[];
   warnings: OQSEIssue[];
@@ -82,7 +101,10 @@ export interface OQSELoadResult {
 export interface OQSEValidationResult {
   /** `true` when the set is fully compliant (no errors). */
   success: boolean;
+  /** The set with the items of known types (see `unsupportedItems`). */
   data?: OQSEFile;
+  /** Items of types this library does not know: a warning, not an error; they stay in the file. */
+  unsupportedItems: UnsupportedItem[];
   errors: OQSEIssue[];
   warnings: OQSEIssue[];
 }
@@ -137,7 +159,20 @@ export function loadOQSEFile(data: unknown): OQSELoadResult {
 export function safeValidateOQSEFile(data: unknown): OQSEValidationResult {
   const result = analyze(data, 'strict');
   const success = result.success && result.errors.length === 0;
-  return { success, data: success ? result.data : undefined, errors: result.errors, warnings: result.warnings };
+  return { success, data: success ? result.data : undefined, unsupportedItems: result.unsupportedItems, errors: result.errors, warnings: result.warnings };
+}
+
+/**
+ * The set to save: `file` with the items of unknown types put back at their original
+ * positions (an application never deletes items it does not understand). Returns plain
+ * JSON data, because those items are not typed.
+ */
+export function withUnsupportedItems(file: OQSEFile, unsupportedItems: UnsupportedItem[]): Record<string, unknown> {
+  const items: unknown[] = [...file.items];
+  for (const { index, item } of [...unsupportedItems].sort((a, b) => a.index - b.index)) {
+    items.splice(Math.min(index, items.length), 0, structuredClone(item));
+  }
+  return { ...file, items };
 }
 
 /**
@@ -178,7 +213,8 @@ class IssueLog {
 
 function analyze(input: unknown, mode: Mode): OQSELoadResult {
   const log = new IssueLog();
-  const critical = (): OQSELoadResult => ({ success: false, errors: log.errors, warnings: log.warnings });
+  const unsupportedItems: UnsupportedItem[] = [];
+  const critical = (): OQSELoadResult => ({ success: false, unsupportedItems, errors: log.errors, warnings: log.warnings });
   // In strict mode recoverable problems are errors; in load mode they are warnings and get fixed.
   const recoverable: OQSEIssueSeverity = mode === 'strict' ? 'error' : 'warning';
 
@@ -219,6 +255,8 @@ function analyze(input: unknown, mode: Mode): OQSELoadResult {
 
   // --- Meta ------------------------------------------------------------------
   if (mode === 'load' && !normalizeAssetKeys(root.meta, ['meta', 'assets'], log)) return critical();
+  // Sources one by one: a bad source never makes the whole set unreadable.
+  checkSources(root.meta, log, mode, recoverable);
   const metaResult = OQSEMetaSchema.safeParse(root.meta);
   if (!metaResult.success) {
     log.addZod(metaResult.error, 'INVALID_META', ['meta']);
@@ -265,7 +303,19 @@ function analyze(input: unknown, mode: Mode): OQSELoadResult {
     const type = isRecord(raw) ? raw.type : undefined;
 
     if (typeof type === 'string' && !type.startsWith('x-') && !OFFICIAL_TYPES.has(type)) {
-      log.add(recoverable, 'UNKNOWN_ITEM_TYPE', `Unknown item type "${type}" (custom types must use the "x-" prefix).`, [...path, 'type'], rawId);
+      // A type of a later 1.x version (or a typo): kept unchanged, not rendered.
+      const unknown = UnknownTypeItemSchema.safeParse(raw);
+      if (!unknown.success) {
+        log.addZod(unknown.error, 'INVALID_ITEM', path, rawId);
+        return;
+      }
+      if (seenIds.has(unknown.data.id)) {
+        log.add('error', 'DUPLICATE_ID', `Duplicate ID "${unknown.data.id}" (IDs must be unique within the set, including meta.id).`, [...path, 'id'], unknown.data.id);
+        return;
+      }
+      seenIds.add(unknown.data.id);
+      log.add('warning', 'UNKNOWN_ITEM_TYPE', `Unknown item type "${type}" (a newer OQSE version, or a typo; custom types use the "x-" prefix). The item is kept but not shown.`, [...path, 'type'], rawId);
+      unsupportedItems.push({ index, item: structuredClone(raw) as Record<string, unknown> });
       return;
     }
     if (mode === 'load' && isRecord(raw) && !normalizeAssetKeys(raw, [...path, 'assets'], log, rawId)) return;
@@ -291,7 +341,10 @@ function analyze(input: unknown, mode: Mode): OQSELoadResult {
 
   // --- References (need the final set of item IDs) ---------------------------
   const itemIds = new Set(items.map((item) => item.id));
+  for (const { item } of unsupportedItems) itemIds.add(item.id as string);
   const sourceIds = new Set((meta.sourceMaterials ?? []).map((s) => s.id));
+  // Sources that point into this very set: their `itemId` must exist here.
+  const ownSets = new Set((meta.sourceMaterials ?? []).filter((s) => s.set === meta.id).map((s) => s.id));
   for (const { item, index } of kept) {
     const path: Path = ['items', index];
     for (const field of ['relatedItems', 'dependencyItems'] as const) {
@@ -309,6 +362,11 @@ function analyze(input: unknown, mode: Mode): OQSELoadResult {
         log.add(recoverable, 'DANGLING_REFERENCE', 'sources reference source materials that do not exist in meta.sourceMaterials.', [...path, 'sources'], item.id);
         if (mode === 'load') item.sources = valid;
       }
+      item.sources.forEach((src, i) => {
+        if (src.itemId === undefined || !ownSets.has(src.id) || itemIds.has(src.itemId)) return;
+        log.add(recoverable, 'DANGLING_REFERENCE', `sources[${i}].itemId "${src.itemId}" does not exist in this set.`, [...path, 'sources', i, 'itemId'], item.id);
+        if (mode === 'load') delete src.itemId;
+      });
     }
   }
 
@@ -327,8 +385,98 @@ function analyze(input: unknown, mode: Mode): OQSELoadResult {
     }
   }
 
+  checkOpenValues(meta, kept, log);
+
   const file = { ...root, meta, items } as OQSEFile;
-  return { success: true, data: file, errors: log.errors, warnings: log.warnings };
+  return { success: true, data: file, unsupportedItems, errors: log.errors, warnings: log.warnings };
+}
+
+// ============================================================================
+// Sources and open values
+// ============================================================================
+
+/** The pre-release shape `{ type, value }` of a source, converted to the 1.0 shape. */
+const LEGACY_SOURCE_TYPES: Record<string, { kind: string | null; key: 'url' | 'doi' | 'isbn' | null; mimeType?: string }> = {
+  url: { kind: 'web', key: 'url' },
+  pdf: { kind: null, key: 'url', mimeType: 'application/pdf' },
+  video: { kind: 'video', key: 'url' },
+  audio: { kind: 'audio', key: 'url' },
+  image: { kind: 'image', key: 'url' },
+  model: { kind: 'model', key: 'url' },
+  doi: { kind: 'article', key: 'doi' },
+  isbn: { kind: 'book', key: 'isbn' },
+  textbook: { kind: 'book', key: null },
+  other: { kind: 'other', key: null },
+};
+
+/**
+ * Converts a source of the release-candidate shape (`type` + `value`) to the 1.0 shape.
+ * Returns `null` when the source does not use the old shape.
+ */
+export function convertLegacySource(source: Record<string, unknown>): Record<string, unknown> | null {
+  if (typeof source.type !== 'string' || !('value' in source)) return null;
+  if (['kind', 'url', 'doi', 'isbn', 'set'].some((key) => key in source)) return null;
+  const legacy = LEGACY_SOURCE_TYPES[source.type] ?? { kind: 'other', key: null };
+  const { type: _type, value, ...rest } = source;
+  const converted: Record<string, unknown> = { ...rest };
+  if (legacy.kind) converted.kind = legacy.kind;
+  if (legacy.key) converted[legacy.key] = value;
+  else if (typeof value === 'string' && value && value !== source.title) {
+    converted.description = typeof rest.description === 'string' && rest.description ? `${rest.description} (${value})` : value;
+  }
+  if (legacy.mimeType && converted.mimeType === undefined) converted.mimeType = legacy.mimeType;
+  return converted;
+}
+
+/** Validates `meta.sourceMaterials` one source at a time (and converts the old shape). */
+function checkSources(meta: Record<string, unknown>, log: IssueLog, mode: Mode, recoverable: OQSEIssueSeverity): void {
+  if (!Array.isArray(meta.sourceMaterials)) return;
+  const kept: unknown[] = [];
+  meta.sourceMaterials.forEach((raw, i) => {
+    const path: Path = ['meta', 'sourceMaterials', i];
+    let source = raw;
+    if (isRecord(raw)) {
+      const converted = convertLegacySource(raw);
+      if (converted) {
+        log.add(recoverable, 'LEGACY_SOURCE', `Source "${String(raw.id)}" uses the pre-release shape "type" + "value"; OQSE 1.0 uses "kind" and "url" / "doi" / "isbn" / "set".`, path);
+        source = converted;
+      }
+    }
+    const parsed = SourceMaterialSchema.safeParse(source);
+    if (!parsed.success) {
+      log.addZod(parsed.error, 'INVALID_SOURCE', path);
+      if (mode === 'strict') kept.push(raw);
+      return;
+    }
+    const s = parsed.data;
+    if (s.url === undefined && s.doi === undefined && s.isbn === undefined && s.set === undefined) {
+      log.add('warning', 'SOURCE_WITHOUT_LOCATOR', `Source "${s.id}" has none of url, doi, isbn, set: it can be cited only by its title.`, path);
+    }
+    kept.push(mode === 'load' ? source : raw);
+  });
+  if (mode === 'load') meta.sourceMaterials = kept;
+}
+
+/** Values of open fields that this library does not know: warnings (the application uses the fallback). */
+function checkOpenValues(meta: OQSEMeta, kept: Array<{ item: OQSEAnyItem; index: number }>, log: IssueLog): void {
+  const warn = (value: unknown, known: readonly string[], path: Path, fallback: string, itemId?: string) => {
+    if (typeof value === 'string' && !known.includes(value)) {
+      log.add('warning', 'UNKNOWN_VALUE', `Unknown value "${value}" (a newer OQSE version, or a typo): ${fallback}.`, path, itemId);
+    }
+  };
+  const assets = (owner: Record<string, MediaObject> | undefined, path: Path, itemId?: string) => {
+    for (const [key, media] of Object.entries(owner ?? {})) {
+      warn(media.type, MEDIA_TYPES, [...path, key, 'type'], 'shown as a link', itemId);
+      media.subtitles?.forEach((track, i) => warn(track.kind, SUBTITLE_KINDS, [...path, key, 'subtitles', i, 'kind'], 'the track is not offered', itemId));
+    }
+  };
+  assets(meta.assets, ['meta', 'assets']);
+  meta.sourceMaterials?.forEach((source, i) => warn(source.kind, SOURCE_KINDS, ['meta', 'sourceMaterials', i, 'kind'], 'treated as "other"'));
+  for (const { item, index } of kept) {
+    assets(item.assets, ['items', index, 'assets'], item.id);
+    warn(item.pedagogy?.bloomLevel, BLOOM_LEVELS, ['items', index, 'pedagogy', 'bloomLevel'], 'ignored', item.id);
+    warn(item.pedagogy?.cognitiveLoad, COGNITIVE_LOADS, ['items', index, 'pedagogy', 'cognitiveLoad'], 'ignored', item.id);
+  }
 }
 
 /** Item-level rules that need the set context. Returns `false` if the item must be skipped. */

@@ -11,7 +11,7 @@
  * Pure functions, so a future server-side authority can do exactly the same.
  */
 
-import { isTimelineOrderCorrect, type OQSEAnyItem, type OQSEMeta, type TimelineEvent } from '@memizy/oqse';
+import { OQSEItemSchema, isTimelineOrderCorrect, type OQSEAnyItem, type OQSEMeta, type TimelineEvent } from '@memizy/oqse';
 
 /** Marks an item whose answer was removed (multiplayer, not the authority). */
 export interface PublicItemMark {
@@ -103,6 +103,74 @@ export function displayItem(item: OQSEAnyItem, random: () => number): OQSEAnyIte
 // Public copy (no answers)
 // ----------------------------------------------------------------------------
 
+/** A Zod 4 schema, read through its definition (`_zod.def`). */
+type SchemaLike = { _zod: { def: any }; safeParse(value: unknown): { success: boolean } };
+
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/** The option of a union whose `type` literal is the value's `type` (items, hotspots, zones). */
+function optionByType(options: SchemaLike[], value: Record<string, unknown>): SchemaLike | undefined {
+  return options.find((option) => {
+    const field = option._zod.def.shape?.type;
+    return field?._zod.def.type === 'literal' && field._zod.def.values.includes(value.type);
+  });
+}
+
+/**
+ * Keeps only what `schema` describes (fail closed): keys an object schema does not list are
+ * removed, also in nested objects and lists. A field of a newer OQSE version or a vendor
+ * field therefore never reaches a public item (OQSE "Hiding answers safely").
+ */
+function knownFields(value: unknown, schema: SchemaLike): unknown {
+  const def = schema._zod.def;
+  switch (def.type) {
+    case 'optional':
+    case 'nullable':
+    case 'default':
+    case 'prefault':
+    case 'nonoptional':
+    case 'readonly':
+    case 'catch':
+      return value === undefined || value === null ? value : knownFields(value, def.innerType);
+    case 'pipe':
+      return knownFields(value, def.in);
+    case 'lazy':
+      return knownFields(value, def.getter());
+    case 'object': {
+      if (!isPlainObject(value)) return value;
+      const kept: Record<string, unknown> = {};
+      for (const [key, field] of Object.entries(def.shape as Record<string, SchemaLike>)) {
+        if (!(key in value)) continue;
+        const known = knownFields(value[key], field);
+        if (known !== undefined) kept[key] = known;
+      }
+      return kept;
+    }
+    case 'array':
+      return Array.isArray(value) ? value.map((entry) => knownFields(entry, def.element)) : value;
+    case 'record': {
+      if (!isPlainObject(value)) return value;
+      if (['unknown', 'any'].includes(def.valueType._zod.def.type)) return undefined; // free-form data
+      return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, knownFields(entry, def.valueType)]));
+    }
+    case 'intersection':
+      return isPlainObject(value) ? { ...(knownFields(value, def.left) as object), ...(knownFields(value, def.right) as object) } : value;
+    case 'union': {
+      if (!isPlainObject(value) && !Array.isArray(value)) return value;
+      const options = def.options as SchemaLike[];
+      const option = (isPlainObject(value) && optionByType(options, value)) || options.find((o) => o.safeParse(value).success);
+      if (option) return knownFields(value, option);
+      return Array.isArray(value) ? [] : {}; // nothing known about it: keep nothing
+    }
+    case 'unknown':
+    case 'any':
+      return undefined; // free-form data (appSpecific, customData) may hold anything, also answers
+    default:
+      return value; // strings, numbers, literals, enums
+  }
+}
+
 /** Fields that explain or give away the answer, on any item. */
 const COMMON_HIDDEN = ['explanation', 'incorrectFeedback'];
 
@@ -128,13 +196,16 @@ const HIDDEN: Record<string, string[]> = {
 const CHOICE_LISTS = ['options', 'items', 'prompts', 'matches', 'categories', 'rows', 'columns', 'labels'];
 
 /**
- * The item without its answer. Custom (`x-`) types lose only `solution` (where OQSE
- * puts everything that gives their answer away) and the common fields. `hints` stay:
- * a game may show them on any device while the player answers.
+ * The item without its answer. An official type keeps only the fields its OQSE schema lists
+ * (fail closed: unknown fields, also nested, are removed, as are free-form `appSpecific` and
+ * `customData`), then loses the fields that give the answer away. Custom (`x-`) types keep
+ * their own fields and lose only `solution` (where OQSE puts everything that gives their
+ * answer away) and the common fields. `hints` stay: a game may show them on any device while
+ * the player answers.
  */
 export function publicItem(item: OQSEAnyItem): OQSEAnyItem {
   const type = (item as { type: string }).type;
-  const it = structuredClone(item) as any;
+  const it = (type.startsWith('x-') ? structuredClone(item) : knownFields(structuredClone(item), OQSEItemSchema as unknown as SchemaLike)) as any;
   for (const key of COMMON_HIDDEN) delete it[key];
   // A quote from a source often states the answer.
   if (Array.isArray(it.sources)) for (const source of it.sources) if (source && typeof source === 'object') delete source.quote;

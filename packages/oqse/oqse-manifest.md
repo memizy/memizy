@@ -95,8 +95,8 @@ Applications MUST declare their capabilities in a standardized JSON format, know
 | `locales` | string[] | No | BCP 47 locale codes for the application's supported UI languages (e.g., `["en", "cs"]`). Host environments MAY use this when choosing a plugin for a specific user locale. If absent or `[]`, the host SHOULD assume the application supports English. |
 | `tags` | string[] | No | Array of plain text keywords describing the application's purpose or focus area (e.g., `["flashcards", "spaced-repetition", "chess"]`). Used by host environments and catalogs for filtering and discovery. Uses the same convention as `meta.tags` in study sets. |
 | `emoji` | string | No | A single emoji character used as the application's visual identity in catalogs and host UIs where loading a full icon image is impractical (e.g., `"🧠"`, `"🚀"`, `"🎮"`). SHOULD contain a single visually-rendered emoji glyph (note: some emoji such as flags or family sequences are composed of multiple Unicode code points — this is acceptable). If a future `iconUrl` field is also declared in an extension, hosts SHOULD prefer that over `emoji`. |
-| `studyMode` | string | No | Enum indicating the application's primary experience type. MUST be one of: `"game"` (entertainment-first; gameplay mechanics take priority over traditional study), `"fun"` (balanced blend of interactivity and learning), `"drill"` (maximally focused, distraction-free repetition). Helps host environments and users choose an appropriate plugin for their goals. If absent, no assumption is made. See `questionDensity` for a complementary signal about quiz frequency within the experience. |
-| `questionDensity` | string | No | Enum describing the ratio of quiz items relative to non-question game elements. MUST be one of: `"low"` (questions appear rarely, gameplay dominates), `"medium"` (questions and gameplay are roughly balanced), `"high"` (nearly every interaction is a question). Primarily meaningful for plugins with `studyMode: "game"` or `"fun"`. If the plugin declares `studyMode: "drill"`, host environments SHOULD treat `questionDensity` as `"high"` regardless of the declared value. If absent, no assumption is made. See `studyMode` for the primary classification. |
+| `studyMode` | string | No | The application's primary experience type (**open**: another value is treated as absent): `"game"` (entertainment-first; gameplay mechanics take priority over traditional study), `"fun"` (balanced blend of interactivity and learning), `"drill"` (maximally focused, distraction-free repetition). Helps host environments and users choose an appropriate plugin for their goals. If absent, no assumption is made. See `questionDensity` for a complementary signal about quiz frequency within the experience. |
+| `questionDensity` | string | No | The ratio of quiz items relative to non-question game elements (**open**: another value is treated as absent): `"low"` (questions appear rarely, gameplay dominates), `"medium"` (questions and gameplay are roughly balanced), `"high"` (nearly every interaction is a question). Primarily meaningful for plugins with `studyMode: "game"` or `"fun"`. If the plugin declares `studyMode: "drill"`, host environments SHOULD treat `questionDensity` as `"high"` regardless of the declared value. If absent, no assumption is made. See `studyMode` for the primary classification. |
 | `appSpecific` | object | No | Object for application-specific metadata not covered by the standard fields. Top-level keys in this object MUST be namespaced by the application identifier (e.g., `"memizy"`) to prevent collisions between applications (e.g., `{ "memizy": { "editorState": {...} } }`). Applications declaring custom `x-` features SHOULD document their semantics here so that host environments can surface that information. Other applications MUST ignore this object. |
 | `capabilities` | object | No | Object defining application's capabilities. Extends **FeatureProfile** (adds `actions`, `types` and `assets`). Default: `{}` (with the defaults of its fields). |
 
@@ -176,6 +176,8 @@ If an application lacks a required capability:
 
 This section is the single reference for all constraints on OQSEM fields. For the normative definition of each field and its behavioral semantics, see the sections above. A host environment MUST reject a manifest that violates any MUST rule below and MUST report an appropriate structured error to the user.
 
+**Newer 1.x manifests:** a manifest may use keys and values from a later 1.x version (a new item type, action, asset category or feature). A host ignores what it does not know – it never rejects a manifest because of it – and treats the application as supporting only what the host understands. Tools that rewrite a manifest preserve unknown keys and values unchanged.
+
 ### Required Fields
 
 - `version`, `id` and `appName` MUST be present. A manifest missing any of these MUST be rejected.
@@ -202,11 +204,11 @@ This section is the single reference for all constraints on OQSEM fields. For th
 - MUST NOT be empty or contain only whitespace.
 
 **`studyMode`:**
-- MUST be one of: `"game"`, `"fun"`, `"drill"`.
+- Open: `"game"`, `"fun"`, `"drill"`, or a value of a later 1.x version (a lowercase name).
 - An unrecognized value SHOULD be treated as absent; the host SHOULD warn.
 
 **`questionDensity`:**
-- MUST be one of: `"low"`, `"medium"`, `"high"`.
+- Open: `"low"`, `"medium"`, `"high"`, or a value of a later 1.x version (a lowercase name).
 - An unrecognized value SHOULD be treated as absent; the host SHOULD warn.
 - If `studyMode` is `"drill"` and `questionDensity` is anything other than `"high"`, hosts SHOULD emit an inconsistency warning (the host treats it as `"high"` per [OQSEM Root Object](#oqsem-root-object)).
 
@@ -224,18 +226,19 @@ This section is the single reference for all constraints on OQSEM fields. For th
 For the full semantics of the capabilities object, see [Capabilities Object](#capabilities-object-extends-featureprofile) and [Wildcard and Null Semantics](#wildcard-and-null-semantics).
 
 **`capabilities.actions`:**
-- If present, MUST contain at least one value from the [Action Registry](#action-registry). If absent, the application renders items (`["render"]`).
-- Values that are not in the Action Registry and do not carry an `x-` prefix SHOULD trigger a warning; a host MAY reject the manifest.
+- If present, MUST NOT be empty. If absent, the application renders items (`["render"]`).
+- Each value MUST be a lowercase name (`^(x-)?[a-z0-9]+(-[a-z0-9]+)*$`). A value that is neither in the [Action Registry](#action-registry) nor `x-` prefixed (e.g., an action from a newer 1.x version) MUST NOT cause manifest rejection; the host ignores it and MAY warn.
 
 **`capabilities.types`:**
 - If absent, `null` or `[]` (see [Wildcard and Null Semantics](#wildcard-and-null-semantics)), the application processes no items: it is compatible only with sets without items (e.g., a game that does not use study sets).
 - `["*"]` is valid and declares support for all item types.
-- Custom type values MUST use the `x-` prefix.
+- Each value MUST be `"*"` (alone) or a lowercase type name (`^(x-)?[a-z0-9]+(-[a-z0-9]+)*$`). Custom type values MUST use the `x-` prefix. A value without the prefix that is not an official type of the host's OQSE version (a type from a newer 1.x version) MUST NOT cause manifest rejection; the host ignores it (the application still supports the types the host knows).
 
 **`capabilities.assets`:**
 - Each asset category key (`image`, `audio`, `video`, `model`) follows the [Wildcard and Null Semantics](#wildcard-and-null-semantics): `["*"]`, an explicit MIME type list, `null`, or `[]` (equivalent to `null`).
 - MIME type strings SHOULD conform to IANA media type format (e.g., `"image/webp"`, `"audio/mpeg"`).
 - An unrecognized MIME type SHOULD trigger a warning but MUST NOT cause manifest rejection.
+- A category key the host does not know (from a newer 1.x version) MUST NOT cause manifest rejection; the host ignores it and preserves it.
 
 **`capabilities.features`:**
 - Each value SHOULD either appear in the Official Feature Registry or carry the `x-` prefix.

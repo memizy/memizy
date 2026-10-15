@@ -2,6 +2,13 @@
 
 The protocol has its own changelog at the end of [SPEC.md](https://github.com/memizy/memizy/blob/main/packages/protocol/SPEC.md#changelog) (protocol 1.0, 2026-10-14). This file lists the releases of the npm package.
 
+## Unreleased (next release candidate)
+
+* Public items keep only the fields the OQSE schema of their type lists (fail closed): unknown fields – also of choices, zones and other nested objects – and free-form `appSpecific` / `customData` are removed, so a field of a later OQSE version can never reveal an answer on players' devices (SPEC 4.4). Custom `x-` types keep their fields except `solution`.
+* Settings of a type from a later protocol version: a manifest may declare them (`UnknownSettingSchema`, needs `id`, `label`, `default`); `PluginRuntime.unknownSettings` lists them, `resolveSettings(definitions, input, unknownSettings)` gives them their default; `isKnownSetting`, `SETTING_TYPES`. `SettingValue` may be any JSON value.
+* `AnswerRecord.score` (partial credit 0–1).
+* SPEC: `InitPayload.set` holds the questions of this instance (4.2); the two axes of questions (10, decided); reserved: personal sets (`modes.multiplayer.sets`, feature `personal-sets`, `Player.set`), `pickItems`, `openSource`, `markItem` (10).
+
 ## 1.0.0-rc.6 (2026-10-14)
 
 The contract of protocol 1.0 is final: within MAJOR 1 it changes only additively (SPEC 9).

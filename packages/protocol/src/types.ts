@@ -123,6 +123,11 @@ export interface AnswerRecord {
   hintsUsed?: number;
   isSkipped?: boolean;
   /**
+   * Partial credit between 0 and 1 (e.g. 2 of 3 correct pairs = 0.67), for items that allow
+   * it (OQSE `pedagogy.partialCredit`). `isCorrect` stays the outcome used for repetition.
+   */
+  score?: number;
+  /**
    * What the player answered, in the `checkAnswer` format of the item type
    * (choice IDs, text, numbers…). Lets teachers see which wrong answers were chosen.
    */

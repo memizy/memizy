@@ -13,6 +13,8 @@ export interface LearningAlgorithm {
   /**
    * The new progress record of the answered item. `item` is the item of the set with its
    * answers (type, difficulty, skills… for algorithms like FSRS); it may be ignored.
+   * Build it from `previous`: the learner's `starred` and fields of a later OQSEP version
+   * MUST stay (OQSEP "On unknown keys"); store `answer.answer` as `lastAnswer.answer`.
    */
   apply(previous: ProgressRecord | undefined, answer: AnswerRecord, now: Date, item: OQSEAnyItem): ProgressRecord;
 }
@@ -35,6 +37,7 @@ export const leitner: LearningAlgorithm = {
       ...(answer.timeSpentMs !== undefined && { timeSpent: answer.timeSpentMs }),
       ...(answer.hintsUsed !== undefined && { hintsUsed: answer.hintsUsed }),
       ...(answer.isSkipped && { isSkipped: true }),
+      ...(answer.answer !== undefined && { answer: answer.answer }),
     };
     if (answer.isSkipped) {
       return { ...(previous ?? { bucket: 0 }), stats, lastAnswer } as ProgressRecord;
@@ -46,6 +49,7 @@ export const leitner: LearningAlgorithm = {
       bucket,
       nextReviewAt: next.toISOString(),
       stats: {
+        ...stats, // fields of a later OQSEP version stay
         attempts: stats.attempts + 1,
         incorrect: stats.incorrect + (answer.isCorrect ? 0 : 1),
         streak: answer.isCorrect ? stats.streak + 1 : 0,

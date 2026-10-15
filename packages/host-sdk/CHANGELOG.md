@@ -1,5 +1,11 @@
 # Changelog of @memizy/host-sdk
 
+## Unreleased (next release candidate)
+
+* `leitner` keeps the learner's `starred` and fields of a later OQSEP version (also in `stats`) and stores the answer as `lastAnswer.answer`; the `LearningAlgorithm` contract says so.
+* `LocalSession` gives settings of a later protocol version their default and ignores values sent for them.
+* Public items of a session come from the new fail-closed `publicItem` of `@memizy/protocol`.
+
 ## 1.0.0-rc.6 (2026-10-14)
 
 Enforces the final protocol 1.0 ([SPEC](https://github.com/memizy/memizy/blob/main/packages/protocol/SPEC.md)).

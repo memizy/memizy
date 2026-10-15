@@ -81,6 +81,8 @@ export interface RecordAnswerOptions {
   timeSpentMs?: number;
   hintsUsed?: number;
   isSkipped?: boolean;
+  /** Partial credit 0–1 (e.g. 2 of 3 pairs = 0.67); `isCorrect` stays the pass/fail outcome. */
+  score?: number;
   /** What the player answered (the `checkAnswer` format). */
   answer?: unknown;
 }

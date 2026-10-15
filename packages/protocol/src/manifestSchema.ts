@@ -6,7 +6,7 @@
 
 import { z } from 'zod';
 import { OQSEManifestSchema, formatOQSEErrors, withManifestDefaults, type OQSEManifest } from '@memizy/oqse';
-import { SettingDefinitionSchema } from './settingsSchema';
+import { SettingEntrySchema } from './settingsSchema';
 import { extractManifestFromHtml, toRuntime, type PluginRuntime } from './pluginRuntime';
 
 // ============================================================================
@@ -63,7 +63,7 @@ export const MemizyRuntimeSchema = z
       solo: z.looseObject({}).optional(),
       multiplayer: MultiplayerModeSchema.optional(),
     }),
-    settings: z.array(SettingDefinitionSchema).optional(),
+    settings: z.array(SettingEntrySchema).optional(),
     settingsScreen: z.looseObject({ size: z.enum(['compact', 'large']) }).optional(),
     display: z.looseObject({ orientation: z.enum(['any', 'portrait', 'landscape']).optional() }).optional(),
     /** What the plugin reaches outside its sandbox (SPEC 8.4). */
