@@ -1,6 +1,6 @@
 {
   "name": "@memizy/protocol",
-  "version": "1.0.0-rc.6",
+  "version": "1.0.0-rc.7",
   "description": "Memizy Plugin Protocol: types, Zod schemas and helpers shared by @memizy/plugin-sdk and @memizy/host-sdk.",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -34,7 +34,7 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@memizy/oqse": "^1.0.0-rc.6",
+    "@memizy/oqse": "^1.0.0-rc.7",
     "zod": "^4.3.6"
   },
   "devDependencies": {

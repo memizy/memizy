@@ -1,6 +1,6 @@
 {
   "name": "@memizy/plugin-sdk",
-  "version": "1.0.0-rc.6",
+  "version": "1.0.0-rc.7",
   "description": "Build Memizy learning games (solo and multiplayer) in a single HTML file.",
   "type": "module",
   "main": "./dist/memizy-sdk.cjs",
@@ -29,8 +29,8 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@memizy/oqse": "^1.0.0-rc.6",
-    "@memizy/protocol": "^1.0.0-rc.6",
+    "@memizy/oqse": "^1.0.0-rc.7",
+    "@memizy/protocol": "^1.0.0-rc.7",
     "dompurify": "^3.4.1",
     "marked": "^16.0.0",
     "mutative": "^2.0.0",

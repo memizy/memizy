@@ -1,6 +1,6 @@
 # Changelog of @memizy/host-sdk
 
-## Unreleased (next release candidate)
+## 1.0.0-rc.7 (2026-10-16)
 
 * `leitner` keeps the learner's `starred` and fields of a later OQSEP version (also in `stats`) and stores the answer as `lastAnswer.answer`; the `LearningAlgorithm` contract says so.
 * `LocalSession` gives settings of a later protocol version their default and ignores values sent for them.

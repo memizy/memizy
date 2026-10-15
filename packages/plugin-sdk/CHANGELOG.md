@@ -1,8 +1,8 @@
 # Changelog of @memizy/plugin-sdk
 
-Plugins import `https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1`; release candidates are reached only by their exact version (`@1.0.0-rc.6`).
+Plugins import `https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1`; release candidates are reached only by their exact version (`@1.0.0-rc.7`).
 
-## Unreleased (next release candidate)
+## 1.0.0-rc.7 (2026-10-16)
 
 * `ctx.recordAnswer(item, isCorrect, { score })`: partial credit 0–1.
 * Media of a type from a later OQSE version are shown as a link; OQSE tags of a later version (`<name:key />`) are removed from the text.
