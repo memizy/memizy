@@ -51,7 +51,7 @@ In this specification, the keywords **MUST**, **MUST NOT**, **SHOULD**, **SHOULD
     * For HTTP `Content-Type` header, use the appropriate MIME type
   * **Text Encoding:** UTF-8 (REQUIRED, without BOM)
   * **Validation:** Every OQSE file SHOULD be valid according to the JSON Schema at the URI specified in `$schema`
-  * **Unique IDs:** Every `id` MUST be a valid UUID (format 8-4-4-4-12 hexadecimal; the version is not checked). New IDs SHOULD be **UUIDv7** (time-ordered, good for database indexes); applications MUST accept any UUID version. When re-exporting an existing set, the original UUID MUST be preserved. See [UUID Validation Rules](#uuid-validation-rules). Exception: `SourceMaterial.id` MAY be an alphanumeric string unique only within that file, and `id` within internal item objects such as `TimelineEvent` or `CategorizeEntry` MAY also be an alphanumeric string.
+  * **Unique IDs:** Every `id` MUST be a valid UUID (format 8-4-4-4-12 hexadecimal; the version is not checked). New IDs SHOULD be **UUIDv7** (time-ordered, good for database indexes); applications MUST accept any UUID version. When re-exporting an existing set, the original UUID MUST be preserved. **An item is identified by its set and its ID together** (`meta.id` + `item.id`): a copy of a set (a fork, a translation) gets a new `meta.id` and may keep the IDs of its items, so an item ID alone is not unique across sets – applications that store answers or progress of several sets key them by both. See [UUID Validation Rules](#uuid-validation-rules). Exception: `SourceMaterial.id` MAY be an alphanumeric string unique only within that file, and `id` within internal item objects such as `TimelineEvent` or `CategorizeEntry` MAY also be an alphanumeric string.
   * **Text Formatting:** The specification distinguishes two types of text fields:
     * **Plain Text:** Fields intended for metadata and identifiers (e.g., titles, tags, alt texts). Interpreted as plain text without any formatting.
     * **Rich Content:** Fields intended for educational content. Always written as **GitHub Flavored Markdown (GFM)** (plain text is valid Markdown), with media references using Media Tag syntax `<asset:key />` and the tags `<sub>`, `<sup>`, `<br>` without attributes. **LaTeX** mathematics compatible with KaTeX/MathJax (inline `$x^2$` and blocks `$$...$$` rendered as display style on a separate line) only when the `latex` feature is declared, otherwise `$` is a literal character. Raw HTML only with the `html` feature. See the [Official Feature Registry](#official-feature-registry).
@@ -350,7 +350,17 @@ Each object in the `items` array is one study item. All items share these basic 
 | `dependencyItems` | string[] | No | Array of `id`s of items that should logically precede this item (prerequisites). All IDs MUST exist in the `items` array. Item MUST NOT reference its own `id`. Circular dependencies are allowed – if the Application supports dependencies, it MUST detect them; Applications that do not support dependencies MAY ignore this field. Application MUST ignore non-existent references with a warning. |
 | `pedagogy` | Pedagogy | No | Object containing advanced data for adaptive learning and psychometrics. [See Pedagogy Object](#the-pedagogy-object-adaptive-difficulty). |
 | `customData` | object | No | Field for static creator metadata. |
+| `mustUnderstand` | string[] | No | Properties without which the item cannot be shown or checked correctly – see [Must-Understand Properties](#must-understand-properties). |
 | `appSpecific` | object | No | Field for application-specific static metadata. Top-level keys MUST be namespaced by the application identifier to prevent collisions (e.g., `{ "memizy": { "displayHint": "compact" } }`). Other applications MUST ignore this object. |
+
+### Must-Understand Properties
+
+`mustUnderstand` lists properties the item depends on: an application that does not support **every** listed property MUST NOT show or check the item – it treats it like an item of an unknown type (skips it when rendering or playing, records a warning, preserves it unchanged on export). This lets later 1.x versions and vendors add properties that change how an item is checked or that hold answer data, without older applications silently grading it wrong or revealing its answer.
+
+* An entry is the name of a property of the item (`"tolerancePercent"`), or a path into nested objects joined by dots, where lists are passed through (`"options.weight"` = the `weight` of every option). Names are case-sensitive.
+* An item that uses a property **added after OQSE 1.0** which changes which answers are correct, or which holds answer data, MUST list it. Vendor properties (`x-…`) that do so MUST be listed as well.
+* Properties defined for the item's type by the application's OQSE version are supported by definition; listing them is allowed and has no effect. For custom `x-` types, the application that defines the type decides.
+* Example: a later version adds `tolerancePercent` to `numeric-input`; a set uses it as `{ "type": "numeric-input", …, "tolerancePercent": 5, "mustUnderstand": ["tolerancePercent"] }`. An OQSE 1.0 application skips that item instead of checking it with the absolute tolerance only.
 
 -----
 
@@ -499,6 +509,8 @@ Lists that the learner selects from or arranges are lists of **choices**: option
 | `explanation` | string | No | **Rich Content.** Why this choice is (in)correct, shown after answering. |
 
 **Answers always refer to choice IDs, never to positions** (`correctId`, `correctIds`, `correctOrder`, `pairs`, `connections`, `correctCategoryId`, `correctCells`, `correctLabelId`). Answers, statistics and learning progress therefore stay valid when an author reorders, adds or edits choices, and applications can shuffle lists freely without remapping anything. Choice IDs are local to their list; the same ID may appear in another list of the same item.
+
+**Choice IDs must not give the answer away.** Learners can see the IDs of choices (e.g., on their devices in a multiplayer game, where the answer itself is hidden). An ID MUST NOT tell which choice is correct (not `"correct"`, `"right"`, `"wrong"`), and it SHOULD NOT tell the authored order either when the author writes the correct choice first (`"a"`, `"b"`, `"c"` with `"a"` usually correct): use IDs derived from the text (`"praha"`) or random short IDs. Validators warn about IDs that name the answer. Applications MAY give a learner's view per-session IDs instead (and map answers back).
 
 ## Comparing Typed Answers
 
@@ -1659,7 +1671,7 @@ To ensure consistency and practical implementability, the specification defines 
 | `note.content` / `note.hiddenContent` | 100,000 characters each | Notes are documents, not questions |
 | `item.hints[]` (one hint) | 2,000 characters | Each hint separately |
 | `options[]` (one option) | 2,000 characters | For MCQ and similar types |
-| `items[]` (items array) | 10,000 items | Maximum count in one set |
+| `items[]` (items array) | 50,000 items | Maximum count in one set (large question banks; split bigger collections into several sets) |
 | `options[]` (options array) | 100 options | For MCQ types |
 | `prompts[]` / `matches[]` (match-pairs) | 100 items each | `matches` may contain more choices than `prompts` (distractors) |
 | `hints[]` (hints array) | 20 hints | Per one item |
@@ -2006,13 +2018,13 @@ Application SHOULD provide structured log of errors and warnings:
 
 ### Adding Custom Item Types
 
-Applications may define custom item types using `x-` prefix (e.g., `x-code-challenge`, `x-pronunciation`). The type MUST match `^x-[a-z0-9]+(-[a-z0-9]+)*$`. Validators check only the common item properties of custom items and MUST preserve all their other fields unchanged. Applications that do not support a custom type MUST skip it (without an error) when rendering. These types:
+Applications may define custom item types using `x-` prefix (e.g., `x-acme-code-challenge`, `x-acme-pronunciation`). The type MUST match `^x-[a-z0-9]+(-[a-z0-9]+)*$` and SHOULD contain the vendor's name right after the prefix (`x-<vendor>-<name>`), so that two vendors never pick the same name; the same applies to custom features, properties and actions. Validators check only the common item properties of custom items and MUST preserve all their other fields unchanged. Applications that do not support a custom type MUST skip it (without an error) when rendering. These types:
   * MUST preserve all common properties from section 4
   * SHOULD be documented in `appSpecific` object in `meta`
   * MUST NOT collide with future official types
   * SHOULD put everything that gives the answer away (correct answers, solutions) into the reserved field `solution` (any JSON value). Applications that hide answers from learners (e.g., from other players' devices in a multiplayer game) remove `solution`, together with `explanation` and `incorrectFeedback`. Validators preserve `solution` unchanged.
 
-**Hiding answers safely:** an application that shows an item of an official type without its answer (e.g., to other players' devices in a multiplayer game) MUST keep only the fields it knows are not part of the answer, and remove every other field – fields it does not know (from a newer version, vendor keys), unknown fields of nested objects such as choices, and free-form data (`appSpecific`, `customData`). Unknown data can then never reveal an answer. Items of custom `x-` types keep their fields except `solution`, `explanation` and `incorrectFeedback` (their authors put the answer into `solution`, see above).
+**Hiding answers safely:** an application that shows an item of an official type without its answer (e.g., to other players' devices in a multiplayer game) MUST keep only the fields it knows are not part of the answer, and remove every other field – fields it does not know (from a newer version, vendor keys), unknown fields of nested objects such as choices, and free-form data (`appSpecific`, `customData`). It also removes media (`assets`) that only the removed fields refer to (e.g., a picture on the back of a flashcard). Unknown data can then never reveal an answer. Items of custom `x-` types keep their fields except `solution`, `explanation` and `incorrectFeedback` (their authors put the answer into `solution`, see above).
 
 ### Versioning and Compatibility
 
@@ -2020,7 +2032,7 @@ These rules apply to OQSE sets and equally to [OQSEM manifests](./oqse-manifest.
 
 **Version format:** `MAJOR.MINOR` (regex `^\d+\.\d+$`, e.g., `1.0`, `1.3`, `2.0`). Both parts are non-negative integers and are compared numerically (`1.10` is greater than `1.9`).
 
-  * **MINOR change** (e.g., 1.0 → 1.1): only additions – new optional fields, item types, feature flags, tags, or values of open fields. The meaning of existing keys and their defaults never changes, so every 1.x application can read every 1.y file. Two kinds of additions are therefore **not** allowed in a MINOR version, because older applications would silently get them wrong: a field that changes which answers to an existing item type are correct (e.g., extra accepted answers – older applications would mark them wrong), and a new place for answer data in an existing item type (older applications that hide answers would show it). Such changes come as a new item type or in a new MAJOR version. Likewise fixed for 1.x: the [size limits and the ranges of scales](#length-and-size-constraints), the tags allowed without the `html` feature, and the formats of IDs, dates and language tags.
+  * **MINOR change** (e.g., 1.0 → 1.1): only additions – new optional fields, item types, feature flags, tags, or values of open fields. The meaning of existing keys and their defaults never changes, so every 1.x application can read every 1.y file. Two kinds of additions would make older applications silently wrong – a field that changes which answers to an existing item type are correct (e.g., a relative tolerance: older applications would mark answers wrong), and a new place for answer data in an existing item type (older applications that hide answers would show it). A MINOR version may add them only as [must-understand properties](#must-understand-properties): every item that uses such a field lists it in `mustUnderstand`, so older applications skip the item instead of misreading it. Otherwise they come as a new item type or in a new MAJOR version. Likewise fixed for 1.x: the [size limits and the ranges of scales](#length-and-size-constraints), the tags allowed without the `html` feature, and the formats of IDs, dates and language tags.
   * **MAJOR change** (e.g., 1.x → 2.0): anything that changes the meaning of existing data (removed or renamed fields, other defaults, other rules for checking answers).
   * **Versions 0.x** were pre-release drafts. Their fields may mean something else than in 1.0 (e.g., other defaults), so they are treated like any other unsupported MAJOR version.
 
@@ -2252,6 +2264,9 @@ The first stable version. From now on, 1.x versions only add (see [Versioning an
 * `SourceMaterial` has a new shape: `kind` (what), `url` / `doi` / `isbn` / `set` (where, any number of them), `mimeType` (how to open) instead of `type` + `value`; a source can be a lesson in an OQSE set (`set`), `SourceReference.itemId` points to the lesson item, and `quote` locates the passage in it. The reference tool `scripts/migrate-oqse` converts sets of the release candidates.
 * OQSEP: `starred` (the learner's star) and `lastAnswer.answer` (the last answer, OQSE Answer Formats, at most 4 KB); unknown keys are preserved, also when a record is updated. OQSEM: item types, actions, asset categories, `studyMode` and `questionDensity` of a later 1.x version are ignored instead of rejected; unknown keys are preserved. OQSEH: unknown keys are preserved.
 * Tolerant reading of real data: BCP 47 tags with numeric regions and variants (`es-419`), fractions of a second of any length, subtitles from any URI; an invalid optional `meta` field or entry is removed instead of making the set unreadable; the nesting limit of a whole file is 32 levels (it was 10, which counted from the root and broke deep `appSpecific` data). Limits, ranges, the HTML tags allowed without `html`, and the formats of IDs, dates and language tags are fixed for 1.x.
+* [Must-understand properties](#must-understand-properties) (`mustUnderstand`): items list properties they depend on, so later 1.x versions and vendors can add properties that change checking or hold answer data – older applications skip such items instead of grading them wrong. The MINOR-version rule allows such additions only this way.
+* Choice IDs must not give the answer away (not `correct`, not the authored order when the correct choice comes first); validators warn (`REVEALING_CHOICE_ID`).
+* An item is identified by `meta.id` + `item.id`; a set may hold up to 50,000 items (was 10,000); custom names SHOULD carry the vendor (`x-<vendor>-…`).
 * The shape fields of a `HotspotObject` (`x`, `y`, `width`, `height`, `radius`, `points`, `targetName`) are marked required, as validators always treated them.
 * Before 1.0, two item types were aligned with the others: `math-input` has `correctAnswers` (a list, like `short-answer`) instead of `correctAnswer` + `alternativeAnswers`, and `match-complex` has `prompts` / `matches` (like `match-pairs`) instead of `leftItems` / `rightItems`. `math-input` has no `tolerance` (its answers are compared as LaTeX; numbers are `numeric-input`).
 * [Canonical and Authoring Formats](#canonical-and-authoring-formats): the JSON file is the canonical form that is stored and exchanged; authoring formats (OQSE Markdown for notes, tool-specific shorthands) are converted to it and keep item IDs across edits.

@@ -22,3 +22,5 @@ export * from './checkAnswer';
 export * from './plainText';
 export * from './features';
 export * from './compatibility';
+export { missingMustUnderstand } from './mustUnderstand';
+export { KNOWN_ITEM_PROPERTIES } from './knownProperties.generated';

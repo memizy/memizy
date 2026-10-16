@@ -10,7 +10,7 @@ import {
   type PluginManifest,
   type PluginRuntime,
 } from '@memizy/protocol';
-import { OQSE_VERSION, checkCompatibility, generateUUID, type CompatibilityReport, type OQSEFile, type OQSEAnyItem, type OQSEMeta } from '@memizy/oqse';
+import { OQSE_VERSION, checkCompatibility, generateUUID, missingMustUnderstand, type CompatibilityReport, type OQSEFile, type OQSEAnyItem, type OQSEMeta } from '@memizy/oqse';
 
 export interface LoadedPlugin {
   /** The plugin HTML (rendered with `srcdoc`). */
@@ -51,13 +51,16 @@ export interface PreparedSet {
 /**
  * Keeps only the item types the plugin declares and reports the OQSEM
  * handshake (`checkCompatibility`). The set should already be loaded with
- * `loadOQSEFile`. With a `seed` (normally the session id) the options, pairs
+ * `loadOQSEFile`. With a secret `seed` (random per game, never the session id) the options, pairs
  * and orders are shuffled once for the session (SPEC 4.4).
  */
 export function prepareSetForPlugin(file: OQSEFile, manifest: PluginManifest, options: { seed?: string } = {}): PreparedSet {
   // Without `types` the plugin processes no items (a game without questions).
   const types = (manifest.capabilities?.types ?? []) as string[];
-  const items = types.includes('*') ? file.items : file.items.filter((item) => types.includes(item.type));
+  // Items the host cannot check (properties in `mustUnderstand` it does not know) never reach a game.
+  const items = (types.includes('*') ? file.items : file.items.filter((item) => types.includes(item.type))).filter(
+    (item) => missingMustUnderstand(item).length === 0,
+  );
   const display = prepareDisplaySet({ meta: file.meta, items }, options.seed);
   return {
     set: display.set,

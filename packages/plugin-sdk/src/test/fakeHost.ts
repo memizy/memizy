@@ -18,6 +18,8 @@ export interface FakeSessionOptions {
   settings?: Record<string, unknown>;
   /** Shuffle the display order with this seed (default: keep the order, so tests can answer by index). */
   seed?: string;
+  /** The secret seed of the game rules the authority gets (`InitPayload.seed`); default: none (the session id). */
+  rulesSeed?: string;
 }
 
 export const sampleItems: OQSEAnyItem[] = [
@@ -37,7 +39,7 @@ export class FakeSession<S> {
   authority: string;
   disconnected = new Set<string>();
   private readonly def: GameDefinition<S>;
-  private readonly options: Required<Omit<FakeSessionOptions, 'seed'>> & { seed?: string };
+  private readonly options: Required<Omit<FakeSessionOptions, 'seed' | 'rulesSeed'>> & { seed?: string; rulesSeed?: string };
 
   constructor(def: GameDefinition<S>, options: FakeSessionOptions = {}) {
     this.def = def;
@@ -49,6 +51,7 @@ export class FakeSession<S> {
       items: options.items ?? sampleItems,
       settings: options.settings ?? {},
       seed: options.seed,
+      rulesSeed: options.rulesSeed,
     };
     this.players = this.options.players.map((id, i) => ({ id, name: id, isHost: this.options.hostAs === 'player' && i === 0, connected: true }));
     this.authority = this.options.mode === 'solo' || this.options.hostAs === 'player' ? this.players[0].id : BOARD_ADDRESS;
@@ -86,6 +89,7 @@ export class FakeSession<S> {
       progress: {},
       data: { plugin: null, set: null },
       snapshot: address === this.authority ? this.snapshot : null,
+      ...(address === this.authority && this.options.rulesSeed !== undefined && { seed: this.options.rulesSeed }),
     };
     const runtime = new GameRuntime<S>(this.def, this.hostFor(address), init, {
       onError: (code, message) => this.errors.push(`${code}: ${message}`),

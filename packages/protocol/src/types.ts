@@ -93,6 +93,11 @@ export interface InitPayload {
   data: PluginData;
   /** Last saved snapshot, only for the authority (resume). */
   snapshot: unknown | null;
+  /**
+   * Only for the authority: the secret seed of the game's random numbers (at least 128 bits,
+   * e.g. 32 hex digits). Other instances never get it (SPEC 4.2).
+   */
+  seed?: string;
 }
 
 /**
@@ -114,7 +119,7 @@ export interface SessionClock {
 // ============================================================================
 
 export interface AnswerRecord {
-  /** Default: self. The authority may record for any player. */
+  /** Default: self (the authority as a player); required when the board records. Only the authority records (SPEC 5). */
   playerId?: string;
   itemId: string;
   isCorrect: boolean;

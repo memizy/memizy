@@ -39,6 +39,7 @@ const setFile = loadOQSEFile({
   version: '1.0',
   meta: {
     id: id(0), language: 'cs', title: 'Set', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z',
+    description: 'Pictures: <asset:max /> <asset:huge />', // public media (used by the public content)
     assets: {
       max: { type: 'image', value: 'https://example.com/max.png', altText: 'The largest guaranteed asset' },
       huge: { type: 'image', value: 'https://example.com/huge.png', altText: 'Too large for the relay' },

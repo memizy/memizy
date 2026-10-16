@@ -451,7 +451,7 @@
       "additionalProperties": {}
     },
     "items": {
-      "maxItems": 10000,
+      "maxItems": 50000,
       "type": "array",
       "items": {
         "anyOf": [
@@ -715,6 +715,14 @@
                       "type": "string"
                     },
                     "additionalProperties": {}
+                  },
+                  "mustUnderstand": {
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)*$"
+                    }
                   },
                   "title": {
                     "type": "string"
@@ -996,6 +1004,14 @@
                     },
                     "additionalProperties": {}
                   },
+                  "mustUnderstand": {
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)*$"
+                    }
+                  },
                   "front": {
                     "type": "string",
                     "minLength": 1,
@@ -1274,6 +1290,14 @@
                     },
                     "additionalProperties": {}
                   },
+                  "mustUnderstand": {
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)*$"
+                    }
+                  },
                   "question": {
                     "type": "string",
                     "minLength": 1,
@@ -1549,6 +1573,14 @@
                       "type": "string"
                     },
                     "additionalProperties": {}
+                  },
+                  "mustUnderstand": {
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)*$"
+                    }
                   },
                   "question": {
                     "type": "string",
@@ -1859,6 +1891,14 @@
                       "type": "string"
                     },
                     "additionalProperties": {}
+                  },
+                  "mustUnderstand": {
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)*$"
+                    }
                   },
                   "question": {
                     "type": "string",
@@ -2184,6 +2224,14 @@
                     },
                     "additionalProperties": {}
                   },
+                  "mustUnderstand": {
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)*$"
+                    }
+                  },
                   "question": {
                     "type": "string",
                     "minLength": 1,
@@ -2472,6 +2520,14 @@
                       "type": "string"
                     },
                     "additionalProperties": {}
+                  },
+                  "mustUnderstand": {
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)*$"
+                    }
                   },
                   "question": {
                     "type": "string",
@@ -2772,6 +2828,14 @@
                       "type": "string"
                     },
                     "additionalProperties": {}
+                  },
+                  "mustUnderstand": {
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)*$"
+                    }
                   },
                   "question": {
                     "type": "string",
@@ -3102,6 +3166,14 @@
                       "type": "string"
                     },
                     "additionalProperties": {}
+                  },
+                  "mustUnderstand": {
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)*$"
+                    }
                   },
                   "question": {
                     "type": "string",
@@ -3444,6 +3516,14 @@
                       "type": "string"
                     },
                     "additionalProperties": {}
+                  },
+                  "mustUnderstand": {
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)*$"
+                    }
                   },
                   "question": {
                     "type": "string",
@@ -3801,6 +3881,14 @@
                     },
                     "additionalProperties": {}
                   },
+                  "mustUnderstand": {
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)*$"
+                    }
+                  },
                   "question": {
                     "type": "string",
                     "minLength": 1,
@@ -4111,6 +4199,14 @@
                     },
                     "additionalProperties": {}
                   },
+                  "mustUnderstand": {
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)*$"
+                    }
+                  },
                   "question": {
                     "type": "string",
                     "minLength": 1,
@@ -4406,6 +4502,14 @@
                       "type": "string"
                     },
                     "additionalProperties": {}
+                  },
+                  "mustUnderstand": {
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)*$"
+                    }
                   },
                   "question": {
                     "type": "string",
@@ -4816,6 +4920,14 @@
                     },
                     "additionalProperties": {}
                   },
+                  "mustUnderstand": {
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)*$"
+                    }
+                  },
                   "question": {
                     "type": "string",
                     "minLength": 1,
@@ -5146,6 +5258,14 @@
                     },
                     "additionalProperties": {}
                   },
+                  "mustUnderstand": {
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)*$"
+                    }
+                  },
                   "question": {
                     "type": "string",
                     "minLength": 1,
@@ -5456,6 +5576,14 @@
                       "type": "string"
                     },
                     "additionalProperties": {}
+                  },
+                  "mustUnderstand": {
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)*$"
+                    }
                   },
                   "question": {
                     "type": "string",
@@ -5813,6 +5941,14 @@
                     },
                     "additionalProperties": {}
                   },
+                  "mustUnderstand": {
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)*$"
+                    }
+                  },
                   "question": {
                     "type": "string",
                     "minLength": 1,
@@ -6092,6 +6228,14 @@
                       "type": "string"
                     },
                     "additionalProperties": {}
+                  },
+                  "mustUnderstand": {
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)*$"
+                    }
                   },
                   "question": {
                     "type": "string",
@@ -6566,6 +6710,14 @@
                     },
                     "additionalProperties": {}
                   },
+                  "mustUnderstand": {
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)*$"
+                    }
+                  },
                   "question": {
                     "type": "string",
                     "minLength": 1,
@@ -6885,6 +7037,14 @@
                     },
                     "additionalProperties": {}
                   },
+                  "mustUnderstand": {
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)*$"
+                    }
+                  },
                   "question": {
                     "type": "string",
                     "minLength": 1,
@@ -7167,6 +7327,14 @@
                       "type": "string"
                     },
                     "additionalProperties": {}
+                  },
+                  "mustUnderstand": {
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)*$"
+                    }
                   },
                   "question": {
                     "type": "string",
@@ -7524,6 +7692,14 @@
                     },
                     "additionalProperties": {}
                   },
+                  "mustUnderstand": {
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)*$"
+                    }
+                  },
                   "question": {
                     "type": "string",
                     "minLength": 1,
@@ -7818,6 +7994,14 @@
                   "type": "string"
                 },
                 "additionalProperties": {}
+              },
+              "mustUnderstand": {
+                "maxItems": 50,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)*$"
+                }
               }
             },
             "required": [

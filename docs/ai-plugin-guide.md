@@ -179,10 +179,10 @@ phases: {
 | `ctx.mode` / `ctx.hostAs` | `'solo'` / `'multiplayer'`; `'presenter'` / `'player'` / `null`. |
 | `ctx.now` | Current time in ms (same clock on all devices; stands still while paused). |
 | `ctx.actedAt` | When the player tapped (ms, same clock as `ctx.now`; at most 0.4 s before the action arrived). Use it for speed bonuses: fair also on a slow network. |
-| `ctx.random()` / `ctx.shuffle(array)` | Random number 0–1 / shuffled copy of an array. |
+| `ctx.random()` / `ctx.shuffle(array)` | Random number 0–1 / shuffled copy of an array. Players cannot predict them (the host gives the rules a secret seed), so a shuffled deck stays secret. |
 | `ctx.goto(phase)` | Move to another phase (section 4.2). |
 | `ctx.after(ms, action, payload?, { key }?)` / `ctx.cancel(key)` | Run an action later / cancel a timer. A timer with the same `key` replaces the previous one. |
-| `ctx.recordAnswer(itemId, isCorrect, { playerId?, answer?, score? }?)` | Save learning progress (default player: `ctx.playerId`). Call it for every answered question and pass `answer` (what the player chose) – teachers see it. For partial credit (2 of 3 pairs right) add `score` between 0 and 1. For a question that is not in the set (from a service or your own generator) pass the item itself instead of its id. |
+| `ctx.recordAnswer(itemId, isCorrect, { playerId?, answer?, score? }?)` | Save learning progress (default player: `ctx.playerId`). Call it for every answered question and pass `answer` (what the player chose) – teachers see it. For partial credit (2 of 3 pairs right) add `score` between 0 and 1. If a player may try again, record only the **first** attempt. For a question that is not in the set (from a service or your own generator) pass the item itself instead of its id. |
 | `ctx.reveal(itemId \| ids, { to? }?)` | Send the answer (correct option, explanation, back of a flashcard) to the players' devices: to everyone, or `{ to: playerId }`. |
 | `ctx.hide(itemId \| ids, { to? }?)` | Take a reveal back (e.g. before the same question is asked again). |
 | `ctx.end({ scores, summary? })` | The game is over. `scores` = `{ [playerId]: points }`; `summary` = an optional short text for the app. |
@@ -484,7 +484,7 @@ Lists the player chooses from or arranges are **choices** `{ id, text }`: `optio
 | `pin-on-image` | `question`, `targetAsset` (an image) | `{ x, y }` in percent of the image (an array with `multipleCorrect`) |
 | `pin-on-model` | `question`, `targetAsset` (a 3D model) | mesh name (an array with `multipleCorrect`) – draw it yourself |
 | `chess-puzzle` | `fen`, `question?` | array of moves in SAN (the player's and the replies) – draw it yourself |
-| `open-ended` | `question` | text; `checkAnswer` cannot check it (a teacher does) |
+| `open-ended` | `question` | text; `checkAnswer` cannot check it (it throws) – record it with `ctx.recordAnswer(item.id, false, { answer: text })`: the host keeps it for the teacher and ignores `isCorrect` |
 | `flashcard` | `front`, `back` | the player rates themselves 1–4 (1 no idea, 2 familiar, 3 with effort, 4 easy); `checkAnswer` → correct for 3 and 4 (the SDK also sends the rating as the `confidence`) |
 | `note` | `title?`, `content`, `hiddenContent?` | no checking – show with `ui.note` |
 | `x-…` (custom) | defined by the set's author | the answer data is in `solution` (hidden until the reveal) |
@@ -492,6 +492,7 @@ Lists the player chooses from or arranges are **choices** `{ id, text }`: `optio
 * `checkAnswer(item, answer)` returns `true`/`false` and applies the rules of the set. Call it in **actions** (on a player's device the item has no answer and `checkAnswer` throws). Typed answers ignore letter case, extra spaces and – unless the set says otherwise – diacritics, and may allow small typos; numbers are right within `correctAnswer ± tolerance`; timeline dates may be BC (negative years).
 * Texts of the set may contain Markdown, `<sub>` / `<sup>`, formulas and images: show them with `ui.text` (or `toPlainText` on a canvas), never as raw HTML. `ui.text` removes from the set's texts what could act like your game – `data-*` attributes (`data-act`…), `id`s, buttons, forms and inputs, and styles except colors and text formatting – so put your own controls around the text, not inside it.
 * Memizy already shuffles options and lists once per game (the same order on every device). Show them in the order you get them.
+* Choice IDs are opaque: Memizy may give your game other IDs than the set has. Never compare an answer with an ID written in your code – use `checkAnswer(item, answer)`.
 * The answer fields (`correctId`, `correctIds`, `correctOrder`, `pairs`, `correctAnswer(s)`, `explanation`, a choice's `explanation`, the `back` of a flashcard…) exist on players' devices only after `ctx.reveal`. Show them only after the reveal and only when `!item.answerHidden` (`ui.question` with `reveal: true` does it for you).
 
 ---

@@ -2,6 +2,12 @@
 
 ## 1.0.0-rc.7 (2026-10-16)
 
+* `LocalSession` gives the authority a secret random seed (`InitPayload.seed`; `SessionConfig.seed` only for replays and tests).
+* The default seed of the display order (`shuffleSeed`) is random, no longer the session id: a player knows the session id and could undo the shuffle (authors often write sets in the answer's order). Pass the same `shuffleSeed` to continue a saved game.
+* `getAsset` gives a player's instance in multiplayer only media of its own (public) set: media of the back of a flashcard or of an explanation can no longer be fetched by key.
+* `recordAnswer` is accepted only from the authority (SPEC 5): another instance cannot prove an answer, so a modified player's device cannot write "correct" into a teacher's statistics.
+* Answers to `open-ended` items are kept, not graded: the `answer` event has `ungraded: true` and no record, the learning progress is unchanged. Every `answer` event carries `setId` (an item is identified by set + item ID).
+* `prepareSetForPlugin` leaves out items whose `mustUnderstand` names properties this version does not support.
 * `leitner` keeps the learner's `starred` and fields of a later OQSEP version (also in `stats`) and stores the answer as `lastAnswer.answer`; the `LearningAlgorithm` contract says so.
 * `LocalSession` gives settings of a later protocol version their default and ignores values sent for them.
 * Public items of a session come from the new fail-closed `publicItem` of `@memizy/protocol`.

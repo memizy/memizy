@@ -11,7 +11,7 @@
  * Pure functions, so a future server-side authority can do exactly the same.
  */
 
-import { OQSEItemSchema, isTimelineOrderCorrect, type OQSEAnyItem, type OQSEMeta, type TimelineEvent } from '@memizy/oqse';
+import { OQSEItemSchema, findAssetKeys, isTimelineOrderCorrect, itemRichText, metaRichText, type OQSEAnyItem, type OQSEMeta, type TimelineEvent } from '@memizy/oqse';
 
 /** Marks an item whose answer was removed (multiplayer, not the authority). */
 export interface PublicItemMark {
@@ -243,8 +243,35 @@ export function publicItem(item: OQSEAnyItem): OQSEAnyItem {
       it.hotspots = [];
       break;
   }
+  // Media used only by the removed fields (the back of a flashcard, an explanation) would show
+  // the answer: keep only the media the public texts or `targetAsset` refer to.
+  if (it.assets && typeof it.assets === 'object') {
+    const used = usedAssetKeys(it);
+    it.assets = Object.fromEntries(Object.entries(it.assets).filter(([key]) => used.has(key.toLowerCase())));
+  }
   it.answerHidden = true;
   return it;
+}
+
+/** Asset keys an item refers to: `<asset:key />` in its texts (not in media captions) and `targetAsset`. */
+function usedAssetKeys(item: OQSEAnyItem): Set<string> {
+  const used = new Set<string>();
+  for (const [path, text] of itemRichText(item)) {
+    if (path[0] !== 'assets') for (const key of findAssetKeys(text)) used.add(key);
+  }
+  const target = (item as { targetAsset?: unknown }).targetAsset;
+  if (typeof target === 'string') used.add(target.toLowerCase());
+  return used;
+}
+
+/** The set's media the public items, the description and the thumbnail use (SPEC 4.4). */
+function publicMeta(meta: OQSEMeta, items: OQSEAnyItem[]): OQSEMeta {
+  if (!meta.assets) return meta;
+  const used = new Set<string>();
+  for (const item of items) for (const key of usedAssetKeys(item)) used.add(key);
+  for (const [path, text] of metaRichText(meta)) if (path[1] !== 'assets') for (const key of findAssetKeys(text)) used.add(key);
+  if (meta.thumbnail) used.add(meta.thumbnail.toLowerCase());
+  return { ...meta, assets: Object.fromEntries(Object.entries(meta.assets).filter(([key]) => used.has(key.toLowerCase()))) };
 }
 
 /**
@@ -255,5 +282,6 @@ export function publicItem(item: OQSEAnyItem): OQSEAnyItem {
 export function prepareDisplaySet(set: DisplaySet, seed?: string): { set: DisplaySet; publicSet: DisplaySet } {
   const random = seed === undefined ? null : seededRandom(seed);
   const items = set.items.map((item) => (random ? displayItem(item, random) : structuredClone(item)));
-  return { set: { meta: set.meta, items }, publicSet: { meta: set.meta, items: items.map(publicItem) } };
+  const publicItems = items.map(publicItem);
+  return { set: { meta: set.meta, items }, publicSet: { meta: publicMeta(set.meta, publicItems), items: publicItems } };
 }

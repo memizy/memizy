@@ -36,7 +36,7 @@ const { success, data, errors, warnings } = loadOQSEFile(JSON.parse(text));
 
 ## Schemas
 
-The exported `*Schema` objects are **Zod 4** schemas (use them with `.safeParse`); the 1.x line of this package stays on Zod 4.
+The stable way to validate are the functions (`loadOQSEFile`, `safeValidateOQSEFile`, …) and the JSON Schemas. The exported `*Schema` objects are Zod schemas: their `parse` / `safeParse` behaviour is covered by semver, their Zod-specific API (`.extend`, `.shape`, the Zod major version) is not – a 1.x release may move to a newer Zod (noted in the changelog).
 
 The auto-generated JSON Schemas are published with this repository and are available at the following URLs:
 

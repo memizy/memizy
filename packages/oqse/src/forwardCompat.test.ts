@@ -6,7 +6,12 @@
 
 import { describe, it, expect } from 'vitest';
 import { loadOQSEFile, safeValidateOQSEFile, withUnsupportedItems } from './fileValidation';
-import { MAX_JSON_DEPTH } from './utils';
+import { MAX_ITEMS, MAX_JSON_DEPTH } from './utils';
+import { readFileSync } from 'node:fs';
+import { checkAnswer } from './checkAnswer';
+import { missingMustUnderstand } from './mustUnderstand';
+import { knownPropertiesSource } from './knownPropertiesSource';
+import { OQSEItemSchema } from './oqseValidation';
 import { safeValidateOQSEProgress } from './progressValidation';
 import { safeValidateOQSEManifest } from './manifestValidation';
 import { safeValidateOQSEHeader } from './headerValidation';
@@ -89,6 +94,54 @@ describe('sets of a later 1.x version', () => {
   it('unknown OQSE tags do not break an item', () => {
     const result = safeValidateOQSEFile(set({}, [{ ...mcq(1), question: 'Define <term:photosynthesis />' }]));
     expect(result.success).toBe(true);
+  });
+});
+
+describe('must-understand properties', () => {
+  const numeric = (extra: Record<string, unknown>) => ({ id: id(2), type: 'numeric-input', question: 'g?', correctAnswer: 9.81, tolerance: 0.1, ...extra });
+
+  it('an item that needs a property of a later version is kept, not shown, and not checked', () => {
+    const future = numeric({ tolerancePercent: 5, mustUnderstand: ['tolerancePercent'] });
+    for (const result of [loadOQSEFile(set({}, [mcq(1), future])), safeValidateOQSEFile(set({}, [mcq(1), future]))]) {
+      expect(result.success).toBe(true);
+      expect(result.data!.items.map((item) => item.id)).toEqual([id(1)]);
+      expect(result.unsupportedItems).toEqual([{ index: 1, item: future }]);
+      expect(codes(result.warnings)).toContain('MUST_UNDERSTAND');
+    }
+    expect(() => checkAnswer(future as never, 9.81)).toThrow(/tolerancePercent/);
+  });
+
+  it('known properties, dotted paths, properties of the application and custom types pass', () => {
+    const known = numeric({ mustUnderstand: ['tolerance', 'assets.altText', 'pedagogy.partialCredit'] });
+    expect(loadOQSEFile(set({}, [known])).data!.items).toHaveLength(1);
+    expect(checkAnswer(known as never, 9.8)).toBe(true);
+    const vendor = numeric({ 'x-acme-unit': 'm/s2', mustUnderstand: ['x-acme-unit'] });
+    expect(loadOQSEFile(set({}, [vendor])).unsupportedItems).toHaveLength(1);
+    expect(loadOQSEFile(set({}, [vendor]), { understood: ['x-acme-unit'] }).data!.items).toHaveLength(1);
+    expect(missingMustUnderstand({ type: 'mcq-single', mustUnderstand: ['options.weight', 'options.text'] })).toEqual(['options.weight']);
+    expect(missingMustUnderstand({ type: 'x-acme-puzzle', mustUnderstand: ['anything'] })).toEqual([]);
+  });
+
+  it('the generated list of known properties is up to date (bun run build regenerates it)', () => {
+    const generated = readFileSync(new URL('./knownProperties.generated.ts', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+    expect(generated).toBe(knownPropertiesSource(OQSEItemSchema as never));
+  });
+});
+
+describe('choice IDs', () => {
+  it('warns about IDs that give the answer away', () => {
+    const item = { ...mcq(1), options: [{ id: 'correct', text: 'x' }, { id: 'wrong_1', text: 'y' }, { id: 'praha', text: 'z' }, { id: 'bright', text: 'w' }], correctId: 'correct' };
+    const result = loadOQSEFile(set({}, [item]));
+    expect(result.data!.items).toHaveLength(1); // a warning, the item stays
+    expect(result.warnings.filter((w) => w.code === 'REVEALING_CHOICE_ID').map((w) => w.path)).toEqual(['items[0].options[0].id', 'items[0].options[1].id']);
+  });
+});
+
+describe('size limits', () => {
+  it(`a set may hold ${MAX_ITEMS} items, not more`, () => {
+    expect(MAX_ITEMS).toBe(50_000);
+    const tooMany = set({}, Array.from({ length: MAX_ITEMS + 1 }, () => ({})));
+    expect(codes(loadOQSEFile(tooMany).errors)).toEqual(['TOO_MANY_ITEMS']);
   });
 });
 

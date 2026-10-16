@@ -72,10 +72,17 @@ export interface SessionConfig {
   theme?: HostConfig['theme'];
   sessionId?: string;
   /**
-   * Seed of the display order of options, pairs… (SPEC 4.4; default: the session id).
-   * Pass the seed used for the relay bundle so all devices agree; `null` keeps the set's order.
+   * Secret seed of the display order of options, pairs… (SPEC 4.4; default: random). Pass the
+   * seed used for the relay bundle so all devices agree, and the same seed again to continue a
+   * saved game; `null` keeps the set's order. Never derive it from the session id or the PIN:
+   * a player could undo the shuffle.
    */
   shuffleSeed?: string | null;
+  /**
+   * Secret seed of the game's random numbers, given only to the authority (SPEC 4.2;
+   * default: 128 random bits). Pass one only to replay a game or in tests.
+   */
+  seed?: string;
   host?: { name: string; version: string };
   /** Max wait for all instances to be ready before the countdown (default 15 s). */
   readyTimeoutMs?: number;
@@ -107,9 +114,12 @@ export type SessionEvent =
   | { type: 'settings'; values: Record<string, unknown>; valid: boolean; message?: string }
   /**
    * A recorded answer. `record` is the updated learning progress (null for a generated item,
-   * which is not repeated); `skills` / `tags` come from the item (for statistics).
+   * which is not repeated, and for an ungraded answer); `ungraded`: an answer that is not
+   * checked automatically (`open-ended`, SPEC 5.1) – kept for a teacher, repetition unchanged.
+   * `setId` + `answer.itemId` identify the item (OQSE: an item ID alone is not unique across
+   * sets); `skills` / `tags` come from the item (for statistics).
    */
-  | { type: 'answer'; playerId: string; record: ProgressRecord | null; answer: AnswerRecord; generated: boolean; skills: string[]; tags: string[] }
+  | { type: 'answer'; playerId: string; setId: string; record: ProgressRecord | null; answer: AnswerRecord; generated: boolean; ungraded: boolean; skills: string[]; tags: string[] }
   /** The game reported its result (`end(result)`); the session itself ends with `end()`. */
   | { type: 'result'; result: SessionResult }
   | { type: 'players'; players: Player[] }
@@ -159,6 +169,8 @@ function plainCopy<T>(value: T): T {
 
 export class LocalSession {
   readonly id: string;
+  /** Secret seed of the game's random numbers (only the authority gets it). */
+  private readonly seed: string;
   readonly plugin: LoadedPlugin;
   readonly runtime: PluginRuntime;
   readonly mode: 'solo' | 'multiplayer';
@@ -223,6 +235,7 @@ export class LocalSession {
   constructor(config: SessionConfig) {
     this.options = config;
     this.id = config.sessionId ?? `session-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    this.seed = config.seed ?? randomSeed();
     this.plugin = config.plugin;
     this.runtime = config.plugin.runtime;
     this.mode = config.mode;
@@ -258,7 +271,7 @@ export class LocalSession {
     if (resolved.errors.length > 0) throw new Error(`Invalid settings: ${resolved.errors.join('; ')}`);
     this.settingValues = resolved.values;
     // A plain copy: the set may be a framework proxy (Vue reactive) that structuredClone rejects.
-    const seed = config.shuffleSeed === null ? undefined : config.shuffleSeed ?? this.id;
+    const seed = config.shuffleSeed === null ? undefined : config.shuffleSeed ?? randomSeed();
     this.prepared = prepareSetForPlugin(plainCopy(config.set), config.plugin.manifest, { seed });
     if (config.restore) {
       this.isStarted = true;
@@ -615,7 +628,8 @@ export class LocalSession {
           const self = this.roster.some((p) => p.id === instance.address) ? instance.address : null;
           const playerId = answer.playerId ?? self;
           if (!playerId) throw new ProtocolError('INVALID_ARGUMENT', 'recordAnswer needs a playerId on the board.');
-          if (playerId !== self) requireAuthority('recordAnswer for another player');
+          // Only the authority has the answers and checks them (SPEC 5).
+          requireAuthority('recordAnswer');
           if (!this.roster.some((p) => p.id === playerId)) throw new ProtocolError('INVALID_ARGUMENT', `Unknown player "${playerId}".`);
           // The authority records for every player: its limit is per player.
           const cost = instance.address === this.authority ? 1 / Math.max(1, this.roster.length) : 1;
@@ -627,16 +641,22 @@ export class LocalSession {
             // A generated item (service, plugin generator): statistics only, no repetition.
             if (!answer.item) throw new ProtocolError('INVALID_ARGUMENT', `Unknown item "${answer.itemId}" (attach the item for a generated one).`);
             assertJsonWithin(answer.item, LIMITS.generatedItemBytes, 'DATA_TOO_LARGE', 'item');
-            this.emit({ type: 'answer', playerId, record: null, answer, generated: true, skills: listOf(answer.item.skills), tags: listOf(answer.item.tags) });
+            this.emit({ type: 'answer', playerId, setId: this.prepared.set.meta.id, record: null, answer, generated: true, ungraded: false, skills: listOf(answer.item.skills), tags: listOf(answer.item.tags) });
+            return;
+          }
+          const setId = this.prepared.set.meta.id;
+          if (known.type === 'open-ended') {
+            // Not checked automatically: `isCorrect` means nothing; a teacher decides later.
+            const { item: _ignored, ...kept } = answer;
+            this.emit({ type: 'answer', playerId, setId, record: null, answer: kept, generated: false, ungraded: true, skills: listOf(known.skills), tags: listOf(known.tags) });
             return;
           }
           const userKey = this.userKey(playerId);
-          const setId = this.prepared.set.meta.id;
           const progress = await this.storage.loadProgress(userKey, setId);
           const { item: _attached, ...stored } = answer;
           const record = this.algorithm.apply(progress[answer.itemId], stored, new Date(), structuredClone(known));
           await this.storage.saveProgress(userKey, setId, { [answer.itemId]: record });
-          this.emit({ type: 'answer', playerId, record, answer: stored, generated: false, skills: listOf(known.skills), tags: listOf(known.tags) });
+          this.emit({ type: 'answer', playerId, setId, record, answer: stored, generated: false, ungraded: false, skills: listOf(known.skills), tags: listOf(known.tags) });
         }),
 
       saveData: (...args) =>
@@ -673,8 +693,11 @@ export class LocalSession {
         call('getAsset', async () => {
           const [key, itemId] = parseHostCall('getAsset', args);
           if (!instance.assetLimiter.tryTake()) throw new ProtocolError('RATE_LIMITED', `More than ${LIMITS.assetsPerSecond} assets per second.`);
-          const item = itemId ? this.options.set.items.find((i) => i.id === itemId) : undefined;
-          const media = resolveAsset(key, item, this.options.set.meta);
+          // Only media of this instance's set: players' devices in multiplayer have public items
+          // without the media of hidden fields (SPEC 4.4).
+          const own = this.mode === 'multiplayer' && instance.address !== this.authority ? this.prepared.publicSet : this.prepared.set;
+          const item = itemId ? own.items.find((i) => i.id === itemId) : undefined;
+          const media = resolveAsset(key, item, own.meta);
           if (!media) throw new ProtocolError('ASSET_NOT_FOUND', `Asset "${key}" does not exist.`);
           if (this.options.loadAsset) return this.options.loadAsset(key, itemId);
           if (/^https?:/i.test(media.value)) {
@@ -755,6 +778,8 @@ export class LocalSession {
           }
         : { plugin: null, set: null },
       snapshot,
+      // The secret seed of the game rules: only the authority (SPEC 4.2).
+      ...(instance.address === this.authority && { seed: this.seed }),
     };
   }
 
@@ -836,4 +861,11 @@ export class LocalSession {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, Math.max(0, ms)));
+}
+
+/** 128 random bits as 32 hex digits (the secret seed of a game's random numbers). */
+function randomSeed(): string {
+  const bytes = new Uint8Array(16);
+  globalThis.crypto.getRandomValues(bytes);
+  return [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('');
 }

@@ -564,6 +564,13 @@ export interface BaseItem {
 
   /** Field for application-specific static metadata */
   appSpecific?: Record<string, unknown>;
+
+  /**
+   * Properties the item depends on (names or dotted paths, e.g. `"tolerancePercent"`,
+   * `"options.weight"`): an application that does not support all of them skips the item
+   * (OQSE "Must-Understand Properties"). See `missingMustUnderstand`.
+   */
+  mustUnderstand?: string[];
 }
 
 // ============================================================================

@@ -4,6 +4,10 @@ The protocol has its own changelog at the end of [SPEC.md](https://github.com/me
 
 ## 1.0.0-rc.7 (2026-10-16)
 
+* `InitPayload.seed`: a secret seed for the game's random numbers, only for the authority (SPEC 4.2, 8.4). Before, the SDK seeded `ctx.random` with the session id, which every device knows – a player could compute a shuffled deck.
+* Public items lose media that only hidden fields use (also in the public set's `meta.assets`); choice IDs are opaque to games, and a host may give per-session IDs (SPEC 4.4).
+* `recordAnswer` is an *authority* method (SPEC 5). The display order uses a secret, random seed (SPEC 4.4; not the session id).
+* SPEC: the Penpal 8 wire format (4); a host may give a game a part of a large set (4.2); answers to `open-ended` items do not change repetition, games record the first attempt (5.1); Zod: only `parse` / `safeParse` of the exported schemas are covered (9).
 * Public items keep only the fields the OQSE schema of their type lists (fail closed): unknown fields – also of choices, zones and other nested objects – and free-form `appSpecific` / `customData` are removed, so a field of a later OQSE version can never reveal an answer on players' devices (SPEC 4.4). Custom `x-` types keep their fields except `solution`.
 * Settings of a type from a later protocol version: a manifest may declare them (`UnknownSettingSchema`, needs `id`, `label`, `default`); `PluginRuntime.unknownSettings` lists them, `resolveSettings(definitions, input, unknownSettings)` gives them their default; `isKnownSetting`, `SETTING_TYPES`. `SettingValue` may be any JSON value.
 * `AnswerRecord.score` (partial credit 0–1).

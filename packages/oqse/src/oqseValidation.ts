@@ -9,7 +9,7 @@
  */
 
 import { z } from 'zod';
-import { MAX_JSON_DEPTH, validateJsonDepth } from './utils';
+import { MAX_ITEMS, MAX_JSON_DEPTH, validateJsonDepth } from './utils';
 import { isTimelineDate } from './answers';
 import type { OQSEAnyItem } from './oqse';
 
@@ -392,6 +392,11 @@ export const BaseItemSchema = z.looseObject({
   pedagogy: PedagogySchema.optional(),
   customData: z.record(z.string(), z.unknown()).optional(),
   appSpecific: z.record(z.string(), z.unknown()).optional(),
+  /** Properties the item depends on (OQSE "Must-Understand Properties"): names or dotted paths. */
+  mustUnderstand: z
+    .array(z.string().regex(/^[A-Za-z0-9_-]+(\.[A-Za-z0-9_-]+)*$/, 'A must-understand entry is a property name or a dotted path (e.g. "options.weight")'))
+    .max(50, 'Maximum 50 must-understand properties')
+    .optional(),
 });
 
 // ============================================================================
@@ -1089,7 +1094,7 @@ export const OQSEFileSchema = z.looseObject({
   $schema: z.string().url().optional(),
   version: z.string().regex(/^\d+\.\d+$/, 'Version must be in MAJOR.MINOR format (e.g. "1.0")'),
   meta: OQSEMetaSchema,
-  items: z.array(AnyOQSEItemSchema).max(10000, 'Maximum 10000 items per set'),
+  items: z.array(AnyOQSEItemSchema).max(MAX_ITEMS, `Maximum ${MAX_ITEMS} items per set`),
 });
 
 // ============================================================================

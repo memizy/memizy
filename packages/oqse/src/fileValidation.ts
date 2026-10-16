@@ -20,7 +20,8 @@ import { OQSEMetaSchema, SourceMaterialSchema, UnknownTypeItemSchema, getItemSch
 import { BLOOM_LEVELS, COGNITIVE_LOADS, MEDIA_TYPES, OFFICIAL_ITEM_TYPES, SOURCE_KINDS, SUBTITLE_KINDS } from './oqse';
 import { OFFICIAL_FEATURE_KEYS, OFFICIAL_ITEM_PROPERTIES, OFFICIAL_META_PROPERTIES } from './manifest';
 import { findAssetKeys, findRawHtml } from './richTextProcessor';
-import { MAX_JSON_DEPTH, formatPath, validateJsonDepth } from './utils';
+import { MAX_ITEMS, MAX_JSON_DEPTH, formatPath, validateJsonDepth } from './utils';
+import { missingMustUnderstand } from './mustUnderstand';
 import { resolveAsset } from './assets';
 import { findHeadings, splitLines } from './markdownUtils';
 import { itemRichText, metaRichText } from './richTextFields';
@@ -40,6 +41,8 @@ export type OQSEIssueCode =
   | 'TOO_MANY_ITEMS'
   | 'INVALID_ITEM'
   | 'UNKNOWN_ITEM_TYPE'
+  | 'MUST_UNDERSTAND'
+  | 'REVEALING_CHOICE_ID'
   | 'UNKNOWN_VALUE'
   | 'INVALID_SOURCE'
   | 'INVALID_META_FIELD'
@@ -77,7 +80,8 @@ export interface OQSEIssue {
 }
 
 /**
- * An item of a type this library does not know (from a later 1.x version), unchanged.
+ * An item this library cannot show or check, unchanged: a type it does not know (from a later
+ * 1.x version), or properties in `mustUnderstand` it does not support.
  * Applications skip it when rendering; an editor that saves the set writes it back
  * (see {@link withUnsupportedItems}).
  */
@@ -150,15 +154,24 @@ export const OQSE_VERSION = '1.0';
  * - Dangling references, a missing thumbnail, images without `altText` and uppercase
  *   asset keys → fixed in the returned copy (warning). The input is never mutated.
  */
-export function loadOQSEFile(data: unknown): OQSELoadResult {
-  return analyze(data, 'load');
+/** Options of {@link loadOQSEFile} and {@link safeValidateOQSEFile}. */
+export interface OQSELoadOptions {
+  /**
+   * Properties this application supports beyond the OQSE version of the library (e.g. its own
+   * `x-` properties): items that list them in `mustUnderstand` are not skipped because of them.
+   */
+  understood?: string[];
+}
+
+export function loadOQSEFile(data: unknown, options: OQSELoadOptions = {}): OQSELoadResult {
+  return analyze(data, 'load', options);
 }
 
 /**
  * Strict validation for saving / exporting. Every rule violation is an error.
  */
-export function safeValidateOQSEFile(data: unknown): OQSEValidationResult {
-  const result = analyze(data, 'strict');
+export function safeValidateOQSEFile(data: unknown, options: OQSELoadOptions = {}): OQSEValidationResult {
+  const result = analyze(data, 'strict', options);
   const success = result.success && result.errors.length === 0;
   return { success, data: success ? result.data : undefined, unsupportedItems: result.unsupportedItems, errors: result.errors, warnings: result.warnings };
 }
@@ -180,8 +193,8 @@ export function withUnsupportedItems(file: OQSEFile, unsupportedItems: Unsupport
  * Strict validation for saving / exporting.
  * @throws {OQSEValidationError} when the set is not fully compliant.
  */
-export function validateOQSEFile(data: unknown): OQSEFile {
-  const result = safeValidateOQSEFile(data);
+export function validateOQSEFile(data: unknown, options: OQSELoadOptions = {}): OQSEFile {
+  const result = safeValidateOQSEFile(data, options);
   if (!result.success) throw new OQSEValidationError(result.errors, result.warnings);
   return result.data!;
 }
@@ -212,7 +225,7 @@ class IssueLog {
   }
 }
 
-function analyze(input: unknown, mode: Mode): OQSELoadResult {
+function analyze(input: unknown, mode: Mode, options: OQSELoadOptions): OQSELoadResult {
   const log = new IssueLog();
   const unsupportedItems: UnsupportedItem[] = [];
   const critical = (): OQSELoadResult => ({ success: false, unsupportedItems, errors: log.errors, warnings: log.warnings });
@@ -249,8 +262,8 @@ function analyze(input: unknown, mode: Mode): OQSELoadResult {
   if (major !== SUPPORTED_OQSE_MAJOR_VERSION) {
     log.add('warning', 'UNSUPPORTED_VERSION', `Unsupported MAJOR version ${root.version}; loading in best-effort mode.`, ['version']);
   }
-  if (root.items.length > 10000) {
-    log.add('error', 'TOO_MANY_ITEMS', 'Maximum 10000 items per set.', ['items']);
+  if (root.items.length > MAX_ITEMS) {
+    log.add('error', 'TOO_MANY_ITEMS', `Maximum ${MAX_ITEMS} items per set.`, ['items']);
     return critical();
   }
 
@@ -334,6 +347,21 @@ function analyze(input: unknown, mode: Mode): OQSELoadResult {
     }
     seenIds.add(item.id);
 
+    // Choice IDs are visible to learners: one that names the answer gives it away.
+    for (const [listPath, choice] of choiceIds(item)) {
+      if (REVEALING_ID.test(choice)) {
+        log.add('warning', 'REVEALING_CHOICE_ID', `Choice ID "${choice}" gives the answer away (learners can see IDs); use an ID from the text or a random one.`, [...path, ...listPath], item.id);
+      }
+    }
+
+    // Properties the item depends on that this version does not know: kept, not shown.
+    const missing = missingMustUnderstand(item, options.understood);
+    if (missing.length > 0) {
+      log.add('warning', 'MUST_UNDERSTAND', `The item needs properties this application does not support (${missing.join(', ')}); it is kept but not shown.`, [...path, 'mustUnderstand'], item.id);
+      unsupportedItems.push({ index, item: structuredClone(raw) as Record<string, unknown> });
+      return;
+    }
+
     checkAltTexts(item.assets, [...path, 'assets'], log, mode, item.id);
     if (!checkItem(item, path, meta, htmlAllowed, latex, log, recoverable)) return;
     kept.push({ item, index });
@@ -415,6 +443,27 @@ function checkSources(meta: Record<string, unknown>, log: IssueLog, mode: Mode):
     kept.push(raw);
   });
   if (mode === 'load') meta.sourceMaterials = kept;
+}
+
+/** A choice ID that names the answer ("correct", "wrong_1", "answer-a"). */
+const REVEALING_ID = /(^|[^a-z])(correct|incorrect|right|wrong|answer|solution)([^a-z]|$)/i;
+
+/** IDs of the item's choices, with the path of their list. */
+function choiceIds(item: OQSEAnyItem): Array<[Path, string]> {
+  const out: Array<[Path, string]> = [];
+  const lists: Record<string, unknown> = item as unknown as Record<string, unknown>;
+  for (const key of ['options', 'items', 'prompts', 'matches', 'categories', 'rows', 'columns', 'labels', 'events', 'zones']) {
+    const list = lists[key];
+    if (Array.isArray(list)) list.forEach((c, i) => isRecord(c) && typeof c.id === 'string' && out.push([[key, i, 'id'], c.id]));
+  }
+  if (item.type === 'fill-in-select' && isRecord(lists.blanks)) {
+    for (const [token, blank] of Object.entries(lists.blanks)) {
+      if (isRecord(blank) && Array.isArray(blank.options)) {
+        blank.options.forEach((c, i) => isRecord(c) && typeof c.id === 'string' && out.push([['blanks', token, 'options', i, 'id'], c.id]));
+      }
+    }
+  }
+  return out;
 }
 
 /** Required meta fields: an invalid one makes the set unreadable (a critical error). */

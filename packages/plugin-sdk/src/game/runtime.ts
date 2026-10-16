@@ -23,7 +23,7 @@ import {
 import type { OQSEAnyItem } from '@memizy/oqse';
 import type { GameContext, GameDefinition, RecordAnswerOptions } from '../types';
 import { diffJson } from './diff';
-import { SeededRandom, seedFromString } from './random';
+import { SeededRandom } from './random';
 import { shortTimeout } from './timers';
 
 /**
@@ -106,7 +106,8 @@ export interface GameSnapshot {
   format: 1;
   state: unknown;
   version: number;
-  rng: number;
+  /** Generator state (`number` in snapshots of the release candidates). */
+  rng: number[] | number;
   timerSeq: number;
   timers: TimerEntry[];
   players: string[];
@@ -204,7 +205,8 @@ export class GameRuntime<S = unknown> {
     this.clockOffset = init.clock.offsetMs;
     this.pausedMs = init.clock.pausedMs ?? 0;
     this.pausedAt = init.clock.pausedAt ?? null;
-    this.rng = new SeededRandom(seedFromString(init.session.id));
+    // The secret seed only the authority gets (SPEC 4.2); the session id is known to every device.
+    this.rng = new SeededRandom(init.seed ?? init.session.id);
     this.itemsById = new Map(init.set.items.map((item) => [item.id, item]));
     this.options = { flushMs: options.flushMs ?? 16, snapshotMs: options.snapshotMs ?? 500 };
     this.reportError =
@@ -388,7 +390,11 @@ export class GameRuntime<S = unknown> {
         const player = this.players.find((p) => p.id === message.from);
         // While paused, and from the screen of an older phase, actions are ignored (still
         // confirmed, so ui.pending clears).
-        if (!this.paused && !this.isLate(data.ph)) {
+        if (hasPrototypeKey(data.p)) {
+          // `{"__proto__": …}` from another device: a game that merges payloads into its state
+          // (Object.assign) would change the prototype. Never valid game data.
+          this.reportError('INVALID_PAYLOAD', `Action "${data.n}" from ${message.from} was ignored: its payload has a "__proto__" key.`);
+        } else if (!this.paused && !this.isLate(data.ph)) {
           this.runAction(data.n, data.p, player ? player.id : null, message.from === BOARD_ADDRESS || player?.isHost === true, false, this.tapTime(data.at));
         }
         if (typeof data.i === 'number') {
@@ -960,7 +966,7 @@ export class GameRuntime<S = unknown> {
       format: 1,
       state: this.state,
       version: this.version,
-      rng: this.rng.state,
+      rng: [...this.rng.state],
       timerSeq: this.timerSeq,
       timers: [...this.timers.values()].map(({ key, at, action, payload }) => ({ key, at, action, payload })),
       players: [...this.knownPlayers],
@@ -972,7 +978,7 @@ export class GameRuntime<S = unknown> {
   private restore(snapshot: GameSnapshot): void {
     this.state = snapshot.state as S;
     this.version = snapshot.version;
-    this.rng.state = snapshot.rng;
+    this.rng.restore(snapshot.rng);
     this.timerSeq = snapshot.timerSeq;
     this.knownPlayers = new Set(snapshot.players);
     this.ended = snapshot.ended;
@@ -1007,4 +1013,11 @@ export class GameRuntime<S = unknown> {
 
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+/** Whether JSON data contains a `__proto__` key at any depth. */
+function hasPrototypeKey(value: unknown, depth = 0): boolean {
+  if (value === null || typeof value !== 'object' || depth > 64) return false;
+  if (Array.isArray(value)) return value.some((entry) => hasPrototypeKey(entry, depth + 1));
+  return Object.keys(value).some((key) => key === '__proto__' || hasPrototypeKey((value as Record<string, unknown>)[key], depth + 1));
 }

@@ -27,7 +27,7 @@
   ],
   "scripts": {
     "dev": "vite build --watch",
-    "generate:schemas": "tsx scripts/generate-schemas.ts",
+    "generate:schemas": "tsx scripts/generate-known-properties.ts && tsx scripts/generate-schemas.ts",
     "build": "npm run generate:schemas && tsc && vite build && tsx scripts/fix-types-entry.ts && node ../../scripts/dts-extensions.mjs dist",
     "test": "vitest run",
     "test:watch": "vitest",

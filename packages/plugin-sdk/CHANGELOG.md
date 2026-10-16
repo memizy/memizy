@@ -4,6 +4,8 @@ Plugins import `https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1`; release cand
 
 ## 1.0.0-rc.7 (2026-10-16)
 
+* The authority ignores an action whose payload contains a `__proto__` key (`INVALID_PAYLOAD`): a game that merges payloads into its state would otherwise let a player change the prototype.
+* `ctx.random` / `ctx.shuffle` use the secret seed of the authority (`InitPayload.seed`) and a 128-bit generator (sfc32; was mulberry32 seeded with the session id, which every device knows). Snapshots store the new state; snapshots of earlier release candidates still load. The standalone preview creates a random seed.
 * `ctx.recordAnswer(item, isCorrect, { score })`: partial credit 0–1.
 * Media of a type from a later OQSE version are shown as a link; OQSE tags of a later version (`<name:key />`) are removed from the text.
 * The standalone preview gives settings of a later protocol version their default.

@@ -179,7 +179,7 @@ describe('display order and hidden answers (SPEC 4.4)', () => {
   };
 
   it('shuffles once per session; only the authority has the answers until ctx.reveal', async () => {
-    const { session } = newSession({ shuffleSeed: undefined, sessionId: 'seed-7' });
+    const { session } = newSession({ shuffleSeed: 'seed-7' });
     const board = play(session, 'board', reveal);
     const anna = play(session, 'anna', reveal);
     const ben = play(session, 'ben', reveal);
@@ -211,6 +211,9 @@ describe('display order and hidden answers (SPEC 4.4)', () => {
     expect(orders.size).toBe(2); // two options: both orders occur
     const solo = newSession({ mode: 'solo', players: [{ id: 'me', name: 'Me' }], shuffleSeed: undefined }).session;
     expect(solo.prepared.set.items[0]).not.toHaveProperty('answerHidden');
+    // Without a seed the order is random, not derived from the session id (which players know).
+    const bySessionId = new Set(Array.from({ length: 12 }, () => JSON.stringify((newSession({ shuffleSeed: undefined, sessionId: 'same' }).session.prepared.set.items[0] as any).options)));
+    expect(bySessionId.size).toBe(2);
   });
 });
 
@@ -457,10 +460,11 @@ describe('protocol enforcement', () => {
     await expect(anna.saveSnapshot({})).rejects.toThrow(/\[NOT_AUTHORITY\]/);
     await expect(board.saveData('set', {})).rejects.toThrow(/\[NOT_ALLOWED_IN_VIEW\]/);
     await expect(anna.recordAnswer({ playerId: 'ben', itemId: id(1), isCorrect: true })).rejects.toThrow(/\[NOT_AUTHORITY\]/);
+    await expect(anna.recordAnswer({ itemId: id(1), isCorrect: true })).rejects.toThrow(/\[NOT_AUTHORITY\]/); // not even for herself
     await expect(anna.updateSettings({ values: {}, valid: true })).rejects.toThrow(/\[NOT_ALLOWED_IN_VIEW\]/);
     await expect(anna.getAsset('nope')).rejects.toThrow(/\[ASSET_NOT_FOUND\]/);
     await expect((anna as any).send({ to: 42 })).rejects.toThrow(/\[INVALID_ARGUMENT\] send:/);
-    expect(events.filter((e) => e.type === 'rejected').length).toBe(9);
+    expect(events.filter((e) => e.type === 'rejected').length).toBe(10);
 
     await session.end();
     await expect(anna.send({ to: 'all', data: 1 })).rejects.toThrow(/\[SESSION_ENDED\]/);
@@ -468,7 +472,9 @@ describe('protocol enforcement', () => {
 
   it('records the answer given, skills, and generated items (statistics only)', async () => {
     const { session, events } = newSession();
-    const anna = await bare(session, 'anna');
+    const board = await bare(session, 'board');
+    const anna = { recordAnswer: (answer: Parameters<HostApi['recordAnswer']>[0]) => board.recordAnswer({ playerId: 'anna', ...answer }) };
+    await expect(board.recordAnswer({ itemId: id(1), isCorrect: true })).rejects.toThrow(/needs a playerId on the board/);
     await anna.recordAnswer({ itemId: id(1), isCorrect: false, answer: 'x' });
     const generated = { id: 'lichess-00AbC', type: 'chess-puzzle', question: 'Mat 2', fen: '8/8/8/8/8/8/8/K6k w - - 0 1', skills: ['chess.tactics.fork'], elo: 1450 };
     await anna.recordAnswer({ itemId: generated.id, isCorrect: true, answer: ['Qh5'], item: generated });
@@ -513,10 +519,7 @@ describe('protocol enforcement', () => {
     const rejected = (results: PromiseSettledResult<unknown>[]) =>
       results.filter((r) => r.status === 'rejected').map((r) => String((r as PromiseRejectedResult).reason.message));
 
-    const own = rejected(await Promise.allSettled(Array.from({ length: 30 }, () => anna.recordAnswer({ itemId: id(1), isCorrect: true }))));
-    expect(own).toHaveLength(10);
-    expect(own.every((m) => m.startsWith('[RATE_LIMITED]'))).toBe(true);
-    // Two players: the authority may record twice as many answers.
+    // Two players: the authority may record twice as many answers (its limit is per player).
     const forAll = rejected(
       await Promise.allSettled(Array.from({ length: 50 }, (_, i) => board.recordAnswer({ playerId: i % 2 ? 'anna' : 'ben', itemId: id(1), isCorrect: true }))),
     );

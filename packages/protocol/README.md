@@ -20,4 +20,4 @@ if (result.success) console.log(result.runtime.views); // e.g. ['solo', 'board',
 ```
 
 * **Public API** = what `@memizy/protocol` exports (semver within 1.x, SPEC 9). Helpers shared by the Memizy packages – call parsing (`parseHostCall`), size checks (`assertJsonWithin`), rate limiting, content policies of the iframe, relay limits – are in **`@memizy/protocol/internal`** and may change in any release.
-* The exported `*Schema` objects are **Zod 4** schemas; the 1.x line stays on Zod 4.
+* The exported `*Schema` objects are Zod schemas: `parse` / `safeParse` are covered by semver, their Zod-specific API (`.extend`, `.shape`, the Zod major version) is not (SPEC 9). The functions (`safeParsePluginManifest`, `resolveSettings`, …) are the stable way to validate.

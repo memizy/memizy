@@ -24,9 +24,15 @@
 
 import { isTimelineOrderCorrect, textAnswerMatches } from './answers';
 import type { Hotspot2D, OQSEAnyItem, TimelineEvent } from './oqse';
+import { missingMustUnderstand } from './mustUnderstand';
 
 export function checkAnswer(item: OQSEAnyItem, answer: unknown): boolean {
   if (!item || typeof item !== 'object') throw new Error('checkAnswer: missing item');
+  // An item that depends on properties this version does not know would be checked wrong.
+  const missing = missingMustUnderstand(item);
+  if (missing.length > 0) {
+    throw new Error(`checkAnswer: the item needs properties this version cannot check (${missing.join(', ')}).`);
+  }
 
   switch (item.type) {
     case 'mcq-single':

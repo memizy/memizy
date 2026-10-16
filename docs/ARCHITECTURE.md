@@ -31,7 +31,7 @@ document and a specification differ, the specification wins.
 
 | Part | Role |
 | :--- | :--- |
-| `@memizy/oqse` | OQSE 1.0: TypeScript types, Zod 4 schemas (tolerant `loadOQSEFile`, strict `safeValidateOQSEFile`), JSON Schemas, Markdown sets, compatibility of sets and applications, `checkAnswer` and the comparison of typed answers, rich-text helpers (`toPlainText`, feature detection). Independent of Memizy: any application can use it. |
+| `@memizy/oqse` | OQSE 1.0: TypeScript types, Zod schemas (tolerant `loadOQSEFile`, strict `safeValidateOQSEFile`), JSON Schemas, Markdown sets, compatibility of sets and applications, `checkAnswer` and the comparison of typed answers, rich-text helpers (`toPlainText`, feature detection). Independent of Memizy: any application can use it. |
 | `@memizy/protocol` | The plugin protocol: `HostApi` / `PluginApi`, `InitPayload`, manifest schema (`appSpecific.memizy`), settings, limits, error codes, version negotiation, the relay wire types, `prepareDisplaySet` (display order and public items). `@memizy/protocol/internal` holds helpers shared by the Memizy packages (outside semver). |
 | `@memizy/plugin-sdk` | What a game imports (`https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1`, a self-contained bundle): `defineGame` (state, actions, phases, timers, sync between devices, snapshots, reveals), the morph renderer and `ui.html`, `ui.question` (ready-made answering controls), `checkAnswer`, `createScene3d`, the standalone preview. |
 | `@memizy/host-sdk` | What a host uses: `loadPluginFromHtml`, `prepareSetForPlugin`, `LocalSession` (validates every call, routes messages, start barrier, authority, pauses, storage, learning), `mountPlugin` (the sandboxed iframe), `RelayHost` / `RelayPlayer` (multiplayer over the relay, places of a continued game). |
@@ -91,7 +91,8 @@ state the authority sends back. Followers accept state only from the authority's
 ### 2.4 The set: display order and hidden answers
 
 The host prepares the set once per game (`prepareSetForPlugin`): it keeps the item types
-the game declares, **shuffles** options, pairs, orders… with a seed (the same order on every
+the game declares, **shuffles** options, pairs, orders… with a secret random seed (never the
+session id, which players know: undoing the shuffle would reveal answers; the same order on every
 device) and makes **public items** without the fields that give answers away
 (`answerHidden: true`; SPEC 4.4). The authority and solo get full items; other instances in
 multiplayer get public items. Answers are checked only in actions (`checkAnswer`, which
@@ -181,7 +182,7 @@ ended with a result is not continued (its snapshot is deleted).
 | SDK API | `@memizy/plugin-sdk` semver | Games import `@1`: every 1.x release reaches them. |
 | SDK messages | additive; patches carry `f` | Devices of one game may run different 1.x SDKs. |
 | Relay | `RELAY_PROTOCOL` (client ↔ server), `RELAY_APP_VERSION` (host ↔ player app) | Additive; unknown parts are ignored. |
-| Packages | semver; Zod 4 for the whole 1.x line | `@memizy/protocol/internal` is outside semver. |
+| Packages | semver, each package on its own (the protocol and OQSE versions are separate from them) | `@memizy/protocol/internal` and the Zod-specific API of exported schemas (`.extend`, `.shape`) are outside semver; `parse` / `safeParse` are covered. |
 
 ### 3.2 What may change in 1.x
 
@@ -194,8 +195,10 @@ inside the SDKs may be updated. Everything else in SPEC 9 is frozen.
 with the unknown: unknown keys, tags and items of unknown types are ignored and **preserved**
 on export (the reference loader returns such items in `unsupportedItems`); **open** fields
 (media type, source kind, Bloom level…) fall back to a defined behavior; OQSEM ignores item
-types, actions and asset categories it does not know. What 1.x may not do: change which
-answers are correct, or put answer data in a new place of an existing item type.
+types, actions and asset categories it does not know. Changes of how an item is checked, or
+new places for answer data, come only as **must-understand** properties: an item lists them in
+`mustUnderstand`, and an older application skips the item instead of grading it wrong (the
+host never gives such an item to a game; `checkAnswer` refuses it).
 
 ### 3.3 Reserved names
 
@@ -234,6 +237,12 @@ the host.
 - **The host validates every call** (schemas, sizes, rates, views, authority) and reports
   rejections: only the authority may record answers for other players or save snapshots,
   and plugin data is always the instance's own player's.
+- **Randomness**: the game rules use a secret seed that only the authority gets
+  (`InitPayload.seed`, a 128-bit generator), and the display order a secret seed of the host;
+  the session id, which every device knows, is used for neither – so a shuffled deck, the next
+  draw or the authored order of a set cannot be computed by a player.
+- **Answers are recorded only by the authority** (`recordAnswer`): it checks them; a modified
+  player's device cannot write "correct" into a teacher's statistics.
 - **Answers**: players' devices get public items; the relay bundle holds only public items;
   anyone with a PIN can download it, so it must never contain answers. A curious student can
   still read the state: secrets in the state need `playerView`. Teacher-only actions check

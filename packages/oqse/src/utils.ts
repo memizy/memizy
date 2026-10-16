@@ -31,6 +31,9 @@ export function generateUUID(): UUID {
  */
 export const MAX_JSON_DEPTH = 32;
 
+/** Most items in one set (OQSE "Length and Size Constraints"), fixed for OQSE 1.x. */
+export const MAX_ITEMS = 50_000;
+
 export function validateJsonDepth(
   data: unknown,
   maxDepth: number = 10,

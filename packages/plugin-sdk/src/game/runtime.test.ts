@@ -244,6 +244,24 @@ describe('plugin mistakes', () => {
     ]);
   });
 
+  it('ignores an action from another device whose payload has a "__proto__" key', async () => {
+    const merging: GameDefinition<{ settings: Record<string, unknown> }> = {
+      initialState: () => ({ settings: {} }),
+      actions: { set: (state, payload) => void Object.assign(state.settings, payload) },
+      render: () => '',
+    };
+    const session = new FakeSession(merging);
+    session.start();
+    await tick();
+    session.get('anna').dispatch('set', JSON.parse('{"__proto__": {"isAdmin": true}, "nested": {"__proto__": {}}}'));
+    session.get('anna').dispatch('set', { color: 'red' });
+    await tick();
+    const settings = session.get('board').state!.settings as Record<string, unknown>;
+    expect(settings).toEqual({ color: 'red' });
+    expect((settings as { isAdmin?: boolean }).isAdmin).toBeUndefined();
+    expect(session.errors).toEqual([expect.stringMatching(/^INVALID_PAYLOAD: Action "set" from anna was ignored/)]);
+  });
+
   it('accepts an action that returns a new state instead of mutating', async () => {
     const session = new FakeSession(quiz);
     session.start();
