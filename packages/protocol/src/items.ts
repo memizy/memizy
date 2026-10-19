@@ -280,8 +280,9 @@ function publicMeta(meta: OQSEMeta, items: OQSEAnyItem[]): OQSEMeta {
  * Without a seed nothing is shuffled.
  */
 export function prepareDisplaySet(set: DisplaySet, seed?: string): { set: DisplaySet; publicSet: DisplaySet } {
-  const random = seed === undefined ? null : seededRandom(seed);
-  const items = set.items.map((item) => (random ? displayItem(item, random) : structuredClone(item)));
+  // Every item has its own generator (the seed and its ID): editing, adding or removing an
+  // item – or giving a game only part of the set – never changes the order of the others.
+  const items = set.items.map((item) => (seed === undefined ? structuredClone(item) : displayItem(item, seededRandom(`${seed}:${item.id}`))));
   const publicItems = items.map(publicItem);
   return { set: { meta: set.meta, items }, publicSet: { meta: publicMeta(set.meta, publicItems), items: publicItems } };
 }

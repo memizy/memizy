@@ -302,6 +302,14 @@ Reserved in the contract (section 3.3) and planned:
   player's device checks the answers (`modes.multiplayer.sets: ["personal"]`, `Player.set`,
   an SDK flow for "a local question"); the host chooses questions by each player's progress
   (`pickItems`). Acceptance test: Hexagon Empires (Civhrad) with personal sets.
+- **Changing the set of a running game** (1.1, with personal sets): `setChanged` + the SDK hook
+  `itemsChanged(state, ctx, { added, removed, changed })` for games that opt in
+  (`setChanges`), `chooseSet()` to open the host's picker from the game's UI; with personal sets
+  only the player's own instance changes. Edited items keep their IDs and their display order.
+  A question-deck helper in the SDK that follows the changes by itself.
+- **Standalone mode with the player's sets**: a menu (corner chosen by the game, or opened by
+  the game), loading an OQSE file or `?set=<url>` (the validator loaded only then), progress per
+  set in `localStorage`, set changes through the same hook.
 - **Learning from mistakes**: "where to learn this" from inside a game (`openSource`), stars
   from inside a game (`markItem`); the platform's review of mistakes, "practise only starred",
   teachers' statistics from a history of answers.

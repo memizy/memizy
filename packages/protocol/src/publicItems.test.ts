@@ -4,6 +4,23 @@ import { prepareDisplaySet, publicItem } from './items';
 
 const id = (n: number) => `0192f0c4-7a1e-7c3b-9a52-2f1d8e4b6d${String(n).padStart(2, '0')}`;
 
+describe('display order (SPEC 4.4)', () => {
+  const mcq = (n: number) => ({ id: id(20 + n), type: 'mcq-single', question: `Q${n}`, options: 'abcdefgh'.split('').map((c) => ({ id: c, text: c })), correctId: 'a' }) as unknown as OQSEAnyItem;
+  const meta = { id: id(19), language: 'en', title: 'S', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' } as never;
+  const orders = (items: OQSEAnyItem[]) =>
+    Object.fromEntries(prepareDisplaySet({ meta, items }, 'secret').set.items.map((item) => [item.id, (item as any).options.map((o: any) => o.id).join('')]));
+
+  it('each item keeps its order when other items are edited, added or removed', () => {
+    const all = [mcq(1), mcq(2), mcq(3), mcq(4)];
+    const before = orders(all);
+    const edited = structuredClone(all);
+    (edited[0] as any).question = 'Changed';
+    const after = orders([mcq(0), ...edited.slice(0, 2), ...edited.slice(3)]); // one added, one removed, one edited
+    for (const item of [all[0], all[1], all[3]]) expect(after[item.id]).toBe(before[item.id]);
+    expect(new Set(Object.values(before)).size).toBeGreaterThan(1); // the items are shuffled differently
+  });
+});
+
 describe('public items keep only known fields (SPEC 4.4, OQSE "Hiding answers safely")', () => {
   it('removes fields of a newer version or of vendors, also nested, and free-form data', () => {
     const item = {
