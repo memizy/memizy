@@ -1,5 +1,9 @@
 # Changelog of @memizy/host-sdk
 
+## 1.0.0 (2026-10-21)
+
+The first stable release: the contract of 1.0.0-rc.7, unchanged. From now on 1.x versions only add (see the README).
+
 ## 1.0.0-rc.7 (2026-10-16)
 
 * `LocalSession` gives the authority a secret random seed (`InitPayload.seed`; `SessionConfig.seed` only for replays and tests).

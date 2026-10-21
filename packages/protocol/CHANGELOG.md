@@ -2,6 +2,10 @@
 
 The protocol has its own changelog at the end of [SPEC.md](https://github.com/memizy/memizy/blob/main/packages/protocol/SPEC.md#changelog) (protocol 1.0, 2026-10-14). This file lists the releases of the npm package.
 
+## 1.0.0 (2026-10-21)
+
+The first stable release: the contract of 1.0.0-rc.7, unchanged. From now on 1.x versions only add (see the README).
+
 ## 1.0.0-rc.7 (2026-10-16)
 
 * `InitPayload.seed`: a secret seed for the game's random numbers, only for the authority (SPEC 4.2, 8.4). Before, the SDK seeded `ctx.random` with the session id, which every device knows – a player could compute a shuffled deck.

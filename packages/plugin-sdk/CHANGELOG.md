@@ -1,6 +1,10 @@
 # Changelog of @memizy/plugin-sdk
 
-Plugins import `https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1`; release candidates are reached only by their exact version (`@1.0.0-rc.7`).
+Plugins import `https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1`: every 1.x release reaches them.
+
+## 1.0.0 (2026-10-21)
+
+The first stable release: the contract of 1.0.0-rc.7, unchanged. The AI guide (`docs/ai-plugin-guide.md`) says what a Memizy game can be (6.5): fast player-vs-player action is a standalone game. From now on 1.x versions only add (see the README).
 
 ## 1.0.0-rc.7 (2026-10-16)
 

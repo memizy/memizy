@@ -1,6 +1,6 @@
 {
   "name": "@memizy/oqse",
-  "version": "1.0.0-rc.7",
+  "version": "1.0.0",
   "description": "TypeScript SDK and Zod validators for the OQSE specification.",
   "type": "module",
   "main": "./dist/index.cjs",

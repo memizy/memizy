@@ -24,7 +24,7 @@ The SDK handles the connection to Memizy, synchronization between devices (board
 
 Opened directly in a browser (without Memizy), a plugin runs in **standalone preview** mode: solo with sample questions. Multiplayer is tested in the Memizy Plugin Lab.
 
-Version 1.0 (release candidates `1.0.0-rc.*` until 1.0.0); the API follows the guide and stays backward compatible within `1.x`.
+Version 1.0; the API follows the guide and stays backward compatible within `1.x`.
 
 Changes of every release: [CHANGELOG.md](./CHANGELOG.md).
 

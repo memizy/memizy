@@ -2,6 +2,10 @@
 
 The format itself has its own changelog at the end of [oqse.md](https://github.com/memizy/memizy/blob/main/packages/oqse/oqse.md#version-10-2026-10-14) (OQSE 1.0, 2026-10-14). This file lists the releases of the npm package.
 
+## 1.0.0 (2026-10-21)
+
+The first stable release: the contract of 1.0.0-rc.7, unchanged. From now on 1.x versions only add (see the README).
+
 ## 1.0.0-rc.7 (2026-10-16)
 
 Forward compatibility of OQSE 1.0 (see the "Version 1.0" changelog in `oqse.md`), checked by `forwardCompat.test.ts` with files of a "later 1.x version".
