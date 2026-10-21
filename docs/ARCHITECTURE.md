@@ -169,6 +169,29 @@ ended with a result is not continued (its snapshot is deleted).
 - **Services** (`ui.service`): things a set cannot contain (AI answers, fresh exercises),
   declared in the manifest and offered by the host; results are JSON (often OQSE items).
 
+### 2.10 A plugin or a standalone game
+
+A plugin runs in a sandbox and every move goes through the host: the authority runs the
+rules, a device's action reaches it through the relay (about 50–150 ms there and back), and
+the state goes out at most about 25 times per second (30 messages per second per device).
+The `postMessage` between the iframe and the host on one device costs under a millisecond:
+the limit is the model (authority + relay, no client-side prediction), not the iframe.
+
+| Kind of game | As a plugin |
+| :--- | :--- |
+| Quizzes, turn-based and strategy games (Hexagon Empires) | ideal |
+| Aiming and "real time with some tolerance" (Pirates) | yes |
+| Co-op 3D action against the computer (players defend a library against zombies) | at the limit, but works: own movement drawn locally and sent 10–15 times per second, enemies and hits decided by the authority with tolerance |
+| Fast player-vs-player action (shooters, races with collisions, fighting games) | no – a standalone game |
+
+**Standalone games** are vetted applications with their own client (later their own API keys),
+not AI-made code in a sandbox. Questions matter less in such games anyway (at most as a "gate":
+answer to reload or to unlock something). A plugin must not talk to the relay directly: it
+would need the room's secret host token, which never leaves the host, and it would bypass what
+the host guarantees (validated calls, limits, authority, hidden answers, the sender stamped by
+the server). A plugin may talk to a server of its own through `permissions.network` (shown to
+users), but that does not make player-vs-player action fast either.
+
 ---
 
 ## 3. The contract 1.0

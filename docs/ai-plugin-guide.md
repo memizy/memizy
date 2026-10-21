@@ -458,6 +458,21 @@ defineGame({
 * Escape closes it (keyboards on computers), and a visible Close button is always there (phones).
 * A dialog belongs to one screen only: to show something to everybody (the round result), put it in the state and draw it on every device.
 
+### 6.5 What a Memizy Game Can Be
+
+Every move goes through the host: in multiplayer about 50–150 ms there and back, at most about 25 state updates and 30 messages per second per device. That is plenty for most games, not for fast action between players:
+
+| Kind of game | As a Memizy game |
+| :--- | :--- |
+| Quizzes, turn-based and strategy games | ideal |
+| Aiming and "real time with some tolerance" (shoot at a target, a timed race) | yes |
+| Co-op 3D action against the computer (players defend a library against zombies) | at the limit, but works |
+| Fast player-vs-player action (players shoot each other, races with collisions, fighting games) | no – that is a standalone game, not a Memizy game |
+
+**If the user asks for fast player-vs-player action**, say in one or two sentences that a Memizy game cannot be that fast between players, and build the closest version that works: co-op against the computer, a turn-based or aiming duel, or a race against the clock. Never connect to a server of your own to get around it.
+
+**Co-op action that works:** each device moves its own character immediately (`ui.setLocal`, `afterRender`) and sends its position with an action only 10–15 times per second; the authority moves the enemies and decides hits with some tolerance; the other devices smooth the movement between updates themselves.
+
 ## 7. Study Set Items (OQSE 1.0)
 
 Every item has `id` and `type`. Common optional fields: `hints`, `explanation`, `tags`, `topic`, `skills`.
