@@ -4,6 +4,7 @@ Plugins import `https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1`: every 1.x re
 
 ## 1.0.1 (unreleased)
 
+* `ui.question` dropdowns (`match-pairs`, `match-complex`, `fill-in-select`): the open list was light text on a white list in dark games – the options took the game's text colour, the browser draws the list in the page's colour scheme. Options now use the system colours of that scheme (`Canvas` / `CanvasText`); a game's own option styles still win.
 * `createScene3d` no longer piles up WebGL contexts. Browsers keep about 16 and drop the oldest – often the game's live scene, which then fell back to 2D (`lost`). `webglAvailable` tests WebGL once per page and frees its test context at once; `dispose()` frees the renderer's context (`forceContextLoss`) without calling `onFallback`.
 
 ## 1.0.0 (2026-10-21)

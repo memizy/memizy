@@ -38,6 +38,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .mz-q-row{display:flex;gap:var(--mz-q-gap);flex-wrap:wrap;align-items:center}
 .mz-q-form{display:flex;gap:var(--mz-q-gap);flex-wrap:wrap;align-items:center}
 .mz-q-input,.mz-q-select{font:inherit;color:inherit;background:var(--mz-q-bg);border:2px solid var(--mz-q-border);border-radius:var(--mz-q-radius);padding:10px 12px;min-width:0}
+:where(.mz-q-select) :where(option,optgroup){background:Canvas;color:CanvasText}
 .mz-q-form>.mz-q-input{flex:1 1 200px}
 textarea.mz-q-input{flex-basis:100%;resize:vertical}
 .mz-q-blank{width:8em;padding:4px 8px}
