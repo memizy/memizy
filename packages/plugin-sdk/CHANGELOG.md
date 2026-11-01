@@ -2,7 +2,7 @@
 
 Plugins import `https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1`: every 1.x release reaches them.
 
-## Unreleased (1.0.1)
+## 1.0.1 (unreleased)
 
 * `createScene3d` no longer piles up WebGL contexts. Browsers keep about 16 and drop the oldest – often the game's live scene, which then fell back to 2D (`lost`). `webglAvailable` tests WebGL once per page and frees its test context at once; `dispose()` frees the renderer's context (`forceContextLoss`) without calling `onFallback`.
 
