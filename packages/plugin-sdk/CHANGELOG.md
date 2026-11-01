@@ -2,6 +2,10 @@
 
 Plugins import `https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1`: every 1.x release reaches them.
 
+## 1.1.0 (unreleased)
+
+* `onFinish(state, ctx)` in `defineGame`: the app may ask the game to finish (the teacher presses "End game"; protocol 1.1, feature `finish-request`, listed only when the game has `onFinish`). It runs on the authority like an action, also while paused; call `ctx.end` there (e.g. `ctx.goto('end')`). Without `ctx.end` the SDK reports `FINISH_WITHOUT_END`. Games without `onFinish` are unchanged. The SDK speaks protocol 1.1.
+
 ## 1.0.2 (2026-11-08)
 
 * `ui.question` with `reveal` shows the right answer for every item type, not only for choices: the right text of typed answers (and other accepted ones), the number with its tolerance and unit, the right order of a sorting or a timeline (with dates), each pair, category, blank or diagram zone marked with the right one where it was wrong, right / wrong / missed matrix cells, the right areas of a pin-on-image item, the sample answer of an open question. The item's `explanation` follows (with the feedback of a wrong answer and the explanation of a chosen option); `explanation: false` hides it.

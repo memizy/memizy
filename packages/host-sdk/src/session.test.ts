@@ -401,6 +401,77 @@ describe('pause', () => {
   });
 });
 
+describe('finishing on request (SPEC 7, protocol 1.1)', () => {
+  const finishing: Omit<GameDefinition<State & { phase?: string }>, 'root'> = {
+    ...race,
+    phases: { play: {}, end: { onEnter: (state, ctx) => ctx.end({ scores: state.scores, summary: 'done' }) } },
+    initialState: (ctx) => {
+      ctx.goto('play');
+      return { round: 0, scores: {}, answered: [] };
+    },
+    onFinish: (_state, ctx) => ctx.goto('end'),
+    render: (state, ui) => (state.phase === 'end' ? '<p class="final">final</p>' : race.render(state, ui)),
+  };
+
+  it('the host asks the authority; the game ends with its result and shows its final screen', async () => {
+    const { session, events } = newSession();
+    const board = play(session, 'board', finishing);
+    const anna = play(session, 'anna', finishing);
+    play(session, 'ben', finishing);
+    await Promise.all(games.map((g) => g.ready));
+    expect(session.canFinish).toBe(false); // not started yet
+    await session.start();
+    await wait(150);
+    (anna.root.querySelector('button') as HTMLButtonElement).click();
+    await wait(150);
+    session.pause();
+    expect(session.canFinish).toBe(true);
+    expect(await session.requestFinish()).toBe(true);
+    await wait(150);
+    expect(session.paused).toBe(false); // the final screen is not covered
+    expect(events.filter((e) => e.type === 'result')).toEqual([{ type: 'result', result: { scores: { anna: 1 }, summary: 'done' } }]);
+    expect(board.root.querySelector('.final')).not.toBeNull();
+    expect(anna.root.querySelector('.final')).not.toBeNull();
+    expect(session.canFinish).toBe(false);
+    expect(await session.requestFinish()).toBe(false);
+  });
+
+  it('only games with onFinish and protocol 1.1 offer it', async () => {
+    const plain = newSession().session;
+    play(plain, 'board');
+    play(plain, 'anna');
+    play(plain, 'ben');
+    await Promise.all(games.map((g) => g.ready));
+    await plain.start();
+    await wait(100);
+    expect(plain.canFinish).toBe(false);
+    expect(await plain.requestFinish()).toBe(false);
+
+    // A plugin that speaks protocol 1.0 gets no host features, even if it lists one.
+    const old = newSession().session;
+    const host = await bare(old, 'board', { finishRequested: async () => {} });
+    const init = await host.hello({ ...handshake, features: ['finish-request'] });
+    expect(init.features).toEqual([]);
+    const current = await (await bare(newSession().session, 'board')).hello({ ...handshake, protocol: '1.1' });
+    expect(current.protocol).toBe('1.1');
+    expect(current.features).toEqual(['finish-request']);
+  });
+
+  it('a game whose onFinish does not end reports it', async () => {
+    const { session, events } = newSession();
+    play(session, 'board', { ...finishing, onFinish: () => {} });
+    play(session, 'anna', finishing);
+    play(session, 'ben', finishing);
+    await Promise.all(games.map((g) => g.ready));
+    await session.start();
+    await wait(100);
+    expect(await session.requestFinish()).toBe(true);
+    await wait(100);
+    expect(events.some((e) => e.type === 'result')).toBe(false);
+    expect(events.filter((e) => e.type === 'pluginError').map((e) => (e as { code: string }).code)).toContain('FINISH_WITHOUT_END');
+  });
+});
+
 describe('services and permissions', () => {
   const withServices = (memizy: Record<string, unknown>) => {
     const m = { ...manifest, appSpecific: { memizy: { ...manifest.appSpecific.memizy, ...memizy } } };

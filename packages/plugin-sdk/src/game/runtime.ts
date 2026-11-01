@@ -466,6 +466,13 @@ export class GameRuntime<S = unknown> {
     this.onChange();
   }
 
+  /** `PluginApi.finishRequested`: the game's `onFinish` on the authority (also while paused). */
+  finish(): void {
+    if (!this.isAuthority || this.state === undefined || this.ended || !this.def.onFinish) return;
+    this.run((draft, ctx) => this.def.onFinish!(draft, ctx), null, true, 'onFinish');
+    if (!this.ended) this.reportError('FINISH_WITHOUT_END', 'onFinish did not call ctx.end(result): the host closes the game without a result.');
+  }
+
   /** `PluginApi.authorityChanged`. */
   setAuthorityConnected(connected: boolean): void {
     this.authorityConnected = connected;

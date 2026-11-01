@@ -3,7 +3,7 @@
  */
 
 /** The protocol version implemented by this package. */
-export const PROTOCOL_VERSION = '1.0';
+export const PROTOCOL_VERSION = '1.1';
 
 export interface ProtocolVersion {
   major: number;

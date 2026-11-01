@@ -20,6 +20,12 @@ export const SERVER_ADDRESS = 'server';
 /** Address of the plugin's own settings screen in the lobby (view `settings`). */
 export const SETTINGS_ADDRESS = 'settings';
 
+/**
+ * Feature (SPEC 8.3, protocol 1.1): the host may ask the authority to finish the game
+ * (`PluginApi.finishRequested`). The plugin lists it when the game can finish on request.
+ */
+export const FINISH_REQUEST_FEATURE = 'finish-request';
+
 export type SessionMode = 'solo' | 'multiplayer';
 
 export interface Player {
@@ -210,6 +216,12 @@ export interface PluginApi {
   /** The clock was corrected, or the game was paused / resumed. */
   clockChanged(clock: SessionClock): Promise<void>;
   sessionEnded(reason: SessionEndReason): Promise<void>;
+  /**
+   * *Authority only, feature `finish-request` (protocol 1.1).* The host asks the game to
+   * finish now (e.g. the teacher ends it): the game calls `end(result)` and shows its final
+   * screen. Optional: plugins without the feature do not have it.
+   */
+  finishRequested?(): Promise<void>;
 }
 
 export const HOST_API_METHODS = [
@@ -218,5 +230,5 @@ export const HOST_API_METHODS = [
 ] as const satisfies readonly (keyof HostApi)[];
 
 export const PLUGIN_API_METHODS = [
-  'start', 'deliver', 'playersChanged', 'authorityChanged', 'configChanged', 'clockChanged', 'sessionEnded',
+  'start', 'deliver', 'playersChanged', 'authorityChanged', 'configChanged', 'clockChanged', 'sessionEnded', 'finishRequested',
 ] as const satisfies readonly (keyof PluginApi)[];

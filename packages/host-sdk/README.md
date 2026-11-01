@@ -39,6 +39,7 @@ The exports listed in `src/index.ts` are the public API; everything else is inte
 * `SessionEvent` and `RelayHostEvent` may get new event types: ignore types you do not know (no exhaustive `switch` that fails on them).
 * The language and theme of a session are a `HostConfig` (`session.config`, read-only; `setConfig` changes it). The session's `players`, `settings`, `started` and `ended` are read-only too: change them through the methods.
 * The game's result arrives as the `result` event (`session.end()` then closes the session).
+* **Ending a game early** (the teacher's "End game"): if `session.canFinish`, call `await session.requestFinish()` and wait for `result` (with a timeout, e.g. 5 s) – the game shows its final screen; then `end()`. Otherwise just `end()`.
 
 ## Multiplayer over the relay
 

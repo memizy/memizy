@@ -1,5 +1,9 @@
 # Changelog of @memizy/host-sdk
 
+## 1.1.0 (unreleased)
+
+* Protocol 1.1. `LocalSession.canFinish` and `requestFinish()`: ask the game to finish (`finishRequested`) when its authority listed `finish-request`; a paused game is resumed first. Wait for the `result` event with a timeout, then `end()`. Hosts offer features only in a negotiated version that defines them (`InitPayload.features` stays empty for 1.0 plugins).
+
 ## 1.0.2 (2026-11-08)
 
 * A player who was away when the game started (switched to another app in the lobby, a lost connection) gets into the running game on coming back. Hosts start a game with the players connected at that moment; the one who came back was a known room player (`connect`, not `join`), so `RelayHost` gave them no place and they waited in the lobby until the host page was reloaded. Now a returning player without a place joins like a late player (when the game allows late joins).

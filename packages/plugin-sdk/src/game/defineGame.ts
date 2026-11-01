@@ -4,6 +4,7 @@
  */
 
 import {
+  FINISH_REQUEST_FEATURE,
   LIMITS,
   PROTOCOL_VERSION,
   ProtocolError,
@@ -83,6 +84,7 @@ export function startGame<S>(definition: GameDefinition<S>, options: StartOption
     configChanged: async (config) => controller?.configChanged(config),
     clockChanged: async (clock) => controller?.clockChanged(clock),
     sessionEnded: async () => controller?.destroy(),
+    finishRequested: async () => controller?.finishRequested(),
   };
 
   const ready = (async () => {
@@ -101,7 +103,8 @@ export function startGame<S>(definition: GameDefinition<S>, options: StartOption
       protocol: PROTOCOL_VERSION,
       sdk: { name: '@memizy/plugin-sdk', version: SDK_VERSION },
       plugin: { id: manifest.id, version: manifest.version },
-      features: [],
+      // The host may ask a game with `onFinish` to finish (SPEC 7, protocol 1.1).
+      features: typeof definition.onFinish === 'function' ? [FINISH_REQUEST_FEATURE] : [],
     };
     const connector =
       options.connector ?? autoConnector(standaloneConnector({ runtime: manifest.runtime, pluginId: manifest.id, types: manifest.types }));
@@ -154,6 +157,7 @@ interface Controller {
   authorityChanged(connected: boolean): void;
   configChanged(config: InitPayload['config']): void;
   clockChanged(clock: SessionClock): void;
+  finishRequested(): void;
   destroy(): void;
 }
 
@@ -254,6 +258,7 @@ abstract class BaseController implements Controller {
   deliver(_message: Parameters<PluginApi['deliver']>[0]): void {}
   authorityChanged(_connected: boolean): void {}
   clockChanged(_clock: SessionClock): void {}
+  finishRequested(): void {}
   playersChanged(players: InitPayload['players']): void {
     this.init.players = players;
     this.schedule();
@@ -512,6 +517,10 @@ class GameController<S> extends BaseController {
     this.showPaused();
   }
 
+  finishRequested(): void {
+    this.runtime.finish();
+  }
+
   /** While the host has paused the game, a curtain covers it (no taps, the time stands still). */
   private showPaused(): void {
     const doc = this.root.ownerDocument;
@@ -641,6 +650,7 @@ function validateDefinition(def: GameDefinition<any>): void {
       else if (typeof fn !== 'function') problems.push(`actions.${name} must be a function`);
     }
   if (typeof def.render !== 'function') problems.push('render must be a function returning HTML');
+  if (def.onFinish !== undefined && typeof def.onFinish !== 'function') problems.push('onFinish must be a function (state, ctx) => void that calls ctx.end');
   if (def.afterRender !== undefined && typeof def.afterRender !== 'function') problems.push('afterRender must be a function (state, ui) => void');
   if ((def as { local?: unknown }).local !== undefined) problems.push('local was renamed to localActions');
   if (def.localActions !== undefined) {

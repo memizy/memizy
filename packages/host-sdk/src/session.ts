@@ -11,10 +11,12 @@
 
 import {
   BOARD_ADDRESS,
+  FINISH_REQUEST_FEATURE,
   SETTINGS_ADDRESS,
   LIMITS,
   PROTOCOL_VERSION,
   ProtocolError,
+  compareProtocolVersions,
   negotiateProtocolVersion,
   resolveSettings,
   toProtocolError,
@@ -150,6 +152,8 @@ interface Instance extends SessionInstance {
   resumed: boolean;
   /** `hello` was called (it may be called once per instance). */
   greeted: boolean;
+  /** Features both sides listed (SPEC 8.3). */
+  features: string[];
   limiter: RateLimiter;
   serviceLimiter: RateLimiter;
   answerLimiter: RateLimiter;
@@ -157,6 +161,11 @@ interface Instance extends SessionInstance {
   errorLimiter: RateLimiter;
 }
 
+
+/** Features this host offers (SPEC 8.3) in a negotiated protocol version. */
+function hostFeatures(protocol: string): string[] {
+  return compareProtocolVersions(protocol, '1.1') >= 0 ? [FINISH_REQUEST_FEATURE] : [];
+}
 
 /** Deep copy of JSON data that also works for proxies (which structuredClone rejects). */
 function plainCopy<T>(value: T): T {
@@ -342,6 +351,7 @@ export class LocalSession {
       disposed: false,
       resumed: false,
       greeted: false,
+      features: [],
       limiter: new RateLimiter(LIMITS.messagesPerSecond, LIMITS.messageBurst),
       serviceLimiter: new RateLimiter(LIMITS.servicesPerMinute / 60, 10),
       answerLimiter: new RateLimiter(LIMITS.answersPerSecond, LIMITS.answerBurst),
@@ -512,6 +522,37 @@ export class LocalSession {
     for (const address of this.instances.keys()) void this.callPlugin(address, (p) => p.configChanged(this.hostConfig));
   }
 
+  /**
+   * Whether the game can finish on request (`requestFinish`): its authority listed the
+   * feature `finish-request` (it has `onFinish`), is connected, and the game runs without a
+   * result yet.
+   */
+  get canFinish(): boolean {
+    const authority = this.instances.get(this.authority);
+    return !!authority?.plugin && !authority.disposed && authority.connected && this.authorityConnected
+      && authority.features.includes(FINISH_REQUEST_FEATURE) && this.isStarted && !this.hasResult && !this.isEnded;
+  }
+
+  /**
+   * Asks the game to finish now (SPEC 7, `finishRequested`): the authority calls
+   * `end(result)` (event `result`) and shows its final screen; a paused game is resumed so
+   * that screen is not covered. Returns false when the game cannot (`canFinish`) or the call
+   * failed – then close it with `end()`. Wait for `result` with a timeout: a game that does
+   * not finish is closed the same way.
+   */
+  async requestFinish(): Promise<boolean> {
+    if (!this.canFinish) return false;
+    if (this.paused) this.resume();
+    const plugin = this.instances.get(this.authority)!.plugin!;
+    try {
+      await plugin.finishRequested!();
+      return true;
+    } catch (error) {
+      this.emit({ type: 'pluginError', address: this.authority, code: 'PLUGIN_CALL_FAILED', message: toProtocolError(error).detail });
+      return false;
+    }
+  }
+
   /** Ends the session for all instances (they stay mounted until the app removes them). */
   async end(reason: SessionEndReason = 'closed'): Promise<void> {
     if (this.isEnded) return;
@@ -556,6 +597,8 @@ export class LocalSession {
             throw new ProtocolError('UNSUPPORTED_PROTOCOL', `The plugin speaks protocol ${handshake.protocol}; this host supports ${PROTOCOL_VERSION}.`);
           }
           instance.greeted = true;
+          const offered = hostFeatures(negotiated);
+          instance.features = handshake.features.filter((f) => offered.includes(f));
           if (handshake.plugin.id !== this.plugin.manifest.id) {
             this.emit({ type: 'pluginError', address: instance.address, code: 'PLUGIN_ID_MISMATCH', message: `The SDK reports plugin id "${handshake.plugin.id}", the manifest says "${this.plugin.manifest.id}".` });
           }
@@ -753,7 +796,7 @@ export class LocalSession {
       protocol,
       host: this.options.host ?? { name: '@memizy/host-sdk', version: HOST_SDK_VERSION },
       oqseVersion: '1.0',
-      features: [],
+      features: hostFeatures(protocol),
       session: {
         id: this.id,
         mode: this.mode,

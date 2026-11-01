@@ -3,7 +3,7 @@ import type { OQSEAnyItem } from '@memizy/oqse';
 import { startGame, type GameHandle } from './defineGame';
 import { checkAnswer } from '../checkAnswer';
 import { LocalRouter, wait } from '../test/localRouter';
-import type { GameDefinition } from '../types';
+import type { GameContext, GameDefinition } from '../types';
 import type { Connector } from '../connection/connect';
 
 const items = [
@@ -502,6 +502,33 @@ describe('defineGame end to end', () => {
     await router.start();
     await wait(40);
     expect(empty.textContent).not.toContain('Starting');
+  });
+
+  it('offers finish-request only with onFinish, and runs it when the host asks', async () => {
+    const router = new LocalRouter({ items, mode: 'solo' });
+    const seen: string[][] = [];
+    const capture = (address: string): Connector => (api, handshake) => {
+      seen.push(handshake.features);
+      return router.connector(address)(api, handshake);
+    };
+    const finished: string[] = [];
+    const def = { initialState: () => ({ done: false }), actions: {}, render: (s: { done: boolean }) => `<p class="done">${s.done}</p>` };
+    const root = document.createElement('div');
+    document.body.appendChild(root);
+    const game = startGame({ ...def, root, onFinish: (s: { done: boolean }, ctx: GameContext) => { s.done = true; finished.push('yes'); ctx.end({ summary: 'ok' }); } }, { connector: capture('me') });
+    handles.push(game);
+    await game.ready;
+    const plain = startGame({ ...def, root: document.createElement('div') }, { connector: capture('me2') });
+    handles.push(plain);
+    await plain.ready.catch(() => {});
+    expect(seen).toEqual([['finish-request'], []]);
+    router.plugins.get('me')!.start();
+    await router.plugins.get('me')!.finishRequested!();
+    await new Promise((r) => setTimeout(r, 30));
+    expect(finished).toEqual(['yes']);
+    expect(root.querySelector('.done')!.textContent).toBe('true');
+    await router.plugins.get('me')!.finishRequested!(); // ended: nothing happens again
+    expect(finished).toEqual(['yes']);
   });
 
   it('rejects an invalid definition with a clear message', async () => {

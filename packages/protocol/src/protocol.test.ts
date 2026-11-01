@@ -64,9 +64,10 @@ describe('version negotiation', () => {
   it('checks whether a host can run a plugin before loading it', () => {
     expect(isProtocolSupported('1.0')).toBe(true);
     expect(isProtocolSupported('1.1', '1.0')).toBe(false);
+    expect(isProtocolSupported('1.1')).toBe(true);
     expect(isProtocolSupported('2.0', '1.5')).toBe(false);
     expect(isProtocolSupported('2.0', ['1.5', '2.0'])).toBe(true);
-    expect(PROTOCOL_VERSION).toBe('1.0');
+    expect(PROTOCOL_VERSION).toBe('1.1');
     expect(compareProtocolVersions('1.10', '1.9')).toBeGreaterThan(0);
   });
 });

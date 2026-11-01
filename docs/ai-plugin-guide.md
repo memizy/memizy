@@ -108,6 +108,7 @@ const game = defineGame({
   playerView(state, playerId) {},        // optional: what one player may see (section 5.5)
   playerJoined(state, player, ctx) {},   // optional
   playerLeft(state, player, ctx) {},     // optional
+  onFinish(state, ctx) {},               // optional: the teacher ends the game from the app (section 4.2)
 
   renderWaiting(ui) {},                  // optional: multiplayer screen before the game starts
   renderSettings(settings, ui) {},       // optional: own lobby settings screen ("settingsScreen" in the manifest)
@@ -166,8 +167,9 @@ phases: {
 * Timed phases re-render the screen by themselves, so a countdown with `ui.timeLeft()` needs no `tickMs`.
 * Time limits use the game clock: when the teacher pauses the game, the phase waits too.
 * You can still use `ctx.after(ms, action, payload)` for other timers.
+* **The teacher may end the game from the app** ("End game") at any time. Add `onFinish(state, ctx) { ctx.goto('end'); }`: the game then ends with its results and shows its final screen on every device. Without `onFinish` the app just closes the game. You need no "End game" button of your own.
 
-### `ctx` (in `initialState`, actions, phase hooks, `playerJoined`, `playerLeft`)
+### `ctx` (in `initialState`, actions, phase hooks, `playerJoined`, `playerLeft`, `onFinish`)
 
 | Name | Description |
 | :--- | :--- |
@@ -592,6 +594,8 @@ defineGame({
     },
   },
 
+  onFinish(state, ctx) { ctx.goto('end'); },   // the teacher ended the game early
+
   actions: {
     answer(state, payload, ctx) {
       const itemId = state.questions[state.round];
@@ -673,7 +677,7 @@ defineGame({
 - [ ] No `Math.random()`, `Date.now()`, `setTimeout` / `setInterval` in the rules; no `localStorage`; network only to declared `permissions.network`.
 - [ ] Buttons use `data-act` / `data-local`, never `onclick`; no `alert` / `confirm` / `prompt`.
 - [ ] The game never asks for a real name or other personal data.
-- [ ] `ctx.recordAnswer(itemId, correct, { answer })` for every answered question, `ctx.end({ scores })` at the end.
+- [ ] `ctx.recordAnswer(itemId, correct, { answer })` for every answered question, `ctx.end({ scores })` at the end, `onFinish` going to the end.
 - [ ] Secrets in the state (others' answers before the reveal, hands) are hidden with `playerView`.
 - [ ] Teacher-only actions (next, end…) start with `if (!ctx.fromHost) return;`.
 - [ ] Controllers usable on a phone and a computer, the board readable on a projector.

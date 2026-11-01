@@ -2,6 +2,10 @@
 
 The protocol has its own changelog at the end of [SPEC.md](https://github.com/memizy/memizy/blob/main/packages/protocol/SPEC.md#changelog) (protocol 1.0, 2026-10-14). This file lists the releases of the npm package.
 
+## 1.1.0 (unreleased)
+
+Protocol 1.1 (`PROTOCOL_VERSION`): `PluginApi.finishRequested` (optional; in `PLUGIN_API_METHODS`) and the feature constant `FINISH_REQUEST_FEATURE` (`'finish-request'`). Additive.
+
 ## 1.0.0 (2026-10-21)
 
 The first stable release: the contract of 1.0.0-rc.7, unchanged. From now on 1.x versions only add (see the README).

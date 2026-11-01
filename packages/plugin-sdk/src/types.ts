@@ -208,6 +208,13 @@ export interface GameDefinition<S = any> {
   localActions?: Record<string, LocalHandler>;
   playerJoined?(state: S, player: Player, ctx: GameContext): void | S;
   playerLeft?(state: S, player: Player, ctx: GameContext): void | S;
+  /**
+   * The host asks the game to finish now (e.g. the teacher presses "End game"; SPEC 7,
+   * feature `finish-request`). Runs on the authority like an action, also while paused:
+   * call `ctx.end({ scores })` and show your final screen (e.g. `ctx.goto('end')` with an
+   * `onEnter` that calls `ctx.end`). Without this hook the host just closes the game.
+   */
+  onFinish?(state: S, ctx: GameContext): void | S;
   render(state: S, ui: GameUI): RenderResult;
   /**
    * Called after every render with the same state (not every animation frame):

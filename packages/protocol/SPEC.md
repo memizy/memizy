@@ -1,6 +1,6 @@
 # Memizy Plugin Protocol v1
 
-> Status: **1.0** (2026-10-14; protocol version `1.0`, packages `1.0.0`). The contract is frozen: within MAJOR `1` it changes only additively (section 9). Every change is recorded in the changelog at the end.
+> Status: **1.1** (in progress; 1.0 of 2026-10-14 with packages `1.0.0`). The contract is frozen: within MAJOR `1` it changes only additively (section 9). Every change is recorded in the changelog at the end.
 
 This document defines the contract between a **Memizy plugin** (an HTML page running in a sandboxed iframe) and a **Memizy host** (the Memizy app, the Plugin Lab, or any other application embedding plugins through `@memizy/host-sdk`).
 
@@ -149,7 +149,7 @@ A plugin does not declare views. They follow from what it declares, so the two c
 2. **Loading.** After Start, the host creates the game instances (board and/or controllers). Each instance connects, receives its `InitPayload` (without game state) and calls `ready()`.
 3. **Countdown.** When all connected instances are ready (or after a host-defined timeout, e.g. 15 s), the host shows a countdown and then calls `start()` on the authority. The authority creates the initial state and the game runs. The barrier exists so that timed games do not start before slower devices have loaded.
 4. **Running.** Late joiners (if `lateJoin`) and reconnecting players get a new instance, which synchronizes with the authority. A recreated authority receives the last `snapshot` and continues without `start()`. While the authority is unreachable, see section 6.1.
-5. **End.** The authority calls `end(result)`; the host shows results and finally closes the instances with `sessionEnded`.
+5. **End.** The authority calls `end(result)`; the host shows results and finally closes the instances with `sessionEnded`. The host may also ask the authority to finish now (the teacher ends the game: `finishRequested`, section 7, protocol 1.1); a game without that feature is just closed.
 
 **Solo:** one instance in view `solo`. There is **no plugin settings screen and no countdown**. Before creating the instance, the host MAY show a form generated from the settings that apply to solo (`modes`); otherwise it uses the defaults or values it presets (e.g. a course step "practise this set with 10 questions"). It calls `start()` right after `ready()`. Choices that belong to the game itself (a level, a character) are made inside the game, typically as its first phase.
 
@@ -389,6 +389,7 @@ If the authority instance loses its connection or is being recreated (e.g., the 
 | `configChanged(config: { locale, theme }): void` | Locale or theme changed. |
 | `clockChanged(clock: SessionClock): void` | Clock synchronization updated, or the host paused / resumed the game. While `pausedAt` is set the SDK stops game time and timers, ignores actions and covers the game with a "paused" curtain. |
 | `sessionEnded(reason: 'finished' \| 'host-left' \| 'kicked' \| 'closed' \| 'error'): void` | The host is closing this instance. |
+| `finishRequested(): void` | *authority only; protocol 1.1, feature `finish-request`.* The host asks the game to finish now (e.g. the teacher ends it early). The game calls `end(result)` and shows its final screen; the host waits for the result (with a timeout of its own) and closes the instances afterwards. A plugin lists the feature only when it can finish on request; the host calls it only then. A paused game should be resumed first, so the final screen is not covered. |
 
 ---
 
@@ -445,7 +446,13 @@ New codes may be added in minor versions; plugins MUST treat unknown codes like 
 
 ### 8.3 Features
 
-`Handshake.features` and `InitPayload.features` list optional capabilities. A side may only use a feature both sides list. v1.0 defines none; future examples: `teams`, `edit-set`.
+`Handshake.features` and `InitPayload.features` list optional capabilities. A side may only use a feature both sides list, and only in a negotiated protocol version that defines it.
+
+| Feature | Since | Meaning |
+| :--- | :--- | :--- |
+| `finish-request` | 1.1 | The host may call `finishRequested` on the authority (section 7). The plugin lists it when the game can finish on request. |
+
+Future examples: `teams`, `edit-set`.
 
 ### 8.4 Security
 
@@ -520,6 +527,7 @@ What was decided and why, and what is **reserved** (name and intent fixed, not i
 
 ## Changelog
 
+* **1.1 (in progress):** `finishRequested` (7) with the feature `finish-request` (8.3): the host asks the authority to finish the game (the teacher ends it early); the game ends with its result and final screen instead of being closed. Features are used only in a negotiated version that defines them. Additive: 1.0 plugins and hosts are unchanged.
 * **1.0 (2026-10-14):** the term *host* (3.1): the application that embeds the plugin on a device, also on a player's device; the host ends a player's instance with `sessionEnded` (also `kicked`, `host-left`) before removing it. Removed before 1.0 and reserved (10): `exit`, `resize`, `setChanged`, `saveProgress` (a self-rating is an answer). `InitPayload.services` and the pause fields of `SessionClock` are always present; `sessionEnded` reason `host-left` (was `host_left`); `SETTINGS_ADDRESS` is defined here; the relay type of a room player is `RoomPlayer`. State patches carry their format (`f`); reserved names `$…`, `data-mz-…`, `mz-…` and opt-in state fields; `@memizy/protocol/internal`; Zod 4 (9). Renamed before 1.0: `ui.renderNote` → `ui.note` (SDK), the type `Theme` → `HostConfig`. Player names and personal data: plugins MUST NOT ask for real names or other personal data (3.3); `setChanged` is optional for hosts (7); `replay` reserved (10). The sandbox allows popups that escape it, links open in a new tab (8.4). Error code `UNKNOWN_METHOD` (8.2). Continuing a saved game is described (3.3; host feature, no protocol change). After `end(result)` the host discards the snapshot (5). The transport (Penpal 8), the SDK message format (actions carry the `phaseSeq` the player saw and the tap time `actedAt`; devices of one game may run different SDK 1.x versions) and the protocol declaration of plugins using 1.x additions are fixed rules (4, 4.3, 9); plugins load the SDK from `…/plugin-sdk@1`. `appSpecific.memizy.set` (`required` / `optional` / `none`): games without questions; OQSEM `capabilities` and `actions` may be omitted. Public items (4.4) also lose `sources[].quote`; custom `x-` items lose `solution`, `explanation` and `incorrectFeedback` and get `answerHidden: true` (they were passed unchanged); `hints` stay public. `recordAnswer.answer` follows OQSE Answer Formats (a flashcard answer is a self-rating 1–4; `ui.question` offers four ratings). OQSE 1.0 sets and OQSEM 1.0 manifests (`"version": "1.0"`; other MAJOR versions are not read as 1.x). A host may support several protocol MAJOR versions at once (4.3); supporting older ones is a SHOULD instead of a MUST. Forward compatibility: public items keep only fields known not to be part of the answer (4.4); `InitPayload.set` holds the questions of this instance (4.2); unknown setting types are hidden and get their default, so new setting types need no newer protocol (2, 4.3); `AnswerRecord.score` (partial credit). Decided: the two axes of questions (10). Reserved: personal sets (`modes.multiplayer.sets`, feature `personal-sets`, `Player.set`), `pickItems`, `openSource`, `markItem` (10). `recordAnswer` is an *authority* method (5): other instances cannot prove an answer. The seed of the display order is secret and random (4.4; it was the session id by default, so a player could undo the shuffle). Public items lose media that only hidden fields use; `getAsset` gives an instance only media of its own set (4.4). Choice IDs are opaque to games; a host may give per-session IDs (4.4). `InitPayload.seed`: a secret seed for the game's random numbers, only for the authority (4.2, 8.4) – before, the SDK seeded them with the session id that every instance knows. The Penpal 8 wire format is described (4). A host may give a game a part of a large set (4.2). Answers to `open-ended` items do not change repetition; games record the first attempt (5.1). Each item is shuffled with its own seed (4.4); a continued game uses the same set (3.3); planned set changes (`setChanged`, `chooseSet`, `setChanges`, 10). Zod: only `parse` / `safeParse` of the exported schemas are covered (9). Final rules: a second `hello` of an instance rejects with `INVALID_ARGUMENT`, only the first `end(result)` counts (5); guaranteed rates of `recordAnswer` (per player for the authority), `getAsset` and `reportError` (dropped beyond it) and an asset size of 2 MB (8.1); the address `"settings"` (3.1).
 * **RC1 (2026-10-04):** first release candidate.
 * **RC2 (2026-10-06):** `SettingDefinition.modes`; the host may show solo settings before the start (section 3.3). Additive: RC1 plugins and hosts keep working.
