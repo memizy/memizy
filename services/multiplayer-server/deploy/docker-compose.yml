@@ -18,7 +18,7 @@ services:
       HOST: "0.0.0.0"
       # Client IPs come from CF-Connecting-IP (the relay is reachable only through the tunnel).
       TRUST_PROXY: "1"
-      ALLOWED_ORIGINS: "https://play.memizy.com,https://memizy.com"
+      ALLOWED_ORIGINS: "https://play.memizy.com,https://memizy.com,https://dev.memizy.com"
       # A whole school shares one public IP.
       ROOMS_PER_IP_PER_HOUR: "1000"
     logging: *logging
