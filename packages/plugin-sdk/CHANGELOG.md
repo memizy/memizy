@@ -2,6 +2,10 @@
 
 Plugins import `https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1`: every 1.x release reaches them.
 
+## Unreleased (1.0.1)
+
+* `createScene3d` no longer piles up WebGL contexts. Browsers keep about 16 and drop the oldest – often the game's live scene, which then fell back to 2D (`lost`). `webglAvailable` tests WebGL once per page and frees its test context at once; `dispose()` frees the renderer's context (`forceContextLoss`) without calling `onFallback`.
+
 ## 1.0.0 (2026-10-21)
 
 The first stable release: the contract of 1.0.0-rc.7, unchanged. The AI guide (`docs/ai-plugin-guide.md`) says what a Memizy game can be (6.5): fast player-vs-player action is a standalone game. From now on 1.x versions only add (see the README).

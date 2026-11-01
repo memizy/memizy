@@ -69,11 +69,23 @@ export interface Scene3d {
   dispose(): void;
 }
 
-/** Whether this browser can create a WebGL context at all. */
+/** Documents where a WebGL context could be created (tested once per page). */
+let webglSeen = new WeakSet<Document>();
+
+/**
+ * Whether this browser can create a WebGL context at all. A success is remembered for the
+ * page, and the test context is freed at once: browsers keep only about 16 contexts and
+ * drop the oldest – a game's live scene – when there are more.
+ */
 export function webglAvailable(doc: Document = document): boolean {
+  if (webglSeen.has(doc)) return true;
   try {
     const canvas = doc.createElement('canvas');
-    return !!(canvas.getContext('webgl2') || canvas.getContext('webgl'));
+    const gl = (canvas.getContext('webgl2') || canvas.getContext('webgl')) as WebGLRenderingContext | null;
+    if (!gl) return false;
+    gl.getExtension?.('WEBGL_lose_context')?.loseContext();
+    webglSeen.add(doc);
+    return true;
   } catch {
     return false;
   }
@@ -96,9 +108,10 @@ export function nearestTarget<T extends ScreenTarget>(targets: readonly T[], x: 
 /** Whether a scene already switched to 2D on its own (black or slow): then the player chose 3D again. */
 let switchedOnce = false;
 
-/** For tests: forget the automatic switch of this page. */
+/** For tests: forget the automatic switch and the WebGL test of this page. */
 export function resetScene3dChecks(): void {
   switchedOnce = false;
+  webglSeen = new WeakSet();
 }
 
 /** The message in a game without a 2D view when 3D cannot run here. */
@@ -177,6 +190,7 @@ export function createScene3d(THREE: any, element: HTMLElement, options: Scene3d
   let raf = 0;
   let disposed = false;
   canvas.addEventListener('webglcontextlost', (e) => {
+    if (disposed) return; // dispose() frees the context itself
     e.preventDefault();
     fallback('the graphics card lost the 3D context', 'lost');
   });
@@ -256,6 +270,9 @@ export function createScene3d(THREE: any, element: HTMLElement, options: Scene3d
       cancelAnimationFrame(raf);
       try {
         renderer.dispose();
+        // dispose() keeps the WebGL context; free it, or contexts pile up until the
+        // browser drops the oldest one (a live scene) and the game falls back to 2D.
+        renderer.forceContextLoss?.();
       } catch {
         /* already gone */
       }

@@ -4,6 +4,7 @@ import { createScene3d, nearestTarget, resetScene3dChecks, type Scene3dFallbackK
 /** A Three.js stand-in: a renderer whose frames are black or not, and a frame clock we drive. */
 function fakeThree(options: { black?: boolean } = {}) {
   const ratios: number[] = [];
+  let contextsLost = 0;
   class WebGLRenderer {
     domElement = document.createElement('canvas');
     setPixelRatio(r: number) {
@@ -12,6 +13,10 @@ function fakeThree(options: { black?: boolean } = {}) {
     setSize() {}
     render() {}
     dispose() {}
+    forceContextLoss() {
+      contextsLost++;
+      this.domElement.dispatchEvent(new Event('webglcontextlost', { cancelable: true }));
+    }
     getContext() {
       return {
         drawingBufferWidth: 100,
@@ -35,7 +40,7 @@ function fakeThree(options: { black?: boolean } = {}) {
     }
     updateProjectionMatrix() {}
   }
-  return { THREE: { WebGLRenderer, Scene: class {}, PerspectiveCamera }, ratios };
+  return { THREE: { WebGLRenderer, Scene: class {}, PerspectiveCamera }, ratios, contextsLost: () => contextsLost };
 }
 
 let frames: FrameRequestCallback[] = [];
@@ -146,6 +151,27 @@ describe('createScene3d', () => {
     const back = createScene3d(fakeThree().THREE, mount(), { onFallback: (_r, i) => seen.push(i.kind) })!;
     back.canvas.dispatchEvent(new Event('webglcontextlost'));
     expect(seen).toEqual(['lost', 'lost']);
+  });
+
+  it('tests WebGL once per page and frees the test context', () => {
+    const loseContext = vi.fn();
+    vi.mocked(HTMLCanvasElement.prototype.getContext).mockImplementation((() => ({ getExtension: () => ({ loseContext }) })) as any);
+    for (let i = 0; i < 20; i++) createScene3d(fakeThree().THREE, mount())!.dispose();
+    expect(HTMLCanvasElement.prototype.getContext).toHaveBeenCalledTimes(1);
+    expect(loseContext).toHaveBeenCalledTimes(1);
+  });
+
+  it('dispose frees the WebGL context without switching to 2D', () => {
+    const seen: Scene3dFallbackKind[] = [];
+    const three = fakeThree();
+    const el = mount();
+    const scene = createScene3d(three.THREE, el, { onFallback: (_r, i) => seen.push(i.kind) })!;
+    scene.start();
+    runFrames(2, 16);
+    scene.dispose();
+    expect(three.contextsLost()).toBe(1);
+    expect(seen).toEqual([]);
+    expect(el.querySelector('canvas')).toBeNull();
   });
 });
 
