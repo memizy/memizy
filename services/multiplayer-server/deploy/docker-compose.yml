@@ -29,7 +29,8 @@ services:
       retries: 3
 
   cloudflared:
-    image: cloudflare/cloudflared:latest
+    # Pinned; update on purpose (2026-11-07: certificate fix, needs >= 2026.10.2).
+    image: cloudflare/cloudflared:2026.10.7
     command: tunnel --no-autoupdate run
     restart: unless-stopped
     environment:
