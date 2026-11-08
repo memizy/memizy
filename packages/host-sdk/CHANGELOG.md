@@ -2,6 +2,9 @@
 
 ## 1.1.0 (unreleased)
 
+* `leitner`: a wrong answer moves an item **one level down** (at least 1) and makes it due after a day (`RELEARN_DAYS`), instead of dropping it to level 1 – one slip in a game must not undo weeks. A read note is a right answer like any other (protocol 1.1, SPEC 5.1), so notes reach level 4 too.
+* Study modes: `isDue`, `dueAt`, `isNew`, `reviewIntervals`, `daysUntilExam`, `newPerDay` and the type `StudyMode` (`fast` – learn it fast; `long` – remember it long-term, optionally with an `examDate`). Whether an item is due is computed from its level and its last answer with the mode's intervals (an exam date shrinks them to the days left; the day before the exam everything is due), so the stored records stay the same in every mode.
+
 * Protocol 1.1. `LocalSession.canFinish` and `requestFinish()`: ask the game to finish (`finishRequested`) when its authority listed `finish-request`; a paused game is resumed first. Wait for the `result` event with a timeout, then `end()`. Hosts offer features only in a negotiated version that defines them (`InitPayload.features` stays empty for 1.0 plugins).
 
 ## 1.0.2 (2026-11-08)

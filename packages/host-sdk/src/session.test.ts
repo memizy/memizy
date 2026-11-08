@@ -672,7 +672,7 @@ describe('protocol enforcement', () => {
 });
 
 describe('leitner', () => {
-  it('moves buckets up on correct answers and back to 1 on mistakes', () => {
+  it('moves buckets up on correct answers and one down on mistakes (at least 1)', () => {
     const now = new Date('2026-10-04T10:00:00Z');
     const item = setFile.items[0];
     const first = leitner.apply(undefined, { itemId: 'x', isCorrect: true }, now, item);

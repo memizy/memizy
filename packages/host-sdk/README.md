@@ -27,7 +27,8 @@ await session.start();                              // waits for everyone, count
 * **`LocalSession`** – runs a game: validates every plugin call (schemas, size and rate limits, views, authority), routes messages, runs the start barrier and countdown, handles authority outages (`setConnected`), reloads (`reload`), late joining (`addPlayer`), snapshots, learning progress and plugin data. Instances are mounted in this page (`mountPlugin`) or on players' devices (`RelayHost`).
 * **`RelayHost` / `RelayPlayer`** – multiplayer across devices through the relay server (below).
 * **`HostStorage`** – plug in your persistence (`MemoryStorage` for the Lab and tests).
-* **`LearningAlgorithm`** – how answers change learning progress (`leitner` by default).
+* **`LearningAlgorithm`** – how answers change learning progress (`leitner` by default: a right answer one level up, a wrong one one level down, at least 1, every item type alike).
+* **Study modes** – `isDue`, `dueAt`, `reviewIntervals`, `daysUntilExam`, `newPerDay` with a `StudyMode` (`fast` or `long`, optionally an `examDate`): when an item is due is computed from its level and its last answer, so the same records serve every mode; an exam date shrinks the intervals to the days left.
 * **`prepareSetForPlugin`** – keeps only the item types the plugin declares, puts options, pairs… in display order (seeded) and makes the public copy without answers (SPEC 4.4). Which plugins can play a set: `checkCompatibility` in `@memizy/oqse`.
 * **`HOST_SDK_VERSION`** – the version of this package (sent to plugins in `hello`).
 

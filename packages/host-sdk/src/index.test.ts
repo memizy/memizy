@@ -12,14 +12,21 @@ describe('public API', () => {
       'MemoryStorage',
       'PLUGIN_SANDBOX',
       'RELAY_APP_VERSION',
+      'RELEARN_DAYS',
       'RelayHost',
       'RelayPlayer',
       'createEmptySet',
+      'daysUntilExam',
+      'dueAt',
+      'isDue',
+      'isNew',
       'leitner',
       'loadPluginFromHtml',
       'loadPluginFromUrl',
       'mountPlugin',
+      'newPerDay',
       'prepareSetForPlugin',
+      'reviewIntervals',
     ]);
   });
 

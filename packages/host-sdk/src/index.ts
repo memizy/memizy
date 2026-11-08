@@ -28,7 +28,7 @@ export {
 } from './session';
 export { mountPlugin, PLUGIN_SANDBOX, type MountOptions, type MountedPlugin } from './frame';
 export { MemoryStorage, type HostStorage } from './storage';
-export { leitner, LEITNER_INTERVAL_DAYS, type LearningAlgorithm } from './learning';
+export { leitner, LEITNER_INTERVAL_DAYS, RELEARN_DAYS, dueAt, isDue, isNew, reviewIntervals, daysUntilExam, newPerDay, type LearningAlgorithm, type StudyMode } from './learning';
 export { RelayHost, type RelayHostOptions, type RelayHostEvent, type AttachOptions, type HostSeat } from './relay/host';
 export { RelayPlayer, type RelayPlayerOptions, type RelayPlayerEvent, type FrameFactory, type RemoteFrame } from './relay/player';
 export type { RelayStatus } from './relay/socket';
