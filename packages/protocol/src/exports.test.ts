@@ -8,7 +8,7 @@ describe('public API', () => {
       'AddressSchema', 'AnswerRecordSchema', 'BOARD_ADDRESS', 'DataScopeSchema', 'ErrorReportSchema', 'FINISH_REQUEST_FEATURE', 'HOST_API_METHODS',
       'HandshakeSchema', 'HostAsSchema', 'LIMITS', 'LocalizedTextSchema', 'MemizyRuntimeSchema', 'MultiplayerModeSchema',
       'OutgoingMessageSchema', 'PICK_ITEMS_FEATURE', 'PLUGIN_API_METHODS', 'PLUGIN_DEVICES', 'PROTOCOL_ERROR_CODES', 'PROTOCOL_VERSION',
-      'PluginManifestError', 'PluginPermissionsSchema', 'ProtocolError', 'RELAY_PROTOCOL',
+      'PluginManifestError', 'PluginPermissionsSchema', 'ProtocolError', 'RELAY_PROTOCOL', 'REVEAL_ITEMS_FEATURE',
       'SERVER_ADDRESS', 'SETTINGS_ADDRESS', 'SETTING_TYPES', 'SET_CHANGES_FEATURE', 'ServiceNameSchema', 'SessionResultSchema', 'SettingDefinitionSchema',
       'SettingsUpdateSchema', 'UnknownSettingSchema', 'compareProtocolVersions', 'extractManifestFromHtml', 'isKnownSetting', 'isProtocolErrorCode',
       'isProtocolSupported', 'localize', 'negotiateProtocolVersion', 'parsePluginManifest', 'parseProtocolVersion',

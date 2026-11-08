@@ -65,6 +65,11 @@ export const PickItemsRequestSchema = z.strictObject({
   exclude: z.array(ShortText(128)).max(200).optional(),
 });
 
+export const RevealItemsRequestSchema = z.strictObject({
+  itemIds: z.array(ShortText(128)).min(1).max(200),
+  to: z.array(AddressSchema).max(200).nullable(),
+});
+
 /** Argument schemas of every Host API method. */
 export const HOST_API_ARGS = {
   hello: z.tuple([HandshakeSchema]),
@@ -80,6 +85,7 @@ export const HOST_API_ARGS = {
   service: z.tuple([ShortText(100), z.unknown()]),
   pickItems: z.tuple([PickItemsRequestSchema]),
   markItem: z.tuple([ShortText(128), z.strictObject({ starred: z.boolean() })]),
+  revealItems: z.tuple([RevealItemsRequestSchema]),
 } satisfies Record<keyof HostApi, z.ZodType>;
 
 /**

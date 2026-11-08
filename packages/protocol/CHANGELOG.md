@@ -4,6 +4,8 @@ The protocol has its own changelog at the end of [SPEC.md](https://github.com/me
 
 ## 1.1.0-rc.2 (unreleased)
 
+* `HostApi.revealItems` (`RevealItemsRequest`, `REVEAL_ITEMS_FEATURE` = `reveal-items`): the authority tells the host which items it revealed to whom, and those instances may fetch the media of the hidden fields (SPEC 4.4, 5, 8.3).
+
 * Manifest `appSpecific.memizy.migrates` (`PluginRuntime.migrates`): the game reads states saved by its older versions; SPEC 3.3 says how a host continues a saved game in a newer version (`MIGRATE_FAILED` → the saved version).
 
 * SPEC 8.4: hosts allow downloads and writing to the clipboard in the plugin frame (protocol 1.1); `pluginAllowAttribute` always grants `clipboard-write`.

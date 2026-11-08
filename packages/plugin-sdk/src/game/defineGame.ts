@@ -7,6 +7,7 @@ import {
   FINISH_REQUEST_FEATURE,
   PICK_ITEMS_FEATURE,
   SET_CHANGES_FEATURE,
+  REVEAL_ITEMS_FEATURE,
   LIMITS,
   PROTOCOL_VERSION,
   ProtocolError,
@@ -113,7 +114,7 @@ export function startGame<S>(definition: GameDefinition<S>, options: StartOption
       plugin: { id: manifest.id, version: manifest.version },
       // The host may ask a game with `onFinish` to finish (SPEC 7, protocol 1.1).
       // Set changes: the SDK swaps the items itself (a game that keeps only item IDs needs nothing).
-      features: [...(typeof definition.onFinish === 'function' ? [FINISH_REQUEST_FEATURE] : []), ...(definition.pickItems ? [PICK_ITEMS_FEATURE] : []), SET_CHANGES_FEATURE],
+      features: [...(typeof definition.onFinish === 'function' ? [FINISH_REQUEST_FEATURE] : []), ...(definition.pickItems ? [PICK_ITEMS_FEATURE] : []), SET_CHANGES_FEATURE, REVEAL_ITEMS_FEATURE],
     };
     const connector =
       options.connector ?? autoConnector(standaloneConnector({ runtime: manifest.runtime, pluginId: manifest.id, types: manifest.types }));

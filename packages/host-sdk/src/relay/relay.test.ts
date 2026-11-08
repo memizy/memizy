@@ -366,6 +366,55 @@ describe('relayed multiplayer', () => {
     host.close();
   }, 30_000);
 
+  it('after a reveal a phone gets the picture of the explanation through the relay (protocol 1.1, revealItems)', async () => {
+    const original = URL.createObjectURL;
+    let n = 0;
+    URL.createObjectURL = () => `blob:null/url-${++n}`; // jsdom has no object URLs
+    try {
+      const set = loadOQSEFile({
+        version: '1.0',
+        meta: { id: id(70), language: 'cs', title: 'Zvířata', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+        items: [{
+          id: id(71), type: 'mcq-single', question: 'Kdo štěká?', options: [{ id: 'x', text: 'kočka' }, { id: 'y', text: 'pes' }], correctId: 'y',
+          explanation: 'Takhle: <asset:back />', assets: { back: { type: 'image', value: 'media/back.png', altText: 'Pes' } },
+        }],
+      }).data as OQSEFile;
+      const show: Omit<GameDefinition<{ shown: boolean }>, 'root'> = {
+        initialState: () => ({ shown: false }),
+        actions: { show(state, _p, ctx) { state.shown = true; ctx.reveal(ctx.items[0].id, { to: ctx.playerId! }); } },
+        render: (state, ui) => {
+          const item = ui.item(ui.items[0].id) as any;
+          return `<button class="show" data-act="show">s</button><p class="back">${item?.assets?.back?.value ?? '-'}</p><p class="answer">${item?.answerHidden ? 'hidden' : item?.correctId}</p><p class="shown">${state.shown}</p>`;
+        },
+      };
+      const host = await RelayHost.create({ serverUrl, WebSocket: WebSocketImpl });
+      await until(() => host.status === 'online');
+      const anna = joinPlayer(host.pin, 'Anna', undefined, undefined, undefined, WebSocketImpl, { def: show });
+      const ben = joinPlayer(host.pin, 'Ben', undefined, undefined, undefined, WebSocketImpl, { def: show });
+      await until(() => host.players.length === 2 && host.players.every((p) => p.connected));
+      const assets: string[] = [];
+      const session = new LocalSession({ plugin, set, mode: 'multiplayer', hostAs: 'presenter', players: host.players.map((p) => ({ id: p.id, name: p.name })), countdownMs: 0, loadAsset: async (key) => { assets.push(key); return new Blob([key], { type: 'image/png' }); } });
+      await host.uploadBundle(plugin.html, session.prepared);
+      host.attach(session);
+      const board = playBoard(session, show);
+      await session.start();
+      await until(() => !!anna.root()?.querySelector('.show') && !!ben.root()?.querySelector('.show'));
+      expect(anna.root()!.querySelector('.back')!.textContent).toBe('-'); // hidden media never reach a player
+      expect(board.querySelector('.back')!.textContent).toMatch(/^blob:/);
+
+      (anna.root()!.querySelector('.show') as HTMLButtonElement).click(); // revealed to Anna only
+      await until(() => anna.root()!.querySelector('.answer')?.textContent === 'y');
+      await until(() => /^blob:/.test(anna.root()!.querySelector('.back')?.textContent ?? ''));
+      expect(anna.root()!.querySelector('.back')!.textContent).not.toBe(board.querySelector('.back')!.textContent); // her own URL
+      await wait(300);
+      expect(ben.root()!.querySelector('.answer')!.textContent).toBe('hidden');
+      expect(ben.root()!.querySelector('.back')!.textContent).toBe('-');
+      host.close();
+    } finally {
+      URL.createObjectURL = original;
+    }
+  }, 30_000);
+
   it('personal sets: every phone learns its own set, checks and records it there; the host sees outcomes and set titles', async () => {
     const own = (n: number, title: string, question: string, right: string, wrong: string) =>
       loadOQSEFile({

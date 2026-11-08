@@ -206,7 +206,7 @@ describe('display order and hidden answers (SPEC 4.4)', () => {
     expect(anna2.root.querySelector('.answer')!.textContent).toBe(full.correctId);
   });
 
-  it('a revealed item keeps the media this device loaded, never another device’s object URLs', async () => {
+  it('a revealed item keeps the media this device loaded, never another device’s object URLs; its hidden media come from the host (1.1)', async () => {
     const original = URL.createObjectURL;
     let n = 0;
     URL.createObjectURL = () => `blob:null/url-${++n}`; // jsdom has no object URLs; each call is a new one
@@ -244,7 +244,10 @@ describe('display order and hidden answers (SPEC 4.4)', () => {
       await wait(150);
       expect(anna.root.querySelector('.answer')!.textContent).toBe('y');
       expect(anna.root.querySelector('.pic')!.textContent).toBe(annaPic); // still this device's picture
-      expect(anna.root.querySelector('.back')!.textContent).toBe('-'); // not the board's URL, which would not load here
+      // The explanation's picture: fetched by this device after the reveal (revealItems), not the board's URL.
+      const annaBack = anna.root.querySelector('.back')!.textContent!;
+      expect(annaBack).toMatch(/^blob:/);
+      expect(annaBack).not.toBe(board.root.querySelector('.back')!.textContent);
     } finally {
       URL.createObjectURL = original;
     }
@@ -454,7 +457,37 @@ describe('finishing on request (SPEC 7, protocol 1.1)', () => {
     expect(init.features).toEqual([]);
     const current = await (await bare(newSession().session, 'board')).hello({ ...handshake, protocol: '1.1' });
     expect(current.protocol).toBe('1.1');
-    expect(current.features).toEqual(['finish-request', 'pick-items']);
+    expect(current.features).toEqual(['finish-request', 'pick-items', 'reveal-items']);
+  });
+
+  it('revealItems: only the players an item was revealed to may fetch its hidden media (protocol 1.1)', async () => {
+    const set = loadOQSEFile({
+      version: '1.0',
+      meta: { id: id(0), language: 'cs', title: 'Package', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+      items: [{
+        id: id(10), type: 'mcq-single', question: 'Kdo štěká?', options: [{ id: 'x', text: 'kočka' }, { id: 'y', text: 'pes' }], correctId: 'y',
+        explanation: 'Takhle: <asset:back />', assets: { back: { type: 'image', value: 'media/back.png' } },
+      }],
+    }).data as OQSEFile;
+    const { session } = newSession({ set, loadAsset: async (key) => new Blob([key]) });
+    const v11 = { ...handshake, protocol: '1.1', features: ['reveal-items'] };
+    const board = await bare(session, 'board');
+    await board.hello(v11);
+    const anna = await bare(session, 'anna');
+    await anna.hello(v11);
+    const ben = await bare(session, 'ben');
+    await ben.hello(v11);
+    await expect(anna.getAsset('back', id(10))).rejects.toThrow(/ASSET_NOT_FOUND/); // hidden
+    await expect(anna.revealItems!({ itemIds: [id(10)], to: null })).rejects.toThrow(/NOT_AUTHORITY|authority/i);
+    await board.revealItems!({ itemIds: [id(10), 'unknown'], to: ['anna'] });
+    await expect(anna.getAsset('back', id(10))).resolves.toBeInstanceOf(Blob);
+    await expect(ben.getAsset('back', id(10))).rejects.toThrow(/ASSET_NOT_FOUND/); // not revealed to Ben
+    await board.revealItems!({ itemIds: [id(10)], to: null });
+    await expect(ben.getAsset('back', id(10))).resolves.toBeInstanceOf(Blob);
+    // Without the feature (an older SDK) the method is unknown.
+    const old = await bare(newSession({ set }).session, 'board');
+    await old.hello({ ...handshake, protocol: '1.1' });
+    await expect(old.revealItems!({ itemIds: [id(10)], to: null })).rejects.toThrow(/UNKNOWN_METHOD/);
   });
 
   it('markItem: a player stars an item from the game (protocol 1.1); its learning stays', async () => {

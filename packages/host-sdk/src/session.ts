@@ -13,6 +13,7 @@ import {
   BOARD_ADDRESS,
   FINISH_REQUEST_FEATURE,
   PICK_ITEMS_FEATURE,
+  REVEAL_ITEMS_FEATURE,
   SETTINGS_ADDRESS,
   LIMITS,
   PROTOCOL_VERSION,
@@ -181,7 +182,7 @@ interface Instance extends SessionInstance {
 
 /** Features this host offers (SPEC 8.3) in a negotiated protocol version. */
 function hostFeatures(protocol: string): string[] {
-  return compareProtocolVersions(protocol, '1.1') >= 0 ? [FINISH_REQUEST_FEATURE, PICK_ITEMS_FEATURE] : [];
+  return compareProtocolVersions(protocol, '1.1') >= 0 ? [FINISH_REQUEST_FEATURE, PICK_ITEMS_FEATURE, REVEAL_ITEMS_FEATURE] : [];
 }
 
 /** Deep copy of JSON data that also works for proxies (which structuredClone rejects). */
@@ -217,6 +218,14 @@ export class LocalSession {
   private readonly algorithm: LearningAlgorithm;
   /** This game's answers per player, oldest first (for `pickItems`: mistakes back soon, new items' pace). */
   private readonly answerHistory = new Map<string, PickHistoryEntry[]>();
+  /** Items the authority revealed (`revealItems`): to every instance, and per player. */
+  private readonly revealedAll = new Set<string>();
+  private readonly revealedTo = new Map<string, Set<string>>();
+
+  /** Whether the authority revealed this item to this instance (its hidden media may be fetched). */
+  private isRevealedTo(itemId: string, address: string): boolean {
+    return this.revealedAll.has(itemId) || !!this.revealedTo.get(address)?.has(itemId);
+  }
   private readonly instances = new Map<string, Instance>();
   private readonly listeners = new Set<(event: SessionEvent) => void>();
   private authorityConnected = true;
@@ -783,7 +792,9 @@ export class LocalSession {
           if (!instance.assetLimiter.tryTake()) throw new ProtocolError('RATE_LIMITED', `More than ${LIMITS.assetsPerSecond} assets per second.`);
           // Only media of this instance's set: players' devices in multiplayer have public items
           // without the media of hidden fields (SPEC 4.4).
-          const own = this.mode === 'multiplayer' && instance.address !== this.authority ? this.prepared.publicSet : this.prepared.set;
+          // Items the authority revealed to this instance give their full media (1.1, revealItems).
+          const revealed = !!itemId && this.mode === 'multiplayer' && instance.address !== this.authority && this.isRevealedTo(itemId, instance.address);
+          const own = this.mode === 'multiplayer' && instance.address !== this.authority && !revealed ? this.prepared.publicSet : this.prepared.set;
           const item = itemId ? own.items.find((i) => i.id === itemId) : undefined;
           const media = resolveAsset(key, item, own.meta);
           if (!media) throw new ProtocolError('ASSET_NOT_FOUND', `Asset "${key}" does not exist.`);
@@ -838,6 +849,22 @@ export class LocalSession {
           const record = current ? { ...current, starred: mark.starred } : { bucket: 0 as const, stats: { attempts: 0, incorrect: 0, streak: 0 }, starred: mark.starred };
           await this.storage.saveProgress(userKey, setId, { [itemId]: record });
           this.emit({ type: 'marked', playerId: instance.address, setId, itemId, starred: mark.starred });
+        }),
+
+      revealItems: (...args) =>
+        call('revealItems', () => {
+          const [request] = parseHostCall('revealItems', args);
+          requireAuthority('revealItems');
+          if (!instance.features.includes(REVEAL_ITEMS_FEATURE)) throw new ProtocolError('UNKNOWN_METHOD', 'revealItems needs the feature reveal-items (list it in the handshake; protocol 1.1).');
+          const known = request.itemIds.filter((id) => this.prepared.set.items.some((item) => item.id === id));
+          if (request.to === null) for (const id of known) this.revealedAll.add(id);
+          else {
+            for (const playerId of request.to) {
+              const ids = this.revealedTo.get(playerId) ?? new Set<string>();
+              for (const id of known) ids.add(id);
+              this.revealedTo.set(playerId, ids);
+            }
+          }
         }),
 
       pickItems: (...args) =>

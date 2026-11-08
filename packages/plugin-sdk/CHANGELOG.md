@@ -4,6 +4,8 @@ Plugins import `https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1`: every 1.x re
 
 ## 1.1.0-rc.2 (unreleased)
 
+* Media of hidden fields after a reveal (protocol 1.1, feature `reveal-items`): `ctx.reveal` tells the host (`revealItems`), and the players' devices fetch the pictures of the back of a card or an explanation they did not have. A continued game tells its new host again.
+
 * `migrate(state, info)` in `defineGame`: a saved game continues in a newer version of the game (SPEC 3.3). Runs on the authority on every resume from a snapshot (`info.from` / `info.to`: the versions); snapshots keep the `pluginVersion` that saved them. If it throws, the saved state stays and the host hears `MIGRATE_FAILED`.
 
 * `ui.download(fileName, content, type?)` and `ui.copy(text, html?)`: a game saves a file (results for the teacher) or copies text and formatted HTML (tables into Word). Directly under protocol 1.1 hosts (they allow downloads and the clipboard in the frame, SPEC 8.4); under older hosts the file is saved from a new window and copying uses a selection. Links with `download` are no longer stopped by the link guard.

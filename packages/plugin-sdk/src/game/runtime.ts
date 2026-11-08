@@ -11,6 +11,7 @@ import {
   BOARD_ADDRESS,
   LIMITS,
   PICK_ITEMS_FEATURE,
+  REVEAL_ITEMS_FEATURE,
   toProtocolError,
   type HostApi,
   type IncomingMessage,
@@ -452,10 +453,12 @@ export class GameRuntime<S = unknown> {
     for (const received of items) {
       if (!received || typeof received.id !== 'string' || !this.itemsById.has(received.id)) continue;
       if (!this.publicCopies.has(received.id)) this.publicCopies.set(received.id, this.itemsById.get(received.id)!);
-      const item = withOwnMedia(received, this.publicCopies.get(received.id)!);
+      const missing: string[] = [];
+      const item = withOwnMedia(received, this.publicCopies.get(received.id)!, missing);
       this.itemsById.set(item.id, item);
       const index = list.findIndex((i) => i.id === item.id);
       if (index !== -1) list[index] = item;
+      if (missing.length && this.revealsToHost) this.fetchRevealedMedia(item, missing, received);
     }
     this.onChange();
   }
@@ -483,6 +486,44 @@ export class GameRuntime<S = unknown> {
     }
   }
 
+
+  /** Whether the host takes `revealItems` (protocol 1.1, feature `reveal-items`). */
+  private get revealsToHost(): boolean {
+    return this.init.features.includes(REVEAL_ITEMS_FEATURE) && typeof this.host.revealItems === 'function';
+  }
+
+  /** Authority: tells the host which items were revealed to whom (SPEC 4.4, `revealItems`). */
+  private grantReveal(itemIds: string[], to: string[] | null): void {
+    if (!this.revealsToHost || !itemIds.length || (to !== null && !to.length)) return;
+    for (let i = 0; i < itemIds.length; i += 200) {
+      this.host.revealItems!({ itemIds: itemIds.slice(i, i + 200), to }).catch((e) => this.warn('revealItems', e));
+    }
+  }
+
+  /**
+   * Followers: media of a revealed item that only its hidden fields use (the back of a card, a
+   * picture in the explanation) – fetched from the host once the authority revealed it.
+   */
+  private fetchRevealedMedia(item: OQSEAnyItem, keys: string[], received: OQSEAnyItem): void {
+    for (const key of keys) {
+      const media = received.assets?.[key];
+      if (!media) continue;
+      const load = (retry: boolean): void => {
+        this.host
+          .getAsset(key, item.id)
+          .then((blob) => {
+            if (this.itemsById.get(item.id) !== item) return; // hidden again meanwhile
+            (item.assets ??= {})[key] = { ...media, value: URL.createObjectURL(blob) };
+            this.onChange();
+          })
+          .catch((e) => {
+            if (retry) setTimeout(() => load(false), 1000); // the host may not have the reveal yet
+            else this.warn(`getAsset "${key}"`, e);
+          });
+      };
+      load(true);
+    }
+  }
 
   /** Stops timers and pending work (instance closing). */
   dispose(): void {
@@ -1085,9 +1126,12 @@ export class GameRuntime<S = unknown> {
   private reveal(itemIds: string[], to: string[] | null): void {
     if (this.init.session.mode === 'solo') return; // the solo player already has them
     const items = itemIds.map((id) => this.itemsById.get(id)!);
+    // First the host (those devices may then fetch the media of hidden fields), then the items.
+    this.grantReveal(itemIds, to);
     if (to === null) {
       for (const id of itemIds) this.revealedAll.add(id);
       this.send('all', { t: 'reveal', items });
+      this.scheduleSnapshot();
       return;
     }
     for (const playerId of to) {
@@ -1221,6 +1265,9 @@ export class GameRuntime<S = unknown> {
     this.revealedAll = new Set(snapshot.revealed?.all ?? []);
     this.revealedTo = new Map(Object.entries(snapshot.revealed?.to ?? {}).map(([p, ids]) => [p, new Set(ids)]));
     if (!this.ended) for (const timer of snapshot.timers) this.setTimer(timer);
+    // A continued game has a new host: tell it again what was revealed (media of hidden fields).
+    this.grantReveal([...this.revealedAll], null);
+    for (const [playerId, ids] of this.revealedTo) this.grantReveal([...ids], [playerId]);
     this.needFullState = true;
     this.scheduleFlush();
     this.onChange();
@@ -1265,13 +1312,15 @@ function hasPrototypeKey(value: unknown, depth = 0): boolean {
  * media keep this device's copies; media only hidden fields use (an explanation, the back of a
  * card) were never given to this device and are left out.
  */
-function withOwnMedia(item: OQSEAnyItem, own: OQSEAnyItem): OQSEAnyItem {
+function withOwnMedia(item: OQSEAnyItem, own: OQSEAnyItem, missing: string[] = []): OQSEAnyItem {
   if (!item.assets) return item;
   const assets: NonNullable<OQSEAnyItem['assets']> = {};
   for (const [key, media] of Object.entries(item.assets)) {
     const mine = own.assets?.[key];
     if (mine) assets[key] = mine;
-    else if (media && typeof media.value === 'string' && !/^blob:/i.test(media.value)) assets[key] = media;
+    // A web address works here too; the authority's own blob: URLs and package keys do not.
+    else if (media && typeof media.value === 'string' && /^(https?:|data:)/i.test(media.value)) assets[key] = media;
+    else if (media) missing.push(key);
   }
   return { ...item, assets } as OQSEAnyItem;
 }

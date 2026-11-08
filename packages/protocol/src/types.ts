@@ -38,6 +38,20 @@ export const PICK_ITEMS_FEATURE = 'pick-items';
  */
 export const SET_CHANGES_FEATURE = 'set-changes';
 
+/**
+ * Feature (SPEC 8.3, protocol 1.1): the authority tells the host which items it revealed to
+ * whom (`HostApi.revealItems`), so those devices may fetch the media of the hidden fields.
+ */
+export const REVEAL_ITEMS_FEATURE = 'reveal-items';
+
+/** `revealItems`: items the authority revealed (SPEC 4.4). */
+export interface RevealItemsRequest {
+  /** The revealed items (1–200). */
+  itemIds: string[];
+  /** The players they were revealed to; `null` = every instance. */
+  to: string[] | null;
+}
+
 /** `pickItems`: which items a player should get next (SPEC 5.4). */
 export interface PickItemsRequest {
   /** The player to pick for. */
@@ -248,6 +262,12 @@ export interface HostApi {
    * e.g. "practise this later" from inside a game; hosts offer "only starred" (SPEC 5.1).
    */
   markItem?(itemId: string, mark: { starred: boolean }): Promise<void>;
+  /**
+   * *Authority only, feature `reveal-items` (protocol 1.1).* The game revealed these items
+   * (with their answers) to these players (`null` = everyone): from now on those instances
+   * may fetch the media of the items' hidden fields with `getAsset` (SPEC 4.4).
+   */
+  revealItems?(request: RevealItemsRequest): Promise<void>;
 }
 
 /** Methods the plugin exposes to the host (host → plugin). SPEC section 7. */
@@ -276,7 +296,7 @@ export interface PluginApi {
 
 export const HOST_API_METHODS = [
   'hello', 'ready', 'send', 'saveSnapshot', 'recordAnswer', 'saveData',
-  'updateSettings', 'getAsset', 'end', 'reportError', 'service', 'pickItems', 'markItem',
+  'updateSettings', 'getAsset', 'end', 'reportError', 'service', 'pickItems', 'markItem', 'revealItems',
 ] as const satisfies readonly (keyof HostApi)[];
 
 export const PLUGIN_API_METHODS = [
