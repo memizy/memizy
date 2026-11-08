@@ -17,6 +17,7 @@ import { loadPluginFromHtml, type LoadedPlugin } from '../plugin';
 import { RelayHost, type HostSeat } from './host';
 import { RelayPlayer, type FrameFactory, type RelayPlayerEvent } from './player';
 import { RELAY_APP_VERSION } from './messages';
+import { RELAY_SOCKET_TIMING } from './socket';
 import { LIMITS, RELAY_PROTOCOL } from '@memizy/protocol';
 
 const PORT = 18_787;
@@ -63,6 +64,31 @@ const race: Omit<GameDefinition<State>, 'root'> = {
       ? `<p class="total">${Object.values(state.scores).reduce((a, b) => a + b, 0)}</p>`
       : `<h1 class="q">${ui.html`${ui.items[0]?.type === 'mcq-single' ? (ui.items[0] as any).question : '?'}`}</h1><p class="hidden">${(ui.items[0] as any)?.answerHidden ? 'yes' : 'no'}</p><button data-act="answer">go</button><p class="score">${state.scores[ui.self!.id] ?? 0}</p><p class="clock">${Math.abs(ui.now - Date.now()) < 5000 ? 'ok' : 'skewed'}</p><p class="loc">${ui.locale}</p>`,
 };
+
+/**
+ * A WebSocket whose network can be cut without a close (a half-open connection: a phone that
+ * slept, a switched Wi-Fi). A cut socket sends nothing and hears nothing, not even its close;
+ * sockets opened after the cut work (the network is back).
+ */
+const cutSockets = new WeakSet<object>();
+class FlakyWebSocket extends NodeWebSocket {
+  static open: FlakyWebSocket[] = [];
+  constructor(url: string) {
+    super(url);
+    FlakyWebSocket.open.push(this);
+  }
+  override send(data: unknown, ...rest: unknown[]): void {
+    if (!cutSockets.has(this)) (super.send as (...a: unknown[]) => void)(data, ...rest);
+  }
+  override emit(event: string | symbol, ...args: unknown[]): boolean {
+    if (cutSockets.has(this) && (event === 'message' || event === 'close' || event === 'error')) return false;
+    return super.emit(event, ...args);
+  }
+  /** Cuts the network of every socket opened so far. */
+  static cut(): void {
+    for (const socket of FlakyWebSocket.open.splice(0)) cutSockets.add(socket);
+  }
+}
 
 const games: GameHandle[] = [];
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -114,12 +140,12 @@ function playBoard(session: LocalSession): HTMLElement {
   return boardRoot;
 }
 
-function joinPlayer(pin: string, name: string, token?: string, locale?: string, auth?: string) {
+function joinPlayer(pin: string, name: string, token?: string, locale?: string, auth?: string, WebSocket: typeof globalThis.WebSocket = WebSocketImpl) {
   const frames = sdkFrames();
   const container = document.createElement('div');
   document.body.appendChild(container);
   const events: RelayPlayerEvent[] = [];
-  const player = new RelayPlayer({ serverUrl, WebSocket: WebSocketImpl, pin, name, token, auth, container: () => container, createFrame: frames.factory, config: locale ? () => ({ locale }) : undefined });
+  const player = new RelayPlayer({ serverUrl, WebSocket, pin, name, token, auth, container: () => container, createFrame: frames.factory, config: locale ? () => ({ locale }) : undefined });
   player.on((e) => events.push(e));
   const root = () => frames.roots.at(-1);
   return { player, events, root, container, ended: frames.ended, hosts: frames.hosts };
@@ -253,6 +279,126 @@ describe('relayed multiplayer', () => {
     await until(() => anna2.events.some((e) => e.type === 'closed' && e.reason === 'host'));
     expect(anna2.ended).toEqual(['closed']);
     cyril.player.leave();
+  }, 30_000);
+
+  it('a player comes back: a reload without a clean close, reloads in a row, a reload while the game loads', async () => {
+    const host = await RelayHost.create({ serverUrl, WebSocket: WebSocketImpl });
+    await until(() => host.status === 'online');
+    const anna = joinPlayer(host.pin, 'Anna');
+    await until(() => host.players.length === 1 && host.players[0].connected);
+    const session = new LocalSession({ plugin, set: setFile, mode: 'multiplayer', hostAs: 'presenter', players: host.players.map((p) => ({ id: p.id, name: p.name })), countdownMs: 0 });
+    await host.uploadBundle(plugin.html, session.prepared);
+    host.attach(session);
+    const board = playBoard(session);
+    await session.start();
+    await until(() => !!anna.root()?.querySelector('button'));
+    (anna.root()!.querySelector('button') as HTMLButtonElement).click();
+    await until(() => board.querySelector('.total')?.textContent === '1');
+    const annaId = anna.player.playerId!;
+    const token = anna.player.token!;
+
+    // A phone reloads the page, but the old connection is not closed first (the browser kept
+    // it, or the relay has not noticed): the new page takes the place, the old one steps aside.
+    const anna2 = joinPlayer(host.pin, 'Anna', token);
+    await until(() => anna2.player.playerId === annaId);
+    await until(() => anna2.root()?.querySelector('.score')?.textContent === '1');
+    await until(() => anna.player.status === 'replaced');
+    (anna2.root()!.querySelector('button') as HTMLButtonElement).click();
+    await until(() => board.querySelector('.total')?.textContent === '2');
+    await until(() => anna2.root()!.querySelector('.score')?.textContent === '2');
+
+    // Two reloads in a row (a double tap on reload): the last page plays.
+    const anna3 = joinPlayer(host.pin, 'Anna', token);
+    const anna4 = joinPlayer(host.pin, 'Anna', token);
+    await until(() => anna4.root()?.querySelector('.score')?.textContent === '2');
+    await until(() => anna2.player.status === 'replaced' && anna3.player.status === 'replaced');
+    (anna4.root()!.querySelector('button') as HTMLButtonElement).click();
+    await until(() => board.querySelector('.total')?.textContent === '3');
+
+    // A late player reloads while the game is still loading on the device.
+    const ben = joinPlayer(host.pin, 'Ben');
+    await until(() => ben.events.some((e) => e.type === 'joined'));
+    const benToken = ben.player.token!;
+    ben.player.leave();
+    const ben2 = joinPlayer(host.pin, 'Ben', benToken);
+    await until(() => !!ben2.root()?.querySelector('button'));
+    (ben2.root()!.querySelector('button') as HTMLButtonElement).click();
+    await until(() => board.querySelector('.total')?.textContent === '4');
+    expect(session.players.map((p) => p.connected)).toEqual([true, true]);
+
+    host.close();
+  }, 30_000);
+
+  it('a player comes back after a dead connection (a phone that slept, a switched network)', async () => {
+    const host = await RelayHost.create({ serverUrl, WebSocket: WebSocketImpl });
+    await until(() => host.status === 'online');
+    const anna = joinPlayer(host.pin, 'Anna', undefined, undefined, undefined, FlakyWebSocket as unknown as typeof WebSocket);
+    await until(() => host.players.length === 1 && host.players[0].connected);
+    const session = new LocalSession({ plugin, set: setFile, mode: 'multiplayer', hostAs: 'presenter', players: host.players.map((p) => ({ id: p.id, name: p.name })), countdownMs: 0 });
+    await host.uploadBundle(plugin.html, session.prepared);
+    host.attach(session);
+    const board = playBoard(session);
+    await session.start();
+    await until(() => !!anna.root()?.querySelector('button'));
+    const root = anna.root()!;
+
+    // The page becomes visible again on a dead connection: the app checks it and reconnects.
+    FlakyWebSocket.cut();
+    anna.player.reconnectNow();
+    await until(() => anna.events.some((e) => e.type === 'status' && e.status === 'offline'), 6000);
+    await until(() => anna.player.status === 'online', 6000);
+    (anna.root()!.querySelector('button') as HTMLButtonElement).click();
+    await until(() => board.querySelector('.total')?.textContent === '1');
+    expect(anna.root()).toBe(root); // the same game instance went on, no reload
+
+    // Nobody looks: the heartbeat finds the dead connection by itself.
+    const timing = { ...RELAY_SOCKET_TIMING };
+    Object.assign(RELAY_SOCKET_TIMING, { pingMs: 200, deadMs: 500 });
+    try {
+      anna.player.reconnectNow(); // restarts the heartbeat with the short timing
+      FlakyWebSocket.cut();
+      const offline = anna.events.filter((e) => e.type === 'status' && e.status === 'offline').length;
+      await until(() => anna.events.filter((e) => e.type === 'status' && e.status === 'offline').length > offline, 4000);
+      await until(() => anna.player.status === 'online', 6000);
+    } finally {
+      Object.assign(RELAY_SOCKET_TIMING, timing);
+    }
+    (anna.root()!.querySelector('button') as HTMLButtonElement).click();
+    await until(() => board.querySelector('.total')?.textContent === '2');
+    await until(() => anna.root()!.querySelector('.score')?.textContent === '2');
+
+    host.close();
+  }, 30_000);
+
+  it("the host's dead connection is found by its heartbeat; the game goes on", async () => {
+    const timing = { ...RELAY_SOCKET_TIMING };
+    Object.assign(RELAY_SOCKET_TIMING, { pingMs: 200, deadMs: 500 });
+    try {
+      const host = await RelayHost.create({ serverUrl, WebSocket: FlakyWebSocket as unknown as typeof WebSocket });
+      await until(() => host.status === 'online');
+      const anna = joinPlayer(host.pin, 'Anna');
+      await until(() => host.players.length === 1 && host.players[0].connected);
+      const session = new LocalSession({ plugin, set: setFile, mode: 'multiplayer', hostAs: 'presenter', players: host.players.map((p) => ({ id: p.id, name: p.name })), countdownMs: 0 });
+      await host.uploadBundle(plugin.html, session.prepared);
+      host.attach(session);
+      const board = playBoard(session);
+      await session.start();
+      await until(() => !!anna.root()?.querySelector('button'));
+      const statuses: string[] = [];
+      host.on((e) => e.type === 'status' && statuses.push(e.status));
+
+      // The teacher's computer loses its connection without a close (the Wi-Fi switched).
+      FlakyWebSocket.cut();
+      await until(() => statuses.includes('offline'), 4000);
+      await until(() => host.status === 'online', 6000);
+      (anna.root()!.querySelector('button') as HTMLButtonElement).click();
+      await until(() => board.querySelector('.total')?.textContent === '1');
+      await until(() => anna.root()!.querySelector('.score')?.textContent === '1');
+      expect(anna.player.status).toBe('online');
+      host.close();
+    } finally {
+      Object.assign(RELAY_SOCKET_TIMING, timing);
+    }
   }, 30_000);
 
   it('continues a saved game in a new room: devices take the earlier places, the host can change them', async () => {

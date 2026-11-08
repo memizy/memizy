@@ -165,7 +165,11 @@ export class RelayPlayer {
     this.up({ k: 'claim', seat });
   }
 
-  /** Reconnect right away (e.g. the page became visible again). */
+  /**
+   * Call when the page becomes visible again or the network comes back: reconnects right away
+   * when offline, and on an open connection checks within seconds that it still carries data
+   * (a phone that slept keeps a dead one) and reconnects if not.
+   */
   reconnectNow(): void {
     this.socket.reconnectNow();
   }
