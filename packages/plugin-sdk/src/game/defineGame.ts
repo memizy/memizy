@@ -49,6 +49,8 @@ export const SDK_VERSION: string = typeof __SDK_VERSION__ !== 'undefined' ? __SD
 
 /** How often the screen of a timed phase re-renders (its countdown). */
 const PHASE_TICK_MS = 250;
+/** `ui.redrawIn`: at most a day ahead (a longer wait is a mistake in the game). */
+const MAX_REDRAW_IN_MS = 86_400_000;
 
 export interface GameHandle {
   /** Resolves when the game is connected and the first screen is rendered. */
@@ -175,6 +177,9 @@ abstract class BaseController implements Controller {
   protected readonly root: HTMLElement;
   protected readonly local: Record<string, any> = {};
   protected scheduled = false;
+  /** `ui.redrawIn`: the pending redraw and when it is due. */
+  private redrawTimer: ReturnType<typeof setTimeout> | undefined;
+  private redrawAt = Infinity;
   private readonly reported = new Set<string>();
   private readonly unbind: () => void;
   protected readonly connection: HostConnection;
@@ -246,21 +251,6 @@ abstract class BaseController implements Controller {
 
   /** Stars or unstars an item for this player (games: through the host, protocol 1.1). */
   protected markItem(_itemId: string, _starred: boolean): void {}
-
-  /** Redraw once after `ms` (a countdown that is not part of the game state). */
-  private redrawTimer: ReturnType<typeof setTimeout> | undefined;
-  private redrawAt = Infinity;
-  protected redrawIn(ms: number): void {
-    const at = Date.now() + ms;
-    if (this.redrawTimer && at >= this.redrawAt) return;
-    clearTimeout(this.redrawTimer);
-    this.redrawAt = at;
-    this.redrawTimer = setTimeout(() => {
-      this.redrawTimer = undefined;
-      this.redrawAt = Infinity;
-      this.schedule();
-    }, Math.max(16, ms));
-  }
 
   /** The reading time of a note or a flipped card: the game's option, or by the text in 1.1 games. */
   private readTime(item: OQSEAnyItem, option: number | undefined): number {
@@ -358,6 +348,21 @@ abstract class BaseController implements Controller {
   /** Runs after each render (`afterRender` of the game definition). */
   protected afterRender(): void {}
 
+  /** `ui.redrawIn(ms)`: one more render after `ms` (the earliest of several requests wins). */
+  protected redrawIn(ms: number): void {
+    if (typeof ms !== 'number' || !Number.isFinite(ms)) return;
+    const delay = Math.min(MAX_REDRAW_IN_MS, Math.max(16, ms));
+    const at = Date.now() + delay;
+    if (this.redrawTimer !== undefined && this.redrawAt <= at) return;
+    clearTimeout(this.redrawTimer);
+    this.redrawAt = at;
+    this.redrawTimer = setTimeout(() => {
+      this.redrawTimer = undefined;
+      this.redrawAt = Infinity;
+      this.schedule();
+    }, delay);
+  }
+
   protected report(code: string, message: string): void {
     const key = `${code}:${message}`;
     if (this.reported.has(key)) return;
@@ -390,6 +395,7 @@ abstract class BaseController implements Controller {
         else if (update && typeof update === 'object') Object.assign(this.local, update);
         this.schedule();
       },
+      redrawIn: (ms) => this.redrawIn(ms),
       text: (markdown, options) => rawHtml(renderRichText(markdown, this.textContext((options as { item?: OQSEAnyItem } | undefined)?.item), options)),
       note: (note: NoteItem, options) => rawHtml(renderNoteHtml(note, this.textContext(note), options)),
       html: safeHtml,
@@ -399,6 +405,7 @@ abstract class BaseController implements Controller {
   }
 
   destroy(): void {
+    clearTimeout(this.redrawTimer);
     this.unbind();
     this.connection.destroy();
   }

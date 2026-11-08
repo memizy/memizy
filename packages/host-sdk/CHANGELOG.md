@@ -1,6 +1,8 @@
 # Changelog of @memizy/host-sdk
 
-## 1.1.0-rc.1 (unreleased)
+## 1.1.0-rc.2 (unreleased)
+
+## 1.1.0-rc.1 (2026-11-08)
 
 * `RelayPlayer.changePersonalSet(personal)`: a player switches their own set while the game runs (edits reloaded, another set or choice of items); `personalHostApi` gets `switchTo` and `gameFeatures`; the host learns the new set's title.
 

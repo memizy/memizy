@@ -275,6 +275,42 @@ describe('defineGame end to end', () => {
     expect(renders).toBe(after);
   });
 
+  it('ui.redrawIn draws once more after the time (a countdown without tickMs); several requests keep the earliest', async () => {
+    const router = new LocalRouter({ items, mode: 'solo' });
+    let renders = 0;
+    let until = 0;
+    let drawUi: any;
+    mount(router, 'me', {
+      initialState: () => ({}),
+      actions: {},
+      render: (_state, ui) => {
+        renders++;
+        drawUi = ui;
+        const left = until - Date.now();
+        if (left > 0) {
+          ui.redrawIn(400); // a later request does not push the earlier one away
+          ui.redrawIn(Math.min(left, 100));
+        }
+        return ui.html`<p>${Math.max(0, Math.ceil(left / 100))}</p>`;
+      },
+    });
+    await handles[0].ready;
+    await router.start();
+    await wait(100);
+    const idle = renders;
+    await wait(300);
+    expect(renders).toBe(idle); // nothing asked: no redraws
+    until = Date.now() + 450;
+    drawUi.setLocal({ started: true }); // any change draws once; from there the countdown keeps itself
+    await wait(700);
+    const counted = renders - idle;
+    expect(counted).toBeGreaterThanOrEqual(4);
+    expect(counted).toBeLessThanOrEqual(9);
+    const after = renders;
+    await wait(500);
+    expect(renders).toBe(after); // the countdown ended: no more redraws
+  });
+
   it('ui.now is a number like ctx.now, fresh on every read', async () => {
     const router = new LocalRouter({ items, mode: 'solo' });
     let ui: any;

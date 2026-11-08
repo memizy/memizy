@@ -210,6 +210,7 @@ phases: {
 | `ui.phase`, `ui.timeLeft()` | The current phase / ms until its end (`ui.timeLeft(deadline)` for your own deadline). |
 | `ui.now` | Current time in ms (a property, the same clock as `ctx.now`). |
 | `ui.isPending(name?)`, `ui.pending` | Whether an action of this device still waits for the authority / the list `{ name, payload, sentAt }`. Use it to mark the chosen option right away. |
+| `ui.redrawIn(ms)` | Draw this screen once more after `ms` – for a countdown that runs only sometimes (a reading time, a cooldown): `if (left > 0) ui.redrawIn(Math.min(left, 1000))` in `render`. No `setTimeout` needed; several calls keep the earliest. |
 | `ui.local`, `ui.setLocal(update)` | Data for this screen only (selected tab, 2D/3D switch, an open dialog). `ui.setLocal({ tab: 'map' })` changes it **and re-renders**; buttons with `data-local` change it through `localActions`. Not shared, not saved. |
 | `ui.act(name, payload)` | Call an action from your own JavaScript (normally use `data-act`). |
 | `ui.paused` | `true` while the teacher has paused the game (the app covers the screen). |
@@ -233,7 +234,7 @@ Exceeding a limit makes the action fail (and the Plugin Lab tests report it):
 
 * **State size:** under **64 KB** as JSON (ids, not whole items; no images or long texts).
 * **Actions:** at most **30 per second** per device. Never call `ui.act` in a loop, in `requestAnimationFrame` or on every mouse move; send the decision, not every intermediate step.
-* **Timers:** use phases or `ctx.after` with a deadline in the state; never an action every second to count down – `render` shows the countdown with `ui.timeLeft()` (timed phases re-render by themselves; `tickMs` for your own deadlines).
+* **Timers:** use phases or `ctx.after` with a deadline in the state; never an action every second to count down – `render` shows the countdown with `ui.timeLeft()` (timed phases re-render by themselves; `ui.redrawIn(ms)` for a deadline of your own that runs only sometimes, `tickMs` for constant animation).
 * **Saved data** (section 5.3): at most **256 KB** per scope.
 * **Recorded answers:** the SDK sends `ctx.recordAnswer` at most about 10 per second per player; more wait for their turn (nothing is lost). Record each answer when it is given, not hundreds at once at the end.
 

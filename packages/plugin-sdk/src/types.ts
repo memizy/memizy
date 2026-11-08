@@ -150,6 +150,13 @@ export interface GameUI {
    * with a handler in `defineGame({ localActions })`.
    */
   setLocal(update: Record<string, unknown> | ((local: Record<string, any>) => void)): void;
+  /**
+   * Draw the screen once more after `ms` milliseconds (SDK 1.1): a countdown or a reading
+   * time that runs only sometimes, without `tickMs`. Call it from `render` while the
+   * countdown runs (`if (left > 0) ui.redrawIn(Math.min(left, 1000))`); several calls keep
+   * the earliest. Only this device; nothing changes in the state.
+   */
+  redrawIn(ms: number): void;
   /** Call an action (normally use `data-act`). */
   act(name: string, payload?: unknown): void;
   /**
