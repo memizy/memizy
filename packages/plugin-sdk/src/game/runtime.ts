@@ -300,11 +300,23 @@ export class GameRuntime<S = unknown> {
         this.ownPicksPending = false;
         const items = (Array.isArray(ids) ? ids : []).map((id) => this.itemsById.get(id)).filter((i): i is OQSEAnyItem => !!i).map((i) => ({ id: i.id, type: i.type }));
         if (items.length) this.dispatch('$picks', { items });
+        this.retryOwnPicks(2000); // lost on the way (a reconnect, the authority away): send again
       })
       .catch((error) => {
         this.ownPicksPending = false;
         this.warn('pickItems', error);
+        this.retryOwnPicks(1000);
       });
+  }
+
+  private ownPicksRetry: ReturnType<typeof setTimeout> | undefined;
+  /** Tries the refill again later when the queue at the authority is still short. */
+  private retryOwnPicks(ms: number): void {
+    clearTimeout(this.ownPicksRetry);
+    this.ownPicksRetry = setTimeout(() => {
+      this.ownPicksAt = -1;
+      this.refillOwnPicks();
+    }, ms);
   }
 
   /**
@@ -462,6 +474,7 @@ export class GameRuntime<S = unknown> {
 
   /** Stops timers and pending work (instance closing). */
   dispose(): void {
+    clearTimeout(this.ownPicksRetry);
     for (const timer of this.timers.values()) clearTimeout(timer.handle);
     this.flushHandle?.();
     this.flushHandle = undefined;
