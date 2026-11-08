@@ -241,6 +241,13 @@ export interface GameDefinition<S = any> {
   root?: HTMLElement;
   /** Re-render every `tickMs` milliseconds (countdowns). */
   tickMs?: number;
+  /**
+   * The game opened outside Memizy (the file itself, another site's preview): a small button
+   * opens a menu to load the player's own set (an OQSE file or link) and change the settings.
+   * `controls: 'hidden'` hides the button (call `game.openStandaloneMenu()` from your own);
+   * `position` moves it (default `'top-right'`). Inside Memizy nothing is shown.
+   */
+  standalone?: { controls?: 'auto' | 'hidden'; position?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' };
   initialState(ctx: GameContext): S;
   actions: Record<string, ActionHandler<S>>;
   /**

@@ -17,6 +17,7 @@ import {
   ensureConnectionPolyfills,
   injectContentPolicy,
   pluginAllowAttribute,
+  PLUGIN_FRAME_NAME,
   pluginContentPolicy,
 } from '@memizy/protocol/internal';
 import type { LocalSession, SessionInstance } from './session';
@@ -76,6 +77,8 @@ export function createPluginFrame(html: string, title: string, hostApi: HostApi,
   const iframe = doc.createElement('iframe');
   iframe.setAttribute('sandbox', PLUGIN_SANDBOX);
   iframe.setAttribute('title', title);
+  // A Memizy plugin frame (SPEC 4): the SDK waits the full hello deadline for this host.
+  iframe.name = PLUGIN_FRAME_NAME;
   iframe.style.cssText = 'width:100%;height:100%;border:0;display:block;touch-action:manipulation;touch-action:pan-x pan-y;';
   const parsed = readPluginManifestFromHtml(html);
   const runtime = parsed.success ? parsed.runtime : null;

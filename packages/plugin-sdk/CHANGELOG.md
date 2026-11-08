@@ -4,6 +4,9 @@ Plugins import `https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1`: every 1.x re
 
 ## 1.1.0-rc.2 (unreleased)
 
+* Standalone mode with the player's own sets (the game opened outside Memizy): a small button opens a menu – an OQSE file (JSON or Markdown) or `?set=<url>`, back to the sample set, the game's solo settings, deleting the progress; the game starts again without reloading the page. Progress per set and the settings stay in `localStorage` (memory only where a preview does not allow it). The validator comes from jsDelivr (`@memizy/oqse@1`) only when a set is loaded. The sample set is English unless the browser is Czech. `defineGame({ standalone: { controls, position } })`, `game.openStandaloneMenu()`. Standalone answers follow the 1.1 rules (a mistake one level down) and stars are kept.
+* An embedded game waits for a Memizy host only ~2 s unless its frame is marked (`name` `mz-…`, SPEC 4): previews in other sites start quickly instead of after 10 s.
+
 * Media of hidden fields after a reveal (protocol 1.1, feature `reveal-items`): `ctx.reveal` tells the host (`revealItems`), and the players' devices fetch the pictures of the back of a card or an explanation they did not have. A continued game tells its new host again.
 
 * `migrate(state, info)` in `defineGame`: a saved game continues in a newer version of the game (SPEC 3.3). Runs on the authority on every resume from a snapshot (`info.from` / `info.to`: the versions); snapshots keep the `pluginVersion` that saved them. If it throws, the saved state stays and the host hears `MIGRATE_FAILED`.

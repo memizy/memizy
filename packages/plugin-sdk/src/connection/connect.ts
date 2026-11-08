@@ -5,7 +5,23 @@
 
 import { WindowMessenger, connect } from 'penpal';
 import { LIMITS, ProtocolError, toProtocolError, HOST_API_METHODS, type Handshake, type HostApi, type InitPayload, type PluginApi } from '@memizy/protocol';
-import { ensureConnectionPolyfills } from '@memizy/protocol/internal';
+import { PLUGIN_FRAME_NAME_PREFIX, ensureConnectionPolyfills } from '@memizy/protocol/internal';
+
+/**
+ * How long an embedded game waits for a Memizy host when its frame is not marked as a
+ * Memizy plugin frame (another site's preview, e.g. an AI chat's canvas): then it runs on
+ * its own. Marked frames (`name` starting with `mz-`, SPEC 4) wait the full hello deadline.
+ */
+export const UNMARKED_HELLO_MS = 2000;
+
+/** Whether this frame was made by a Memizy host (SPEC 4: its `name` starts with `mz-`). */
+export function inMemizyFrame(): boolean {
+  try {
+    return typeof window.name === 'string' && window.name.startsWith(PLUGIN_FRAME_NAME_PREFIX);
+  } catch {
+    return false;
+  }
+}
 
 export interface HostConnection {
   host: HostApi;
@@ -42,7 +58,7 @@ export const iframeConnector: Connector = async (pluginApi, handshake) => {
   const connection = connect<HostApi & Record<string, any>>({
     messenger,
     methods: pluginApi as unknown as Record<string, (...args: any[]) => any>,
-    timeout: LIMITS.helloTimeoutMs,
+    timeout: inMemizyFrame() ? LIMITS.helloTimeoutMs : UNMARKED_HELLO_MS,
   });
   const remote = await connection.promise;
   const host = wrapHost(remote as unknown as HostApi);

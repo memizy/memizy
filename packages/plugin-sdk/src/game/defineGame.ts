@@ -35,7 +35,8 @@ import { checkAnswer } from '../checkAnswer';
 import { applyQuestionEvent, renderQuestion, type QuestionEvent, type QuestionLocal } from '../render/question';
 import { autoConnector, type Connector, type HostConnection } from '../connection/connect';
 import { pacedHost } from '../connection/pacedHost';
-import { standaloneConnector } from '../standalone/standaloneHost';
+import { standaloneHost, type Standalone } from '../standalone/standaloneHost';
+import type { SetReader } from '../standalone/sets';
 import { morph } from '../render/morph';
 import { bindEvents } from '../render/events';
 import { injectStyles } from '../render/styles';
@@ -62,6 +63,12 @@ export interface GameHandle {
    * Same as `data-act` / `ui.act`; ignored before the game has started.
    */
   act(name: string, payload?: unknown): void;
+  /**
+   * Outside Memizy (the HTML file opened directly, another site's preview): opens the menu
+   * to choose a set and the game's settings – for games with `standalone: { controls:
+   * 'hidden' }` and their own button. Returns `false` inside Memizy (nothing to open).
+   */
+  openStandaloneMenu(): boolean;
   /** Stops the game and removes listeners. */
   destroy(): void;
 }
@@ -70,6 +77,8 @@ export interface StartOptions {
   /** Custom connection (tests, the Plugin Lab). Default: iframe host or standalone preview. */
   connector?: Connector;
   document?: Document;
+  /** Tests: reads sets in standalone mode without the CDN. */
+  setReader?: () => Promise<SetReader>;
 }
 
 /** Defines and starts the game. Call it exactly once. */
@@ -83,6 +92,7 @@ export function startGame<S>(definition: GameDefinition<S>, options: StartOption
   let destroyed = false;
   let allowZoom: (() => void) | null = null;
   let unguardLinks: (() => void) | null = null;
+  let standalone: Standalone | null = null;
 
   const pluginApi: PluginApi = {
     start: async () => controller?.start(),
@@ -116,21 +126,41 @@ export function startGame<S>(definition: GameDefinition<S>, options: StartOption
       // Set changes: the SDK swaps the items itself (a game that keeps only item IDs needs nothing).
       features: [...(typeof definition.onFinish === 'function' ? [FINISH_REQUEST_FEATURE] : []), ...(definition.pickItems ? [PICK_ITEMS_FEATURE] : []), SET_CHANGES_FEATURE, REVEAL_ITEMS_FEATURE],
     };
-    const connector =
-      options.connector ?? autoConnector(standaloneConnector({ runtime: manifest.runtime, pluginId: manifest.id, types: manifest.types }));
-    const connected = await connector(pluginApi, handshake);
-    if (destroyed) return;
-    const connection = { ...connected, host: pacedHost(connected.host, connected.init), declared: manifest.runtime?.protocol, pluginVersion: manifest.version };
+    // Outside Memizy: the player's own sets and settings; choosing one starts the game again.
+    let restarting = false;
+    standalone = standaloneHost({
+      runtime: manifest.runtime,
+      pluginId: manifest.id,
+      types: manifest.types,
+      menu: definition.standalone,
+      setReader: options.setReader,
+      restart: () => {
+        if (destroyed || restarting || !standalone) return;
+        restarting = true;
+        controller?.destroy();
+        controller = null;
+        root.innerHTML = defaultStarting(doc.defaultView?.navigator.language ?? 'en');
+        run(standalone.connector)
+          .catch((error) => console.error('[memizy] The game could not start again:', error))
+          .finally(() => (restarting = false));
+      },
+    });
+    const run = async (connector: Connector): Promise<void> => {
+      const connected = await connector(pluginApi, handshake);
+      if (destroyed) return;
+      const connection = { ...connected, host: pacedHost(connected.host, connected.init), declared: manifest.runtime?.protocol, pluginVersion: manifest.version };
 
-    applyConfig(doc, connection.init.config);
-    await resolveAssets(connection.init, connection.host);
+      applyConfig(doc, connection.init.config);
+      await resolveAssets(connection.init, connection.host);
 
-    controller =
-      connection.init.session.view === 'settings'
-        ? new SettingsController(definition, connection, root, manifest.runtime?.settings ?? [])
-        : new GameController(definition, connection, root);
-    controller.renderNow();
-    await connection.host.ready();
+      controller =
+        connection.init.session.view === 'settings'
+          ? new SettingsController(definition, connection, root, manifest.runtime?.settings ?? [])
+          : new GameController(definition, connection, root);
+      controller.renderNow();
+      await connection.host.ready();
+    };
+    await run(options.connector ?? autoConnector(standalone.connector));
   })();
 
   ready.catch((error) => {
@@ -145,8 +175,13 @@ export function startGame<S>(definition: GameDefinition<S>, options: StartOption
       if (controller instanceof GameController) controller.act(name, payload);
       else console.warn(`[memizy] act("${name}") ignored: the game has not started yet.`);
     },
+    openStandaloneMenu() {
+      return standalone?.openMenu() ?? false;
+    },
     destroy() {
       destroyed = true;
+      doc.querySelector('.mz-standalone-button')?.remove();
+      doc.querySelector('.mz-standalone-menu')?.remove();
       allowZoom?.();
       unguardLinks?.();
       controller?.destroy();
@@ -781,6 +816,7 @@ function validateDefinition(def: GameDefinition<any>): void {
     problems.push('pickItems.weights must be five numbers ≥ 0 (levels 0–4)');
   }
   if (def.afterRender !== undefined && typeof def.afterRender !== 'function') problems.push('afterRender must be a function (state, ui) => void');
+  if (def.standalone !== undefined && (def.standalone === null || typeof def.standalone !== 'object')) problems.push("standalone must be an object { controls?: 'auto' | 'hidden', position? }");
   if (def.migrate !== undefined && typeof def.migrate !== 'function') problems.push('migrate must be a function (state, info) => void');
   if ((def as { local?: unknown }).local !== undefined) problems.push('local was renamed to localActions');
   if (def.localActions !== undefined) {

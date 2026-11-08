@@ -6,6 +6,14 @@
 
 import type { PluginRuntime } from './pluginRuntime';
 
+/**
+ * The `name` of every plugin frame a Memizy host makes starts with this (SPEC 4, protocol 1.1):
+ * an embedded SDK then waits the full hello deadline for the host; in other sites' frames
+ * (an AI chat's preview) it starts on its own after a short wait.
+ */
+export const PLUGIN_FRAME_NAME_PREFIX = 'mz-';
+export const PLUGIN_FRAME_NAME = 'mz-plugin';
+
 /** CDNs plugins load libraries from (scripts, styles, fonts, data files). */
 export const LIBRARY_ORIGINS = ['https://cdn.jsdelivr.net', 'https://unpkg.com', 'https://cdnjs.cloudflare.com', 'https://esm.sh'];
 

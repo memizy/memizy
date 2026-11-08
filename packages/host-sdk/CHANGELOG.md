@@ -2,6 +2,8 @@
 
 ## 1.1.0-rc.2 (unreleased)
 
+* Plugin frames are named `mz-plugin` (SPEC 4): the SDK knows it runs in a Memizy host and waits the full hello deadline. Release it before an SDK that relies on it reaches games.
+
 * `revealItems` (feature `reveal-items`): after a reveal, `getAsset` gives those instances the media of the revealed items' hidden fields.
 
 * Plugin frames allow downloads (`allow-downloads`) and writing to the clipboard (`allow="clipboard-write *"`), SPEC 8.4 (protocol 1.1).

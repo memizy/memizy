@@ -42,7 +42,7 @@ describe('AI guide example plugin', () => {
     await wait(300);
     // Solo: the only player answered, so the question is revealed with the right answer marked.
     expect(app.textContent).toMatch(/Správně|Špatně/);
-    expect(document.querySelector('.mz-standalone-banner')).not.toBeNull();
+    expect(document.querySelector('.mz-standalone-button')).not.toBeNull(); // the menu of the standalone mode
     expect(document.querySelector('.mz-error')).toBeNull();
   });
 });

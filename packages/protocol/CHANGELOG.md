@@ -4,6 +4,8 @@ The protocol has its own changelog at the end of [SPEC.md](https://github.com/me
 
 ## 1.1.0-rc.2 (unreleased)
 
+* SPEC 4: hosts name plugin frames `mz-plugin` (`PLUGIN_FRAME_NAME` in `@memizy/protocol/internal`); an SDK in an unmarked frame waits only ~2 s for a host.
+
 * `HostApi.revealItems` (`RevealItemsRequest`, `REVEAL_ITEMS_FEATURE` = `reveal-items`): the authority tells the host which items it revealed to whom, and those instances may fetch the media of the hidden fields (SPEC 4.4, 5, 8.3).
 
 * Manifest `appSpecific.memizy.migrates` (`PluginRuntime.migrates`): the game reads states saved by its older versions; SPEC 3.3 says how a host continues a saved game in a newer version (`MIGRATE_FAILED` → the saved version).

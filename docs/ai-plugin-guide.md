@@ -36,6 +36,8 @@ You are writing a **Memizy plugin**: a learning game in **one HTML file**. Memiz
 
 You do not have to care who runs the rules. Write actions as if there was one shared state; the SDK runs them in the right place and sends the new state to every screen. `render` is called on every screen with `ui.view` telling you which screen it is. The teacher can **pause** the game at any time: the SDK stops the time and covers the screens – you do not need to do anything.
 
+**Outside Memizy** (the HTML file opened directly, or a preview in an AI chat) the game runs solo with a sample set. A small "☰" button in the corner lets the player load their own set (an OQSE file or a link), change the game's settings and delete the progress – you need nothing for it. If the button is in the way, move it with `standalone: { position: 'bottom-left' }` in `defineGame`, or hide it (`controls: 'hidden'`) and open the menu from your own button with `game.openStandaloneMenu()`.
+
 ---
 
 ## 3. Manifest
