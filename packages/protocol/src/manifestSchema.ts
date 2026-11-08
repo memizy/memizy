@@ -34,6 +34,15 @@ export const MultiplayerModeSchema = z.looseObject({
     .min(1, 'hostAs must contain "presenter" and/or "player"')
     .refine((list) => new Set(list).size === list.length, 'hostAs must not contain duplicates'),
   lateJoin: z.boolean().optional(),
+  /**
+   * Whose questions (protocol 1.1): `shared` – one set for everyone (the default); `personal`
+   * – every player their own set, checked on their device (SPEC 3.4).
+   */
+  sets: z
+    .array(z.enum(['shared', 'personal']))
+    .min(1)
+    .refine((list) => new Set(list).size === list.length, 'sets must not contain duplicates')
+    .optional(),
 });
 
 /** An origin a plugin may connect to: `https://host[:port]` or `wss://host[:port]`, no path. */

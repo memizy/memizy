@@ -26,6 +26,8 @@ describe('public API', () => {
       'loadPluginFromUrl',
       'mountPlugin',
       'newPerDay',
+      'personalHostApi',
+      'personalSetInfo',
       'pickItems',
       'prepareSetForPlugin',
       'reviewIntervals',

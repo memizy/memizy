@@ -21,6 +21,8 @@ export interface PluginRuntime {
     players: { min: number; max: number; recommended?: number };
     hostAs: HostAs[];
     lateJoin: boolean;
+    /** Whose questions the game supports (SPEC 3.4; default `['shared']`). */
+    sets: ('shared' | 'personal')[];
   };
   settings: SettingDefinition[];
   /**
@@ -62,6 +64,7 @@ export function toRuntime(memizy: MemizyRuntimeManifest): PluginRuntime {
         players: { min: mp.players.min, max: mp.players.max, ...(mp.players.recommended !== undefined && { recommended: mp.players.recommended }) },
         hostAs: [...mp.hostAs],
         lateJoin: mp.lateJoin ?? true,
+        sets: Array.isArray(mp.sets) && mp.sets.length ? (mp.sets.filter((s) => s === 'shared' || s === 'personal') as ('shared' | 'personal')[]) : (['shared'] as ('shared' | 'personal')[]),
       }
     : null;
 

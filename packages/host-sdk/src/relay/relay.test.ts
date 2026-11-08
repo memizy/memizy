@@ -18,6 +18,7 @@ import { RelayHost, type HostSeat } from './host';
 import { RelayPlayer, type FrameFactory, type RelayPlayerEvent } from './player';
 import { RELAY_APP_VERSION } from './messages';
 import { RELAY_SOCKET_TIMING } from './socket';
+import type { PersonalSet } from '../personal';
 import { LIMITS, RELAY_PROTOCOL } from '@memizy/protocol';
 
 const PORT = 18_787;
@@ -101,7 +102,7 @@ async function until(check: () => boolean, ms = 5000): Promise<void> {
 }
 
 /** The SDK connected directly to the RelayPlayer's host API (no iframe in jsdom). */
-function sdkFrames(): { factory: FrameFactory; roots: HTMLElement[]; ended: string[]; hosts: HostApi[] } {
+function sdkFrames(def: Omit<GameDefinition<any>, 'root'> = race): { factory: FrameFactory; roots: HTMLElement[]; ended: string[]; hosts: HostApi[] } {
   const roots: HTMLElement[] = [];
   const hosts: HostApi[] = []; // the host API each game got
   const ended: string[] = []; // sessionEnded reasons the games of this device got
@@ -111,7 +112,7 @@ function sdkFrames(): { factory: FrameFactory; roots: HTMLElement[]; ended: stri
     roots.push(root);
     let resolvePlugin!: (api: PluginApi) => void;
     const plugin = new Promise<PluginApi>((r) => (resolvePlugin = r));
-    const game = startGame({ ...race, root }, {
+    const game = startGame({ ...def, root }, {
       connector: async (pluginApi, handshake) => {
         resolvePlugin({ ...pluginApi, sessionEnded: async (reason) => { ended.push(reason); return pluginApi.sessionEnded(reason); } });
         await wait(0); // like Penpal: the host learns about the connection first
@@ -126,11 +127,11 @@ function sdkFrames(): { factory: FrameFactory; roots: HTMLElement[]; ended: stri
 }
 
 /** The board of a session in this page, connected directly. */
-function playBoard(session: LocalSession): HTMLElement {
+function playBoard(session: LocalSession, def: Omit<GameDefinition<any>, 'root'> = race): HTMLElement {
   const boardRoot = document.createElement('div');
   document.body.appendChild(boardRoot);
   games.push(
-    startGame({ ...race, root: boardRoot }, {
+    startGame({ ...def, root: boardRoot }, {
       connector: async (pluginApi, handshake) => {
         const instance = await session.connect('board', () => pluginApi);
         return { host: instance.hostApi, init: await instance.hostApi.hello(handshake), standalone: false, destroy: () => {} };
@@ -140,12 +141,12 @@ function playBoard(session: LocalSession): HTMLElement {
   return boardRoot;
 }
 
-function joinPlayer(pin: string, name: string, token?: string, locale?: string, auth?: string, WebSocket: typeof globalThis.WebSocket = WebSocketImpl) {
-  const frames = sdkFrames();
+function joinPlayer(pin: string, name: string, token?: string, locale?: string, auth?: string, WebSocket: typeof globalThis.WebSocket = WebSocketImpl, extra: { def?: Omit<GameDefinition<any>, 'root'>; personal?: () => PersonalSet | null } = {}) {
+  const frames = sdkFrames(extra.def);
   const container = document.createElement('div');
   document.body.appendChild(container);
   const events: RelayPlayerEvent[] = [];
-  const player = new RelayPlayer({ serverUrl, WebSocket, pin, name, token, auth, container: () => container, createFrame: frames.factory, config: locale ? () => ({ locale }) : undefined });
+  const player = new RelayPlayer({ serverUrl, WebSocket, pin, name, token, auth, container: () => container, createFrame: frames.factory, config: locale ? () => ({ locale }) : undefined, ...(extra.personal && { personal: extra.personal }) });
   player.on((e) => events.push(e));
   const root = () => frames.roots.at(-1);
   return { player, events, root, container, ended: frames.ended, hosts: frames.hosts };
@@ -362,6 +363,69 @@ describe('relayed multiplayer', () => {
     // The same when only his connection drops and comes back (no new page).
     const cyril = joinPlayer(host.pin, 'Cyril', undefined, undefined, undefined, FlakyWebSocket as unknown as typeof WebSocket);
     await until(() => !!cyril.root()?.querySelector('button')); // a late join while it runs
+    host.close();
+  }, 30_000);
+
+  it('personal sets: every phone learns its own set, checks and records it there; the host sees outcomes and set titles', async () => {
+    const own = (n: number, title: string, question: string, right: string, wrong: string) =>
+      loadOQSEFile({
+        version: '1.0',
+        meta: { id: id(50 + n), language: 'cs', title, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+        items: [{ id: id(60 + n), type: 'mcq-single', question, options: [{ id: 'r', text: right }, { id: 'w', text: wrong }], correctId: 'r' }],
+      }).data as OQSEFile;
+    interface P { cur: Record<string, string | null>; scores: Record<string, number> }
+    const quiz: Omit<GameDefinition<P>, 'root'> = {
+      initialState: () => ({ cur: {}, scores: {} }),
+      actions: {
+        next(state, _p, ctx) { state.cur[ctx.playerId!] = ctx.nextItem(ctx.playerId)?.id ?? null; },
+        answer(state, payload: { correct?: boolean }, ctx) {
+          if (!ctx.personal) return;
+          if (payload.correct) state.scores[ctx.playerId!] = (state.scores[ctx.playerId!] ?? 0) + 1;
+          ctx.recordAnswer(state.cur[ctx.playerId!]!, payload.correct === true); // nothing on the host: the phone recorded it
+          state.cur[ctx.playerId!] = null;
+        },
+      },
+      render: (state, ui) => {
+        if (ui.view === 'board') return `<p class="total">${Object.values(state.scores).reduce((a, b) => a + b, 0)}</p><p class="sets">${ui.players.map((p) => p.set?.title ?? '-').join(',')}</p>`;
+        const cur = state.cur[ui.self!.id];
+        const item = cur ? ui.item(cur) : undefined;
+        return `<button class="next" data-act="next">next</button><p class="personal">${ui.personal}</p>${item ? ui.question(item, { action: 'answer' }) : ''}<p class="score">${state.scores[ui.self!.id] ?? 0}</p>`;
+      },
+    };
+    const host = await RelayHost.create({ serverUrl, WebSocket: WebSocketImpl });
+    await until(() => host.status === 'online');
+    const setA = own(1, 'Španělština', 'Perro?', 'pes', 'kočka');
+    const setB = own(2, 'Chemie', 'H2O?', 'voda', 'sůl');
+    const storageA = new MemoryStorage();
+    const anna = joinPlayer(host.pin, 'Anna', undefined, undefined, undefined, WebSocketImpl, { def: quiz, personal: () => ({ file: setA, storage: storageA, userKey: 'anna' }) });
+    const ben = joinPlayer(host.pin, 'Ben', undefined, undefined, undefined, WebSocketImpl, { def: quiz, personal: () => ({ file: setB, storage: new MemoryStorage(), userKey: 'ben' }) });
+    await until(() => host.players.length === 2 && host.players.every((p) => p.connected));
+    host.setState({ sets: 'personal' });
+    const storageHost = new MemoryStorage();
+    const session = new LocalSession({ plugin, set: setFile, mode: 'multiplayer', hostAs: 'presenter', players: host.players.map((p) => ({ id: p.id, name: p.name })), countdownMs: 0, sets: 'personal', storage: storageHost });
+    await host.uploadBundle(plugin.html, session.prepared, { full: true });
+    host.attach(session);
+    const board = playBoard(session, quiz);
+    await session.start();
+    await until(() => !!anna.root()?.querySelector('.next') && !!ben.root()?.querySelector('.next'));
+    expect(anna.root()!.querySelector('.personal')!.textContent).toBe('true');
+    await until(() => board.querySelector('.sets')?.textContent === 'Španělština,Chemie' || board.querySelector('.sets')?.textContent === 'Chemie,Španělština');
+
+    // Each phone gets a question of its own set (the authority never had them).
+    await wait(300); // the phones send their first picks
+    (anna.root()!.querySelector('.next') as HTMLButtonElement).click();
+    (ben.root()!.querySelector('.next') as HTMLButtonElement).click();
+    await until(() => anna.root()!.querySelector('.mz-q-question')?.textContent?.trim() === 'Perro?' && ben.root()!.querySelector('.mz-q-question')?.textContent?.trim() === 'H2O?');
+    const option = (r: HTMLElement, text: string) => [...r.querySelectorAll('.mz-q-opt')].find((b) => b.textContent?.includes(text)) as HTMLButtonElement;
+    option(anna.root()!, 'pes').click();
+    option(ben.root()!, 'sůl').click();
+    await until(() => board.querySelector('.total')?.textContent === '1');
+    await until(() => anna.root()!.querySelector('.score')?.textContent === '1');
+    expect(ben.root()!.querySelector('.score')!.textContent).toBe('0');
+    // The progress stays on the phone; the host stored nothing of the personal sets.
+    await wait(200);
+    expect((await storageA.loadProgress('anna', setA.meta.id))[id(61)]).toMatchObject({ bucket: 2 });
+    expect(await storageHost.loadProgress(anna.player.playerId!, setA.meta.id)).toEqual({});
     host.close();
   }, 30_000);
 

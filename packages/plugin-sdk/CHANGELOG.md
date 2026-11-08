@@ -4,6 +4,8 @@ Plugins import `https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1`: every 1.x re
 
 ## 1.1.0 (unreleased)
 
+* Personal sets (protocol 1.1, SPEC 3.4): `ctx.personal` / `ui.personal`. On a player's device the SDK keeps the player's queue at the authority filled with their own next items (`state.$picks`, IDs and types, chosen by their progress), checks the answers given through `ui.question` to their own items, records them on the device and adds `correct` to the action. On the authority `ctx.nextItem` hands out those IDs and `ctx.recordAnswer` skips items it does not have.
+
 * `ui.question(item, { star: true })`: a ☆ in the corner – the player stars the item for later (`ui.markItem(itemId, starred)` does the same from a game's own UI; protocol 1.1 apps keep it with `markItem`).
 * `ui.question` waits on notes and flipped flashcards: "Done" and the ratings are disabled with a countdown for a reading time – by the length of the text in games that declare protocol 1.1 (1.5–10 s), none in older games; `minReadMs` sets it, `0` turns it off.
 

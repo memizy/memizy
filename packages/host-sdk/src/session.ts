@@ -45,6 +45,7 @@ import { isNew, leitner, pickItems, type LearningAlgorithm, type PickHistoryEntr
 import { MemoryStorage, type HostStorage } from './storage';
 import { prepareSetForPlugin, type LoadedPlugin, type PreparedSet } from './plugin';
 import { HOST_SDK_VERSION } from './version';
+import { personalHostApi, personalSetInfo, type PersonalSet } from './personal';
 
 export interface SessionPlayer {
   id: string;
@@ -74,6 +75,14 @@ export interface SessionConfig {
    * `pickItems`; default: learn it fast.
    */
   studyModeFor?: (playerId: string) => StudyMode | undefined;
+  /**
+   * Whose questions (SPEC 3.4, protocol 1.1; the plugin must list it in
+   * `modes.multiplayer.sets`): `personal` – every player their own set, checked on their
+   * device; the authority gets the outcomes and no items. Default `shared`.
+   */
+  sets?: 'shared' | 'personal';
+  /** Personal sets: the set of a player whose instance runs in this page (e.g. the host playing along). */
+  personalSetFor?: (playerId: string) => PersonalSet | null;
   /** Language of the app (default `'en'`). */
   locale?: string;
   /** Theme of the app (default `'light'`). */
@@ -368,7 +377,14 @@ export class LocalSession {
       assetLimiter: new RateLimiter(LIMITS.assetsPerSecond, LIMITS.assetBurst),
       errorLimiter: new RateLimiter(LIMITS.errorReportsPerSecond, LIMITS.errorReportBurst),
     };
-    (instance as { hostApi: HostApi }).hostApi = this.createHostApi(instance);
+    let hostApi = this.createHostApi(instance);
+    // Personal sets: a player whose instance runs in this page learns their own set here.
+    const own = this.sets === 'personal' && view !== 'board' && view !== 'settings' ? this.options.personalSetFor?.(address) ?? null : null;
+    if (own) {
+      hostApi = personalHostApi(hostApi, own, prepareSetForPlugin(own.file, this.plugin.manifest), () => address);
+      this.setPlayerSet(address, personalSetInfo(own.file));
+    }
+    (instance as { hostApi: HostApi }).hostApi = hostApi;
     this.instances.set(address, instance);
     if (address === this.authority && this.isStarted) this.setAuthorityConnected(false);
     try {
@@ -474,6 +490,22 @@ export class LocalSession {
   renamePlayer(id: string, name: string): void {
     this.roster = this.roster.map((p) => (p.id === id ? { ...p, name } : p));
     this.broadcastPlayers();
+  }
+
+  /** Personal sets: which set a player learns (`Player.set`; shown on the board). */
+  setPlayerSet(id: string, set: { id: string; title: string; language?: string } | null): void {
+    if (!this.roster.some((p) => p.id === id)) return;
+    this.roster = this.roster.map((p) => {
+      if (p.id !== id) return p;
+      const { set: _old, ...rest } = p;
+      return set ? { ...rest, set } : rest;
+    });
+    this.broadcastPlayers();
+  }
+
+  /** Whose questions this game uses (SPEC 3.4). */
+  get sets(): 'shared' | 'personal' {
+    return this.options.sets === 'personal' && this.mode === 'multiplayer' ? 'personal' : 'shared';
   }
 
   /**
@@ -853,10 +885,14 @@ export class LocalSession {
         self: instance.address,
         authority: this.authority,
         lateJoin: this.isStarted && instance.view !== 'settings',
+        ...(this.sets === 'personal' && { sets: 'personal' as const }),
       },
       players: this.roster,
       // Answers only for the authority (and solo); the others get the items without them.
-      set: structuredClone(this.mode === 'multiplayer' && instance.address !== this.authority ? this.prepared.publicSet : this.prepared.set),
+      // Personal sets: no instance gets the shared items (players get their own on their device).
+      set: this.sets === 'personal'
+        ? { meta: structuredClone(this.prepared.set.meta), items: [] }
+        : structuredClone(this.mode === 'multiplayer' && instance.address !== this.authority ? this.prepared.publicSet : this.prepared.set),
       settings: { ...this.settingValues },
       config: this.hostConfig,
       clock: this.clock,

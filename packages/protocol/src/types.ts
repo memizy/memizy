@@ -53,6 +53,8 @@ export interface Player {
   name: string;
   isHost: boolean;
   connected: boolean;
+  /** The player's own set in a game with personal sets (SPEC 3.4): what they learn. */
+  set?: { id: string; title: string; language?: string };
 }
 
 export interface SessionInfo {
@@ -67,6 +69,11 @@ export interface SessionInfo {
   authority: Address;
   /** This instance joined a running game. */
   lateJoin: boolean;
+  /**
+   * Whose questions (protocol 1.1, SPEC 3.4): `personal` – every player their own set,
+   * checked on their device; the authority gets the outcomes. Missing: `shared`.
+   */
+  sets?: 'shared' | 'personal';
 }
 
 // ============================================================================

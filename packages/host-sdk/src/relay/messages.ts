@@ -34,6 +34,8 @@ export interface RemoteLobbyState {
   seats?: RemoteSeat[];
   /** A continued game: whether a device may also join as a new player (late join, space left). */
   newPlayers?: boolean;
+  /** Whose questions (SPEC 3.4): `personal` – every device brings its player's own set. */
+  sets?: 'shared' | 'personal';
 }
 
 /** A place of a player in a continued game (the earlier player's ID and nickname). */
@@ -68,6 +70,8 @@ export type PlayerToHost =
   | { k: 'hello'; gen: number; v?: number }
   /** A continued game: take the place `seat`, or join as a new player (`null`). */
   | { k: 'claim'; seat: string | null }
+  /** Personal sets: which set this player learns (shown to everyone; the set itself stays on the device). */
+  | { k: 'set'; set: { id: string; title: string; language?: string } }
   /** The plugin instance `gen` connected (Penpal handshake done). */
   | { k: 'mounted'; gen: number }
   | { k: 'mount-failed'; gen: number; error: SerializedError }

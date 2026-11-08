@@ -78,6 +78,13 @@ interface Channel {
 
 const HOST_METHODS = new Set<string>(HOST_API_METHODS);
 
+/** A player's set as a device reports it (personal sets): short texts only. */
+function readSetInfo(value: unknown): { id: string; title: string; language?: string } | null {
+  const v = value as { id?: unknown; title?: unknown; language?: unknown } | null;
+  if (!v || typeof v.id !== 'string' || !v.id || v.id.length > 128 || typeof v.title !== 'string') return null;
+  return { id: v.id, title: v.title.slice(0, 200), ...(typeof v.language === 'string' && v.language && { language: v.language.slice(0, 35) }) };
+}
+
 export class RelayHost {
   readonly pin: string;
   readonly hostToken: string;
@@ -102,6 +109,8 @@ export class RelayHost {
   private seatsMode = false;
   /** The app message version of each player's app (from its `hello`; 0 = an app before versions). */
   private readonly appVersions = new Map<string, number>();
+  /** Personal sets: the set each room player reported (by room player ID). */
+  private readonly playerSets = new Map<string, { id: string; title: string; language?: string }>();
 
   private constructor(options: RelayHostOptions, room: CreateRoomResponse) {
     this.options = options;
@@ -156,8 +165,12 @@ export class RelayHost {
    * (items without answers, SPEC 4.4) leaves this machine: anyone with the PIN can
    * download the bundle. Prepare the set with the seed passed as `shuffleSeed`.
    */
-  async uploadBundle(pluginHtml: string, prepared: PreparedSet): Promise<number> {
-    const set = prepared.publicSet;
+  /**
+   * Uploads the game and its set for the devices. With personal sets (`{ full: true }`) the set
+   * goes with its answers: a device without a set of its own learns this one and checks it itself.
+   */
+  async uploadBundle(pluginHtml: string, prepared: PreparedSet, options: { full?: boolean } = {}): Promise<number> {
+    const set = options.full ? prepared.set : prepared.publicSet;
     const response = await (this.options.fetch ?? fetch)(new URL(`/api/rooms/${this.pin}/bundle`, this.options.serverUrl), {
       method: 'PUT',
       headers: { Authorization: `Bearer ${this.hostToken}`, 'Content-Type': 'application/json' },
@@ -565,6 +578,12 @@ export class RelayHost {
       if (this.seatsMode) this.sendSeat(relayId);
     } else if (msg.k === 'claim') {
       this.claim(relayId, msg.seat);
+      return;
+    } else if (msg.k === 'set') {
+      const set = readSetInfo(msg.set);
+      if (!set) return;
+      this.playerSets.set(relayId, set);
+      if (playerId !== null) this.session?.setPlayerSet(playerId, set);
       return;
     }
     if (playerId === null) {

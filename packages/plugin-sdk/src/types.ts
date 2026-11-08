@@ -81,6 +81,14 @@ export interface GameContext {
    * queue per player in `state.$picks` (reserved) and refills it from the app.
    */
   nextItem(playerId?: string | null, options?: { types?: string[] }): OQSEAnyItem | null;
+  /**
+   * Personal sets (protocol 1.1, `modes.multiplayer.sets` lists `personal`): every player
+   * learns their own set on their device. The authority has no items then: `ctx.nextItem(pid)`
+   * gives the ID (and type) of the player's next item, the player's device shows and checks it
+   * (`ui.question`), and the action gets `payload.correct` – use it instead of `checkAnswer`.
+   * `ctx.recordAnswer` for those items does nothing (the device records).
+   */
+  readonly personal: boolean;
 }
 
 export interface RecordAnswerOptions {
@@ -123,6 +131,8 @@ export interface GameUI {
   readonly theme: 'light' | 'dark';
   /** Learning progress of this player. */
   readonly progress: Readonly<Record<string, ProgressRecord>>;
+  /** Personal sets: this player learns their own set (`ctx.personal`); `ui.items` are theirs. */
+  readonly personal: boolean;
   /**
    * Stars or unstars an item for this player ("practise it later"; the app offers "only
    * starred"). `ui.question(item, { star: true })` shows a ☆ that does it. Protocol 1.1 apps

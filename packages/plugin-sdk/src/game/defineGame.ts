@@ -29,6 +29,7 @@ import {
 import { resolveAsset, type MediaObject, type NoteItem, type OQSEAnyItem, type ProgressRecord } from '@memizy/oqse';
 import { GameRuntime } from './runtime';
 import { SafeHtml, html as safeHtml, raw as rawHtml } from '../render/html';
+import { checkAnswer } from '../checkAnswer';
 import { applyQuestionEvent, renderQuestion, type QuestionEvent, type QuestionLocal } from '../render/question';
 import { autoConnector, type Connector, type HostConnection } from '../connection/connect';
 import { pacedHost } from '../connection/pacedHost';
@@ -369,7 +370,7 @@ abstract class BaseController implements Controller {
     };
   }
 
-  protected baseUi(): Omit<GameUI, 'view' | 'self' | 'isAuthority' | 'act' | 'pending' | 'isPending' | 'timeLeft' | 'now' | 'phase' | 'paused' | 'service' | 'services' | 'item' | 'items' | 'save' | 'progress' | 'saved' | 'markItem'> {
+  protected baseUi(): Omit<GameUI, 'view' | 'self' | 'isAuthority' | 'act' | 'pending' | 'isPending' | 'timeLeft' | 'now' | 'phase' | 'paused' | 'service' | 'services' | 'item' | 'items' | 'save' | 'progress' | 'saved' | 'markItem' | 'personal'> {
     const init = this.init;
     return {
       mode: init.session.mode,
@@ -486,7 +487,31 @@ class GameController<S> extends BaseController {
   }
 
   act(name: string, payload: unknown): void {
-    this.runtime.dispatch(name, payload, this.seenPhaseSeq());
+    this.runtime.dispatch(name, this.checkOwn(payload), this.seenPhaseSeq());
+  }
+
+  /**
+   * Personal sets, on a player's device: an answer to the player's own item is checked and
+   * recorded here, and the action gets `correct` (the authority has no items to check).
+   */
+  private checkOwn(payload: unknown): unknown {
+    if (!this.runtime.personal || this.runtime.isAuthority) return payload;
+    const p = payload as { itemId?: unknown; answer?: unknown } | null;
+    if (!p || typeof p !== 'object' || typeof p.itemId !== 'string' || !('answer' in p)) return payload;
+    const item = this.runtime.item(p.itemId);
+    if (!item || (item as { answerHidden?: boolean }).answerHidden) return payload;
+    let correct: boolean | undefined;
+    if (item.type === 'note') correct = true;
+    else if (item.type !== 'open-ended') {
+      try {
+        correct = checkAnswer(item, p.answer);
+      } catch {
+        correct = false;
+      }
+    }
+    if (correct === undefined) return payload;
+    this.host.recordAnswer({ itemId: item.id, isCorrect: correct, ...(p.answer !== undefined && { answer: p.answer }) }).catch((error) => console.warn('[memizy] recordAnswer failed:', error));
+    return { ...p, correct };
   }
 
   /** `phaseSeq` of the screen the player sees (actions from an older phase are dropped). */
@@ -514,6 +539,7 @@ class GameController<S> extends BaseController {
       item: (id) => runtime.item(id),
       progress: this.progress,
       saved: this.saved,
+      personal: runtime.personal,
       markItem: (itemId, starred) => this.markItem(itemId, starred),
       act: (name, payload) => this.act(name, payload),
       pending: runtime.waitingActions,
@@ -644,6 +670,7 @@ class SettingsController extends BaseController {
       items: this.init.set.items,
       item: (id) => this.init.set.items.find((i) => i.id === id),
       progress: {},
+      personal: false,
       markItem: () => {},
       saved: { plugin: null, set: null },
       act: () => this.report('NOT_ALLOWED_IN_VIEW', 'Actions are not available on the settings screen.'),

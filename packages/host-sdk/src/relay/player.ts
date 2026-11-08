@@ -18,7 +18,11 @@ import {
   type RelayServerMessage,
   type SessionEndReason,
 } from '@memizy/protocol';
+import type { OQSEFile } from '@memizy/oqse';
 import { createPluginFrame } from '../frame';
+import { MemoryStorage } from '../storage';
+import { loadPluginFromHtml, prepareSetForPlugin } from '../plugin';
+import { personalHostApi, personalSetInfo, type PersonalSet } from '../personal';
 import { RelaySocket, relayWebSocketUrl, type RelayStatus } from './socket';
 import { RELAY_APP_VERSION, isSerializedBlob, jsonToBlob, serializeError, unknownMethod, type HostToPlayer, type PlayerToHost, type RemoteLobbyState } from './messages';
 
@@ -59,6 +63,12 @@ export interface RelayPlayerOptions {
   config?: () => Partial<HostConfig>;
   /** Creates the plugin instance (default: a sandboxed iframe; tests connect the SDK directly). */
   createFrame?: FrameFactory;
+  /**
+   * Personal sets (SPEC 3.4): the player's own set when the host plays with personal sets
+   * (`state.sets === 'personal'`); asked when the game loads. `null`: the host's set (it comes
+   * with its answers then), learnt on this device without keeping progress.
+   */
+  personal?: () => PersonalSet | null | Promise<PersonalSet | null>;
 }
 
 export type FrameFactory = (html: string, title: string, hostApi: HostApi, doc: Document) => RemoteFrame;
@@ -350,7 +360,18 @@ export class RelayPlayer {
       const manifest = extractManifestFromHtml(bundle.pluginHtml);
       const title = manifest.success ? String((manifest.data as { appName?: unknown }).appName ?? 'Game') : 'Game';
       const html = this.options.transformHtml ? this.options.transformHtml(bundle.pluginHtml) : bundle.pluginHtml;
-      const frame = (this.options.createFrame ?? createPluginFrame)(html, title, this.hostApiFor(gen), container.ownerDocument);
+      let hostApi = this.hostApiFor(gen);
+      if (this.state?.sets === 'personal') {
+        // The player's own set stays on this device: learning happens here, the host gets outcomes.
+        const loaded = loadPluginFromHtml(bundle.pluginHtml);
+        if (!loaded.success) throw new Error(loaded.errors.join('; '));
+        const shared = bundle.set as { meta: OQSEFile['meta']; items: OQSEFile['items'] };
+        const own = (await this.options.personal?.()) ?? { file: { version: '1.0', meta: shared.meta, items: shared.items } as OQSEFile, storage: new MemoryStorage(), userKey: 'me' };
+        if (this.gen !== gen) return;
+        hostApi = personalHostApi(hostApi, own, prepareSetForPlugin(own.file, loaded.plugin.manifest), () => this.playerId);
+        this.up({ k: 'set', set: personalSetInfo(own.file) });
+      }
+      const frame = (this.options.createFrame ?? createPluginFrame)(html, title, hostApi, container.ownerDocument);
       this.frame = frame;
       container.replaceChildren(frame.iframe);
       this.emit({ type: 'frame', active: true });

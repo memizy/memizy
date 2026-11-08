@@ -199,8 +199,14 @@ export class GameRuntime<S = unknown> {
   private publicCopies = new Map<string, OQSEAnyItem>();
   /** Players whose queue of picked items is being refilled by the host (`pickItems`). */
   private picksPending = new Set<string>();
+  /** Personal sets (SPEC 3.4): every player their own set, checked on their device. */
+  readonly personal: boolean;
+  /** A player's device: refilling its queue now, and the state version it last refilled at. */
+  private ownPicksPending = false;
+  private ownPicksAt = -1;
 
   constructor(def: GameDefinition<S>, host: HostApi, init: InitPayload, options: RuntimeOptions = {}) {
+    this.personal = init.session.sets === 'personal' && init.session.mode === 'multiplayer';
     this.def = def;
     this.host = host;
     this.init = init;
@@ -272,7 +278,58 @@ export class GameRuntime<S = unknown> {
 
   /** The host chooses by progress: the game asked for it and the host offers it. */
   private get picksFromHost(): boolean {
-    return this.isAuthority && !!this.def.pickItems && this.init.features.includes(PICK_ITEMS_FEATURE) && typeof this.host.pickItems === 'function';
+    return this.isAuthority && !this.personal && !!this.def.pickItems && this.init.features.includes(PICK_ITEMS_FEATURE) && typeof this.host.pickItems === 'function';
+  }
+
+  /**
+   * Personal sets, on a player's device: keeps the player's queue at the authority filled with
+   * their own next items (chosen here by their progress) – the authority has no items.
+   */
+  private refillOwnPicks(): void {
+    const self = this.selfPlayerId();
+    if (!this.personal || this.isAuthority || !self || this.state === undefined || this.ended || this.ownPicksPending || this.version === this.ownPicksAt) return;
+    if (typeof this.host.pickItems !== 'function') return;
+    const queue = ((this.state as { $picks?: Record<string, { q?: string[] }> }).$picks?.[self]?.q ?? []) as string[];
+    const count = this.picksAhead - queue.length;
+    if (count <= 0) return;
+    this.ownPicksPending = true;
+    this.ownPicksAt = this.version;
+    this.host
+      .pickItems({ playerId: self, count, exclude: [...queue] })
+      .then((ids) => {
+        this.ownPicksPending = false;
+        const items = (Array.isArray(ids) ? ids : []).map((id) => this.itemsById.get(id)).filter((i): i is OQSEAnyItem => !!i).map((i) => ({ id: i.id, type: i.type }));
+        if (items.length) this.dispatch('$picks', { items });
+      })
+      .catch((error) => {
+        this.ownPicksPending = false;
+        this.warn('pickItems', error);
+      });
+  }
+
+  /** Personal sets, on the authority: a player's device sends its next items (IDs and types only). */
+  private addOwnPicks(playerId: string, payload: unknown): void {
+    const list = (payload as { items?: unknown } | null)?.items;
+    if (!Array.isArray(list)) return;
+    const items = list
+      .slice(0, 20)
+      .filter((i): i is { id: string; type: string } => !!i && typeof i.id === 'string' && i.id.length <= 128 && typeof i.type === 'string' && i.type.length <= 64);
+    if (!items.length) return;
+    this.run(
+      (draft) => {
+        const picks = ((draft as Record<string, unknown>).$picks ??= {}) as Record<string, { q: string[]; r: string[]; t?: Record<string, string> }>;
+        const entry = (picks[playerId] ??= { q: [], r: [] });
+        entry.t ??= {};
+        for (const item of items) {
+          if (entry.q.includes(item.id) || entry.q.length >= 20) continue;
+          entry.q.push(item.id);
+          entry.t[item.id] = item.type;
+        }
+      },
+      null,
+      true,
+      '$picks',
+    );
   }
 
   /** Asks the host for more items of a player when their queue is short; the answer arrives as a system change. */
@@ -478,6 +535,7 @@ export class GameRuntime<S = unknown> {
       this.version = data.v;
       this.confirmActions(data.a);
       this.onChange();
+      this.refillOwnPicks();
     } else if (data.t === 'patch') {
       this.confirmActions(data.a);
       if (this.state === undefined || data.b !== this.version || (data.f ?? 1) !== PATCH_FORMAT) {
@@ -488,6 +546,7 @@ export class GameRuntime<S = unknown> {
         this.state = apply(this.state as object, data.p) as S;
         this.version = data.v;
         this.onChange();
+        this.refillOwnPicks();
       } catch {
         this.sendToAuthority({ t: 'sync' });
       }
@@ -553,6 +612,10 @@ export class GameRuntime<S = unknown> {
   }
 
   private runAction(name: string, payload: unknown, playerId: string | null, fromHost: boolean, fromTimer = false, actedAt?: number): void {
+    if (name === '$picks') {
+      if (this.personal && playerId) this.addOwnPicks(playerId, payload);
+      return;
+    }
     if (name === PHASE_TIMEOUT) {
       if (fromTimer) this.phaseTimeout(payload);
       return;
@@ -667,10 +730,13 @@ export class GameRuntime<S = unknown> {
         if (typeof key === 'string' && reserved(key)) throw new Error('ctx.cancel: keys starting with $ are reserved for the SDK');
         effects.push({ type: 'cancel', key });
       },
+      personal: this.personal,
       recordAnswer: (itemOrId, isCorrect, options = {}) => {
         const given = typeof itemOrId === 'string' ? null : (detach(itemOrId) as OQSEAnyItem);
         const itemId = typeof itemOrId === 'string' ? itemOrId : given?.id;
         if (typeof itemId !== 'string') throw new Error('ctx.recordAnswer: pass an item id or an item');
+        // Personal sets: the player's device recorded the answer to its own item already.
+        if (this.personal && !this.itemsById.has(itemId)) return;
         // Items of the set are known to the host; a generated one travels with the answer.
         const item = given && !this.itemsById.has(itemId) ? given : undefined;
         effects.push({ type: 'record', itemId, item, isCorrect, options: detach(options), playerId });
@@ -699,8 +765,11 @@ export class GameRuntime<S = unknown> {
         const picks = draft && typeof draft === 'object' ? ((draft.$picks ??= {}) as Record<string, { q: string[]; r: string[] }>) : null;
         const entry = picks ? (picks[pid] ??= { q: [], r: [] }) : { q: [] as string[], r: [] as string[] };
         let chosen: OQSEAnyItem | undefined;
-        const at = entry.q.findIndex((id) => fits(this.itemsById.get(id)));
-        if (at >= 0) chosen = this.itemsById.get(entry.q.splice(at, 1)[0]);
+        // Personal sets: the queue holds the player's own items, which the authority does not have.
+        const known = (id: string) => this.itemsById.get(id) ?? (this.personal ? ({ id, type: (entry as { t?: Record<string, string> }).t?.[id] ?? 'unknown' } as OQSEAnyItem) : undefined);
+        const at = entry.q.findIndex((id) => fits(known(id)));
+        if (at >= 0) chosen = known(entry.q.splice(at, 1)[0]);
+        if (!chosen && this.personal) return null; // the player's device sends more soon
         if (!chosen) {
           // Not chosen by the host (no feature, or the queue is empty): random, not one of the last given.
           const all = items.filter(fits);

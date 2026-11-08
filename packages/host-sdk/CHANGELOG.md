@@ -2,6 +2,8 @@
 
 ## 1.1.0 (unreleased)
 
+* Personal sets (SPEC 3.4): `personalHostApi` (the host API of a player's instance with their own set: `hello` gives it with its progress; `recordAnswer`, `markItem`, `pickItems` for the player and the set's media on the device); `RelayPlayer({ personal })` uses it when the lobby state says `sets: 'personal'` and tells the host the set (`Player.set`); `LocalSession({ sets: 'personal', personalSetFor })`, `setPlayerSet`; `RelayHost.uploadBundle(…, { full: true })` sends the set with its answers for devices without a set of their own.
+
 * `markItem` (protocol 1.1): a player's instance stars or unstars an item; the record keeps its learning state (an unseen item gets a bucket-0 record); session event `marked`.
 
 * `pickItems` (protocol 1.1, feature `pick-items`): the authority asks for a player's next items; the host picks them by that player's progress and this game's answers (`pickItems` in `learning.ts`: weights `PICK_WEIGHTS` 1, 1, 0.7, 0.4, 0.1, due items double, a wrong answer back after three others at most twice, the last three not again, a new item at most every third question, the long-term mode's due items). `SessionConfig.studyModeFor(playerId)` gives a player's study mode.
