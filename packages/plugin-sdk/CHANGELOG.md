@@ -2,7 +2,7 @@
 
 Plugins import `https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1`: every 1.x release reaches them.
 
-## 1.0.2 (unreleased)
+## 1.0.2 (2026-11-08)
 
 * `ui.question` with `reveal` shows the right answer for every item type, not only for choices: the right text of typed answers (and other accepted ones), the number with its tolerance and unit, the right order of a sorting or a timeline (with dates), each pair, category, blank or diagram zone marked with the right one where it was wrong, right / wrong / missed matrix cells, the right areas of a pin-on-image item, the sample answer of an open question. The item's `explanation` follows (with the feedback of a wrong answer and the explanation of a chosen option); `explanation: false` hides it.
 * Once an answer is sent (`chosen`), every type shows that answer instead of empty controls (selects, blanks, matrix cells, the slider, pins kept the device's state and lost it after sending; typed answers no longer keep an empty field and a disabled button).
