@@ -341,6 +341,7 @@ ui.question(item, {
 ```
 
 * An answer on the way is shown by the SDK itself; pass `chosen` once it is in the state.
+* What the player picked or typed but has not sent stays on the device for that item, also when the game hides the question and draws it again later (a card put aside); sending the answer forgets it.
 * The options are shown in the order of the item (true before false); `counts` keys are option ids (`true` / `false` for true-false).
 * **Styling** – only these hooks are stable: the CSS variables `--mz-q-accent`, `--mz-q-bg`, `--mz-q-fg`, `--mz-q-border`, `--mz-q-radius`, `--mz-q-gap`, `--mz-q-right`, `--mz-q-wrong`, `--mz-q-count-bg` (set them on a parent); the root `.mz-q` with `data-mz-type="<item type>"`; `.mz-q-question`, `.mz-q-options` (for choices and true/false its children are in the order of the options), every option `.mz-q-opt` with `data-mz-option="<id>"` and `--mz-q-index`; `.mz-q-submit`; the states `.mz-q-chosen`, `.mz-q-right`, `.mz-q-wrong`. Other classes may change.
 * Draw your own controls only when the game needs them (e.g. answering by shooting at a target); then send `option.id`s.

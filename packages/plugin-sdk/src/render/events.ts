@@ -118,6 +118,13 @@ export function bindEvents(root: HTMLElement, handlers: EventHandlers): () => vo
 
   const onInput = (event: Event) => {
     const el = event.target as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+    // Text typed into a question is kept on the device (the field may be drawn again later).
+    const typedKey = event.type === 'input' && !el?.hasAttribute?.('data-mz-q') ? (el?.getAttribute?.('data-mz-q-blank') ?? (el?.getAttribute?.('name') === 'answer' ? 'answer' : null)) : null;
+    const typedRoot = typedKey !== null ? el.closest('[data-mz-q-root]') : null;
+    if (typedRoot && root.contains(typedRoot)) {
+      handlers.question?.({ q: typedRoot.getAttribute('data-mz-q-root'), op: 'type', key: typedKey, value: el.value });
+      return;
+    }
     if (el?.hasAttribute?.('data-mz-q') && root.contains(el)) {
       // Selects on change, sliders while moving.
       if (el instanceof HTMLSelectElement ? event.type === 'change' : event.type === 'input') questionEvent(el, { value: el.value });

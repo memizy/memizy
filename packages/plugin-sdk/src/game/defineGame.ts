@@ -209,6 +209,8 @@ abstract class BaseController implements Controller {
       const local = this.questions.get(event.q) ?? {};
       applyQuestionEvent(local, event as QuestionEvent);
       this.questions.set(event.q, local);
+      // Typing changes nothing on the screen: keep the text for a later render, draw nothing now.
+      if (event.op === 'type') return;
     }
     this.schedule();
   }

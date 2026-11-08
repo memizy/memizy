@@ -45,12 +45,14 @@ export interface QuestionLocal {
   sel?: Record<string, string>;
   flipped?: boolean;
   points?: { x: number; y: number }[];
+  /** Text typed so far: `answer` for the one field, a blank's token for `fill-in-blanks`. */
+  typed?: Record<string, string>;
 }
 
 /** A click or change on `[data-mz-q]` (handled by the SDK, not by the game). */
 export interface QuestionEvent {
   q: string;
-  op: 'toggle' | 'push' | 'remove' | 'reset' | 'select' | 'flip' | 'pin';
+  op: 'toggle' | 'push' | 'remove' | 'reset' | 'select' | 'flip' | 'pin' | 'type';
   id?: string;
   key?: string;
   value?: string;
@@ -101,10 +103,12 @@ export function renderQuestion(item: OQSEAnyItem, options: QuestionOptions, qc: 
   const mark = (id: unknown, right: boolean) => `${isChosen(id) ? ' mz-q-chosen' : ''}${reveal ? (right ? ' mz-q-right' : isChosen(id) ? ' mz-q-wrong' : ' mz-q-dim') : ''}`;
   const textForm = (kind: 'text' | 'number' | 'textarea', attrs = '') => {
     const id = `mz-q-${item.id}`;
+    // Text typed earlier comes back when the game draws the question again (another card was shown meanwhile).
+    const typed = local.typed?.answer ?? '';
     const field =
       kind === 'textarea'
-        ? `<textarea id="${escapeHtml(id)}" class="mz-q-input" name="answer" rows="4"${locked ? ' disabled' : ''}></textarea>`
-        : `<input id="${escapeHtml(id)}" class="mz-q-input" name="answer" autocomplete="off" ${kind === 'number' ? 'inputmode="decimal"' : ''} ${attrs}${locked ? ' disabled' : ''}>`;
+        ? `<textarea id="${escapeHtml(id)}" class="mz-q-input" name="answer" rows="4"${locked ? ' disabled' : ''}>${escapeHtml(typed)}</textarea>`
+        : `<input id="${escapeHtml(id)}" class="mz-q-input" name="answer" autocomplete="off" ${kind === 'number' ? 'inputmode="decimal"' : ''} ${attrs}${typed ? ` value="${escapeHtml(typed)}"` : ''}${locked ? ' disabled' : ''}>`;
     const shown = options.chosen !== undefined ? `<div class="mz-q-given">${escapeHtml(String(options.chosen))}</div>` : '';
     return `<form class="mz-q-form" data-mz-q-form>${field}<button type="submit" class="mz-q-submit" data-act="${escapeHtml(action)}" data-payload="${payload(null)}" data-mz-answer-from="${kind === 'number' ? 'number' : 'text'}"${locked ? ' disabled' : ''}>${escapeHtml(options.submitLabel ?? t.submit)}</button></form>${shown}`;
   };
@@ -178,7 +182,7 @@ export function renderQuestion(item: OQSEAnyItem, options: QuestionOptions, qc: 
 
     case 'fill-in-blanks': {
       const body = inline(it.text).replace(/<span class="mz-blank" data-mz-blank="([^"]*)"><\/span>/g, (_m, token: string) =>
-        `<input class="mz-q-input mz-q-blank" id="mz-q-${escapeHtml(item.id)}-${token}" data-mz-q-blank="${token}" autocomplete="off"${locked ? ' disabled' : ''}>`);
+        `<input class="mz-q-input mz-q-blank" id="mz-q-${escapeHtml(item.id)}-${token}" data-mz-q-blank="${token}" autocomplete="off"${local.typed?.[token] ? ` value="${escapeHtml(local.typed[token])}"` : ''}${locked ? ' disabled' : ''}>`);
       return wrap(`<form class="mz-q-form" data-mz-q-form><div class="mz-q-text">${body}</div><button type="submit" class="mz-q-submit" data-act="${escapeHtml(action)}" data-payload="${payload(null)}" data-mz-answer-from="blanks"${locked ? ' disabled' : ''}>${escapeHtml(options.submitLabel ?? t.submit)}</button></form>`);
     }
 
@@ -268,6 +272,9 @@ export function applyQuestionEvent(local: QuestionLocal, event: QuestionEvent): 
       return;
     case 'flip':
       local.flipped = true;
+      return;
+    case 'type':
+      if (event.key !== undefined) local.typed = { ...(local.typed ?? {}), [event.key]: String(event.value ?? '').slice(0, 10_000) };
       return;
     case 'pin':
       if (typeof event.x === 'number' && typeof event.y === 'number') {

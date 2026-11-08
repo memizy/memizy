@@ -144,6 +144,79 @@ describe('ui.question', () => {
     expect(blanks.record).toMatchObject({ isCorrect: true, answer: { a: 'h2o', b: 'Kapalina' } });
   });
 
+  it('typed text and a slider survive the question being put aside and drawn again', async () => {
+    const qs = [
+      { id: id(20), type: 'short-answer', question: 'A', correctAnswers: ['Praha'] },
+      { id: id(21), type: 'open-ended', question: 'B' },
+      { id: id(22), type: 'fill-in-blanks', text: 'Voda je <blank:a /> a <blank:b />.', blanks: { a: ['H2O'], b: ['kapalina'] } },
+      { id: id(23), type: 'numeric-input', question: 'C', correctAnswer: 3 },
+      { id: id(24), type: 'slider', question: 'D', min: 0, max: 10, step: 1, correctAnswer: 7 },
+    ] as OQSEAnyItem[];
+    const router = new LocalRouter({ mode: 'solo', items: qs });
+    const root = document.createElement('div');
+    document.body.appendChild(root);
+    let renders = 0;
+    // Like Regrowth: a crisis card replaces the questions for a while, then gives them back.
+    handles.push(
+      startGame(
+        {
+          root,
+          initialState: () => ({ crisis: false, answers: {} as Record<string, unknown> }),
+          actions: {
+            crisis(state, on: boolean) { state.crisis = on; },
+            answer(state, payload) { state.answers[payload.itemId] = payload.answer; },
+          },
+          render: (state, ui) => {
+            renders++;
+            return state.crisis ? '<p class="crisis">Krize!</p>' : ui.html`${qs.map((q) => ui.question(ui.item(q.id)!, { chosen: state.answers[q.id] }))}`;
+          },
+        },
+        { connector: router.connector('me') },
+      ),
+    );
+    await handles[0].ready;
+    await router.start();
+    await wait(60);
+    const typeInto = (el: Element | null | undefined, value: string) => {
+      if (!el) throw new Error('field not found');
+      (el as HTMLInputElement).value = value;
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+    const rootOf = (n: number) => root.querySelector(`[data-mz-q-root="${id(n)}"]`)!;
+    const before = renders;
+    typeInto(rootOf(20).querySelector('input[name="answer"]'), 'Pra');
+    typeInto(rootOf(21).querySelector('textarea'), 'Dlouhá odpověď\n<b>s HTML</b> & "uvozovkami"');
+    typeInto(rootOf(22).querySelectorAll('input[data-mz-q-blank]')[1], 'kapal');
+    typeInto(rootOf(23).querySelector('input[name="answer"]'), '3,1');
+    typeInto(rootOf(24).querySelector('input[type="range"]'), '6');
+    await wait(40);
+    expect(renders - before).toBeLessThanOrEqual(1); // typing draws nothing (the slider redraws its value once)
+
+    await handles[0].act('crisis', true);
+    await wait(60);
+    expect(root.querySelector('.crisis')).not.toBeNull();
+    await handles[0].act('crisis', false);
+    await wait(60);
+    expect((rootOf(20).querySelector('input[name="answer"]') as HTMLInputElement).value).toBe('Pra');
+    expect((rootOf(21).querySelector('textarea') as HTMLTextAreaElement).value).toBe('Dlouhá odpověď\n<b>s HTML</b> & "uvozovkami"');
+    const blanks = rootOf(22).querySelectorAll<HTMLInputElement>('input[data-mz-q-blank]');
+    expect([blanks[0].value, blanks[1].value]).toEqual(['', 'kapal']);
+    expect((rootOf(23).querySelector('input[name="answer"]') as HTMLInputElement).value).toBe('3,1');
+    expect((rootOf(24).querySelector('input[type="range"]') as HTMLInputElement).value).toBe('6');
+
+    // Sending the answer forgets the typed text: the next time the field starts empty.
+    typeInto(rootOf(20).querySelector('input[name="answer"]'), 'Praha');
+    await click(rootOf(20).querySelector('.mz-q-submit'));
+    await wait(60);
+    expect(root.querySelector('.mz-q-given')?.textContent).toBe('Praha');
+    await handles[0].act('crisis', true);
+    await wait(40);
+    await handles[0].act('crisis', false);
+    await wait(60);
+    expect((rootOf(20).querySelector('input[name="answer"]') as HTMLInputElement).value).toBe('');
+    expect((rootOf(21).querySelector('textarea') as HTMLTextAreaElement).value).toBe('Dlouhá odpověď\n<b>s HTML</b> & "uvozovkami"');
+  });
+
   it('matrix toggles, flashcards flip and rate, extra payload is kept', async () => {
     const matrix = await play({ id: id(12), type: 'matrix', question: 'Q', rows: ch('r1', 'r2'), columns: ch('c1', 'c2'), correctCells: [['r1', 'c2'], ['r2', 'c1']], multiplePerRow: false } as OQSEAnyItem, async (r) => {
       const cells = r.querySelectorAll('.mz-q-cell'); // r1c1 r1c2 r2c1 r2c2
