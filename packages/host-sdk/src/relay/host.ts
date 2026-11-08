@@ -511,7 +511,12 @@ export class RelayHost {
     const seat = this.seatOf.get(player.id) ?? null;
     switch (event) {
       case 'join':
-        // A continued game: the device chooses its place first (`claim`).
+      case 'connect':
+        // A new player, or one who was away when the game started (another app, a lost
+        // connection: the game began without them): both join the running game. A connect
+        // of a player who has a place is handled when the device says `hello` (it knows
+        // whether its instance survived). A continued game: the device chooses its place
+        // first (`claim`).
         if (session && !session.ended && seat === null && !this.seatsMode) {
           try {
             session.addPlayer({ id: player.id, name: player.name });
@@ -547,8 +552,6 @@ export class RelayHost {
           }
         }
         break;
-      case 'connect':
-        break; // handled when the device says `hello` (it knows whether its instance survived)
     }
   }
 

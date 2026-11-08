@@ -1,6 +1,6 @@
 {
   "name": "@memizy/host-sdk",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Run Memizy plugins: sandboxed iframes, protocol validation, sessions, storage hooks.",
   "type": "module",
   "main": "./dist/index.cjs",

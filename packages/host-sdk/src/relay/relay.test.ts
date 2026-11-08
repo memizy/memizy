@@ -329,6 +329,42 @@ describe('relayed multiplayer', () => {
     host.close();
   }, 30_000);
 
+  it('a player who was away when the game started gets into it on coming back', async () => {
+    const host = await RelayHost.create({ serverUrl, WebSocket: WebSocketImpl });
+    await until(() => host.status === 'online');
+    const anna = joinPlayer(host.pin, 'Anna');
+    const ben = joinPlayer(host.pin, 'Ben');
+    await until(() => host.players.length === 2 && host.players.every((p) => p.connected));
+    const benId = ben.player.playerId!;
+    const benToken = ben.player.token!;
+
+    // Ben switches to another app in the lobby: his connection closes, he stays in the room.
+    ben.player.leave();
+    await until(() => host.players.find((p) => p.id === benId)?.connected === false);
+
+    // The teacher starts: like Play, the game gets the players connected now (Anna only).
+    const session = new LocalSession({ plugin, set: setFile, mode: 'multiplayer', hostAs: 'presenter', players: host.players.filter((p) => p.connected).map((p) => ({ id: p.id, name: p.name })), countdownMs: 0 });
+    await host.uploadBundle(plugin.html, session.prepared);
+    host.attach(session);
+    const board = playBoard(session);
+    await session.start();
+    await until(() => !!anna.root()?.querySelector('button'));
+    expect(session.players.map((p) => p.id)).toEqual([anna.player.playerId]);
+
+    // Ben comes back to the page: the same room player, now in the running game.
+    const ben2 = joinPlayer(host.pin, 'Ben', benToken);
+    await until(() => ben2.player.playerId === benId);
+    await until(() => !!ben2.root()?.querySelector('button'), 8000);
+    (ben2.root()!.querySelector('button') as HTMLButtonElement).click();
+    await until(() => board.querySelector('.total')?.textContent === '1');
+    expect(session.players.find((p) => p.id === benId)).toMatchObject({ name: 'Ben', connected: true });
+
+    // The same when only his connection drops and comes back (no new page).
+    const cyril = joinPlayer(host.pin, 'Cyril', undefined, undefined, undefined, FlakyWebSocket as unknown as typeof WebSocket);
+    await until(() => !!cyril.root()?.querySelector('button')); // a late join while it runs
+    host.close();
+  }, 30_000);
+
   it('a player comes back after a dead connection (a phone that slept, a switched network)', async () => {
     const host = await RelayHost.create({ serverUrl, WebSocket: WebSocketImpl });
     await until(() => host.status === 'online');
