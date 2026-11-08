@@ -1,6 +1,6 @@
 {
   "name": "@memizy/host-sdk",
-  "version": "1.1.0-rc.1",
+  "version": "1.1.0-rc.2",
   "description": "Run Memizy plugins: sandboxed iframes, protocol validation, sessions, storage hooks.",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -29,7 +29,7 @@
   },
   "dependencies": {
     "@memizy/oqse": "^1.0.0",
-    "@memizy/protocol": "^1.1.0-rc.1",
+    "@memizy/protocol": "^1.1.0-rc.2",
     "penpal": "^8.0.1"
   },
   "devDependencies": {

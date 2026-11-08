@@ -2,7 +2,7 @@
 
 Plugins import `https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1`: every 1.x release reaches them.
 
-## 1.1.0-rc.2 (unreleased)
+## 1.1.0-rc.2 (2026-11-09, to publish)
 
 * A shared set changes while the game runs: `itemsChanged(state, ctx, { added, removed, changed })` on the authority (a system change; the players' queues of picked items lose removed items and refill); package media of the new items are loaded. `ui.canChooseSet` / `ui.chooseSet()` open the app's set picker from the game (solo, the board, the host playing along).
 

@@ -1,6 +1,6 @@
 # Changelog of @memizy/host-sdk
 
-## 1.1.0-rc.2 (unreleased)
+## 1.1.0-rc.2 (2026-11-09, to publish)
 
 * `LocalSession.changeSet(file)` / `canChangeSet`: the teacher switches the set of the running game or reloads it with edits – prepared with the same display order, every instance gets `setChanged` with its player's progress; event `setChanged` (save it with the game). Over the relay the new set goes to the server as a new bundle and the devices fetch it. `SessionConfig.chooseSet`: the app's set picker for games that call `chooseSet` (feature `choose-set`). The host lists `set-changes`.
 
