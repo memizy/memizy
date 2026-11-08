@@ -5,7 +5,7 @@ The protocol has its own changelog at the end of [SPEC.md](https://github.com/me
 ## 1.1.0 (unreleased)
 
 * `HostApi.pickItems` with `PickItemsRequest` (`PickItemsRequestSchema` in the call schemas) and the feature `PICK_ITEMS_FEATURE` (`pick-items`): the host chooses the next items of a player by their progress (SPEC 5.4). A read note is recorded like a right answer (SPEC 5.1).
-Protocol 1.1 (`PROTOCOL_VERSION`): `PluginApi.finishRequested` (optional; in `PLUGIN_API_METHODS`) and the feature constant `FINISH_REQUEST_FEATURE` (`'finish-request'`). Additive.
+* Protocol 1.1 (`PROTOCOL_VERSION`): `PluginApi.finishRequested` (optional; in `PLUGIN_API_METHODS`) and the feature constant `FINISH_REQUEST_FEATURE` (`'finish-request'`). Additive.
 
 ## 1.0.0 (2026-10-21)
 
