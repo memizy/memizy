@@ -2,7 +2,7 @@
 
 Plugins import `https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1`: every 1.x release reaches them.
 
-## 1.0.1 (unreleased)
+## 1.0.1 (2026-11-08)
 
 * "Starting the game…" ("Spouštím hru…" in Czech) shows at once in an empty game root while the SDK looks for its host, instead of a blank page – in another site's preview (an AI chat's canvas) that took the whole hello deadline (10 s) before the standalone preview. A root with the game's own markup is left as it is.
 * A revealed item (`ctx.reveal`) keeps the media this device loaded. Media from a set package (relative paths) reach a game as object URLs of its own document; the revealed copy came with the authority's URLs, so after the reveal a player's device lost even the picture of the question. Media that only hidden fields use (an explanation, the back of a card) still do not reach players' devices from a package (planned for 1.1); linked media (`https:`) work everywhere.

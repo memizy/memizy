@@ -1,6 +1,6 @@
 # Changelog of @memizy/host-sdk
 
-## 1.0.1 (unreleased)
+## 1.0.1 (2026-11-08)
 
 * Relay connections that die without a close are found and replaced. A phone that slept or switched networks kept a socket that looked open but carried nothing (half-open), so the player stayed out of the game until the operating system gave up on it, often minutes. Now a heartbeat pings every 15 s and drops a connection that hears nothing back within 8 s; `RelayPlayer.reconnectNow()` on an open connection checks it within 4 s; a connection attempt that is not attached after 10 s starts again. Applies to `RelayHost` and `RelayPlayer`; the new connection attaches with the same token, so the player keeps their place.
 
