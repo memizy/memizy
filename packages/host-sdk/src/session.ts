@@ -128,6 +128,8 @@ export type SessionEvent =
    * sets); `skills` / `tags` come from the item (for statistics).
    */
   | { type: 'answer'; playerId: string; setId: string; record: ProgressRecord | null; answer: AnswerRecord; generated: boolean; ungraded: boolean; skills: string[]; tags: string[] }
+  /** A player starred or unstarred an item from inside the game (`markItem`, protocol 1.1). */
+  | { type: 'marked'; playerId: string; setId: string; itemId: string; starred: boolean }
   /** The game reported its result (`end(result)`); the session itself ends with `end()`. */
   | { type: 'result'; result: SessionResult }
   | { type: 'players'; players: Player[] }
@@ -789,6 +791,21 @@ export class LocalSession {
           const result = await handler(plainCopy(payload), { playerId, address: instance.address, pluginId: this.plugin.manifest.id, setId: this.prepared.set.meta.id });
           assertJsonWithin(result ?? null, LIMITS.serviceResultBytes, 'MESSAGE_TOO_LARGE', `service ${name} result`);
           return plainCopy(result ?? null);
+        }),
+
+      markItem: (...args) =>
+        call('markItem', async () => {
+          const [itemId, mark] = parseHostCall('markItem', args);
+          requireView('markItem', isPlayerView());
+          if (!this.prepared.set.items.some((i) => i.id === itemId)) throw new ProtocolError('INVALID_ARGUMENT', `Unknown item "${itemId}".`);
+          if (!instance.limiter.tryTake()) throw new ProtocolError('RATE_LIMITED', 'Too many calls.');
+          const userKey = this.userKey(instance.address);
+          const setId = this.prepared.set.meta.id;
+          const current = (await this.storage.loadProgress(userKey, setId))[itemId];
+          // The learner's own mark: the learning state stays; an unseen item gets a bucket-0 record.
+          const record = current ? { ...current, starred: mark.starred } : { bucket: 0 as const, stats: { attempts: 0, incorrect: 0, streak: 0 }, starred: mark.starred };
+          await this.storage.saveProgress(userKey, setId, { [itemId]: record });
+          this.emit({ type: 'marked', playerId: instance.address, setId, itemId, starred: mark.starred });
         }),
 
       pickItems: (...args) =>

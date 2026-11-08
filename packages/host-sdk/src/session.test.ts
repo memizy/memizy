@@ -457,6 +457,24 @@ describe('finishing on request (SPEC 7, protocol 1.1)', () => {
     expect(current.features).toEqual(['finish-request', 'pick-items']);
   });
 
+  it('markItem: a player stars an item from the game (protocol 1.1); its learning stays', async () => {
+    const storage = new MemoryStorage();
+    const { session, events } = newSession({ mode: 'solo', players: [{ id: 'me', name: 'Me' }], storage });
+    const me = await bare(session, 'me');
+    await me.hello({ ...handshake, protocol: '1.1' });
+    const [first] = session.prepared.set.items;
+    await me.markItem!(first.id, { starred: true });
+    expect((await storage.loadProgress('me', session.prepared.set.meta.id))[first.id]).toMatchObject({ bucket: 0, starred: true });
+    await me.recordAnswer({ itemId: first.id, isCorrect: true });
+    await me.markItem!(first.id, { starred: false });
+    expect((await storage.loadProgress('me', session.prepared.set.meta.id))[first.id]).toMatchObject({ bucket: 2, starred: false });
+    expect(events.filter((e) => e.type === 'marked').map((e) => (e as { starred: boolean }).starred)).toEqual([true, false]);
+    await expect(me.markItem!('nope', { starred: true })).rejects.toThrow(/INVALID_ARGUMENT/);
+    const board = await bare(newSession().session, 'board');
+    await board.hello({ ...handshake, protocol: '1.1' });
+    await expect(board.markItem!(first.id, { starred: true })).rejects.toThrow(/NOT_ALLOWED_IN_VIEW/);
+  });
+
   it('ctx.nextItem: the queue the host refills by progress; without the feature a random item', async () => {
     interface S { got: string[]; queue?: unknown }
     const def = (pick: boolean): Omit<GameDefinition<S>, 'root'> => ({

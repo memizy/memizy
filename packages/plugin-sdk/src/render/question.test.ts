@@ -218,6 +218,48 @@ describe('ui.question', () => {
     expect((rootOf(21).querySelector('textarea') as HTMLTextAreaElement).value).toBe('Dlouhá odpověď\n<b>s HTML</b> & "uvozovkami"');
   });
 
+  it('a star in the corner, and a reading time on notes and flipped cards', async () => {
+    const note = { id: id(30), type: 'note', title: 'Srdce', content: 'Vzruch vzniká v SA uzlu.' } as OQSEAnyItem;
+    const card = { id: id(31), type: 'flashcard', front: 'Kde?', back: 'V SA uzlu' } as OQSEAnyItem;
+    const router = new LocalRouter({ mode: 'solo', items: [note, card] });
+    const root = document.createElement('div');
+    document.body.appendChild(root);
+    const seen: string[] = [];
+    handles.push(
+      startGame(
+        {
+          root,
+          initialState: () => ({ read: false }),
+          actions: { answer(state) { state.read = true; } },
+          render: (state, ui) => {
+            seen.push(String(!!ui.progress[note.id]?.starred));
+            return ui.html`${ui.question(ui.item(note.id)!, { star: true, minReadMs: 300, chosen: state.read ? 'read' : undefined })}${ui.question(ui.item(card.id)!, { minReadMs: 300 })}`;
+          },
+        },
+        { connector: router.connector('me') },
+      ),
+    );
+    await handles[0].ready;
+    await router.start();
+    await wait(40);
+    const noteRoot = () => root.querySelector(`[data-mz-q-root="${note.id}"]`)!;
+    // The star: on, and shown as on; the game sees it in ui.progress.
+    expect(noteRoot().querySelector('.mz-q-star')!.textContent).toBe('☆');
+    await click(noteRoot().querySelector('.mz-q-star'));
+    expect(noteRoot().querySelector('.mz-q-star')!.className).toContain('mz-q-starred');
+    expect(seen.at(-1)).toBe('true');
+    // "Done" waits for the reading time, then works.
+    expect((noteRoot().querySelector('.mz-q-submit') as HTMLButtonElement).disabled).toBe(true);
+    await wait(400);
+    expect((noteRoot().querySelector('.mz-q-submit') as HTMLButtonElement).disabled).toBe(false);
+    // A card: the ratings wait after the flip.
+    const cardRoot = () => root.querySelector(`[data-mz-q-root="${card.id}"]`)!;
+    await click(cardRoot().querySelector('.mz-q-reset'));
+    expect((cardRoot().querySelector('.mz-q-opt') as HTMLButtonElement).disabled).toBe(true);
+    await wait(400);
+    expect((cardRoot().querySelector('.mz-q-opt') as HTMLButtonElement).disabled).toBe(false);
+  });
+
   it('matrix toggles, flashcards flip and rate, extra payload is kept', async () => {
     const matrix = await play({ id: id(12), type: 'matrix', question: 'Q', rows: ch('r1', 'r2'), columns: ch('c1', 'c2'), correctCells: [['r1', 'c2'], ['r2', 'c1']], multiplePerRow: false } as OQSEAnyItem, async (r) => {
       const cells = r.querySelectorAll('.mz-q-cell'); // r1c1 r1c2 r2c1 r2c2

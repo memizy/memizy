@@ -31,6 +31,14 @@ export interface QuestionOptions {
   reveal?: boolean;
   /** With `reveal`: show the item's explanation (and feedback of a wrong answer). Default true. */
   explanation?: boolean;
+  /** A ☆ in the corner: the player stars the item for later ("practise only starred"). */
+  star?: boolean;
+  /**
+   * Notes and flashcards: "Done" and the ratings wait this long after the note appears or the
+   * card is flipped (a countdown shows). `0` = no wait. Default: by the length of the text
+   * in games that declare protocol 1.1, none in older ones.
+   */
+  minReadMs?: number;
   /** Disable the controls (e.g. on the board, or when the time is up). */
   disabled?: boolean;
   /** Show the question text above the controls (default true). */
@@ -47,6 +55,9 @@ export interface QuestionOptions {
 
 /** What the SDK keeps on this device while the player assembles an answer. */
 export interface QuestionLocal {
+  /** When the note was first shown / the card flipped (for the reading time). */
+  shownAt?: number;
+  flippedAt?: number;
   picked?: string[];
   sel?: Record<string, string>;
   flipped?: boolean;
@@ -58,7 +69,7 @@ export interface QuestionLocal {
 /** A click or change on `[data-mz-q]` (handled by the SDK, not by the game). */
 export interface QuestionEvent {
   q: string;
-  op: 'toggle' | 'push' | 'remove' | 'reset' | 'select' | 'flip' | 'pin' | 'type';
+  op: 'toggle' | 'push' | 'remove' | 'reset' | 'select' | 'flip' | 'pin' | 'type' | 'star';
   id?: string;
   key?: string;
   value?: string;
@@ -67,8 +78,8 @@ export interface QuestionEvent {
 }
 
 const TEXTS = {
-  cs: { submit: 'Odeslat', truth: 'Pravda', lie: 'Nepravda', reset: 'Znovu', flip: 'Otočit', rate1: 'Nevím', rate2: 'Povědomé', rate3: 'S námahou', rate4: 'Hned vím', read: 'Přečteno', pick: '— vyber —', pin: 'Klepni do obrázku', yours: 'Tvoje pořadí', unsupported: 'Tento typ otázky zatím nemá hotové ovládání.', correct: 'Správně:', also: 'také', order: 'Správné pořadí:', sample: 'Ukázková odpověď:' },
-  en: { submit: 'Submit', truth: 'True', lie: 'False', reset: 'Reset', flip: 'Flip', rate1: 'No idea', rate2: 'Familiar', rate3: 'With effort', rate4: 'Easy', read: 'Done', pick: '— choose —', pin: 'Tap the picture', yours: 'Your order', unsupported: 'This question type has no ready-made controls yet.', correct: 'Correct:', also: 'also', order: 'Correct order:', sample: 'Sample answer:' },
+  cs: { star: 'Označit hvězdičkou', unstar: 'Odebrat hvězdičku', submit: 'Odeslat', truth: 'Pravda', lie: 'Nepravda', reset: 'Znovu', flip: 'Otočit', rate1: 'Nevím', rate2: 'Povědomé', rate3: 'S námahou', rate4: 'Hned vím', read: 'Přečteno', pick: '— vyber —', pin: 'Klepni do obrázku', yours: 'Tvoje pořadí', unsupported: 'Tento typ otázky zatím nemá hotové ovládání.', correct: 'Správně:', also: 'také', order: 'Správné pořadí:', sample: 'Ukázková odpověď:' },
+  en: { star: 'Star it', unstar: 'Remove the star', submit: 'Submit', truth: 'True', lie: 'False', reset: 'Reset', flip: 'Flip', rate1: 'No idea', rate2: 'Familiar', rate3: 'With effort', rate4: 'Easy', read: 'Done', pick: '— choose —', pin: 'Tap the picture', yours: 'Your order', unsupported: 'This question type has no ready-made controls yet.', correct: 'Correct:', also: 'also', order: 'Correct order:', sample: 'Sample answer:' },
 };
 
 type Choice = { id: string; text: string };
@@ -80,6 +91,10 @@ export interface QuestionContext {
   locale: string;
   /** URL of an asset of the item (for pin-on-image), if it can be shown. */
   assetUrl?(key: string): string | null;
+  /** The player starred the item (for the ☆ of `star`). */
+  starred?: boolean;
+  /** Milliseconds left of the reading time of a note or a flipped card (0 = none). */
+  readLeft?: number;
 }
 
 export function renderQuestion(item: OQSEAnyItem, options: QuestionOptions, qc: QuestionContext): string {
@@ -124,7 +139,14 @@ export function renderQuestion(item: OQSEAnyItem, options: QuestionOptions, qc: 
     if (it.explanation) parts.push(qc.text(it.explanation, { item }));
     return parts.length ? `<div class="mz-q-explanation">${parts.join('')}</div>` : '';
   };
-  const wrap = (body: string, extra = '') => `<div class="mz-q mz-q-${escapeHtml(it.type)}${extra}" data-mz-type="${escapeHtml(it.type)}" data-mz-q-root="${escapeHtml(item.id)}">${head}${body}${explanation()}</div>`;
+  const starButton = options.star
+    ? `<button type="button" class="mz-q-star${qc.starred ? ' mz-q-starred' : ''}" data-mz-q="${escapeHtml(JSON.stringify({ q: item.id, op: 'star' }))}" aria-pressed="${!!qc.starred}" title="${escapeHtml(qc.starred ? t.unstar : t.star)}" aria-label="${escapeHtml(qc.starred ? t.unstar : t.star)}">${qc.starred ? '★' : '☆'}</button>`
+    : '';
+  /** A countdown on "Done" / the ratings while the reading time runs. */
+  const readLeft = Math.max(0, qc.readLeft ?? 0);
+  const waiting = readLeft > 0 ? ` disabled data-mz-read-wait` : '';
+  const countdown = readLeft > 0 ? ` <span class="mz-q-wait">(${Math.ceil(readLeft / 1000)})</span>` : '';
+  const wrap = (body: string, extra = '') => `<div class="mz-q mz-q-${escapeHtml(it.type)}${extra}" data-mz-type="${escapeHtml(it.type)}" data-mz-q-root="${escapeHtml(item.id)}">${starButton}${head}${body}${explanation()}</div>`;
   const isChosen = (id: unknown) => options.chosen !== undefined && (Array.isArray(options.chosen) ? options.chosen.includes(id) : options.chosen === id);
   const count = (id: unknown) => {
     if (!options.counts || typeof options.counts !== 'object') return '';
@@ -270,12 +292,12 @@ export function renderQuestion(item: OQSEAnyItem, options: QuestionOptions, qc: 
     case 'flashcard': {
       const back = !it.answerHidden && local.flipped ? `<div class="mz-q-back">${qc.text(it.back, { item })}</div>` : '';
       const flip = it.answerHidden || local.flipped ? '' : `<button type="button" class="mz-q-reset" ${mzq({ op: 'flip' })}>${t.flip}</button>`;
-      const rate = local.flipped || it.answerHidden ? `<div class="mz-q-options mz-q-four">${([1, 2, 3, 4] as const).map((r, i) => `<button type="button" class="mz-q-opt${isChosen(r) ? ' mz-q-chosen' : ''}"${hook(r, i)} ${act(r)}><span class="mz-q-label">${t[`rate${r}`]}</span></button>`).join('')}</div>` : '';
-      return `<div class="mz-q mz-q-flashcard" data-mz-type="flashcard" data-mz-q-root="${escapeHtml(item.id)}"><div class="mz-q-front">${qc.text(it.front, { item })}</div>${back}${flip}${rate}</div>`;
+      const rate = local.flipped || it.answerHidden ? `<div class="mz-q-options mz-q-four">${([1, 2, 3, 4] as const).map((r, i) => `<button type="button" class="mz-q-opt${isChosen(r) ? ' mz-q-chosen' : ''}"${hook(r, i)} ${act(r)}${waiting}><span class="mz-q-label">${t[`rate${r}`]}</span>${i === 0 ? countdown : ''}</button>`).join('')}</div>` : '';
+      return `<div class="mz-q mz-q-flashcard" data-mz-type="flashcard" data-mz-q-root="${escapeHtml(item.id)}">${starButton}<div class="mz-q-front">${qc.text(it.front, { item })}</div>${back}${flip}${rate}</div>`;
     }
 
     case 'note':
-      return `<div class="mz-q mz-q-note" data-mz-type="note" data-mz-q-root="${escapeHtml(item.id)}">${qc.text(it.content, { item })}<button type="button" class="mz-q-submit" ${act('read')}>${t.read}</button></div>`;
+      return `<div class="mz-q mz-q-note" data-mz-type="note" data-mz-q-root="${escapeHtml(item.id)}">${starButton}${qc.text(it.content, { item })}<button type="button" class="mz-q-submit" ${act('read')}${waiting}>${t.read}${countdown}</button></div>`;
 
     case 'pin-on-image': {
       const url = it.targetAsset && qc.assetUrl?.(it.targetAsset);

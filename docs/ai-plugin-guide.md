@@ -339,6 +339,8 @@ ui.question(item, {
   chosen: mine?.answer,                 // the player's answer from the state: marked, controls locked
   reveal: state.phase === 'reveal',     // show the right answer and the explanation (after ctx.reveal)
   explanation: true,                    // with reveal: the item's explanation (false = only the answer)
+  star: true,                           // a ☆ in the corner: the player stars it for later ("practise only starred")
+  minReadMs: 0,                         // notes / flipped cards: "Done" and ratings wait (default: by the text; 0 = no wait)
   disabled: ui.view === 'board',        // e.g. the board only shows the question
   counts: state.phase === 'reveal' ? votes : undefined,   // { optionId: n } – how many chose it (a badge)
   showQuestion: true,                   // false = only the controls

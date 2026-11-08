@@ -2,6 +2,8 @@
 
 ## 1.1.0 (unreleased)
 
+* `markItem` (protocol 1.1): a player's instance stars or unstars an item; the record keeps its learning state (an unseen item gets a bucket-0 record); session event `marked`.
+
 * `pickItems` (protocol 1.1, feature `pick-items`): the authority asks for a player's next items; the host picks them by that player's progress and this game's answers (`pickItems` in `learning.ts`: weights `PICK_WEIGHTS` 1, 1, 0.7, 0.4, 0.1, due items double, a wrong answer back after three others at most twice, the last three not again, a new item at most every third question, the long-term mode's due items). `SessionConfig.studyModeFor(playerId)` gives a player's study mode.
 
 * `leitner`: a wrong answer moves an item **one level down** (at least 1) and makes it due after a day (`RELEARN_DAYS`), instead of dropping it to level 1 – one slip in a game must not undo weeks. A read note is a right answer like any other (protocol 1.1, SPEC 5.1), so notes reach level 4 too.

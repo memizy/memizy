@@ -230,6 +230,11 @@ export interface HostApi {
    * Optional: hosts without the feature do not have it.
    */
   pickItems?(request: PickItemsRequest): Promise<string[]>;
+  /**
+   * *Player views, protocol 1.1.* Stars or unstars an item for this player (OQSEP `starred`),
+   * e.g. "practise this later" from inside a game; hosts offer "only starred" (SPEC 5.1).
+   */
+  markItem?(itemId: string, mark: { starred: boolean }): Promise<void>;
 }
 
 /** Methods the plugin exposes to the host (host → plugin). SPEC section 7. */
@@ -252,7 +257,7 @@ export interface PluginApi {
 
 export const HOST_API_METHODS = [
   'hello', 'ready', 'send', 'saveSnapshot', 'recordAnswer', 'saveData',
-  'updateSettings', 'getAsset', 'end', 'reportError', 'service', 'pickItems',
+  'updateSettings', 'getAsset', 'end', 'reportError', 'service', 'pickItems', 'markItem',
 ] as const satisfies readonly (keyof HostApi)[];
 
 export const PLUGIN_API_METHODS = [

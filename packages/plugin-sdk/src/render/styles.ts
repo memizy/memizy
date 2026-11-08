@@ -68,6 +68,8 @@ textarea.mz-q-input{flex-basis:100%;resize:vertical}
 .mz-q-explanation p{margin:.35em 0}.mz-q-explanation{padding:8px 12px;border-left:4px solid var(--mz-q-accent);background:var(--mz-q-bg);border-radius:6px;line-height:1.45}
 .mz-q-hotspot{position:absolute;border:3px solid var(--mz-q-right);background:color-mix(in srgb,var(--mz-q-right) 18%,transparent);border-radius:4px;pointer-events:none}.mz-q-hotspot-circle{border-radius:50%}
 .mz-q-hotspot-svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}.mz-q-hotspot-svg polygon{fill:color-mix(in srgb,var(--mz-q-right) 18%,transparent);stroke:var(--mz-q-right);stroke-width:.6;vector-effect:non-scaling-stroke}
+.mz-q{position:relative}.mz-q-star{position:absolute;top:0;right:0;z-index:1;border:0;background:none;font-size:1.4em;line-height:1;cursor:pointer;color:inherit;opacity:.55;padding:4px;touch-action:manipulation}.mz-q-star:hover{opacity:1}.mz-q-starred{color:#f59e0b;opacity:1}
+.mz-q-wait{opacity:.7;font-weight:400}
 .mz-q-pin.mz-q-wrong{background:var(--mz-q-wrong)}.mz-q-pin.mz-q-right{background:var(--mz-q-right)}
 `;
 

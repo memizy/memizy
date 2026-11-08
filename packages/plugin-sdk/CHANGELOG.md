@@ -4,6 +4,9 @@ Plugins import `https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1`: every 1.x re
 
 ## 1.1.0 (unreleased)
 
+* `ui.question(item, { star: true })`: a ☆ in the corner – the player stars the item for later (`ui.markItem(itemId, starred)` does the same from a game's own UI; protocol 1.1 apps keep it with `markItem`).
+* `ui.question` waits on notes and flipped flashcards: "Done" and the ratings are disabled with a countdown for a reading time – by the length of the text in games that declare protocol 1.1 (1.5–10 s), none in older games; `minReadMs` sets it, `0` turns it off.
+
 * `ctx.nextItem(playerId, { types })` and `defineGame({ pickItems })` (protocol 1.1, feature `pick-items`): the app chooses each player's next item by their learning progress; the SDK keeps a short queue per player in `state.$picks` (reserved), filled by the host as a system change (deterministic), and falls back to a random item not given lately. `pickItems: { ahead, weights }` sets the queue length and the level weights.
 
 * `onFinish(state, ctx)` in `defineGame`: the app may ask the game to finish (the teacher presses "End game"; protocol 1.1, feature `finish-request`, listed only when the game has `onFinish`). It runs on the authority like an action, also while paused; call `ctx.end` there (e.g. `ctx.goto('end')`). Without `ctx.end` the SDK reports `FINISH_WITHOUT_END`. Games without `onFinish` are unchanged. The SDK speaks protocol 1.1.

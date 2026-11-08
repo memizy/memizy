@@ -12,6 +12,8 @@ export interface HostConnection {
   init: InitPayload;
   standalone: boolean;
   destroy(): void;
+  /** The protocol version the plugin's manifest declares (what its author built it for). */
+  declared?: string;
 }
 
 export type Connector = (pluginApi: PluginApi, handshake: Handshake) => Promise<HostConnection>;

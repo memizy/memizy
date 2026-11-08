@@ -79,6 +79,7 @@ export const HOST_API_ARGS = {
   reportError: z.tuple([ErrorReportSchema]),
   service: z.tuple([ShortText(100), z.unknown()]),
   pickItems: z.tuple([PickItemsRequestSchema]),
+  markItem: z.tuple([ShortText(128), z.strictObject({ starred: z.boolean() })]),
 } satisfies Record<keyof HostApi, z.ZodType>;
 
 /**

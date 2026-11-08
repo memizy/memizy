@@ -123,6 +123,12 @@ export interface GameUI {
   readonly theme: 'light' | 'dark';
   /** Learning progress of this player. */
   readonly progress: Readonly<Record<string, ProgressRecord>>;
+  /**
+   * Stars or unstars an item for this player ("practise it later"; the app offers "only
+   * starred"). `ui.question(item, { star: true })` shows a ☆ that does it. Protocol 1.1 apps
+   * keep it; older ones only show it on this device.
+   */
+  markItem(itemId: string, starred: boolean): void;
   /** Data saved between games for this player. */
   readonly saved: SavedData;
   /** Per-screen scratch object (not shared, not saved). Changing it directly does not re-render. */

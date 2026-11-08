@@ -9,6 +9,7 @@ import {
   LIMITS,
   PROTOCOL_VERSION,
   ProtocolError,
+  compareProtocolVersions,
   localize,
   resolveSettings,
   toProtocolError,
@@ -111,7 +112,7 @@ export function startGame<S>(definition: GameDefinition<S>, options: StartOption
       options.connector ?? autoConnector(standaloneConnector({ runtime: manifest.runtime, pluginId: manifest.id, types: manifest.types }));
     const connected = await connector(pluginApi, handshake);
     if (destroyed) return;
-    const connection = { ...connected, host: pacedHost(connected.host, connected.init) };
+    const connection = { ...connected, host: pacedHost(connected.host, connected.init), declared: manifest.runtime?.protocol };
 
     applyConfig(doc, connection.init.config);
     await resolveAssets(connection.init, connection.host);
@@ -171,7 +172,7 @@ abstract class BaseController implements Controller {
   protected scheduled = false;
   private readonly reported = new Set<string>();
   private readonly unbind: () => void;
-  private readonly connection: HostConnection;
+  protected readonly connection: HostConnection;
 
   constructor(connection: HostConnection, root: HTMLElement, onSetting?: (id: string, value: string | number | boolean) => void) {
     this.connection = connection;
@@ -213,6 +214,10 @@ abstract class BaseController implements Controller {
 
   private questionEvent(event: QuestionEvent | (Omit<QuestionEvent, 'op'> & { op: 'clear' })): void {
     if (typeof event?.q !== 'string') return;
+    if (event.op === 'star') {
+      this.markItem(event.q, !this.isStarred(event.q));
+      return;
+    }
     if (event.op === 'clear') this.questions.delete(event.q);
     else {
       const local = this.questions.get(event.q) ?? {};
@@ -229,6 +234,39 @@ abstract class BaseController implements Controller {
     return undefined;
   }
 
+  /** Whether this player starred the item (games: from their progress). */
+  protected isStarred(_itemId: string): boolean {
+    return false;
+  }
+
+  /** Stars or unstars an item for this player (games: through the host, protocol 1.1). */
+  protected markItem(_itemId: string, _starred: boolean): void {}
+
+  /** Redraw once after `ms` (a countdown that is not part of the game state). */
+  private redrawTimer: ReturnType<typeof setTimeout> | undefined;
+  private redrawAt = Infinity;
+  protected redrawIn(ms: number): void {
+    const at = Date.now() + ms;
+    if (this.redrawTimer && at >= this.redrawAt) return;
+    clearTimeout(this.redrawTimer);
+    this.redrawAt = at;
+    this.redrawTimer = setTimeout(() => {
+      this.redrawTimer = undefined;
+      this.redrawAt = Infinity;
+      this.schedule();
+    }, Math.max(16, ms));
+  }
+
+  /** The reading time of a note or a flipped card: the game's option, or by the text in 1.1 games. */
+  private readTime(item: OQSEAnyItem, option: number | undefined): number {
+    if (typeof option === 'number' && Number.isFinite(option)) return Math.max(0, option);
+    if (compareProtocolVersions(this.connection.declared ?? '1.0', '1.1') < 0) return 0;
+    const it = item as { type: string; title?: string; content?: string; back?: string };
+    const text = it.type === 'note' ? `${it.title ?? ''} ${it.content ?? ''}` : it.type === 'flashcard' ? (it.back ?? '') : '';
+    const chars = text.replace(/[#*_`>$\[\]()]/g, '').replace(/\s+/g, ' ').trim().length;
+    return chars ? Math.min(10_000, Math.max(1500, Math.round((chars / 30) * 1000))) : 0;
+  }
+
   protected question(item: OQSEAnyItem, options: Parameters<GameUI['question']>[1] = {}): SafeHtml {
     if (!item || typeof item !== 'object') return rawHtml('');
     let local = this.questions.get(item.id);
@@ -239,6 +277,14 @@ abstract class BaseController implements Controller {
       const sent = this.sentAnswer(opts.action ?? 'answer', item.id);
       if (sent !== undefined) opts.chosen = sent;
     }
+    // The reading time of a note (from when it appears) or a flashcard (from the flip).
+    const now = Date.now();
+    if (item.type === 'note') local.shownAt ??= now;
+    if (item.type === 'flashcard' && local.flipped) local.flippedAt ??= now;
+    const readSince = item.type === 'note' ? local.shownAt : item.type === 'flashcard' ? local.flippedAt : undefined;
+    const readFor = readSince !== undefined && opts.chosen === undefined ? this.readTime(item, opts.minReadMs) : 0;
+    const readLeft = readFor ? Math.max(0, readFor - (now - readSince!)) : 0;
+    if (readLeft > 0) this.redrawIn(readLeft % 1000 || 1000);
     if (opts.reveal === true && (item as { answerHidden?: boolean }).answerHidden) {
       this.report('REVEAL_WITHOUT_ANSWER', `ui.question(${item.id}, { reveal: true }): this device does not have the answer, so nothing is marked. Call ctx.reveal(itemId) in the action that shows the answer.`);
     }
@@ -247,6 +293,8 @@ abstract class BaseController implements Controller {
         text: (markdown, opts) => renderRichText(markdown, this.textContext(opts?.item ?? item), opts),
         local,
         locale: this.init.config.locale,
+        starred: this.isStarred(item.id),
+        readLeft,
         assetUrl: (key) => {
           const media = findMedia(key, item, this.init) as { value?: unknown } | null | undefined;
           return typeof media?.value === 'string' && isMediaUrl(media.value) ? media.value : null;
@@ -321,7 +369,7 @@ abstract class BaseController implements Controller {
     };
   }
 
-  protected baseUi(): Omit<GameUI, 'view' | 'self' | 'isAuthority' | 'act' | 'pending' | 'isPending' | 'timeLeft' | 'now' | 'phase' | 'paused' | 'service' | 'services' | 'item' | 'items' | 'save' | 'progress' | 'saved'> {
+  protected baseUi(): Omit<GameUI, 'view' | 'self' | 'isAuthority' | 'act' | 'pending' | 'isPending' | 'timeLeft' | 'now' | 'phase' | 'paused' | 'service' | 'services' | 'item' | 'items' | 'save' | 'progress' | 'saved' | 'markItem'> {
     const init = this.init;
     return {
       mode: init.session.mode,
@@ -363,6 +411,22 @@ class GameController<S> extends BaseController {
   private readonly progress: Record<string, ProgressRecord>;
   private readonly saveTimers = new Map<DataScope, ReturnType<typeof setTimeout>>();
   private tick: ReturnType<typeof setInterval> | undefined;
+
+  protected isStarred(itemId: string): boolean {
+    return !!this.progress[itemId]?.starred;
+  }
+
+  protected markItem(itemId: string, starred: boolean): void {
+    if (typeof itemId !== 'string' || !this.init.set.items.some((i) => i.id === itemId)) return;
+    const current = this.progress[itemId];
+    this.progress[itemId] = current ? { ...current, starred } : { bucket: 0, stats: { attempts: 0, incorrect: 0, streak: 0 }, starred };
+    // Kept by protocol 1.1 apps (only player views have their own progress).
+    const view = this.init.session.view;
+    if (compareProtocolVersions(this.init.protocol, '1.1') >= 0 && typeof this.host.markItem === 'function' && (view === 'solo' || view === 'controller')) {
+      this.host.markItem(itemId, { starred }).catch((error) => console.warn('[memizy] markItem failed:', error));
+    }
+    this.schedule();
+  }
 
   constructor(def: GameDefinition<S>, connection: HostConnection, root: HTMLElement) {
     super(connection, root);
@@ -450,6 +514,7 @@ class GameController<S> extends BaseController {
       item: (id) => runtime.item(id),
       progress: this.progress,
       saved: this.saved,
+      markItem: (itemId, starred) => this.markItem(itemId, starred),
       act: (name, payload) => this.act(name, payload),
       pending: runtime.waitingActions,
       isPending: (name) => runtime.waitingActions.some((a) => name === undefined || a.name === name),
@@ -579,6 +644,7 @@ class SettingsController extends BaseController {
       items: this.init.set.items,
       item: (id) => this.init.set.items.find((i) => i.id === id),
       progress: {},
+      markItem: () => {},
       saved: { plugin: null, set: null },
       act: () => this.report('NOT_ALLOWED_IN_VIEW', 'Actions are not available on the settings screen.'),
       pending: [],
