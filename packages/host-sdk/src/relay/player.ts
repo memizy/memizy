@@ -5,6 +5,7 @@
  */
 
 import {
+  SET_CHANGES_FEATURE,
   HOST_API_METHODS,
   PLUGIN_API_METHODS,
   RELAY_PROTOCOL,
@@ -22,7 +23,8 @@ import type { OQSEFile } from '@memizy/oqse';
 import { createPluginFrame } from '../frame';
 import { MemoryStorage } from '../storage';
 import { loadPluginFromHtml, prepareSetForPlugin } from '../plugin';
-import { personalHostApi, personalSetInfo, type PersonalSet } from '../personal';
+import { personalHostApi, personalSetInfo, type PersonalHostApi, type PersonalSet } from '../personal';
+type PluginManifestLike = Parameters<typeof prepareSetForPlugin>[1];
 import { RelaySocket, relayWebSocketUrl, type RelayStatus } from './socket';
 import { RELAY_APP_VERSION, isSerializedBlob, jsonToBlob, serializeError, unknownMethod, type HostToPlayer, type PlayerToHost, type RemoteLobbyState } from './messages';
 
@@ -122,6 +124,9 @@ export class RelayPlayer {
   /** The config the host sent last (before this device's overrides). */
   private hostConfig: HostConfig | null = null;
   private mountQueue: Promise<void> = Promise.resolve();
+  /** Personal sets: the host API of the running game with the player's own set. */
+  private personalApi: PersonalHostApi | null = null;
+  private pluginManifest: PluginManifestLike | null = null;
   /** The current game instance was told that its session ended (`sessionEnded`). */
   private sessionEndedSent = false;
 
@@ -173,6 +178,22 @@ export class RelayPlayer {
    */
   claimSeat(seat: string | null): void {
     this.up({ k: 'claim', seat });
+  }
+
+  /**
+   * Personal sets: switches this player's set while the game runs – edits reloaded (items the
+   * person's AI added), another set or another choice of items. The game keeps its place and
+   * score; questions come from the new set. Returns `false` when the game cannot (not a game
+   * with personal sets, or the game does not support set changes).
+   */
+  async changePersonalSet(next: PersonalSet): Promise<boolean> {
+    const api = this.personalApi;
+    const plugin = this.plugin;
+    if (!api || !plugin || !this.pluginManifest || !api.gameFeatures.includes(SET_CHANGES_FEATURE) || !plugin.setChanged) return false;
+    const change = await api.switchTo(next, prepareSetForPlugin(next.file, this.pluginManifest as never));
+    await plugin.setChanged(change);
+    this.up({ k: 'set', set: personalSetInfo(next.file) });
+    return true;
   }
 
   /**
@@ -368,7 +389,10 @@ export class RelayPlayer {
         const shared = bundle.set as { meta: OQSEFile['meta']; items: OQSEFile['items'] };
         const own = (await this.options.personal?.()) ?? { file: { version: '1.0', meta: shared.meta, items: shared.items } as OQSEFile, storage: new MemoryStorage(), userKey: 'me' };
         if (this.gen !== gen) return;
-        hostApi = personalHostApi(hostApi, own, prepareSetForPlugin(own.file, loaded.plugin.manifest), () => this.playerId);
+        const api = personalHostApi(hostApi, own, prepareSetForPlugin(own.file, loaded.plugin.manifest), () => this.playerId);
+        this.personalApi = api;
+        this.pluginManifest = loaded.plugin.manifest;
+        hostApi = api;
         this.up({ k: 'set', set: personalSetInfo(own.file) });
       }
       const frame = (this.options.createFrame ?? createPluginFrame)(html, title, hostApi, container.ownerDocument);
@@ -413,6 +437,7 @@ export class RelayPlayer {
 
   private destroyFrame(): void {
     const hadFrame = this.frame !== null;
+    this.personalApi = null;
     this.frame?.destroy();
     this.frame?.iframe.remove();
     this.frame = null;

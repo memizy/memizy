@@ -4,6 +4,7 @@ The protocol has its own changelog at the end of [SPEC.md](https://github.com/me
 
 ## 1.1.0 (unreleased)
 
+* `PluginApi.setChanged` and `SET_CHANGES_FEATURE` (`set-changes`) (SPEC 7, 8.3).
 * Personal sets (SPEC 3.4): manifest `modes.multiplayer.sets`, `PluginRuntime.multiplayer.sets`, `SessionInfo.sets`, `Player.set`.
 * `HostApi.markItem(itemId, { starred })` (player views): a star from inside a game (SPEC 5).
 * `HostApi.pickItems` with `PickItemsRequest` (`PickItemsRequestSchema` in the call schemas) and the feature `PICK_ITEMS_FEATURE` (`pick-items`): the host chooses the next items of a player by their progress (SPEC 5.4). A read note is recorded like a right answer (SPEC 5.1).

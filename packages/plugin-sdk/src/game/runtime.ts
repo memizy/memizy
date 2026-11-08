@@ -168,7 +168,7 @@ export class GameRuntime<S = unknown> {
   private readonly host: HostApi;
   private readonly options: Required<Omit<RuntimeOptions, 'onError'>>;
   private readonly reportError: (code: string, message: string) => void;
-  private readonly itemsById: Map<string, OQSEAnyItem>;
+  private itemsById: Map<string, OQSEAnyItem>;
   private clockOffset: number;
   /** Pauses (SPEC: game time = session time without the paused time). */
   private pausedMs: number;
@@ -307,10 +307,37 @@ export class GameRuntime<S = unknown> {
       });
   }
 
+  /**
+   * The set changed (`setChanged`): new items, the earlier ones stay known (a question on the
+   * screen keeps working). With personal sets the player's queue starts again from the new set.
+   */
+  replaceItems(items: OQSEAnyItem[], meta?: InitPayload['set']['meta']): void {
+    for (const item of items) this.itemsById.set(item.id, item);
+    (this.init.set as { items: OQSEAnyItem[] }).items = items;
+    if (meta) (this.init.set as { meta: InitPayload['set']['meta'] }).meta = meta;
+    if (this.personal && !this.isAuthority && this.selfPlayerId()) {
+      this.ownPicksAt = -1;
+      this.dispatch('$picks', { reset: true, items: [] });
+    }
+    this.onChange();
+  }
+
   /** Personal sets, on the authority: a player's device sends its next items (IDs and types only). */
   private addOwnPicks(playerId: string, payload: unknown): void {
+    const reset = (payload as { reset?: unknown } | null)?.reset === true;
     const list = (payload as { items?: unknown } | null)?.items;
     if (!Array.isArray(list)) return;
+    if (reset) {
+      this.run(
+        (draft) => {
+          const picks = ((draft as Record<string, unknown>).$picks ??= {}) as Record<string, { q: string[]; r: string[]; t?: Record<string, string> }>;
+          picks[playerId] = { q: [], r: [], t: {} };
+        },
+        null,
+        true,
+        '$picks',
+      );
+    }
     const items = list
       .slice(0, 20)
       .filter((i): i is { id: string; type: string } => !!i && typeof i.id === 'string' && i.id.length <= 128 && typeof i.type === 'string' && i.type.length <= 64);

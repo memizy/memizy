@@ -2,6 +2,8 @@
 
 ## 1.1.0 (unreleased)
 
+* `RelayPlayer.changePersonalSet(personal)`: a player switches their own set while the game runs (edits reloaded, another set or choice of items); `personalHostApi` gets `switchTo` and `gameFeatures`; the host learns the new set's title.
+
 * Personal sets (SPEC 3.4): `personalHostApi` (the host API of a player's instance with their own set: `hello` gives it with its progress; `recordAnswer`, `markItem`, `pickItems` for the player and the set's media on the device); `RelayPlayer({ personal })` uses it when the lobby state says `sets: 'personal'` and tells the host the set (`Player.set`); `LocalSession({ sets: 'personal', personalSetFor })`, `setPlayerSet`; `RelayHost.uploadBundle(…, { full: true })` sends the set with its answers for devices without a set of their own.
 
 * `markItem` (protocol 1.1): a player's instance stars or unstars an item; the record keeps its learning state (an unseen item gets a bucket-0 record); session event `marked`.

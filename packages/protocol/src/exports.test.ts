@@ -9,7 +9,7 @@ describe('public API', () => {
       'HandshakeSchema', 'HostAsSchema', 'LIMITS', 'LocalizedTextSchema', 'MemizyRuntimeSchema', 'MultiplayerModeSchema',
       'OutgoingMessageSchema', 'PICK_ITEMS_FEATURE', 'PLUGIN_API_METHODS', 'PLUGIN_DEVICES', 'PROTOCOL_ERROR_CODES', 'PROTOCOL_VERSION',
       'PluginManifestError', 'PluginPermissionsSchema', 'ProtocolError', 'RELAY_PROTOCOL',
-      'SERVER_ADDRESS', 'SETTINGS_ADDRESS', 'SETTING_TYPES', 'ServiceNameSchema', 'SessionResultSchema', 'SettingDefinitionSchema',
+      'SERVER_ADDRESS', 'SETTINGS_ADDRESS', 'SETTING_TYPES', 'SET_CHANGES_FEATURE', 'ServiceNameSchema', 'SessionResultSchema', 'SettingDefinitionSchema',
       'SettingsUpdateSchema', 'UnknownSettingSchema', 'compareProtocolVersions', 'extractManifestFromHtml', 'isKnownSetting', 'isProtocolErrorCode',
       'isProtocolSupported', 'localize', 'negotiateProtocolVersion', 'parsePluginManifest', 'parseProtocolVersion',
       'prepareDisplaySet', 'readPluginManifestFromHtml', 'resolveSettings', 'safeParsePluginManifest', 'settingsForMode',

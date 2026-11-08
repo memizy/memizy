@@ -6,6 +6,7 @@
 import {
   FINISH_REQUEST_FEATURE,
   PICK_ITEMS_FEATURE,
+  SET_CHANGES_FEATURE,
   LIMITS,
   PROTOCOL_VERSION,
   ProtocolError,
@@ -88,6 +89,7 @@ export function startGame<S>(definition: GameDefinition<S>, options: StartOption
     clockChanged: async (clock) => controller?.clockChanged(clock),
     sessionEnded: async () => controller?.destroy(),
     finishRequested: async () => controller?.finishRequested(),
+    setChanged: async (change) => controller?.setChanged(change),
   };
 
   const ready = (async () => {
@@ -107,7 +109,8 @@ export function startGame<S>(definition: GameDefinition<S>, options: StartOption
       sdk: { name: '@memizy/plugin-sdk', version: SDK_VERSION },
       plugin: { id: manifest.id, version: manifest.version },
       // The host may ask a game with `onFinish` to finish (SPEC 7, protocol 1.1).
-      features: [...(typeof definition.onFinish === 'function' ? [FINISH_REQUEST_FEATURE] : []), ...(definition.pickItems ? [PICK_ITEMS_FEATURE] : [])],
+      // Set changes: the SDK swaps the items itself (a game that keeps only item IDs needs nothing).
+      features: [...(typeof definition.onFinish === 'function' ? [FINISH_REQUEST_FEATURE] : []), ...(definition.pickItems ? [PICK_ITEMS_FEATURE] : []), SET_CHANGES_FEATURE],
     };
     const connector =
       options.connector ?? autoConnector(standaloneConnector({ runtime: manifest.runtime, pluginId: manifest.id, types: manifest.types }));
@@ -161,6 +164,7 @@ interface Controller {
   configChanged(config: InitPayload['config']): void;
   clockChanged(clock: SessionClock): void;
   finishRequested(): void;
+  setChanged(change: Parameters<NonNullable<PluginApi['setChanged']>>[0]): void;
   destroy(): void;
 }
 
@@ -309,6 +313,7 @@ abstract class BaseController implements Controller {
   authorityChanged(_connected: boolean): void {}
   clockChanged(_clock: SessionClock): void {}
   finishRequested(): void {}
+  setChanged(_change: Parameters<NonNullable<PluginApi['setChanged']>>[0]): void {}
   playersChanged(players: InitPayload['players']): void {
     this.init.players = players;
     this.schedule();
@@ -611,6 +616,15 @@ class GameController<S> extends BaseController {
 
   finishRequested(): void {
     this.runtime.finish();
+  }
+
+  /** `setChanged`: new items (the earlier ones stay known), this player's progress for them. */
+  override setChanged(change: Parameters<NonNullable<PluginApi['setChanged']>>[0]): void {
+    if (!change?.set || !Array.isArray(change.set.items)) return;
+    for (const key of Object.keys(this.progress)) delete this.progress[key];
+    Object.assign(this.progress, change.progress ?? {});
+    this.runtime.replaceItems(change.set.items as OQSEAnyItem[], change.set.meta);
+    this.schedule();
   }
 
   /** While the host has paused the game, a curtain covers it (no taps, the time stands still). */

@@ -426,6 +426,16 @@ describe('relayed multiplayer', () => {
     await wait(200);
     expect((await storageA.loadProgress('anna', setA.meta.id))[id(61)]).toMatchObject({ bucket: 2 });
     expect(await storageHost.loadProgress(anna.player.playerId!, setA.meta.id)).toEqual({});
+
+    // Anna switches her set mid-game (e.g. her AI added questions): the score stays, questions come from the new one.
+    const setC = own(3, 'Němčina', 'Hund?', 'pes', 'kočka');
+    expect(await anna.player.changePersonalSet({ file: setC, storage: storageA, userKey: 'anna' })).toBe(true);
+    await until(() => board.querySelector('.sets')?.textContent?.includes('Němčina') ?? false);
+    await wait(400); // the phone sends picks of the new set
+    (anna.root()!.querySelector('.next') as HTMLButtonElement).click();
+    await until(() => anna.root()!.querySelector('.mz-q-question')?.textContent?.trim() === 'Hund?');
+    option(anna.root()!, 'pes').click();
+    await until(() => anna.root()!.querySelector('.score')?.textContent === '2');
     host.close();
   }, 30_000);
 

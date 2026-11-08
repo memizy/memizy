@@ -521,7 +521,7 @@ describe('defineGame end to end', () => {
     const plain = startGame({ ...def, root: document.createElement('div') }, { connector: capture('me2') });
     handles.push(plain);
     await plain.ready.catch(() => {});
-    expect(seen).toEqual([['finish-request'], []]);
+    expect(seen).toEqual([['finish-request', 'set-changes'], ['set-changes']]);
     router.plugins.get('me')!.start();
     await router.plugins.get('me')!.finishRequested!();
     await new Promise((r) => setTimeout(r, 30));

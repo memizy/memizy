@@ -30,21 +30,47 @@ export interface PersonalSet {
 /** What `Player.set` says about a personal set. */
 export const personalSetInfo = (file: OQSEFile) => ({ id: file.meta.id, title: String(file.meta.title ?? '').slice(0, 200), ...(file.meta.language && { language: String(file.meta.language).slice(0, 35) }) });
 
+/** A personal host API that can take another set while the game runs (`switchTo`). */
+export interface PersonalHostApi extends HostApi {
+  /** The features the game listed in its handshake (e.g. `set-changes`). */
+  readonly gameFeatures: string[];
+  /**
+   * Switches the player's set (edits reloaded, another set or choice): returns what the game
+   * gets in `setChanged`. Items of the earlier set stay known (a question shown keeps working).
+   */
+  switchTo(personal: PersonalSet, prepared: PreparedSet): Promise<{ set: { meta: OQSEFile['meta']; items: OQSEAnyItem[] }; progress: Record<string, import('@memizy/oqse').ProgressRecord> }>;
+}
+
 /**
  * The host API of a player's instance with their own set. `prepared` is the personal set
  * prepared for the plugin (`prepareSetForPlugin`); `self` is the player's ID once known.
  */
-export function personalHostApi(remote: HostApi, personal: PersonalSet, prepared: PreparedSet, self: () => string | null): HostApi {
-  const items = prepared.set.items as OQSEAnyItem[];
+export function personalHostApi(remote: HostApi, firstPersonal: PersonalSet, firstPrepared: PreparedSet, self: () => string | null): PersonalHostApi {
+  let personal = firstPersonal;
+  let prepared = firstPrepared;
+  let items = prepared.set.items as OQSEAnyItem[];
   const byId = new Map(items.map((i) => [i.id, i]));
-  const setId = prepared.set.meta.id;
-  const algorithm = personal.algorithm ?? leitner;
+  let setId = prepared.set.meta.id;
+  const algorithm = () => personal.algorithm ?? leitner;
   const history: PickHistoryEntry[] = [];
   const progress = () => personal.storage.loadProgress(personal.userKey, setId);
+  let features: string[] = [];
 
   return {
+    get gameFeatures() {
+      return features;
+    },
+    async switchTo(next, nextPrepared) {
+      personal = next;
+      prepared = nextPrepared;
+      items = prepared.set.items as OQSEAnyItem[];
+      for (const item of items) byId.set(item.id, item); // the earlier ones stay known
+      setId = prepared.set.meta.id;
+      return { set: { meta: structuredClone(prepared.set.meta), items: structuredClone(items) }, progress: await progress() };
+    },
     ...remote,
     async hello(handshake) {
+      features = [...handshake.features];
       const init = (await remote.hello(handshake)) as InitPayload;
       return {
         ...init,
@@ -60,7 +86,7 @@ export function personalHostApi(remote: HostApi, personal: PersonalSet, prepared
       const records = await progress();
       history.push({ itemId: answer.itemId, correct: answer.isCorrect && !answer.isSkipped, wasNew: isNew(records[answer.itemId]) });
       const { item: _attached, playerId: _player, ...stored } = answer;
-      const record = algorithm.apply(records[answer.itemId], stored, new Date(), structuredClone(known));
+      const record = algorithm().apply(records[answer.itemId], stored, new Date(), structuredClone(known));
       await personal.storage.saveProgress(personal.userKey, setId, { [answer.itemId]: record });
     },
     async markItem(itemId, mark) {

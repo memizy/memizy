@@ -32,6 +32,12 @@ export const FINISH_REQUEST_FEATURE = 'finish-request';
  */
 export const PICK_ITEMS_FEATURE = 'pick-items';
 
+/**
+ * Feature (SPEC 8.3, protocol 1.1): the host may change the set of a running instance
+ * (`PluginApi.setChanged`), e.g. a player's own set reloaded with edits or switched.
+ */
+export const SET_CHANGES_FEATURE = 'set-changes';
+
 /** `pickItems`: which items a player should get next (SPEC 5.4). */
 export interface PickItemsRequest {
   /** The player to pick for. */
@@ -260,6 +266,12 @@ export interface PluginApi {
    * screen. Optional: plugins without the feature do not have it.
    */
   finishRequested?(): Promise<void>;
+  /**
+   * *Feature `set-changes` (protocol 1.1).* The set of this instance changed while it runs
+   * (edits reloaded, another set or another choice of items): the new items and this
+   * player's progress for them. Item IDs that stay keep their meaning.
+   */
+  setChanged?(change: { set: { meta: OQSEMeta; items: OQSEAnyItem[] }; progress: Record<string, ProgressRecord> }): Promise<void>;
 }
 
 export const HOST_API_METHODS = [
@@ -268,5 +280,5 @@ export const HOST_API_METHODS = [
 ] as const satisfies readonly (keyof HostApi)[];
 
 export const PLUGIN_API_METHODS = [
-  'start', 'deliver', 'playersChanged', 'authorityChanged', 'configChanged', 'clockChanged', 'sessionEnded', 'finishRequested',
+  'start', 'deliver', 'playersChanged', 'authorityChanged', 'configChanged', 'clockChanged', 'sessionEnded', 'finishRequested', 'setChanged',
 ] as const satisfies readonly (keyof PluginApi)[];

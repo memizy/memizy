@@ -4,6 +4,8 @@ Plugins import `https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1`: every 1.x re
 
 ## 1.1.0 (unreleased)
 
+* `setChanged` (protocol 1.1, feature `set-changes`, listed by every game): the set of a running instance changes – `ui.items` and `ui.progress` take the new ones, the earlier items stay known (a question on the screen keeps working), and with personal sets the player's queue starts again from the new set. Games that keep item IDs need nothing.
+
 * Personal sets (protocol 1.1, SPEC 3.4): `ctx.personal` / `ui.personal`. On a player's device the SDK keeps the player's queue at the authority filled with their own next items (`state.$picks`, IDs and types, chosen by their progress), checks the answers given through `ui.question` to their own items, records them on the device and adds `correct` to the action. On the authority `ctx.nextItem` hands out those IDs and `ctx.recordAnswer` skips items it does not have.
 
 * `ui.question(item, { star: true })`: a ☆ in the corner – the player stars the item for later (`ui.markItem(itemId, starred)` does the same from a game's own UI; protocol 1.1 apps keep it with `markItem`).
