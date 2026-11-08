@@ -333,6 +333,21 @@ export class RelayPlayer {
           const clock = args[0] as { offsetMs: number };
           args = [{ ...clock, offsetMs: clock.offsetMs + this.skewMs }]; // pause fields are session time
         }
+        if (msg.method === 'setChanged') {
+          // The teacher changed the set (protocol 1.1): it waits on the server as a new bundle.
+          const change = args[0] as { progress?: unknown; bundle?: unknown } | undefined;
+          if (typeof change?.bundle !== 'number') {
+            reply({ k: 'result', id: msg.id, ok: false, error: { message: '[INVALID_ARGUMENT] setChanged without a bundle.' } });
+            return;
+          }
+          try {
+            const bundle = await this.ensureBundle(change.bundle);
+            args = [{ set: structuredClone(bundle.set), progress: change.progress ?? {} }];
+          } catch (error) {
+            reply({ k: 'result', id: msg.id, ok: false, error: serializeError(error) });
+            return;
+          }
+        }
         try {
           const fn = this.plugin[msg.method as keyof PluginApi] as (...a: unknown[]) => Promise<unknown>;
           const value = await fn(...args);

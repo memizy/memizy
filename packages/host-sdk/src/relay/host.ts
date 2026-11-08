@@ -97,6 +97,8 @@ export class RelayHost {
   private readonly listeners = new Set<(event: RelayHostEvent) => void>();
   private readonly channels = new Map<string, Channel>();
   private bundleVersion = 0;
+  /** The last uploaded game and whether its set went with answers (a changed set goes the same way). */
+  private bundleSource: { pluginHtml: string; full: boolean } | null = null;
   private genCounter = 0;
   private callCounter = 0;
   private session: LocalSession | null = null;
@@ -178,6 +180,7 @@ export class RelayHost {
     });
     if (!response.ok) throw new Error(`Could not upload the game (${response.status}): ${await response.text()}`);
     this.bundleVersion = ((await response.json()) as { version: number }).version;
+    this.bundleSource = { pluginHtml, full: options.full === true };
     return this.bundleVersion;
   }
 
@@ -244,12 +247,17 @@ export class RelayHost {
     for (const seat of this.seatOf.values()) this.connectRemote(seat);
 
     this.stopSession = session.on((event) => this.onSessionEvent(event));
+    // A changed set (`changeSet`) goes to the server first; the devices then fetch it (protocol 1.1).
+    session.setBeforeSetChange(async (prepared) => {
+      if (this.bundleSource) await this.uploadBundle(this.bundleSource.pluginHtml, prepared, { full: this.bundleSource.full });
+    });
     this.setState({ phase: 'loading', appName: session.plugin.manifest.appName, players: [...session.players], authorityConnected: true, result: undefined, countdown: undefined, ...this.seatState() });
     if (this.seatsMode) for (const player of this.players) if (player.connected) this.sendSeat(player.id);
   }
 
   /** Disconnects from the session; player devices return to the lobby. */
   detach(): void {
+    this.session?.setBeforeSetChange(null);
     this.stopSession?.();
     this.stopSession = null;
     this.session = null;
@@ -453,7 +461,9 @@ export class RelayHost {
         reject(new Error(`[INTERNAL_ERROR] ${method} on ${playerId} timed out.`));
       }, this.options.callTimeoutMs ?? 15_000);
       channel.calls.set(id, { resolve, reject, timer });
-      this.sendToSeat(playerId, { k: 'call', id, gen, method, args });
+      // A changed set does not go through the relay: the device fetches the new bundle.
+      const sent = method === 'setChanged' ? [{ progress: (args[0] as { progress?: unknown } | undefined)?.progress ?? {}, bundle: this.bundleVersion }] : args;
+      this.sendToSeat(playerId, { k: 'call', id, gen, method, args: sent });
     });
   }
 

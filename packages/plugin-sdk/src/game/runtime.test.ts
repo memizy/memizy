@@ -296,6 +296,32 @@ describe('personal sets (SPEC 3.4)', () => {
   });
 });
 
+describe('a shared set changed (SDK 1.1)', () => {
+  it('the authority runs itemsChanged with the difference; queues of picked items lose removed items', async () => {
+    const seen: unknown[] = [];
+    const game: GameDefinition<any> = {
+      initialState: () => ({ $picks: { anna: { q: ['q1', 'q2', 'q3'], r: [] } } }),
+      actions: {},
+      itemsChanged(state, ctx, change) {
+        seen.push({ ...change, items: ctx.items.map((i) => i.id) });
+        state.note = 'changed';
+      },
+      render: () => '',
+    };
+    const session = new FakeSession(game);
+    session.start();
+    await tick();
+    const board = session.get('board');
+    const items = (board.init.set.items as any[]).filter((i) => i.id !== 'q2').map((i) => (i.id === 'q1' ? { ...i, question: 'A – edited?' } : i));
+    board.replaceItems([...items, { id: 'q9', type: 'true-false', question: 'New?', correctAnswer: true } as any]);
+    await tick();
+    expect(seen).toEqual([{ added: ['q9'], removed: ['q2'], changed: ['q1'], items: ['q1', 'q3', 'q9'] }]);
+    expect(board.state).toMatchObject({ note: 'changed', $picks: { anna: { q: ['q1', 'q3'] } } });
+    expect(session.get('anna').state).toMatchObject({ note: 'changed' }); // a system change, sent to everyone
+    expect(board.item('q2')).toBeDefined(); // a removed item stays readable
+  });
+});
+
 describe('host plays along (hostAs: player)', () => {
   it('the host controller is the authority and its own actions have its player id', async () => {
     const session = new FakeSession(quiz, { hostAs: 'player' });

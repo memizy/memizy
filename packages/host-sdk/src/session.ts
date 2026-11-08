@@ -14,6 +14,8 @@ import {
   FINISH_REQUEST_FEATURE,
   PICK_ITEMS_FEATURE,
   REVEAL_ITEMS_FEATURE,
+  SET_CHANGES_FEATURE,
+  CHOOSE_SET_FEATURE,
   SETTINGS_ADDRESS,
   LIMITS,
   PROTOCOL_VERSION,
@@ -120,6 +122,12 @@ export interface SessionConfig {
    * reject a call with a specific code.
    */
   services?: Record<string, ServiceHandler>;
+  /**
+   * The game asks for another set (`chooseSet`, protocol 1.1): show the app's set picker and
+   * resolve the chosen set (loaded with `loadOQSEFile`), or `null` when the person cancelled.
+   * Without it the host does not offer the feature `choose-set`.
+   */
+  chooseSet?: () => Promise<OQSEFile | null>;
 }
 
 /** Handles one service call. `playerId` is null on the board. */
@@ -140,6 +148,8 @@ export type SessionEvent =
   | { type: 'answer'; playerId: string; setId: string; record: ProgressRecord | null; answer: AnswerRecord; generated: boolean; ungraded: boolean; skills: string[]; tags: string[] }
   /** A player starred or unstarred an item from inside the game (`markItem`, protocol 1.1). */
   | { type: 'marked'; playerId: string; setId: string; itemId: string; starred: boolean }
+  /** The set of the running game changed (`changeSet`; save it with the game). */
+  | { type: 'setChanged'; setId: string; title: string }
   /** The game reported its result (`end(result)`); the session itself ends with `end()`. */
   | { type: 'result'; result: SessionResult }
   | { type: 'players'; players: Player[] }
@@ -181,8 +191,9 @@ interface Instance extends SessionInstance {
 
 
 /** Features this host offers (SPEC 8.3) in a negotiated protocol version. */
-function hostFeatures(protocol: string): string[] {
-  return compareProtocolVersions(protocol, '1.1') >= 0 ? [FINISH_REQUEST_FEATURE, PICK_ITEMS_FEATURE, REVEAL_ITEMS_FEATURE] : [];
+function hostFeatures(protocol: string, chooseSet: boolean): string[] {
+  if (compareProtocolVersions(protocol, '1.1') < 0) return [];
+  return [FINISH_REQUEST_FEATURE, PICK_ITEMS_FEATURE, REVEAL_ITEMS_FEATURE, SET_CHANGES_FEATURE, ...(chooseSet ? [CHOOSE_SET_FEATURE] : [])];
 }
 
 /** Deep copy of JSON data that also works for proxies (which structuredClone rejects). */
@@ -203,7 +214,16 @@ export class LocalSession {
   readonly mode: 'solo' | 'multiplayer';
   readonly hostAs: HostAs | null;
   readonly authority: string;
-  readonly prepared: PreparedSet;
+  private preparedSet: PreparedSet;
+  /** The set prepared for the plugin (changes with `changeSet`). */
+  get prepared(): PreparedSet {
+    return this.preparedSet;
+  }
+  /** The display-order seed (a changed set is shuffled with the same one). */
+  private readonly shuffleSeed: string | undefined;
+  /** Called with the new set before the instances hear about it (the relay uploads it first). */
+  private beforeSetChange: ((prepared: PreparedSet) => Promise<void>) | null = null;
+  private choosingSet = false;
   private roster: Player[];
   private settingValues: Record<string, unknown>;
   private settingsOk = true;
@@ -309,7 +329,8 @@ export class LocalSession {
     this.settingValues = resolved.values;
     // A plain copy: the set may be a framework proxy (Vue reactive) that structuredClone rejects.
     const seed = config.shuffleSeed === null ? undefined : config.shuffleSeed ?? randomSeed();
-    this.prepared = prepareSetForPlugin(plainCopy(config.set), config.plugin.manifest, { seed });
+    this.shuffleSeed = seed;
+    this.preparedSet = prepareSetForPlugin(plainCopy(config.set), config.plugin.manifest, { seed });
     if (config.restore) {
       this.isStarted = true;
       this.resumeStartPending = true;
@@ -604,6 +625,49 @@ export class LocalSession {
     }
   }
 
+  /**
+   * Whether the running game can take another set (`changeSet`): not with personal sets, and
+   * the authority listed the feature `set-changes` (every game made with the plugin SDK 1.1).
+   */
+  get canChangeSet(): boolean {
+    const authority = this.instances.get(this.authority);
+    return this.sets !== 'personal' && !!authority?.plugin && !authority.disposed && authority.features.includes(SET_CHANGES_FEATURE) && !this.isEnded && !this.hasResult;
+  }
+
+  /**
+   * The teacher (or the solo player) switches the set of the running game, or reloads it with
+   * edits (SPEC 7, `setChanged`, protocol 1.1): the set is prepared with the same display
+   * order, every instance gets it – the authority with the answers, the others without – with
+   * its player's progress; the game keeps its state (item IDs that stay keep their meaning).
+   * Returns `false` (and changes nothing) when the game cannot (`canChangeSet`) or the set has
+   * no item this game plays. Instances
+   * without the feature (an older SDK on a player's device) keep the earlier items.
+   */
+  async changeSet(file: OQSEFile): Promise<boolean> {
+    if (!this.canChangeSet) return false;
+    const prepared = prepareSetForPlugin(plainCopy(file), this.plugin.manifest, { seed: this.shuffleSeed });
+    if (prepared.set.items.length === 0 && this.runtime.set !== 'none') return false; // nothing this game can play
+    await this.beforeSetChange?.(prepared);
+    this.preparedSet = prepared;
+    const setId = prepared.set.meta.id;
+    await Promise.all(
+      [...this.instances.values()].map(async (instance) => {
+        if (!instance.plugin?.setChanged || !instance.features.includes(SET_CHANGES_FEATURE) || instance.view === 'settings') return;
+        const playerView = instance.view === 'solo' || instance.view === 'controller';
+        const set = this.mode === 'multiplayer' && instance.address !== this.authority ? prepared.publicSet : prepared.set;
+        const progress = playerView ? await this.storage.loadProgress(this.userKey(instance.address), setId) : {};
+        await this.callPlugin(instance.address, (p) => p.setChanged!({ set: structuredClone(set), progress }));
+      }),
+    );
+    this.emit({ type: 'setChanged', setId, title: prepared.set.meta.title });
+    return true;
+  }
+
+  /** The relay uploads a changed set for the players' devices before they hear about it. */
+  setBeforeSetChange(hook: ((prepared: PreparedSet) => Promise<void>) | null): void {
+    this.beforeSetChange = hook;
+  }
+
   /** Ends the session for all instances (they stay mounted until the app removes them). */
   async end(reason: SessionEndReason = 'closed'): Promise<void> {
     if (this.isEnded) return;
@@ -648,7 +712,7 @@ export class LocalSession {
             throw new ProtocolError('UNSUPPORTED_PROTOCOL', `The plugin speaks protocol ${handshake.protocol}; this host supports ${PROTOCOL_VERSION}.`);
           }
           instance.greeted = true;
-          const offered = hostFeatures(negotiated);
+          const offered = hostFeatures(negotiated, !!this.options.chooseSet);
           instance.features = handshake.features.filter((f) => offered.includes(f));
           if (handshake.plugin.id !== this.plugin.manifest.id) {
             this.emit({ type: 'pluginError', address: instance.address, code: 'PLUGIN_ID_MISMATCH', message: `The SDK reports plugin id "${handshake.plugin.id}", the manifest says "${this.plugin.manifest.id}".` });
@@ -851,6 +915,22 @@ export class LocalSession {
           this.emit({ type: 'marked', playerId: instance.address, setId, itemId, starred: mark.starred });
         }),
 
+      chooseSet: (...args) =>
+        call('chooseSet', async () => {
+          parseHostCall('chooseSet', args);
+          const ownView = instance.view === 'solo' || instance.address === BOARD_ADDRESS || this.roster.some((p) => p.id === instance.address && p.isHost);
+          if (!ownView) throw new ProtocolError('NOT_ALLOWED_IN_VIEW', "chooseSet is only for the host's own view (solo, the board, the host playing along).");
+          if (!instance.features.includes(CHOOSE_SET_FEATURE) || !this.options.chooseSet) throw new ProtocolError('UNKNOWN_METHOD', 'chooseSet needs the feature choose-set (protocol 1.1; this host has no set picker).');
+          if (this.choosingSet) return false;
+          this.choosingSet = true;
+          try {
+            const file = await this.options.chooseSet();
+            return file ? await this.changeSet(file) : false;
+          } finally {
+            this.choosingSet = false;
+          }
+        }),
+
       revealItems: (...args) =>
         call('revealItems', () => {
           const [request] = parseHostCall('revealItems', args);
@@ -903,7 +983,7 @@ export class LocalSession {
       protocol,
       host: this.options.host ?? { name: '@memizy/host-sdk', version: HOST_SDK_VERSION },
       oqseVersion: '1.0',
-      features: hostFeatures(protocol),
+      features: hostFeatures(protocol, !!this.options.chooseSet),
       session: {
         id: this.id,
         mode: this.mode,

@@ -366,6 +366,39 @@ describe('relayed multiplayer', () => {
     host.close();
   }, 30_000);
 
+  it('the teacher changes the set of the running game: the phones get it through the server, not the relay (protocol 1.1)', async () => {
+    const show: Omit<GameDefinition<{ changes: number }>, 'root'> = {
+      initialState: () => ({ changes: 0 }),
+      actions: {},
+      itemsChanged(state) { state.changes += 1; },
+      render: (state, ui) => `<p class="items">${ui.items.map((i: any) => i.question + (i.answerHidden ? '' : '=' + i.correctId)).join(',')}</p><p class="changes">${state.changes}</p>`,
+    };
+    const host = await RelayHost.create({ serverUrl, WebSocket: WebSocketImpl });
+    await until(() => host.status === 'online');
+    const anna = joinPlayer(host.pin, 'Anna', undefined, undefined, undefined, WebSocketImpl, { def: show });
+    await until(() => host.players.length === 1 && host.players[0].connected);
+    const session = new LocalSession({ plugin, set: setFile, mode: 'multiplayer', hostAs: 'presenter', players: host.players.map((p) => ({ id: p.id, name: p.name })), countdownMs: 0 });
+    await host.uploadBundle(plugin.html, session.prepared);
+    host.attach(session);
+    const board = playBoard(session, show);
+    await session.start();
+    await until(() => !!anna.root()?.querySelector('.items'));
+    const big = loadOQSEFile({
+      version: '1.0',
+      meta: { id: id(80), language: 'cs', title: 'Velká sada', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+      // About 120 kB: more than one relay frame may carry.
+      items: Array.from({ length: 60 }, (_, n) => ({ id: `0192f0c4-7a1e-7c3b-9a52-${String(n).padStart(12, '0')}`, type: 'mcq-single', question: `Q${n} ${'x'.repeat(2000)}`, options: [{ id: 'a', text: 'a' }, { id: 'b', text: 'b' }], correctId: 'b' })),
+    }).data as OQSEFile;
+    expect(await session.changeSet(big)).toBe(true);
+    await until(() => (anna.root()!.querySelector('.items')?.textContent ?? '').startsWith('Q0'));
+    const phone = anna.root()!.querySelector('.items')!.textContent!;
+    expect(phone.split(',')).toHaveLength(60);
+    expect(phone).not.toContain('=b'); // still no answers on a phone
+    expect(board.querySelector('.items')!.textContent).toContain('=b');
+    await until(() => board.querySelector('.changes')?.textContent === '1');
+    host.close();
+  }, 30_000);
+
   it('after a reveal a phone gets the picture of the explanation through the relay (protocol 1.1, revealItems)', async () => {
     const original = URL.createObjectURL;
     let n = 0;

@@ -2,6 +2,8 @@
 
 ## 1.1.0-rc.2 (unreleased)
 
+* `LocalSession.changeSet(file)` / `canChangeSet`: the teacher switches the set of the running game or reloads it with edits – prepared with the same display order, every instance gets `setChanged` with its player's progress; event `setChanged` (save it with the game). Over the relay the new set goes to the server as a new bundle and the devices fetch it. `SessionConfig.chooseSet`: the app's set picker for games that call `chooseSet` (feature `choose-set`). The host lists `set-changes`.
+
 * Plugin frames are named `mz-plugin` (SPEC 4): the SDK knows it runs in a Memizy host and waits the full hello deadline. Release it before an SDK that relies on it reaches games.
 
 * `revealItems` (feature `reveal-items`): after a reveal, `getAsset` gives those instances the media of the revealed items' hidden fields.

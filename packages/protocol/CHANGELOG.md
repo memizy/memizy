@@ -4,6 +4,8 @@ The protocol has its own changelog at the end of [SPEC.md](https://github.com/me
 
 ## 1.1.0-rc.2 (unreleased)
 
+* The shared set of a running game may change (SPEC 7, was reserved in 10): `setChanged` for every instance; `HostApi.chooseSet` and `CHOOSE_SET_FEATURE` (`choose-set`) – the game opens the host's set picker.
+
 * SPEC 4: hosts name plugin frames `mz-plugin` (`PLUGIN_FRAME_NAME` in `@memizy/protocol/internal`); an SDK in an unmarked frame waits only ~2 s for a host.
 
 * `HostApi.revealItems` (`RevealItemsRequest`, `REVEAL_ITEMS_FEATURE` = `reveal-items`): the authority tells the host which items it revealed to whom, and those instances may fetch the media of the hidden fields (SPEC 4.4, 5, 8.3).

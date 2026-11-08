@@ -158,6 +158,16 @@ export interface GameUI {
    */
   redrawIn(ms: number): void;
   /**
+   * Whether this screen may ask for another set (`ui.chooseSet()`): solo, the board, the host
+   * playing along – in apps that offer it (protocol 1.1). Show your "Change the set" button only then.
+   */
+  readonly canChooseSet: boolean;
+  /**
+   * Opens the app's set picker (SDK 1.1). Resolves `true` when a set was chosen – the game
+   * then gets the new items (`itemsChanged` on the authority), `false` when cancelled.
+   */
+  chooseSet(): Promise<boolean>;
+  /**
    * Saves a file on the player's device (SDK 1.1), e.g. results for the teacher:
    * `ui.download('results.csv', csvText, 'text/csv')`. Call it from a click. Under protocol
    * 1.1 hosts (Memizy Play) the file is saved directly (`'saved'`); under older hosts it is
@@ -267,6 +277,14 @@ export interface GameDefinition<S = any> {
    * Declare `"migrates": true` in `appSpecific.memizy` so hosts offer the newer version.
    */
   migrate?(state: any, info: { from: string | null; to: string }): void | S;
+  /**
+   * The set of the running game changed (SDK 1.1): the teacher switched it, reloaded it with
+   * edits, or chose another one from the game (`ui.chooseSet()`). Runs on the authority like an
+   * action; `ctx.items` are the new items. Items that stay keep their IDs, removed ones are
+   * still readable with `ctx.item(id)`. Without this hook the game simply goes on with the new
+   * items (a game that keeps only item IDs in its state needs nothing).
+   */
+  itemsChanged?(state: S, ctx: GameContext, change: { added: string[]; removed: string[]; changed: string[] }): void | S;
   playerJoined?(state: S, player: Player, ctx: GameContext): void | S;
   playerLeft?(state: S, player: Player, ctx: GameContext): void | S;
   /**

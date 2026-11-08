@@ -8,6 +8,7 @@ import {
   PICK_ITEMS_FEATURE,
   SET_CHANGES_FEATURE,
   REVEAL_ITEMS_FEATURE,
+  CHOOSE_SET_FEATURE,
   LIMITS,
   PROTOCOL_VERSION,
   ProtocolError,
@@ -124,7 +125,7 @@ export function startGame<S>(definition: GameDefinition<S>, options: StartOption
       plugin: { id: manifest.id, version: manifest.version },
       // The host may ask a game with `onFinish` to finish (SPEC 7, protocol 1.1).
       // Set changes: the SDK swaps the items itself (a game that keeps only item IDs needs nothing).
-      features: [...(typeof definition.onFinish === 'function' ? [FINISH_REQUEST_FEATURE] : []), ...(definition.pickItems ? [PICK_ITEMS_FEATURE] : []), SET_CHANGES_FEATURE, REVEAL_ITEMS_FEATURE],
+      features: [...(typeof definition.onFinish === 'function' ? [FINISH_REQUEST_FEATURE] : []), ...(definition.pickItems ? [PICK_ITEMS_FEATURE] : []), SET_CHANGES_FEATURE, REVEAL_ITEMS_FEATURE, CHOOSE_SET_FEATURE],
     };
     // Outside Memizy: the player's own sets and settings; choosing one starts the game again.
     let restarting = false;
@@ -203,7 +204,7 @@ interface Controller {
   configChanged(config: InitPayload['config']): void;
   clockChanged(clock: SessionClock): void;
   finishRequested(): void;
-  setChanged(change: Parameters<NonNullable<PluginApi['setChanged']>>[0]): void;
+  setChanged(change: Parameters<NonNullable<PluginApi['setChanged']>>[0]): void | Promise<void>;
   destroy(): void;
 }
 
@@ -340,7 +341,7 @@ abstract class BaseController implements Controller {
   authorityChanged(_connected: boolean): void {}
   clockChanged(_clock: SessionClock): void {}
   finishRequested(): void {}
-  setChanged(_change: Parameters<NonNullable<PluginApi['setChanged']>>[0]): void {}
+  setChanged(_change: Parameters<NonNullable<PluginApi['setChanged']>>[0]): void | Promise<void> {}
   playersChanged(players: InitPayload['players']): void {
     this.init.players = players;
     this.schedule();
@@ -384,6 +385,23 @@ abstract class BaseController implements Controller {
 
   /** Runs after each render (`afterRender` of the game definition). */
   protected afterRender(): void {}
+
+  /** Whether this screen may open the host's set picker (`ui.chooseSet`, feature `choose-set`). */
+  private canChooseSet(): boolean {
+    const { session, players } = this.init;
+    const own = session.view === 'solo' || session.view === 'board' || players.some((p) => p.id === session.self && p.isHost);
+    return own && this.init.features.includes(CHOOSE_SET_FEATURE) && typeof this.host.chooseSet === 'function';
+  }
+
+  private async chooseSet(): Promise<boolean> {
+    if (!this.canChooseSet()) return false;
+    try {
+      return (await this.host.chooseSet!()) === true;
+    } catch (error) {
+      this.report('CHOOSE_SET_FAILED', error instanceof Error ? error.message : String(error));
+      return false;
+    }
+  }
 
   /** Whether the host's frame allows downloads and the clipboard (protocol 1.1, SPEC 8.4). */
   private filesAllowed(): boolean {
@@ -438,6 +456,8 @@ abstract class BaseController implements Controller {
         this.schedule();
       },
       redrawIn: (ms) => this.redrawIn(ms),
+      canChooseSet: this.canChooseSet(),
+      chooseSet: () => this.chooseSet(),
       // Protocol 1.1 hosts allow downloads and the clipboard in the frame (SPEC 8.4).
       download: (fileName, content, type) => downloadFile(fileName, content, { type, direct: this.filesAllowed(), locale: this.init.config.locale }),
       copy: (text, html) => copyToClipboard(text, html, { direct: this.filesAllowed() }),
@@ -671,8 +691,9 @@ class GameController<S> extends BaseController {
   }
 
   /** `setChanged`: new items (the earlier ones stay known), this player's progress for them. */
-  override setChanged(change: Parameters<NonNullable<PluginApi['setChanged']>>[0]): void {
+  override async setChanged(change: Parameters<NonNullable<PluginApi['setChanged']>>[0]): Promise<void> {
     if (!change?.set || !Array.isArray(change.set.items)) return;
+    await resolveAssets({ set: change.set } as InitPayload, this.host); // package media of the new items
     for (const key of Object.keys(this.progress)) delete this.progress[key];
     Object.assign(this.progress, change.progress ?? {});
     this.runtime.replaceItems(change.set.items as OQSEAnyItem[], change.set.meta);
@@ -817,6 +838,7 @@ function validateDefinition(def: GameDefinition<any>): void {
   }
   if (def.afterRender !== undefined && typeof def.afterRender !== 'function') problems.push('afterRender must be a function (state, ui) => void');
   if (def.standalone !== undefined && (def.standalone === null || typeof def.standalone !== 'object')) problems.push("standalone must be an object { controls?: 'auto' | 'hidden', position? }");
+  if (def.itemsChanged !== undefined && typeof def.itemsChanged !== 'function') problems.push('itemsChanged must be a function (state, ctx, { added, removed, changed }) => void');
   if (def.migrate !== undefined && typeof def.migrate !== 'function') problems.push('migrate must be a function (state, info) => void');
   if ((def as { local?: unknown }).local !== undefined) problems.push('local was renamed to localActions');
   if (def.localActions !== undefined) {

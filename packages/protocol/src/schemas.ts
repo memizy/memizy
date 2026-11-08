@@ -86,6 +86,7 @@ export const HOST_API_ARGS = {
   pickItems: z.tuple([PickItemsRequestSchema]),
   markItem: z.tuple([ShortText(128), z.strictObject({ starred: z.boolean() })]),
   revealItems: z.tuple([RevealItemsRequestSchema]),
+  chooseSet: z.tuple([]),
 } satisfies Record<keyof HostApi, z.ZodType>;
 
 /**

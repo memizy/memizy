@@ -337,6 +337,7 @@ export class GameRuntime<S = unknown> {
    * screen keeps working). With personal sets the player's queue starts again from the new set.
    */
   replaceItems(items: OQSEAnyItem[], meta?: InitPayload['set']['meta']): void {
+    const before = new Map((this.init.set.items as OQSEAnyItem[]).map((item) => [item.id, item]));
     for (const item of items) this.itemsById.set(item.id, item);
     (this.init.set as { items: OQSEAnyItem[] }).items = items;
     if (meta) (this.init.set as { meta: InitPayload['set']['meta'] }).meta = meta;
@@ -344,7 +345,35 @@ export class GameRuntime<S = unknown> {
       this.ownPicksAt = -1;
       this.dispatch('$picks', { reset: true, items: [] });
     }
+    if (this.isAuthority && !this.personal && this.state !== undefined && !this.ended) this.sharedItemsChanged(before, items);
     this.onChange();
+  }
+
+  /**
+   * Authority, a shared set changed (SPEC 7): the game's `itemsChanged` hook as a system
+   * change, and the players' queues of picked items lose the removed ones and refill.
+   */
+  private sharedItemsChanged(before: Map<string, OQSEAnyItem>, items: OQSEAnyItem[]): void {
+    const now = new Set(items.map((item) => item.id));
+    const added = items.filter((item) => !before.has(item.id)).map((item) => item.id);
+    const removed = [...before.keys()].filter((id) => !now.has(id));
+    const changed = items.filter((item) => before.has(item.id) && JSON.stringify(before.get(item.id)) !== JSON.stringify(item)).map((item) => item.id);
+    const picks = (this.state as { $picks?: Record<string, { q?: string[] }> }).$picks;
+    if (picks && removed.length) {
+      this.run(
+        (draft) => {
+          const all = (draft as { $picks: Record<string, { q: string[] }> }).$picks;
+          for (const entry of Object.values(all)) entry.q = entry.q.filter((id) => now.has(id));
+        },
+        null,
+        true,
+        '$picks',
+      );
+    }
+    if (typeof this.def.itemsChanged === 'function' && (added.length || removed.length || changed.length)) {
+      this.run((draft, ctx) => this.def.itemsChanged!(draft, ctx, { added, removed, changed }), null, true, 'itemsChanged');
+    }
+    for (const player of this.players) this.requestPicks(player.id);
   }
 
   /** Personal sets, on the authority: a player's device sends its next items (IDs and types only). */

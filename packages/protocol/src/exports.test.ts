@@ -5,7 +5,7 @@ import * as internal from './internal';
 describe('public API', () => {
   it('exports exactly the public names; shared helpers are in @memizy/protocol/internal', () => {
     expect(Object.keys(publicApi).sort()).toEqual([
-      'AddressSchema', 'AnswerRecordSchema', 'BOARD_ADDRESS', 'DataScopeSchema', 'ErrorReportSchema', 'FINISH_REQUEST_FEATURE', 'HOST_API_METHODS',
+      'AddressSchema', 'AnswerRecordSchema', 'BOARD_ADDRESS', 'CHOOSE_SET_FEATURE', 'DataScopeSchema', 'ErrorReportSchema', 'FINISH_REQUEST_FEATURE', 'HOST_API_METHODS',
       'HandshakeSchema', 'HostAsSchema', 'LIMITS', 'LocalizedTextSchema', 'MemizyRuntimeSchema', 'MultiplayerModeSchema',
       'OutgoingMessageSchema', 'PICK_ITEMS_FEATURE', 'PLUGIN_API_METHODS', 'PLUGIN_DEVICES', 'PROTOCOL_ERROR_CODES', 'PROTOCOL_VERSION',
       'PluginManifestError', 'PluginPermissionsSchema', 'ProtocolError', 'RELAY_PROTOCOL', 'REVEAL_ITEMS_FEATURE',

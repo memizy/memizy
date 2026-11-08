@@ -39,6 +39,12 @@ export const PICK_ITEMS_FEATURE = 'pick-items';
 export const SET_CHANGES_FEATURE = 'set-changes';
 
 /**
+ * Feature (SPEC 8.3, protocol 1.1): the game may ask the host to let the person choose
+ * another set (`HostApi.chooseSet`); the host lists it when it can show its set picker.
+ */
+export const CHOOSE_SET_FEATURE = 'choose-set';
+
+/**
  * Feature (SPEC 8.3, protocol 1.1): the authority tells the host which items it revealed to
  * whom (`HostApi.revealItems`), so those devices may fetch the media of the hidden fields.
  */
@@ -268,6 +274,12 @@ export interface HostApi {
    * may fetch the media of the items' hidden fields with `getAsset` (SPEC 4.4).
    */
   revealItems?(request: RevealItemsRequest): Promise<void>;
+  /**
+   * *The host's own view (solo, the board, the host playing along), feature `choose-set`
+   * (protocol 1.1).* Opens the host's set picker; resolves `true` when the person chose a set
+   * (every instance then gets `setChanged`), `false` when they cancelled (SPEC 5).
+   */
+  chooseSet?(): Promise<boolean>;
 }
 
 /** Methods the plugin exposes to the host (host → plugin). SPEC section 7. */
@@ -296,7 +308,7 @@ export interface PluginApi {
 
 export const HOST_API_METHODS = [
   'hello', 'ready', 'send', 'saveSnapshot', 'recordAnswer', 'saveData',
-  'updateSettings', 'getAsset', 'end', 'reportError', 'service', 'pickItems', 'markItem', 'revealItems',
+  'updateSettings', 'getAsset', 'end', 'reportError', 'service', 'pickItems', 'markItem', 'revealItems', 'chooseSet',
 ] as const satisfies readonly (keyof HostApi)[];
 
 export const PLUGIN_API_METHODS = [

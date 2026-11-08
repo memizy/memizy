@@ -457,7 +457,7 @@ describe('finishing on request (SPEC 7, protocol 1.1)', () => {
     expect(init.features).toEqual([]);
     const current = await (await bare(newSession().session, 'board')).hello({ ...handshake, protocol: '1.1' });
     expect(current.protocol).toBe('1.1');
-    expect(current.features).toEqual(['finish-request', 'pick-items', 'reveal-items']);
+    expect(current.features).toEqual(['finish-request', 'pick-items', 'reveal-items', 'set-changes']); // choose-set: only hosts with a set picker
   });
 
   it('revealItems: only the players an item was revealed to may fetch its hidden media (protocol 1.1)', async () => {
@@ -918,5 +918,87 @@ describe('resume after a host reload', () => {
     await wait(150);
     expect(board.root.querySelector('.answered')!.textContent).toBe('1');
     expect(events.filter((e) => e.type === 'rejected')).toEqual([]);
+  });
+});
+
+describe('changing the set of a running game (SPEC 7, protocol 1.1)', () => {
+  const v2 = (title: string, items: object[]) =>
+    loadOQSEFile({ version: '1.0', meta: { id: id(40), language: 'cs', title, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-02T00:00:00Z' }, items }).data as OQSEFile;
+  interface C { changes: { added: string[]; removed: string[]; changed: string[] }[] }
+  const watcher: Omit<GameDefinition<C>, 'root'> = {
+    initialState: () => ({ changes: [] }),
+    actions: {},
+    itemsChanged(state, ctx, change) {
+      state.changes.push({ ...change, added: [...change.added], removed: [...change.removed] });
+      expect(ctx.items.map((i) => i.id)).not.toContain(id(2));
+    },
+    render: (state, ui) =>
+      `<p class="items">${ui.items.map((i: any) => `${i.question}${i.answerHidden ? '' : `=${i.correctId}`}`).join(',')}</p><p class="changes">${JSON.stringify(state.changes)}</p><p class="level">${ui.progress[id(41)]?.bucket ?? '-'}</p><p class="can">${ui.canChooseSet}</p>`,
+  };
+
+  it('the teacher reloads the set with edits: everyone gets the new items, the authority with answers, players with their progress', async () => {
+    const storage = new MemoryStorage();
+    await storage.saveProgress('anna', id(40), { [id(41)]: { bucket: 3, stats: { attempts: 2, incorrect: 0, streak: 2 } } });
+    const { session, events } = newSession({ storage });
+    const board = play(session, 'board', watcher);
+    const anna = play(session, 'anna', watcher);
+    const ben = play(session, 'ben', watcher);
+    await Promise.all(games.map((g) => g.ready));
+    await session.start();
+    await wait(150);
+    expect(session.canChangeSet).toBe(true);
+
+    const edited = v2('Set (edited)', [
+      { id: id(1), type: 'mcq-single', question: 'A – better?', options: [{ id: 'x', text: 'x' }, { id: 'y', text: 'y' }], correctId: 'y' },
+      { id: id(41), type: 'mcq-single', question: 'New?', options: [{ id: 'x', text: 'x' }, { id: 'y', text: 'y' }], correctId: 'x' },
+    ]);
+    expect(await session.changeSet(edited)).toBe(true);
+    await wait(150);
+    expect(board.root.querySelector('.items')!.textContent).toBe('A – better?=y,New?=x');
+    expect(anna.root.querySelector('.items')!.textContent).toBe('A – better?,New?'); // no answers on a player's device
+    expect(JSON.parse(board.root.querySelector('.changes')!.textContent!)).toEqual([{ added: [id(41)], removed: [id(2)], changed: [id(1)] }]);
+    expect(anna.root.querySelector('.level')!.textContent).toBe('3'); // Anna's progress in the new set
+    expect(ben.root.querySelector('.level')!.textContent).toBe('-');
+    expect(events.find((e) => e.type === 'setChanged')).toMatchObject({ setId: id(40), title: 'Set (edited)' });
+    expect(session.prepared.set.meta.title).toBe('Set (edited)');
+  });
+
+  it('chooseSet: the board opens the app’s set picker; players may not; cancelling changes nothing', async () => {
+    const picked: (OQSEFile | null)[] = [v2('Picked', [{ id: id(41), type: 'mcq-single', question: 'New?', options: [{ id: 'x', text: 'x' }, { id: 'y', text: 'y' }], correctId: 'x' }]), null];
+    const { session } = newSession({ chooseSet: async () => picked.shift() ?? null });
+    let boardUi: any;
+    let annaUi: any;
+    const board = play(session, 'board', { ...watcher, render: (s, ui) => ((boardUi = ui), watcher.render(s, ui)) });
+    play(session, 'anna', { ...watcher, render: (s, ui) => ((annaUi = ui), watcher.render(s, ui)) });
+    await Promise.all(games.map((g) => g.ready));
+    await session.start();
+    await wait(150);
+    expect(boardUi.canChooseSet).toBe(true);
+    expect(annaUi.canChooseSet).toBe(false);
+    expect(await annaUi.chooseSet()).toBe(false);
+    expect(await boardUi.chooseSet()).toBe(true);
+    await wait(150);
+    expect(board.root.querySelector('.items')!.textContent).toBe('New?=x');
+    expect(await boardUi.chooseSet()).toBe(false); // cancelled
+    expect(session.prepared.set.meta.title).toBe('Picked');
+  });
+
+  it('not with personal sets, and not without a game that supports it (an SDK 1.0 game)', async () => {
+    const personal = newSession({ sets: 'personal' }).session;
+    play(personal, 'board', watcher);
+    await wait(100);
+    expect(personal.canChangeSet).toBe(false);
+    expect(await personal.changeSet(setFile)).toBe(false);
+
+    const old = newSession().session;
+    const host = await bare(old, 'board');
+    await host.hello({ ...handshake, protocol: '1.0', features: ['set-changes'] });
+    expect(old.canChangeSet).toBe(false); // 1.0: no features
+
+    const { session } = newSession();
+    play(session, 'board', watcher);
+    await wait(100);
+    expect(await session.changeSet(v2('Notes only', [{ id: id(42), type: 'note', content: 'x' }]))).toBe(false); // nothing this game plays
+    expect(session.prepared.set.meta.title).toBe('Set');
   });
 });
