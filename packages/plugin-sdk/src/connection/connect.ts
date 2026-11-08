@@ -14,6 +14,8 @@ export interface HostConnection {
   destroy(): void;
   /** The protocol version the plugin's manifest declares (what its author built it for). */
   declared?: string;
+  /** The manifest's `pluginVersion` (saved with snapshots, for `migrate`). */
+  pluginVersion?: string;
 }
 
 export type Connector = (pluginApi: PluginApi, handshake: Handshake) => Promise<HostConnection>;

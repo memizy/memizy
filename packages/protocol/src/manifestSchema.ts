@@ -74,6 +74,8 @@ export const MemizyRuntimeSchema = z
     }),
     settings: z.array(SettingEntrySchema).optional(),
     settingsScreen: z.looseObject({ size: z.enum(['compact', 'large']) }).optional(),
+    /** The game reads states saved by its older versions (1.1, SPEC 3.3; `defineGame({ migrate })`). */
+    migrates: z.boolean().optional(),
     display: z.looseObject({ orientation: z.enum(['any', 'portrait', 'landscape']).optional() }).optional(),
     /** What the plugin reaches outside its sandbox (SPEC 8.4). */
     permissions: PluginPermissionsSchema.optional(),

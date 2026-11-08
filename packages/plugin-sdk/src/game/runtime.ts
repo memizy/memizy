@@ -115,6 +115,8 @@ export interface GameSnapshot {
   ended: boolean;
   /** Revealed item ids: to everyone, and per player. */
   revealed?: { all: string[]; to: Record<string, string[]> };
+  /** The `pluginVersion` that saved it (SDK 1.1; older snapshots have none). */
+  pluginVersion?: string;
 }
 
 type Effect =
@@ -134,6 +136,8 @@ export interface RuntimeOptions {
   snapshotMs?: number;
   /** Logger for problems in plugin code (default: console + host.reportError). */
   onError?: (code: string, message: string) => void;
+  /** The manifest's `pluginVersion` (saved in snapshots, `migrate`'s `info.to`). */
+  pluginVersion?: string;
 }
 
 /**
@@ -166,7 +170,8 @@ export class GameRuntime<S = unknown> {
 
   private readonly def: GameDefinition<S>;
   private readonly host: HostApi;
-  private readonly options: Required<Omit<RuntimeOptions, 'onError'>>;
+  private readonly options: Required<Omit<RuntimeOptions, 'onError' | 'pluginVersion'>>;
+  private readonly pluginVersion: string | undefined;
   private readonly reportError: (code: string, message: string) => void;
   private itemsById: Map<string, OQSEAnyItem>;
   private clockOffset: number;
@@ -219,6 +224,7 @@ export class GameRuntime<S = unknown> {
     this.rng = new SeededRandom(init.seed ?? init.session.id);
     this.itemsById = new Map(init.set.items.map((item) => [item.id, item]));
     this.options = { flushMs: options.flushMs ?? 16, snapshotMs: options.snapshotMs ?? 500 };
+    this.pluginVersion = options.pluginVersion;
     this.reportError =
       options.onError ??
       ((code, message) => {
@@ -1176,11 +1182,37 @@ export class GameRuntime<S = unknown> {
       players: [...this.knownPlayers],
       ended: this.ended,
       revealed: { all: [...this.revealedAll], to: Object.fromEntries([...this.revealedTo].map(([p, ids]) => [p, [...ids]])) },
+      ...(this.pluginVersion !== undefined && { pluginVersion: this.pluginVersion }),
     };
   }
 
+  /**
+   * A saved state through the game's `migrate` (SDK 1.1): a copy is changed or replaced. When
+   * it throws or gives an invalid state, the saved state stays and the host hears
+   * `MIGRATE_FAILED` (it continues in the saved version of the game, SPEC 3.3).
+   */
+  private migrateState(state: unknown, from: string | null): { state: unknown; changed: boolean } {
+    if (typeof this.def.migrate !== 'function') return { state, changed: false };
+    let next: unknown;
+    try {
+      const copy = structuredClone(state);
+      const returned = this.def.migrate(copy, { from, to: this.pluginVersion ?? '0.0.0' });
+      next = returned === undefined ? copy : returned;
+    } catch (e) {
+      this.reportError('MIGRATE_FAILED', `migrate threw (saved by ${from ?? 'an older version'}): ${errorText(e)}`);
+      return { state, changed: false };
+    }
+    const problem = next !== null && typeof next === 'object' ? findNonJson(next, 'state') : 'state must be an object';
+    if (problem) {
+      this.reportError('MIGRATE_FAILED', `migrate gave an invalid state: ${problem}`);
+      return { state, changed: false };
+    }
+    return { state: next, changed: true };
+  }
+
   private restore(snapshot: GameSnapshot): void {
-    this.state = snapshot.state as S;
+    const migrated = this.migrateState(snapshot.state, snapshot.pluginVersion ?? null);
+    this.state = migrated.state as S;
     this.version = snapshot.version;
     this.rng.restore(snapshot.rng);
     this.timerSeq = snapshot.timerSeq;
@@ -1194,6 +1226,7 @@ export class GameRuntime<S = unknown> {
     this.onChange();
     // Players who left or joined while the authority was away.
     this.updatePlayers(this.players);
+    if (migrated.changed && snapshot.pluginVersion !== this.pluginVersion) this.scheduleSnapshot(); // saved by this version now
   }
 
   private sendToAuthority(message: SyncMessage): void {

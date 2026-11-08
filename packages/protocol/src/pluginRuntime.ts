@@ -31,6 +31,8 @@ export interface PluginRuntime {
    */
   unknownSettings: UnknownSettingDefinition[];
   settingsScreen: null | { size: 'compact' | 'large' };
+  /** The game reads states saved by its older versions (1.1, SPEC 3.3). Default `false`. */
+  migrates: boolean;
   orientation: 'any' | 'portrait' | 'landscape';
   /** Views the plugin must render (SPEC 3.2). */
   views: PluginView[];
@@ -82,6 +84,7 @@ export function toRuntime(memizy: MemizyRuntimeManifest): PluginRuntime {
     settings: (memizy.settings ?? []).filter(isKnownSetting),
     unknownSettings: (memizy.settings ?? []).filter((def) => !isKnownSetting(def)),
     settingsScreen: memizy.settingsScreen ? { size: memizy.settingsScreen.size } : null,
+    migrates: memizy.migrates === true,
     orientation: memizy.display?.orientation ?? 'any',
     views,
     permissions: { network: [...new Set(memizy.permissions?.network ?? [])], devices: [...new Set(memizy.permissions?.devices ?? [])] },

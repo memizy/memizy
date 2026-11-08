@@ -206,6 +206,7 @@ describe('plugin manifest', () => {
       settings: [],
       unknownSettings: [],
       settingsScreen: null,
+      migrates: false,
       orientation: 'any',
       views: ['solo'],
       permissions: { network: [], devices: [] },
@@ -214,6 +215,9 @@ describe('plugin manifest', () => {
 
     const all = safeParsePluginManifest(manifest({ protocol: '1.0', modes: { solo: {}, multiplayer }, settingsScreen: { size: 'large' } }));
     expect(all.success && all.runtime.views).toEqual(['solo', 'board', 'controller', 'settings']);
+    const migrating = safeParsePluginManifest(manifest({ protocol: '1.1', modes: { solo: {} }, migrates: true }));
+    expect(migrating.success && migrating.runtime.migrates).toBe(true);
+    expect(safeParsePluginManifest(manifest({ protocol: '1.1', modes: { solo: {} }, migrates: 'yes' })).success).toBe(false);
     expect(all.success && all.runtime.multiplayer?.lateJoin).toBe(true);
 
     const party = safeParsePluginManifest(manifest({ protocol: '1.0', modes: { multiplayer: { ...multiplayer, hostAs: ['player'], lateJoin: false } } }));

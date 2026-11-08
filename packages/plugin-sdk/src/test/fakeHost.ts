@@ -22,6 +22,8 @@ export interface FakeSessionOptions {
   rulesSeed?: string;
   /** Personal sets (SPEC 3.4): the players' devices pick their own next items (in set order here). */
   personal?: boolean;
+  /** The manifest's `pluginVersion` of this game (snapshots, `migrate`). */
+  pluginVersion?: string;
 }
 
 export const sampleItems: OQSEAnyItem[] = [
@@ -41,7 +43,7 @@ export class FakeSession<S> {
   authority: string;
   disconnected = new Set<string>();
   private readonly def: GameDefinition<S>;
-  private readonly options: Required<Omit<FakeSessionOptions, 'seed' | 'rulesSeed' | 'personal'>> & { seed?: string; rulesSeed?: string; personal?: boolean };
+  private readonly options: Required<Omit<FakeSessionOptions, 'seed' | 'rulesSeed' | 'personal' | 'pluginVersion'>> & { seed?: string; rulesSeed?: string; personal?: boolean; pluginVersion?: string };
 
   constructor(def: GameDefinition<S>, options: FakeSessionOptions = {}) {
     this.def = def;
@@ -55,6 +57,7 @@ export class FakeSession<S> {
       seed: options.seed,
       rulesSeed: options.rulesSeed,
       personal: options.personal,
+      pluginVersion: options.pluginVersion,
     };
     this.players = this.options.players.map((id, i) => ({ id, name: id, isHost: this.options.hostAs === 'player' && i === 0, connected: true }));
     this.authority = this.options.mode === 'solo' || this.options.hostAs === 'player' ? this.players[0].id : BOARD_ADDRESS;
@@ -97,6 +100,7 @@ export class FakeSession<S> {
     };
     const runtime = new GameRuntime<S>(this.def, this.hostFor(address), init, {
       onError: (code, message) => this.errors.push(`${code}: ${message}`),
+      pluginVersion: this.options.pluginVersion,
     });
     this.runtimes.set(address, runtime);
     this.disconnected.delete(address);

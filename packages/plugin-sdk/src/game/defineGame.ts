@@ -119,7 +119,7 @@ export function startGame<S>(definition: GameDefinition<S>, options: StartOption
       options.connector ?? autoConnector(standaloneConnector({ runtime: manifest.runtime, pluginId: manifest.id, types: manifest.types }));
     const connected = await connector(pluginApi, handshake);
     if (destroyed) return;
-    const connection = { ...connected, host: pacedHost(connected.host, connected.init), declared: manifest.runtime?.protocol };
+    const connection = { ...connected, host: pacedHost(connected.host, connected.init), declared: manifest.runtime?.protocol, pluginVersion: manifest.version };
 
     applyConfig(doc, connection.init.config);
     await resolveAssets(connection.init, connection.host);
@@ -455,7 +455,7 @@ class GameController<S> extends BaseController {
     this.def = def;
     this.saved = { plugin: connection.init.data.plugin ?? null, set: connection.init.data.set ?? null };
     this.progress = { ...connection.init.progress };
-    this.runtime = new GameRuntime<S>(def, connection.host, connection.init);
+    this.runtime = new GameRuntime<S>(def, connection.host, connection.init, { pluginVersion: connection.pluginVersion });
     this.runtime.onChange = () => this.schedule();
     this.runtime.boot();
     this.showPaused(); // joined (or reloaded) during a pause
@@ -780,6 +780,7 @@ function validateDefinition(def: GameDefinition<any>): void {
     problems.push('pickItems.weights must be five numbers ≥ 0 (levels 0–4)');
   }
   if (def.afterRender !== undefined && typeof def.afterRender !== 'function') problems.push('afterRender must be a function (state, ui) => void');
+  if (def.migrate !== undefined && typeof def.migrate !== 'function') problems.push('migrate must be a function (state, info) => void');
   if ((def as { local?: unknown }).local !== undefined) problems.push('local was renamed to localActions');
   if (def.localActions !== undefined) {
     if (!def.localActions || typeof def.localActions !== 'object') problems.push('localActions must be an object of functions (local, payload, ui) => void');

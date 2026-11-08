@@ -162,6 +162,52 @@ describe('multiplayer with a presenter board', () => {
     expect(session.get('ben').state?.phase).toBe('reveal');
   });
 
+  it('migrate: a game saved by an older version continues in the newer one (SDK 1.1)', async () => {
+    const old = new FakeSession(quiz, { pluginVersion: '1.0.0' });
+    old.start();
+    await tick();
+    old.get('anna').dispatch('answer', { answer: 1 });
+    await tick(1000);
+    expect((old.snapshot as any).pluginVersion).toBe('1.0.0');
+
+    const infos: unknown[] = [];
+    const v2: GameDefinition<QuizState & { v?: number; bonus?: Record<string, number> }> = {
+      ...(quiz as any),
+      migrate(state, info) {
+        infos.push(info);
+        if ((state.v ?? 1) < 2) {
+          state.bonus = Object.fromEntries(Object.keys(state.scores).map((id) => [id, 0]));
+          state.v = 2;
+        }
+      },
+    };
+    const next = new FakeSession(v2, { pluginVersion: '2.0.0' });
+    next.snapshot = old.snapshot;
+    next.open('board'); // continued in the newer version
+    await tick();
+    expect(infos).toEqual([{ from: '1.0.0', to: '2.0.0' }]);
+    expect(next.get('board').state).toMatchObject({ v: 2, bonus: { anna: 0 }, scores: { anna: 100 } });
+    expect(next.get('ben').state).toMatchObject({ v: 2 }); // the players get the migrated state
+    await tick(1000);
+    expect(next.snapshot).toMatchObject({ pluginVersion: '2.0.0', state: { v: 2 } }); // saved by the new version
+    await tick(9000); // its timers still run
+    expect(next.get('board').state?.phase).toBe('reveal');
+    expect(next.errors).toEqual([]);
+  });
+
+  it('migrate that throws keeps the saved state and reports MIGRATE_FAILED', async () => {
+    const old = new FakeSession(quiz);
+    old.start();
+    await tick(1000);
+    const broken: GameDefinition<QuizState> = { ...quiz, migrate() { throw new Error('unknown format'); } };
+    const next = new FakeSession(broken, { pluginVersion: '2.0.0' });
+    next.snapshot = old.snapshot;
+    next.open('board');
+    await tick();
+    expect(next.errors.some((e) => e.startsWith('MIGRATE_FAILED') && e.includes('unknown format') && e.includes('an older version'))).toBe(true);
+    expect(next.get('board').state?.phase).toBe('question'); // as saved
+  });
+
   it('a follower that misses an update asks for the full state', async () => {
     const session = new FakeSession(quiz);
     session.start();

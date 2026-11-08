@@ -110,6 +110,7 @@ const game = defineGame({
   playerLeft(state, player, ctx) {},     // optional
   onFinish(state, ctx) {},               // optional: the teacher ends the game from the app (section 4.2)
   pickItems: true,                       // optional: the app picks each player's next question by their progress (ctx.nextItem)
+  migrate(state, info) {},               // optional: read a game saved by an older version (section 4.1, "migrates" in the manifest)
 
   renderWaiting(ui) {},                  // optional: multiplayer screen before the game starts
   renderSettings(settings, ui) {},       // optional: own lobby settings screen ("settingsScreen" in the manifest)
@@ -129,6 +130,7 @@ const game = defineGame({
 
 * **Solo:** the game starts immediately – no lobby, no countdown.
 * **Multiplayer:** the app shows the lobby, waits until the game has loaded on every device, shows a countdown and then calls `initialState`. Until then the SDK shows `renderWaiting(ui)` (or a default "Waiting for the game to start" screen).
+* **Saved games:** the app saves an unfinished game and continues it later – in the same version of your game. To let a saved game continue in a **newer version** after you change the game, keep a version in the state (`v: 1` in `initialState`), add `"migrates": true` to `appSpecific.memizy` and `migrate(state, info)` that upgrades older states: `if ((state.v ?? 1) < 2) { state.bonus = {}; state.v = 2; }`. It runs on every resume, so check `state.v`; throw if you cannot read the state (the game then continues in the old version).
 * **Own lobby settings screen** (only with `"settingsScreen"`): `renderSettings(settings, ui)` returns HTML; inputs with `data-setting="id"` update that setting automatically. `validateSettings(settings)` returns an error text (Start stays disabled) or nothing. `ui.players` shows who has joined so far.
 
 ```js

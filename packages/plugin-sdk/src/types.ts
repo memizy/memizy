@@ -250,6 +250,16 @@ export interface GameDefinition<S = any> {
    * to `actions` (`data-act`).
    */
   localActions?: Record<string, LocalHandler>;
+  /**
+   * Continue a game saved by an older version of this game (SDK 1.1, SPEC 3.3). Runs on the
+   * authority when it resumes from a saved game, before anything else – on every resume, so
+   * check your own state version (`if ((state.v ?? 1) < 2) { …; state.v = 2; }`). Change the
+   * state or return a new one. `info.from` is the `pluginVersion` that saved it (`null` for
+   * games saved before SDK 1.1), `info.to` this version. Throw when you cannot read the state:
+   * the game stays as it was saved and the host continues in the version that saved it.
+   * Declare `"migrates": true` in `appSpecific.memizy` so hosts offer the newer version.
+   */
+  migrate?(state: any, info: { from: string | null; to: string }): void | S;
   playerJoined?(state: S, player: Player, ctx: GameContext): void | S;
   playerLeft?(state: S, player: Player, ctx: GameContext): void | S;
   /**
