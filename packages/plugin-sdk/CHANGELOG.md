@@ -2,7 +2,7 @@
 
 Plugins import `https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1`: every 1.x release reaches them.
 
-## 1.1.0 (unreleased)
+## 1.1.0-rc.1 (unreleased)
 
 * `setChanged` (protocol 1.1, feature `set-changes`, listed by every game): the set of a running instance changes – `ui.items` and `ui.progress` take the new ones, the earlier items stay known (a question on the screen keeps working), and with personal sets the player's queue starts again from the new set. Games that keep item IDs need nothing.
 

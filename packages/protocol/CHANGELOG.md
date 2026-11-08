@@ -2,7 +2,7 @@
 
 The protocol has its own changelog at the end of [SPEC.md](https://github.com/memizy/memizy/blob/main/packages/protocol/SPEC.md#changelog) (protocol 1.0, 2026-10-14). This file lists the releases of the npm package.
 
-## 1.1.0 (unreleased)
+## 1.1.0-rc.1 (unreleased)
 
 * `PluginApi.setChanged` and `SET_CHANGES_FEATURE` (`set-changes`) (SPEC 7, 8.3).
 * Personal sets (SPEC 3.4): manifest `modes.multiplayer.sets`, `PluginRuntime.multiplayer.sets`, `SessionInfo.sets`, `Player.set`.
