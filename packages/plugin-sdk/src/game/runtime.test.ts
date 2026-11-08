@@ -202,6 +202,54 @@ describe('multiplayer with a presenter board', () => {
   });
 });
 
+describe('personal sets (SPEC 3.4)', () => {
+  const personalGame: GameDefinition<{ cur: Record<string, string | null> }> = {
+    initialState: () => ({ cur: {} }),
+    actions: {
+      next(state, _payload, ctx) {
+        state.cur[ctx.playerId!] = ctx.nextItem(ctx.playerId!)?.id ?? null;
+      },
+    },
+    render: () => '',
+  };
+  const queue = (session: FakeSession<any>, id: string) => (session.get('board').state as any).$picks?.[id]?.q as string[] | undefined;
+
+  it("each phone fills its queue at the authority with its own next items", async () => {
+    const session = new FakeSession(personalGame, { personal: true });
+    session.start();
+    await tick();
+    expect(queue(session, 'anna')).toEqual(['q1', 'q2']);
+    session.get('anna').dispatch('next', null);
+    await tick();
+    expect(session.get('board').state!.cur.anna).toBe('q1');
+    expect(queue(session, 'anna')).toHaveLength(2); // refilled after the change
+    expect(queue(session, 'anna')![0]).toBe('q2');
+  });
+
+  it('a phone that is not in its player list yet when the state comes fills its queue once it is (a quiet authority)', async () => {
+    const session = new FakeSession(personalGame, { personal: true });
+    const others = session.players.filter((p) => p.id !== 'anna');
+    session.get('anna').updatePlayers(others); // the list without Anna arrives late on her phone
+    session.start();
+    await tick(5000);
+    expect(queue(session, 'anna')).toBeUndefined();
+    expect(queue(session, 'ben')).toEqual(['q1', 'q2']);
+    session.get('anna').updatePlayers(session.players); // no state change at the authority
+    await tick();
+    expect(queue(session, 'anna')).toEqual(['q1', 'q2']);
+  });
+
+  it('a phone whose items were lost on the way (authority away) sends them again', async () => {
+    const session = new FakeSession(personalGame, { personal: true });
+    session.disconnected.add('board');
+    session.start(); // the board's first state still reaches the phones: only their sends fail
+    await tick();
+    session.disconnected.delete('board');
+    await tick(3000);
+    expect(queue(session, 'anna')).toEqual(['q1', 'q2']);
+  });
+});
+
 describe('host plays along (hostAs: player)', () => {
   it('the host controller is the authority and its own actions have its player id', async () => {
     const session = new FakeSession(quiz, { hostAs: 'player' });

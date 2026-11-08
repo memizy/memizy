@@ -20,6 +20,8 @@ export interface FakeSessionOptions {
   seed?: string;
   /** The secret seed of the game rules the authority gets (`InitPayload.seed`); default: none (the session id). */
   rulesSeed?: string;
+  /** Personal sets (SPEC 3.4): the players' devices pick their own next items (in set order here). */
+  personal?: boolean;
 }
 
 export const sampleItems: OQSEAnyItem[] = [
@@ -39,7 +41,7 @@ export class FakeSession<S> {
   authority: string;
   disconnected = new Set<string>();
   private readonly def: GameDefinition<S>;
-  private readonly options: Required<Omit<FakeSessionOptions, 'seed' | 'rulesSeed'>> & { seed?: string; rulesSeed?: string };
+  private readonly options: Required<Omit<FakeSessionOptions, 'seed' | 'rulesSeed' | 'personal'>> & { seed?: string; rulesSeed?: string; personal?: boolean };
 
   constructor(def: GameDefinition<S>, options: FakeSessionOptions = {}) {
     this.def = def;
@@ -52,6 +54,7 @@ export class FakeSession<S> {
       settings: options.settings ?? {},
       seed: options.seed,
       rulesSeed: options.rulesSeed,
+      personal: options.personal,
     };
     this.players = this.options.players.map((id, i) => ({ id, name: id, isHost: this.options.hostAs === 'player' && i === 0, connected: true }));
     this.authority = this.options.mode === 'solo' || this.options.hostAs === 'player' ? this.players[0].id : BOARD_ADDRESS;
@@ -76,6 +79,7 @@ export class FakeSession<S> {
         self: address,
         authority: this.authority,
         lateJoin,
+        ...(this.options.personal && { sets: 'personal' as const }),
       },
       players: this.players,
       // Like a real host (SPEC 4.4): answers only for the authority and in solo.
@@ -143,6 +147,10 @@ export class FakeSession<S> {
       end: async (result) => { this.results.push(structuredClone(result)); },
       reportError: async (error) => { this.errors.push(`${error.code}: ${error.message}`); },
       service: async (name) => { throw new ProtocolError('SERVICE_UNAVAILABLE', `No service "${name}" in tests.`); },
+      ...(this.options.personal && address !== this.authority && {
+        pickItems: async (request: { count: number; exclude?: string[] }) =>
+          this.options.items.map((i) => i.id).filter((id) => !request.exclude?.includes(id)).slice(0, request.count),
+      }),
     };
   }
 }

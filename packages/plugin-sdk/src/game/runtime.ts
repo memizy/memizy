@@ -286,9 +286,15 @@ export class GameRuntime<S = unknown> {
    * their own next items (chosen here by their progress) – the authority has no items.
    */
   private refillOwnPicks(): void {
+    if (!this.personal || this.isAuthority || this.ended || typeof this.host.pickItems !== 'function') return;
     const self = this.selfPlayerId();
-    if (!this.personal || this.isAuthority || !self || this.state === undefined || this.ended || this.ownPicksPending || this.version === this.ownPicksAt) return;
-    if (typeof this.host.pickItems !== 'function') return;
+    if (!self || this.state === undefined || !this.authorityConnected || this.paused) {
+      // Not ready yet (this player not in the list, no state, the authority away or paused):
+      // the authority may stay quiet, so no state change would bring us back – try again later.
+      this.retryOwnPicks(1000);
+      return;
+    }
+    if (this.ownPicksPending || this.version === this.ownPicksAt) return;
     const queue = ((this.state as { $picks?: Record<string, { q?: string[] }> }).$picks?.[self]?.q ?? []) as string[];
     const count = this.picksAhead - queue.length;
     if (count <= 0) return;
@@ -616,6 +622,7 @@ export class GameRuntime<S = unknown> {
       this.scheduleSnapshot();
     }
     this.onChange();
+    this.refillOwnPicks();
   }
 
   /** `PluginApi.finishRequested`: the game's `onFinish` on the authority (also while paused). */
@@ -630,6 +637,7 @@ export class GameRuntime<S = unknown> {
     this.authorityConnected = connected;
     if (connected) this.sendToAuthority({ t: 'sync' });
     this.onChange();
+    if (connected) this.refillOwnPicks();
   }
 
   private selfPlayerId(): string | null {
