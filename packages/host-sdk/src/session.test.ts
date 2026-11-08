@@ -206,6 +206,50 @@ describe('display order and hidden answers (SPEC 4.4)', () => {
     expect(anna2.root.querySelector('.answer')!.textContent).toBe(full.correctId);
   });
 
+  it('a revealed item keeps the media this device loaded, never another device’s object URLs', async () => {
+    const original = URL.createObjectURL;
+    let n = 0;
+    URL.createObjectURL = () => `blob:null/url-${++n}`; // jsdom has no object URLs; each call is a new one
+    try {
+      const set = loadOQSEFile({
+        version: '1.0',
+        meta: { id: id(0), language: 'cs', title: 'Package', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+        items: [{
+          id: id(10), type: 'mcq-single', question: 'Kdo štěká? <asset:pic />', options: [{ id: 'x', text: 'kočka' }, { id: 'y', text: 'pes' }], correctId: 'y',
+          explanation: 'Takhle: <asset:back />',
+          assets: { pic: { type: 'image', value: 'media/pic.png', altText: 'Zvíře' }, back: { type: 'image', value: 'media/back.png', altText: 'Pes' } },
+        }],
+      }).data as OQSEFile;
+      const { session } = newSession({ set, loadAsset: async (key) => new Blob([key], { type: 'image/png' }) });
+      const def: Omit<GameDefinition<{}>, 'root'> = {
+        initialState: () => ({}),
+        actions: { show(_s, _p, ctx) { ctx.reveal(ctx.items[0].id); } },
+        render: (_s, ui) => {
+          const item = ui.item(ui.items[0].id) as any;
+          return `<p class="pic">${item.assets?.pic?.value ?? '-'}</p><p class="back">${item.assets?.back?.value ?? '-'}</p><p class="answer">${item.answerHidden ? 'hidden' : item.correctId}</p><button data-act="show">s</button>`;
+        },
+      };
+      const board = play(session, 'board', def);
+      const anna = play(session, 'anna', def);
+      await Promise.all(games.map((g) => g.ready));
+      await session.start();
+      await wait(150);
+      const annaPic = anna.root.querySelector('.pic')!.textContent!;
+      expect(annaPic).toMatch(/^blob:/);
+      expect(board.root.querySelector('.pic')!.textContent).not.toBe(annaPic); // each device has its own URL
+      expect(board.root.querySelector('.back')!.textContent).toMatch(/^blob:/);
+      expect(anna.root.querySelector('.back')!.textContent).toBe('-'); // hidden media never reach a player
+
+      (anna.root.querySelector('button') as HTMLButtonElement).click();
+      await wait(150);
+      expect(anna.root.querySelector('.answer')!.textContent).toBe('y');
+      expect(anna.root.querySelector('.pic')!.textContent).toBe(annaPic); // still this device's picture
+      expect(anna.root.querySelector('.back')!.textContent).toBe('-'); // not the board's URL, which would not load here
+    } finally {
+      URL.createObjectURL = original;
+    }
+  });
+
   it('the order depends on the seed; solo gets the answers', () => {
     const orders = new Set(['a', 'b', 'c', 'd', 'e', 'f'].map((seed) => JSON.stringify((newSession({ shuffleSeed: seed }).session.prepared.set.items[0] as any).options)));
     expect(orders.size).toBe(2); // two options: both orders occur

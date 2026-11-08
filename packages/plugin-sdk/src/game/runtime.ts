@@ -289,9 +289,10 @@ export class GameRuntime<S = unknown> {
   /** Items with their answers, received from the authority. */
   private addItems(items: OQSEAnyItem[]): void {
     const list = this.init.set.items as OQSEAnyItem[];
-    for (const item of items) {
-      if (!item || typeof item.id !== 'string' || !this.itemsById.has(item.id)) continue;
-      if (!this.publicCopies.has(item.id)) this.publicCopies.set(item.id, this.itemsById.get(item.id)!);
+    for (const received of items) {
+      if (!received || typeof received.id !== 'string' || !this.itemsById.has(received.id)) continue;
+      if (!this.publicCopies.has(received.id)) this.publicCopies.set(received.id, this.itemsById.get(received.id)!);
+      const item = withOwnMedia(received, this.publicCopies.get(received.id)!);
       this.itemsById.set(item.id, item);
       const index = list.findIndex((i) => i.id === item.id);
       if (index !== -1) list[index] = item;
@@ -1020,4 +1021,21 @@ function hasPrototypeKey(value: unknown, depth = 0): boolean {
   if (value === null || typeof value !== 'object' || depth > 64) return false;
   if (Array.isArray(value)) return value.some((entry) => hasPrototypeKey(entry, depth + 1));
   return Object.keys(value).some((key) => key === '__proto__' || hasPrototypeKey((value as Record<string, unknown>)[key], depth + 1));
+}
+
+/**
+ * A revealed item's media as this device can show them. Media from a set package reach a game
+ * as object URLs of its own document, so the authority's URLs do not work here: the public
+ * media keep this device's copies; media only hidden fields use (an explanation, the back of a
+ * card) were never given to this device and are left out.
+ */
+function withOwnMedia(item: OQSEAnyItem, own: OQSEAnyItem): OQSEAnyItem {
+  if (!item.assets) return item;
+  const assets: NonNullable<OQSEAnyItem['assets']> = {};
+  for (const [key, media] of Object.entries(item.assets)) {
+    const mine = own.assets?.[key];
+    if (mine) assets[key] = mine;
+    else if (media && typeof media.value === 'string' && !/^blob:/i.test(media.value)) assets[key] = media;
+  }
+  return { ...item, assets } as OQSEAnyItem;
 }
