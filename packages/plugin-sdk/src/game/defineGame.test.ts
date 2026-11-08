@@ -4,6 +4,7 @@ import { startGame, type GameHandle } from './defineGame';
 import { checkAnswer } from '../checkAnswer';
 import { LocalRouter, wait } from '../test/localRouter';
 import type { GameDefinition } from '../types';
+import type { Connector } from '../connection/connect';
 
 const items = [
   { id: 'q1', type: 'mcq-single', question: 'Hlavní město **Česka**?', options: [{ id: 'brno', text: 'Brno' }, { id: 'praha', text: 'Praha' }], correctId: 'praha' },
@@ -480,6 +481,27 @@ describe('defineGame end to end', () => {
     input.value = '500';
     input.dispatchEvent(new Event('input', { bubbles: true }));
     expect(router.settingsUpdates.at(-1)).toMatchObject({ valid: false, message: 'questionTime: must be at most 120' });
+  });
+
+  it('shows "Starting the game…" while it looks for the host, but never over the game’s own page', async () => {
+    let connect!: () => void;
+    const router = new LocalRouter({ items, mode: 'solo' });
+    const slow: Connector = (pluginApi, handshake) => new Promise((resolve) => (connect = () => resolve(router.connector('me')(pluginApi, handshake))));
+    const empty = document.createElement('div');
+    document.body.appendChild(empty);
+    handles.push(startGame({ ...quiz, root: empty }, { connector: slow }));
+    const own = document.createElement('div');
+    own.innerHTML = '<canvas id="scene"></canvas>';
+    document.body.appendChild(own);
+    handles.push(startGame({ ...quiz, root: own, render: () => '<canvas id="scene"></canvas><p>hud</p>' }, { connector: () => new Promise(() => {}) }));
+    await wait(20);
+    expect(empty.textContent).toBe('Starting the game…'); // jsdom's language is English
+    expect(own.innerHTML).toBe('<canvas id="scene"></canvas>');
+    connect();
+    await handles[0].ready;
+    await router.start();
+    await wait(40);
+    expect(empty.textContent).not.toContain('Starting');
   });
 
   it('rejects an invalid definition with a clear message', async () => {

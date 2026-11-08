@@ -92,6 +92,10 @@ export function startGame<S>(definition: GameDefinition<S>, options: StartOption
     allowZoom = preventZoom(doc);
     unguardLinks = guardLinks(doc);
 
+    // Something on the screen at once: finding the host can take seconds (up to the hello
+    // deadline in another site's preview), and an empty root would look broken meanwhile.
+    if (!root.firstElementChild && !root.textContent?.trim()) root.innerHTML = defaultStarting(doc.defaultView?.navigator.language ?? 'en');
+
     const manifest = readManifest(doc);
     const handshake: Handshake = {
       protocol: PROTOCOL_VERSION,
@@ -722,6 +726,10 @@ function findMedia(key: string, item: OQSEAnyItem | undefined, init: InitPayload
     if (media) return media;
   }
   return undefined;
+}
+
+function defaultStarting(locale: string): string {
+  return `<div class="mz-waiting mz-starting">${locale.toLowerCase().startsWith('cs') ? 'Spouštím hru…' : 'Starting the game…'}</div>`;
 }
 
 function defaultWaiting(locale: string): string {
