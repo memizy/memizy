@@ -332,7 +332,8 @@ ui.question(item, {
   action: 'answer',                     // default
   payload: { crate: 'ammo' },           // optional extra fields (itemId and answer are always there)
   chosen: mine?.answer,                 // the player's answer from the state: marked, controls locked
-  reveal: state.phase === 'reveal',     // mark right / wrong (after ctx.reveal)
+  reveal: state.phase === 'reveal',     // show the right answer and the explanation (after ctx.reveal)
+  explanation: true,                    // with reveal: the item's explanation (false = only the answer)
   disabled: ui.view === 'board',        // e.g. the board only shows the question
   counts: state.phase === 'reveal' ? votes : undefined,   // { optionId: n } – how many chose it (a badge)
   showQuestion: true,                   // false = only the controls
@@ -341,6 +342,7 @@ ui.question(item, {
 ```
 
 * An answer on the way is shown by the SDK itself; pass `chosen` once it is in the state.
+* **`reveal` shows the right answer for every type**: chosen options marked right / wrong, the right text or number (with its tolerance and unit), the right order (timeline with dates), each pair, category or blank marked with the right one where it was wrong, matrix cells, the right areas on a picture, a sample answer of an open question; then the item's explanation (and the feedback of a wrong answer). Keep `reveal` on as long as the player should see it; `explanation: false` keeps only the answer. In multiplayer a player's device has the answer only after `ctx.reveal(itemId, { to: playerId })`.
 * What the player picked or typed but has not sent stays on the device for that item, also when the game hides the question and draws it again later (a card put aside); sending the answer forgets it.
 * The options are shown in the order of the item (true before false); `counts` keys are option ids (`true` / `false` for true-false).
 * **Styling** – only these hooks are stable: the CSS variables `--mz-q-accent`, `--mz-q-bg`, `--mz-q-fg`, `--mz-q-border`, `--mz-q-radius`, `--mz-q-gap`, `--mz-q-right`, `--mz-q-wrong`, `--mz-q-count-bg` (set them on a parent); the root `.mz-q` with `data-mz-type="<item type>"`; `.mz-q-question`, `.mz-q-options` (for choices and true/false its children are in the order of the options), every option `.mz-q-opt` with `data-mz-option="<id>"` and `--mz-q-index`; `.mz-q-submit`; the states `.mz-q-chosen`, `.mz-q-right`, `.mz-q-wrong`. Other classes may change.

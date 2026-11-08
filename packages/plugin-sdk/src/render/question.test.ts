@@ -204,7 +204,7 @@ describe('ui.question', () => {
     expect((rootOf(23).querySelector('input[name="answer"]') as HTMLInputElement).value).toBe('3,1');
     expect((rootOf(24).querySelector('input[type="range"]') as HTMLInputElement).value).toBe('6');
 
-    // Sending the answer forgets the typed text: the next time the field starts empty.
+    // Once sent, the answer replaces the field; the other questions keep their typed text.
     typeInto(rootOf(20).querySelector('input[name="answer"]'), 'Praha');
     await click(rootOf(20).querySelector('.mz-q-submit'));
     await wait(60);
@@ -213,7 +213,8 @@ describe('ui.question', () => {
     await wait(40);
     await handles[0].act('crisis', false);
     await wait(60);
-    expect((rootOf(20).querySelector('input[name="answer"]') as HTMLInputElement).value).toBe('');
+    expect(rootOf(20).querySelector('input[name="answer"]')).toBeNull();
+    expect(rootOf(20).querySelector('.mz-q-given')?.textContent).toBe('Praha');
     expect((rootOf(21).querySelector('textarea') as HTMLTextAreaElement).value).toBe('Dlouhá odpověď\n<b>s HTML</b> & "uvozovkami"');
   });
 
@@ -273,5 +274,83 @@ describe('ui.question counts', () => {
     expect([...tf.querySelectorAll('.mz-q-count')].map((e) => e.textContent)).toEqual(['3', '0']);
     const multi = html({ id: id(22), type: 'mcq-multi', question: 'Q', options: ch('a', 'b'), correctIds: ['a'] } as OQSEAnyItem, { b: 1 });
     expect([...multi.querySelectorAll('.mz-q-count')].map((e) => e.textContent)).toEqual(['0', '1']);
+  });
+});
+
+describe('ui.question reveal: the right answer for every type', () => {
+  // Like ui.text for these tests: blanks become the placeholders the controls replace.
+  const qc = { text: (s: string | null | undefined) => String(s ?? '').replace(/<blank:(\w+) \/>/g, '<span class="mz-blank" data-mz-blank="$1"></span>'), local: {}, locale: 'cs' };
+  const shown = (item: OQSEAnyItem, chosen: unknown, extra: Record<string, unknown> = {}) => {
+    const div = document.createElement('div');
+    div.innerHTML = renderQuestion(item, { chosen, reveal: true, ...extra }, qc);
+    return div;
+  };
+  const solution = (div: HTMLElement) => div.querySelector('.mz-q-solution')?.textContent?.replace(/\s+/g, ' ').trim();
+
+  it('typed answers: the right text, the number with its tolerance and unit; the given answer marked', () => {
+    const short = shown({ id: id(40), type: 'short-answer', question: 'Q', correctAnswers: ['Praha', 'Prague', 'Hlavní město'], explanation: 'Leží na Vltavě.' } as OQSEAnyItem, 'Brno');
+    expect(solution(short)).toBe('Správně: Praha (také Prague, Hlavní město)');
+    expect(short.querySelector('.mz-q-given')!.className).toContain('mz-q-wrong');
+    expect(short.querySelector('.mz-q-explanation')!.textContent).toBe('Leží na Vltavě.');
+    const num = shown({ id: id(41), type: 'numeric-input', question: 'Q', correctAnswer: 9.81, tolerance: 0.05, unit: 'm/s²' } as OQSEAnyItem, '9');
+    expect(solution(num)).toBe('Správně: 9,81 ± 0,05 m/s²');
+    const ok = shown({ id: id(42), type: 'numeric-input', question: 'Q', correctAnswer: 3 } as OQSEAnyItem, '3');
+    expect(ok.querySelector('.mz-q-given')!.className).toContain('mz-q-right');
+    const open = shown({ id: id(43), type: 'open-ended', question: 'Q', sampleAnswer: 'Protože…' } as OQSEAnyItem, 'Nevím');
+    expect(solution(open)).toBe('Ukázková odpověď: Protože…');
+  });
+
+  it('sorting and timelines: the given order marked, the right order (with dates) when wrong', () => {
+    const sort = shown({ id: id(44), type: 'sort-items', question: 'Q', items: ch('x', 'y', 'z'), correctOrder: ['z', 'x', 'y'] } as OQSEAnyItem, ['z', 'y', 'x']);
+    expect([...sort.querySelectorAll('.mz-q-order .mz-q-opt')].map((b) => b.className.includes('mz-q-right'))).toEqual([true, false, false]);
+    expect([...sort.querySelectorAll('.mz-q-right-order li')].map((li) => li.textContent)).toEqual(['Z', 'X', 'Y']);
+    expect(sort.querySelector('.mz-q-submit')).toBeNull(); // answered: no controls to send again
+    const events = [{ id: 'b', text: 'Apollo 11', date: '1969-07-20' }, { id: 'a', text: 'Gagarin', date: '1961-04-12' }, { id: 'c', text: 'Ramesse', date: '-1279-01-01', precision: 'year' }];
+    const tl = shown({ id: id(45), type: 'timeline', question: 'Q', events } as OQSEAnyItem, ['a', 'c', 'b']);
+    expect([...tl.querySelectorAll('.mz-q-right-order li')].map((li) => li.textContent)).toEqual(['Ramesse 1279 př. n. l.', 'Gagarin 12. 4. 1961', 'Apollo 11 20. 7. 1969']);
+    const right = shown({ id: id(46), type: 'timeline', question: 'Q', events } as OQSEAnyItem, ['c', 'a', 'b']);
+    expect(right.querySelector('.mz-q-solution')).toBeNull();
+  });
+
+  it('pairs, categories, blanks: each row marked, a wrong one shows the right choice', () => {
+    const pairs = shown({ id: id(47), type: 'match-pairs', prompts: ch('cz', 'sk'), matches: ch('praha', 'bratislava'), pairs: { cz: 'praha', sk: 'bratislava' } } as OQSEAnyItem, { cz: 'bratislava', sk: 'bratislava' });
+    const rows = [...pairs.querySelectorAll('.mz-q-pair')];
+    expect(rows.map((r) => r.className.includes('mz-q-right'))).toEqual([false, true]);
+    expect(rows[0].querySelector('.mz-q-fix')!.textContent).toBe('PRAHA');
+    expect((rows[0].querySelector('select') as HTMLSelectElement).value).toBe('bratislava'); // the given answer stays visible
+    const cat = shown({ id: id(48), type: 'categorize', question: 'Q', categories: ch('m', 'b'), items: [{ id: 'dog', text: 'Pes', correctCategoryId: 'm' }] } as OQSEAnyItem, { dog: 'b' });
+    expect(cat.querySelector('.mz-q-fix')!.textContent).toBe('M');
+    const sel = shown({ id: id(49), type: 'fill-in-select', text: 'Praha je <blank:t />.', blanks: { t: { options: ch('mesto', 'reka'), correctId: 'mesto' } } } as OQSEAnyItem, { t: 'reka' });
+    expect(sel.querySelector('select')!.className).toContain('mz-q-wrong');
+    expect(sel.querySelector('.mz-q-fix')!.textContent).toBe('MESTO');
+    const blanks = shown({ id: id(50), type: 'fill-in-blanks', text: 'Voda je <blank:a /> a <blank:b />.', blanks: { a: ['H2O'], b: ['kapalina'] } } as OQSEAnyItem, { a: 'h2o', b: 'plyn' });
+    const inputs = [...blanks.querySelectorAll<HTMLInputElement>('input[data-mz-q-blank]')];
+    expect(inputs.map((i) => [i.value, i.className.includes('mz-q-right')])).toEqual([['h2o', true], ['plyn', false]]);
+    expect(blanks.querySelector('.mz-q-fix')!.textContent).toBe('kapalina');
+  });
+
+  it('matrix, slider and pins: right, wrong and missed cells; the right value; the right areas', () => {
+    const matrix = shown({ id: id(51), type: 'matrix', question: 'Q', rows: ch('r1', 'r2'), columns: ch('c1', 'c2'), correctCells: [['r1', 'c2'], ['r2', 'c1']], multiplePerRow: false } as OQSEAnyItem, [['r1', 'c2'], ['r2', 'c2']]);
+    const cells = [...matrix.querySelectorAll('.mz-q-cell')].map((c) => (c.className.match(/mz-q-(right|wrong|missed)/) ?? [''])[0]);
+    expect(cells).toEqual(['', 'mz-q-right', 'mz-q-missed', 'mz-q-wrong']);
+    const slider = shown({ id: id(52), type: 'slider', question: 'Q', min: 0, max: 100, step: 1, correctAnswer: 42, tolerance: 2, unit: '%' } as OQSEAnyItem, 30);
+    expect(solution(slider)).toBe('Správně: 42 ± 2 %');
+    expect((slider.querySelector('input[type="range"]') as HTMLInputElement).value).toBe('30');
+    const pin = shown({ id: id(53), type: 'pin-on-image', question: 'Q', targetAsset: 'map', hotspots: [{ type: 'circle', x: 50, y: 50, radius: 10 }, { type: 'rect', x: 0, y: 0, width: 10, height: 20 }] } as OQSEAnyItem, { x: 90, y: 90 });
+    expect(pin.querySelectorAll('.mz-q-hotspot')).toHaveLength(2);
+    expect(pin.querySelector('.mz-q-pin')!.className).toContain('mz-q-wrong');
+  });
+
+  it('the explanation: of the item, of the chosen choice, feedback of a wrong answer; games can hide it', () => {
+    const item = { id: id(54), type: 'mcq-single', question: 'Q', options: [{ id: 'a', text: 'A', explanation: 'A je past.' }, { id: 'b', text: 'B' }], correctId: 'b', explanation: 'Protože B.', incorrectFeedback: 'Skoro.' } as OQSEAnyItem;
+    expect(shown(item, 'a').querySelector('.mz-q-explanation')!.textContent).toBe('Skoro.A je past.Protože B.');
+    expect(shown(item, 'b').querySelector('.mz-q-explanation')!.textContent).toBe('Protože B.');
+    expect(shown(item, 'a', { explanation: false }).querySelector('.mz-q-explanation')).toBeNull();
+    // Without reveal nothing of it, and an item without its answer never shows it.
+    const div = document.createElement('div');
+    div.innerHTML = renderQuestion(item, { chosen: 'a' }, qc);
+    expect(div.querySelector('.mz-q-explanation, .mz-q-solution')).toBeNull();
+    const hidden = { ...item, answerHidden: true } as OQSEAnyItem;
+    expect(shown(hidden, 'a').querySelector('.mz-q-explanation, .mz-q-solution, .mz-q-right')).toBeNull();
   });
 });

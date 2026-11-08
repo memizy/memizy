@@ -56,6 +56,19 @@ textarea.mz-q-input{flex-basis:100%;resize:vertical}
 .mz-q-front,.mz-q-back{padding:16px;border-radius:var(--mz-q-radius);background:var(--mz-q-bg);border:2px solid var(--mz-q-border)}
 .mz-no3d{display:grid;place-items:center;height:100%;min-height:120px;padding:16px;text-align:center;font:600 1.05rem/1.4 system-ui,sans-serif;opacity:.8}
 .mz-q-given{font-weight:700}.mz-q-unit{opacity:.7}.mz-q-unsupported{opacity:.7;font-style:italic}
+.mz-q-given.mz-q-right,.mz-q-given.mz-q-wrong,.mz-q-pair.mz-q-right,.mz-q-pair.mz-q-wrong,.mz-q-value.mz-q-right,.mz-q-value.mz-q-wrong{border:2px solid;border-radius:var(--mz-q-radius);padding:6px 10px}
+.mz-q-given.mz-q-right,.mz-q-pair.mz-q-right,.mz-q-value.mz-q-right{border-color:var(--mz-q-right)}.mz-q-given.mz-q-wrong,.mz-q-pair.mz-q-wrong,.mz-q-value.mz-q-wrong{border-color:var(--mz-q-wrong)}
+.mz-q-input.mz-q-right,.mz-q-select.mz-q-right{border-color:var(--mz-q-right);box-shadow:0 0 0 2px var(--mz-q-right)}.mz-q-input.mz-q-wrong,.mz-q-select.mz-q-wrong{border-color:var(--mz-q-wrong);box-shadow:0 0 0 2px var(--mz-q-wrong)}
+.mz-q-cell.mz-q-missed{border-color:var(--mz-q-right);border-style:dashed}
+.mz-q-pair .mz-q-fix{grid-column:2}
+.mz-q-fix{color:var(--mz-q-right);font-weight:700;margin-left:6px}
+.mz-q-solution{padding:8px 12px;border-left:4px solid var(--mz-q-right);background:color-mix(in srgb,var(--mz-q-right) 10%,transparent);border-radius:6px}
+.mz-q-solution-label{font-weight:700;color:var(--mz-q-right);margin-right:4px}.mz-q-also{opacity:.75}
+.mz-q-right-order{margin:4px 0 0;padding-left:1.6em}.mz-q-date{opacity:.7;font-size:.9em;margin-left:6px}
+.mz-q-explanation p{margin:.35em 0}.mz-q-explanation{padding:8px 12px;border-left:4px solid var(--mz-q-accent);background:var(--mz-q-bg);border-radius:6px;line-height:1.45}
+.mz-q-hotspot{position:absolute;border:3px solid var(--mz-q-right);background:color-mix(in srgb,var(--mz-q-right) 18%,transparent);border-radius:4px;pointer-events:none}.mz-q-hotspot-circle{border-radius:50%}
+.mz-q-hotspot-svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}.mz-q-hotspot-svg polygon{fill:color-mix(in srgb,var(--mz-q-right) 18%,transparent);stroke:var(--mz-q-right);stroke-width:.6;vector-effect:non-scaling-stroke}
+.mz-q-pin.mz-q-wrong{background:var(--mz-q-wrong)}.mz-q-pin.mz-q-right{background:var(--mz-q-right)}
 `;
 
 export function injectStyles(doc: Document): void {

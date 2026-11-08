@@ -1,6 +1,6 @@
 {
   "name": "@memizy/plugin-sdk",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Build Memizy learning games (solo and multiplayer) in a single HTML file.",
   "type": "module",
   "main": "./dist/memizy-sdk.cjs",
