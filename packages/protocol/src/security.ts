@@ -44,9 +44,12 @@ export function pluginContentPolicy(runtime: Pick<PluginRuntime, 'permissions'> 
   ].join('; ');
 }
 
-/** The iframe `allow` attribute for the declared devices (empty when none). */
+/**
+ * The iframe `allow` attribute (SPEC 8.4): writing to the clipboard (protocol 1.1; the browser
+ * still allows it only after a tap) and the declared devices.
+ */
 export function pluginAllowAttribute(runtime: Pick<PluginRuntime, 'permissions'> | null): string {
-  return (runtime?.permissions.devices ?? []).map((device) => `${device} *`).join('; ');
+  return ['clipboard-write *', ...(runtime?.permissions.devices ?? []).map((device) => `${device} *`)].join('; ');
 }
 
 /** Puts the policy into the plugin HTML as the first element of `<head>` (before any script). */

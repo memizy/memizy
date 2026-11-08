@@ -619,12 +619,12 @@ describe('services and permissions', () => {
     const frame = createPluginFrame(plugin.html, 'x', {} as HostApi);
     frame.plugin.catch(() => {}); // no plugin runs in jsdom
     container.appendChild(frame.iframe);
-    expect(frame.iframe.getAttribute('allow')).toBe('microphone *');
+    expect(frame.iframe.getAttribute('allow')).toBe('clipboard-write *; microphone *');
     expect(frame.iframe.srcdoc).toMatch(/<head><meta http-equiv="Content-Security-Policy" content="[^"]*connect-src [^"]*https:\/\/lichess\.org/);
     const plain = createPluginFrame(pluginHtml, 'y', {} as HostApi);
     plain.plugin.catch(() => {});
     container.appendChild(plain.iframe);
-    expect(plain.iframe.hasAttribute('allow')).toBe(false);
+    expect(plain.iframe.getAttribute('allow')).toBe('clipboard-write *'); // protocol 1.1: copying after a tap
     expect(plain.iframe.srcdoc).not.toContain('lichess');
     frame.destroy();
     plain.destroy();
@@ -794,7 +794,7 @@ describe('sandbox', () => {
     expect(PLUGIN_SANDBOX).not.toContain('allow-same-origin');
     expect(PLUGIN_SANDBOX).not.toContain('allow-top-navigation');
     // Links open in a new tab that is a normal page (SPEC 8.4).
-    expect(PLUGIN_SANDBOX.split(' ')).toEqual(expect.arrayContaining(['allow-popups', 'allow-popups-to-escape-sandbox']));
+    expect(PLUGIN_SANDBOX.split(' ')).toEqual(expect.arrayContaining(['allow-popups', 'allow-popups-to-escape-sandbox', 'allow-downloads']));
   });
 });
 

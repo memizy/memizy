@@ -40,6 +40,7 @@ import { bindEvents } from '../render/events';
 import { injectStyles } from '../render/styles';
 import { preventZoom } from '../render/noZoom';
 import { guardLinks } from '../render/links';
+import { copyToClipboard, downloadFile } from '../render/files';
 import { enhance } from '../text/enhance';
 import { escapeHtml, isMediaUrl, renderNoteHtml, renderRichText, type RichTextContext } from '../text/richText';
 import type { GameDefinition, GameUI, RenderResult, SavedData } from '../types';
@@ -348,6 +349,11 @@ abstract class BaseController implements Controller {
   /** Runs after each render (`afterRender` of the game definition). */
   protected afterRender(): void {}
 
+  /** Whether the host's frame allows downloads and the clipboard (protocol 1.1, SPEC 8.4). */
+  private filesAllowed(): boolean {
+    return compareProtocolVersions(this.init.protocol, '1.1') >= 0;
+  }
+
   /** `ui.redrawIn(ms)`: one more render after `ms` (the earliest of several requests wins). */
   protected redrawIn(ms: number): void {
     if (typeof ms !== 'number' || !Number.isFinite(ms)) return;
@@ -396,6 +402,9 @@ abstract class BaseController implements Controller {
         this.schedule();
       },
       redrawIn: (ms) => this.redrawIn(ms),
+      // Protocol 1.1 hosts allow downloads and the clipboard in the frame (SPEC 8.4).
+      download: (fileName, content, type) => downloadFile(fileName, content, { type, direct: this.filesAllowed(), locale: this.init.config.locale }),
+      copy: (text, html) => copyToClipboard(text, html, { direct: this.filesAllowed() }),
       text: (markdown, options) => rawHtml(renderRichText(markdown, this.textContext((options as { item?: OQSEAnyItem } | undefined)?.item), options)),
       note: (note: NoteItem, options) => rawHtml(renderNoteHtml(note, this.textContext(note), options)),
       html: safeHtml,

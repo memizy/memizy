@@ -48,8 +48,8 @@ describe('content policy of the plugin iframe', () => {
   });
 
   it('allows only the declared devices', () => {
-    expect(pluginAllowAttribute(runtime)).toBe('camera *; microphone *');
-    expect(pluginAllowAttribute(null)).toBe('');
+    expect(pluginAllowAttribute(runtime)).toBe('clipboard-write *; camera *; microphone *');
+    expect(pluginAllowAttribute(null)).toBe('clipboard-write *'); // protocol 1.1: every game may copy after a tap
   });
 
   it('puts the policy before every script', () => {

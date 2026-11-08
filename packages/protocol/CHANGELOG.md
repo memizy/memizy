@@ -4,6 +4,8 @@ The protocol has its own changelog at the end of [SPEC.md](https://github.com/me
 
 ## 1.1.0-rc.2 (unreleased)
 
+* SPEC 8.4: hosts allow downloads and writing to the clipboard in the plugin frame (protocol 1.1); `pluginAllowAttribute` always grants `clipboard-write`.
+
 ## 1.1.0-rc.1 (2026-11-08)
 
 * `PluginApi.setChanged` and `SET_CHANGES_FEATURE` (`set-changes`) (SPEC 7, 8.3).

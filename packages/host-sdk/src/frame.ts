@@ -21,13 +21,13 @@ import {
 } from '@memizy/protocol/internal';
 import type { LocalSession, SessionInstance } from './session';
 
-/** Never add `allow-same-origin`: the plugin must not reach the app's origin. */
 /**
- * The iframe sandbox: never `allow-same-origin` (no storage, no access to the host) and
- * never `allow-top-navigation` (a game cannot replace the host's page). Popups may escape
- * the sandbox, so a link the SDK opens in a new tab is a normal page.
+ * The iframe sandbox (SPEC 8.4): never `allow-same-origin` (no storage, no access to the host)
+ * and never `allow-top-navigation` (a game cannot replace the host's page). Popups may escape
+ * the sandbox, so a link the SDK opens in a new tab is a normal page. Downloads are allowed
+ * (protocol 1.1: `ui.download`, e.g. results for the teacher).
  */
-export const PLUGIN_SANDBOX = 'allow-scripts allow-forms allow-modals allow-pointer-lock allow-popups allow-popups-to-escape-sandbox';
+export const PLUGIN_SANDBOX = 'allow-scripts allow-forms allow-modals allow-pointer-lock allow-popups allow-popups-to-escape-sandbox allow-downloads';
 
 export interface MountOptions {
   /** Text overrides (default: Czech or English by the session locale). */
@@ -79,8 +79,7 @@ export function createPluginFrame(html: string, title: string, hostApi: HostApi,
   iframe.style.cssText = 'width:100%;height:100%;border:0;display:block;touch-action:manipulation;touch-action:pan-x pan-y;';
   const parsed = readPluginManifestFromHtml(html);
   const runtime = parsed.success ? parsed.runtime : null;
-  const allow = pluginAllowAttribute(runtime);
-  if (allow) iframe.setAttribute('allow', allow);
+  iframe.setAttribute('allow', pluginAllowAttribute(runtime));
   const origin = doc.defaultView?.location?.origin ?? null;
   iframe.srcdoc = injectContentPolicy(html, pluginContentPolicy(runtime, origin));
   let connection: ReturnType<typeof connect<PluginApi & Record<string, any>>> | null = null;

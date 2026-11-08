@@ -3,8 +3,9 @@
  * replace the game with the linked page (and the game would be gone for this player),
  * so every click on an `http(s):` / `mailto:` link – in Rich Content or written by the
  * game itself – opens a new tab instead (the host's sandbox allows popups that escape
- * it). In-page links (`#…`) and links the game handles itself (`preventDefault`) are
- * left alone; other links (relative ones, which point nowhere in an iframe) do nothing.
+ * it). In-page links (`#…`), downloads (`<a download>`: they do not leave the page; protocol
+ * 1.1 hosts allow them) and links the game handles itself (`preventDefault`) are left alone;
+ * other links (relative ones, which point nowhere in an iframe) do nothing.
  */
 
 const OPEN_PROTOCOLS = new Set(['http:', 'https:', 'mailto:']);
@@ -16,7 +17,7 @@ export function guardLinks(doc: Document = document): () => void {
     const anchor = (event.target as Element | null)?.closest?.('a[href]') as HTMLAnchorElement | null;
     if (!anchor) return;
     const href = anchor.getAttribute('href')?.trim() ?? '';
-    if (href.startsWith('#') || /^javascript:/i.test(href)) return;
+    if (href.startsWith('#') || /^javascript:/i.test(href) || anchor.hasAttribute('download')) return;
     event.preventDefault();
     let url: URL;
     try {

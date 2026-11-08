@@ -2,6 +2,8 @@
 
 ## 1.1.0-rc.2 (unreleased)
 
+* Plugin frames allow downloads (`allow-downloads`) and writing to the clipboard (`allow="clipboard-write *"`), SPEC 8.4 (protocol 1.1).
+
 ## 1.1.0-rc.1 (2026-11-08)
 
 * `RelayPlayer.changePersonalSet(personal)`: a player switches their own set while the game runs (edits reloaded, another set or choice of items); `personalHostApi` gets `switchTo` and `gameFeatures`; the host learns the new set's title.

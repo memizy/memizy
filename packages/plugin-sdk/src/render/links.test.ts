@@ -39,6 +39,17 @@ describe('links', () => {
     expect(open).not.toHaveBeenCalled();
   });
 
+  it('leaves downloads to the browser (<a download>, e.g. ui.download)', () => {
+    const open = vi.spyOn(window, 'open').mockReturnValue(null);
+    stop = guardLinks(document);
+    document.body.innerHTML = `<a href="blob:null/123" download="results.csv">save</a><a href="data:text/plain,x" download>save</a><a href="blob:null/456">no download</a>`;
+    const [blob, data, plain] = document.querySelectorAll('a');
+    expect(click(blob).defaultPrevented).toBe(false);
+    expect(click(data).defaultPrevented).toBe(false);
+    expect(click(plain).defaultPrevented).toBe(true); // it would replace the game
+    expect(open).not.toHaveBeenCalled();
+  });
+
   it('Rich Content links get target="_blank" and rel="noopener noreferrer"', () => {
     const html = renderRichText('See [the source](https://example.com).', { latex: false, resolveMedia: () => undefined, locale: 'en' });
     const a = new DOMParser().parseFromString(html, 'text/html').querySelector('a')!;

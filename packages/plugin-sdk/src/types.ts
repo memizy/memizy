@@ -157,6 +157,19 @@ export interface GameUI {
    * the earliest. Only this device; nothing changes in the state.
    */
   redrawIn(ms: number): void;
+  /**
+   * Saves a file on the player's device (SDK 1.1), e.g. results for the teacher:
+   * `ui.download('results.csv', csvText, 'text/csv')`. Call it from a click. Under protocol
+   * 1.1 hosts (Memizy Play) the file is saved directly (`'saved'`); under older hosts it is
+   * saved from a new window (`'window'`; `'blocked'` when the browser blocked that window).
+   */
+  download(fileName: string, content: Blob | string, type?: string): 'saved' | 'window' | 'blocked';
+  /**
+   * Copies to the clipboard (SDK 1.1): `ui.copy(text)` or `ui.copy(text, html)` – the HTML
+   * pastes formatted (tables into Word or Docs), the text everywhere else. Call it from a
+   * click; resolves `true` when it worked.
+   */
+  copy(text: string, html?: string): Promise<boolean>;
   /** Call an action (normally use `data-act`). */
   act(name: string, payload?: unknown): void;
   /**

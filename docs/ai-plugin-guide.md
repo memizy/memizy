@@ -210,6 +210,8 @@ phases: {
 | `ui.phase`, `ui.timeLeft()` | The current phase / ms until its end (`ui.timeLeft(deadline)` for your own deadline). |
 | `ui.now` | Current time in ms (a property, the same clock as `ctx.now`). |
 | `ui.isPending(name?)`, `ui.pending` | Whether an action of this device still waits for the authority / the list `{ name, payload, sentAt }`. Use it to mark the chosen option right away. |
+| `ui.download(name, content, type?)` | Save a file on this device from a click – e.g. results for the teacher: `ui.download('results.csv', csv, 'text/csv')` (content: a string or a `Blob`). Never `<a download>` or `URL.createObjectURL` yourself. |
+| `ui.copy(text, html?)` | Copy to the clipboard from a click; with `html` a table pastes formatted into Word / Docs. Resolves `true` when it worked – show "Copied". Never `navigator.clipboard` or `execCommand` yourself. |
 | `ui.redrawIn(ms)` | Draw this screen once more after `ms` – for a countdown that runs only sometimes (a reading time, a cooldown): `if (left > 0) ui.redrawIn(Math.min(left, 1000))` in `render`. No `setTimeout` needed; several calls keep the earliest. |
 | `ui.local`, `ui.setLocal(update)` | Data for this screen only (selected tab, 2D/3D switch, an open dialog). `ui.setLocal({ tab: 'map' })` changes it **and re-renders**; buttons with `data-local` change it through `localActions`. Not shared, not saved. |
 | `ui.act(name, payload)` | Call an action from your own JavaScript (normally use `data-act`). |
