@@ -109,6 +109,7 @@ const game = defineGame({
   playerJoined(state, player, ctx) {},   // optional
   playerLeft(state, player, ctx) {},     // optional
   onFinish(state, ctx) {},               // optional: the teacher ends the game from the app (section 4.2)
+  pickItems: true,                       // optional: the app picks each player's next question by their progress (ctx.nextItem)
 
   renderWaiting(ui) {},                  // optional: multiplayer screen before the game starts
   renderSettings(settings, ui) {},       // optional: own lobby settings screen ("settingsScreen" in the manifest)
@@ -168,6 +169,8 @@ phases: {
 * Time limits use the game clock: when the teacher pauses the game, the phase waits too.
 * You can still use `ctx.after(ms, action, payload)` for other timers.
 * **The teacher may end the game from the app** ("End game") at any time. Add `onFinish(state, ctx) { ctx.goto('end'); }`: the game then ends with its results and shows its final screen on every device. Without `onFinish` the app just closes the game. You need no "End game" button of your own.
+
+* **Which question next: `ctx.nextItem(playerId)`.** With `pickItems: true` in `defineGame` the app chooses each player's next item by their own learning progress (mistakes come back after a few questions, well-known items rarely) – every player can get different questions from the same set. Without it, or in an app that cannot, it returns a random item not given to that player lately. `ctx.nextItem(pid, { types: ['mcq-single', 'true-false'] })` limits the types; `null` when nothing fits. Use it instead of your own random pick when questions are per player; for one question shown to everyone at once (a fair race) keep choosing it yourself. `state.$picks` belongs to the SDK – do not change it.
 
 ### `ctx` (in `initialState`, actions, phase hooks, `playerJoined`, `playerLeft`, `onFinish`)
 

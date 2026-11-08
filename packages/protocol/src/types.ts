@@ -26,6 +26,26 @@ export const SETTINGS_ADDRESS = 'settings';
  */
 export const FINISH_REQUEST_FEATURE = 'finish-request';
 
+/**
+ * Feature (SPEC 8.3, protocol 1.1): the authority may ask the host for the next items of a
+ * player by that player's learning progress (`HostApi.pickItems`).
+ */
+export const PICK_ITEMS_FEATURE = 'pick-items';
+
+/** `pickItems`: which items a player should get next (SPEC 5.4). */
+export interface PickItemsRequest {
+  /** The player to pick for. */
+  playerId: string;
+  /** How many (1–20). */
+  count: number;
+  /** Weights of the levels 0–4 (default the host's: 1, 1, 0.7, 0.4, 0.1). */
+  weights?: number[];
+  /** Only items of these types. */
+  types?: string[];
+  /** Items not to pick now (e.g. already waiting in the game's queue). */
+  exclude?: string[];
+}
+
 export type SessionMode = 'solo' | 'multiplayer';
 
 export interface Player {
@@ -204,6 +224,12 @@ export interface HostApi {
   reportError(error: ErrorReport): Promise<void>;
   /** Calls a Memizy service (one of `InitPayload.services`); returns its JSON result. */
   service(name: string, payload: unknown): Promise<unknown>;
+  /**
+   * *Authority only, feature `pick-items` (protocol 1.1).* The IDs of the items a player
+   * should get next, chosen by the host from that player's learning progress (SPEC 5.4).
+   * Optional: hosts without the feature do not have it.
+   */
+  pickItems?(request: PickItemsRequest): Promise<string[]>;
 }
 
 /** Methods the plugin exposes to the host (host → plugin). SPEC section 7. */
@@ -226,7 +252,7 @@ export interface PluginApi {
 
 export const HOST_API_METHODS = [
   'hello', 'ready', 'send', 'saveSnapshot', 'recordAnswer', 'saveData',
-  'updateSettings', 'getAsset', 'end', 'reportError', 'service',
+  'updateSettings', 'getAsset', 'end', 'reportError', 'service', 'pickItems',
 ] as const satisfies readonly (keyof HostApi)[];
 
 export const PLUGIN_API_METHODS = [

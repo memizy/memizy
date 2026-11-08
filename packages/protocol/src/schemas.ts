@@ -57,6 +57,14 @@ export const ErrorReportSchema = z.looseObject({
   context: z.record(z.string(), z.unknown()).optional(),
 });
 
+export const PickItemsRequestSchema = z.strictObject({
+  playerId: AddressSchema,
+  count: z.number().int().min(1).max(20),
+  weights: z.array(z.number().finite().min(0).max(1000)).length(5).optional(),
+  types: z.array(ShortText(64)).max(50).optional(),
+  exclude: z.array(ShortText(128)).max(200).optional(),
+});
+
 /** Argument schemas of every Host API method. */
 export const HOST_API_ARGS = {
   hello: z.tuple([HandshakeSchema]),
@@ -70,16 +78,17 @@ export const HOST_API_ARGS = {
   end: z.tuple([SessionResultSchema]),
   reportError: z.tuple([ErrorReportSchema]),
   service: z.tuple([ShortText(100), z.unknown()]),
+  pickItems: z.tuple([PickItemsRequestSchema]),
 } satisfies Record<keyof HostApi, z.ZodType>;
 
 /**
  * Validates the arguments of a Host API call.
  * @throws {ProtocolError} `INVALID_ARGUMENT` with readable details.
  */
-export function parseHostCall<M extends keyof HostApi>(method: M, args: unknown[]): Parameters<HostApi[M]> {
+export function parseHostCall<M extends keyof HostApi>(method: M, args: unknown[]): Parameters<NonNullable<HostApi[M]>> {
   const result = HOST_API_ARGS[method].safeParse(args);
   if (!result.success) {
     throw new ProtocolError('INVALID_ARGUMENT', `${method}: ${formatOQSEErrors(result.error).join('; ')}`);
   }
-  return result.data as Parameters<HostApi[M]>;
+  return result.data as Parameters<NonNullable<HostApi[M]>>;
 }

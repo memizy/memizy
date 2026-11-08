@@ -73,6 +73,14 @@ export interface GameContext {
    * revealed to everyone, or only to some players with `{ to }`. No effect in solo.
    */
   reveal(itemIds: string | string[], options?: { to?: string | string[] }): void;
+  /**
+   * The next item for a player (default `ctx.playerId`), chosen by the player's learning
+   * progress when the game has `pickItems` and the app supports it (mistakes come back soon,
+   * well-known items rarely); otherwise a random item not given to the player lately.
+   * `types` limits the item types. Returns `null` when no item fits. The SDK keeps a short
+   * queue per player in `state.$picks` (reserved) and refills it from the app.
+   */
+  nextItem(playerId?: string | null, options?: { types?: string[] }): OQSEAnyItem | null;
 }
 
 export interface RecordAnswerOptions {
@@ -215,6 +223,13 @@ export interface GameDefinition<S = any> {
    * `onEnter` that calls `ctx.end`). Without this hook the host just closes the game.
    */
   onFinish?(state: S, ctx: GameContext): void | S;
+  /**
+   * Let the app choose each player's next questions by their learning progress
+   * (`ctx.nextItem`; protocol 1.1, feature `pick-items`). `true`, or `{ ahead, weights }`:
+   * how many items wait per player (1–10, default 2) and the weights of the levels 0–4
+   * (default the app's: 1, 1, 0.7, 0.4, 0.1).
+   */
+  pickItems?: boolean | { ahead?: number; weights?: [number, number, number, number, number] };
   render(state: S, ui: GameUI): RenderResult;
   /**
    * Called after every render with the same state (not every animation frame):

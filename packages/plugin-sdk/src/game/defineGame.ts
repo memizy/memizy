@@ -5,6 +5,7 @@
 
 import {
   FINISH_REQUEST_FEATURE,
+  PICK_ITEMS_FEATURE,
   LIMITS,
   PROTOCOL_VERSION,
   ProtocolError,
@@ -104,7 +105,7 @@ export function startGame<S>(definition: GameDefinition<S>, options: StartOption
       sdk: { name: '@memizy/plugin-sdk', version: SDK_VERSION },
       plugin: { id: manifest.id, version: manifest.version },
       // The host may ask a game with `onFinish` to finish (SPEC 7, protocol 1.1).
-      features: typeof definition.onFinish === 'function' ? [FINISH_REQUEST_FEATURE] : [],
+      features: [...(typeof definition.onFinish === 'function' ? [FINISH_REQUEST_FEATURE] : []), ...(definition.pickItems ? [PICK_ITEMS_FEATURE] : [])],
     };
     const connector =
       options.connector ?? autoConnector(standaloneConnector({ runtime: manifest.runtime, pluginId: manifest.id, types: manifest.types }));
@@ -651,6 +652,10 @@ function validateDefinition(def: GameDefinition<any>): void {
     }
   if (typeof def.render !== 'function') problems.push('render must be a function returning HTML');
   if (def.onFinish !== undefined && typeof def.onFinish !== 'function') problems.push('onFinish must be a function (state, ctx) => void that calls ctx.end');
+  if (def.pickItems !== undefined && typeof def.pickItems !== 'boolean' && (typeof def.pickItems !== 'object' || def.pickItems === null)) problems.push('pickItems must be true or { ahead, weights }');
+  else if (typeof def.pickItems === 'object' && def.pickItems.weights !== undefined && (!Array.isArray(def.pickItems.weights) || def.pickItems.weights.length !== 5 || def.pickItems.weights.some((w) => typeof w !== 'number' || !(w >= 0)))) {
+    problems.push('pickItems.weights must be five numbers ≥ 0 (levels 0–4)');
+  }
   if (def.afterRender !== undefined && typeof def.afterRender !== 'function') problems.push('afterRender must be a function (state, ui) => void');
   if ((def as { local?: unknown }).local !== undefined) problems.push('local was renamed to localActions');
   if (def.localActions !== undefined) {

@@ -10,6 +10,7 @@ import { create, apply, type Patches } from 'mutative';
 import {
   BOARD_ADDRESS,
   LIMITS,
+  PICK_ITEMS_FEATURE,
   toProtocolError,
   type HostApi,
   type IncomingMessage,
@@ -123,7 +124,8 @@ type Effect =
   | { type: 'end'; result: { scores?: Record<string, number>; summary?: string } }
   | { type: 'reveal'; itemIds: string[]; to: string[] | null }
   | { type: 'hide'; itemIds: string[]; to: string[] | null }
-  | { type: 'goto'; phase: string };
+  | { type: 'goto'; phase: string }
+  | { type: 'pick'; playerId: string };
 
 export interface RuntimeOptions {
   /** Batching interval for state updates (≤ ~20 per second). */
@@ -195,6 +197,8 @@ export class GameRuntime<S = unknown> {
   private sentViews = new Map<string, { view: unknown; version: number }>();
   /** Followers: the public copies of revealed items (to go back on `hide`). */
   private publicCopies = new Map<string, OQSEAnyItem>();
+  /** Players whose queue of picked items is being refilled by the host (`pickItems`). */
+  private picksPending = new Set<string>();
 
   constructor(def: GameDefinition<S>, host: HostApi, init: InitPayload, options: RuntimeOptions = {}) {
     this.def = def;
@@ -253,6 +257,54 @@ export class GameRuntime<S = unknown> {
     this.needFullState = true;
     this.applyEffects(effects);
     this.afterChange();
+    for (const player of this.players) this.requestPicks(player.id); // the first questions are ready in time
+  }
+
+  // ==========================================================================
+  // The next items of a player (`ctx.nextItem`, host `pickItems`)
+  // ==========================================================================
+
+  private get picksAhead(): number {
+    const option = this.def.pickItems;
+    const ahead = typeof option === 'object' && option ? Number(option.ahead ?? 2) : 2;
+    return Math.min(10, Math.max(1, Number.isFinite(ahead) ? Math.round(ahead) : 2));
+  }
+
+  /** The host chooses by progress: the game asked for it and the host offers it. */
+  private get picksFromHost(): boolean {
+    return this.isAuthority && !!this.def.pickItems && this.init.features.includes(PICK_ITEMS_FEATURE) && typeof this.host.pickItems === 'function';
+  }
+
+  /** Asks the host for more items of a player when their queue is short; the answer arrives as a system change. */
+  private requestPicks(playerId: string): void {
+    if (!this.picksFromHost || this.picksPending.has(playerId) || this.ended) return;
+    const queue = ((this.state as { $picks?: Record<string, { q?: string[] }> } | undefined)?.$picks?.[playerId]?.q ?? []) as string[];
+    const count = this.picksAhead - queue.length;
+    if (count <= 0) return;
+    const option = this.def.pickItems;
+    const weights = typeof option === 'object' && option?.weights;
+    this.picksPending.add(playerId);
+    this.host
+      .pickItems!({ playerId, count, exclude: [...queue], ...(weights && { weights: [...weights] }) })
+      .then((ids) => {
+        this.picksPending.delete(playerId);
+        const fresh = (Array.isArray(ids) ? ids : []).filter((id) => typeof id === 'string' && this.itemsById.has(id));
+        if (!fresh.length) return;
+        this.run(
+          (draft) => {
+            const picks = ((draft as Record<string, unknown>).$picks ??= {}) as Record<string, { q: string[]; r: string[] }>;
+            const entry = (picks[playerId] ??= { q: [], r: [] });
+            for (const id of fresh) if (!entry.q.includes(id)) entry.q.push(id);
+          },
+          null,
+          true,
+          '$picks',
+        );
+      })
+      .catch((error) => {
+        this.picksPending.delete(playerId);
+        this.warn('pickItems', error);
+      });
   }
 
   /** Game time in ms: the session clock without paused time (stands still while paused). */
@@ -452,6 +504,7 @@ export class GameRuntime<S = unknown> {
         if (!this.knownPlayers.has(player.id)) {
           this.knownPlayers.add(player.id);
           if (this.def.playerJoined) this.run((draft, ctx) => this.def.playerJoined!(draft, player, ctx), null, true, 'playerJoined');
+          this.requestPicks(player.id);
         }
       }
       for (const id of [...this.knownPlayers]) {
@@ -637,6 +690,29 @@ export class GameRuntime<S = unknown> {
         if (draft === undefined) effects.push({ type: 'goto', phase });
         else this.startPhase(draft, phase, effects, scope);
       },
+      nextItem: (forPlayer, options = {}) => {
+        const pid = forPlayer ?? playerId;
+        if (typeof pid !== 'string') throw new Error('ctx.nextItem: pass a player id (this action has no player)');
+        const types = Array.isArray(options.types) && options.types.length ? options.types : null;
+        const fits = (item: OQSEAnyItem | undefined): item is OQSEAnyItem => !!item && (!types || types.includes(item.type));
+        const draft = scope.draft?.() as Record<string, unknown> | undefined;
+        const picks = draft && typeof draft === 'object' ? ((draft.$picks ??= {}) as Record<string, { q: string[]; r: string[] }>) : null;
+        const entry = picks ? (picks[pid] ??= { q: [], r: [] }) : { q: [] as string[], r: [] as string[] };
+        let chosen: OQSEAnyItem | undefined;
+        const at = entry.q.findIndex((id) => fits(this.itemsById.get(id)));
+        if (at >= 0) chosen = this.itemsById.get(entry.q.splice(at, 1)[0]);
+        if (!chosen) {
+          // Not chosen by the host (no feature, or the queue is empty): random, not one of the last given.
+          const all = items.filter(fits);
+          const rested = all.filter((item) => !entry.r.includes(item.id));
+          const from = rested.length ? rested : all;
+          chosen = from.length ? from[Math.floor(rng.next() * from.length)] : undefined;
+        }
+        if (!chosen) return null;
+        entry.r = [...entry.r.filter((id) => id !== chosen!.id), chosen.id].slice(-3);
+        effects.push({ type: 'pick', playerId: pid });
+        return this.itemsById.get(chosen.id) ?? chosen;
+      },
       hide: (itemIds, options = {}) => {
         const ids = (Array.isArray(itemIds) ? itemIds : [itemIds]).filter((id) => typeof id === 'string' && this.itemsById.has(id));
         const to = options.to === undefined ? null : (Array.isArray(options.to) ? options.to : [options.to]).filter((id) => typeof id === 'string');
@@ -722,6 +798,9 @@ export class GameRuntime<S = unknown> {
           break;
         case 'goto':
           this.enterPhase(effect.phase);
+          break;
+        case 'pick':
+          this.requestPicks(effect.playerId);
           break;
         case 'end':
           this.ended = true;

@@ -10,6 +10,7 @@ describe('public API', () => {
       'LEITNER_INTERVAL_DAYS',
       'LocalSession',
       'MemoryStorage',
+      'PICK_WEIGHTS',
       'PLUGIN_SANDBOX',
       'RELAY_APP_VERSION',
       'RELEARN_DAYS',
@@ -25,6 +26,7 @@ describe('public API', () => {
       'loadPluginFromUrl',
       'mountPlugin',
       'newPerDay',
+      'pickItems',
       'prepareSetForPlugin',
       'reviewIntervals',
     ]);

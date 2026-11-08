@@ -12,6 +12,7 @@
 import {
   BOARD_ADDRESS,
   FINISH_REQUEST_FEATURE,
+  PICK_ITEMS_FEATURE,
   SETTINGS_ADDRESS,
   LIMITS,
   PROTOCOL_VERSION,
@@ -40,7 +41,7 @@ import {
   parseHostCall,
 } from '@memizy/protocol/internal';
 import { resolveAsset, type OQSEFile, type ProgressRecord } from '@memizy/oqse';
-import { leitner, type LearningAlgorithm } from './learning';
+import { isNew, leitner, pickItems, type LearningAlgorithm, type PickHistoryEntry, type StudyMode } from './learning';
 import { MemoryStorage, type HostStorage } from './storage';
 import { prepareSetForPlugin, type LoadedPlugin, type PreparedSet } from './plugin';
 import { HOST_SDK_VERSION } from './version';
@@ -68,6 +69,11 @@ export interface SessionConfig {
   loadAsset?: (key: string, itemId: string | undefined) => Promise<Blob>;
   /** Maps a player to the key of their stored progress and data (default: the player ID). */
   userKeyFor?: (playerId: string) => string;
+  /**
+   * How a player studies (learn it fast / remember it long-term, an exam date) for
+   * `pickItems`; default: learn it fast.
+   */
+  studyModeFor?: (playerId: string) => StudyMode | undefined;
   /** Language of the app (default `'en'`). */
   locale?: string;
   /** Theme of the app (default `'light'`). */
@@ -164,7 +170,7 @@ interface Instance extends SessionInstance {
 
 /** Features this host offers (SPEC 8.3) in a negotiated protocol version. */
 function hostFeatures(protocol: string): string[] {
-  return compareProtocolVersions(protocol, '1.1') >= 0 ? [FINISH_REQUEST_FEATURE] : [];
+  return compareProtocolVersions(protocol, '1.1') >= 0 ? [FINISH_REQUEST_FEATURE, PICK_ITEMS_FEATURE] : [];
 }
 
 /** Deep copy of JSON data that also works for proxies (which structuredClone rejects). */
@@ -198,6 +204,8 @@ export class LocalSession {
   private readonly options: SessionConfig;
   private readonly storage: HostStorage;
   private readonly algorithm: LearningAlgorithm;
+  /** This game's answers per player, oldest first (for `pickItems`: mistakes back soon, new items' pace). */
+  private readonly answerHistory = new Map<string, PickHistoryEntry[]>();
   private readonly instances = new Map<string, Instance>();
   private readonly listeners = new Set<(event: SessionEvent) => void>();
   private authorityConnected = true;
@@ -697,6 +705,9 @@ export class LocalSession {
           const userKey = this.userKey(playerId);
           const progress = await this.storage.loadProgress(userKey, setId);
           const { item: _attached, ...stored } = answer;
+          const history = this.answerHistory.get(playerId) ?? [];
+          history.push({ itemId: answer.itemId, correct: answer.isCorrect && !answer.isSkipped, wasNew: isNew(progress[answer.itemId]) });
+          this.answerHistory.set(playerId, history.slice(-200));
           const record = this.algorithm.apply(progress[answer.itemId], stored, new Date(), structuredClone(known));
           await this.storage.saveProgress(userKey, setId, { [answer.itemId]: record });
           this.emit({ type: 'answer', playerId, setId, record, answer: stored, generated: false, ungraded: false, skills: listOf(known.skills), tags: listOf(known.tags) });
@@ -778,6 +789,26 @@ export class LocalSession {
           const result = await handler(plainCopy(payload), { playerId, address: instance.address, pluginId: this.plugin.manifest.id, setId: this.prepared.set.meta.id });
           assertJsonWithin(result ?? null, LIMITS.serviceResultBytes, 'MESSAGE_TOO_LARGE', `service ${name} result`);
           return plainCopy(result ?? null);
+        }),
+
+      pickItems: (...args) =>
+        call('pickItems', async () => {
+          const [request] = parseHostCall('pickItems', args);
+          requireAuthority('pickItems');
+          if (!instance.features.includes(PICK_ITEMS_FEATURE)) throw new ProtocolError('UNKNOWN_METHOD', 'pickItems needs the feature pick-items (list it in the handshake; protocol 1.1).');
+          if (!this.roster.some((p) => p.id === request.playerId)) throw new ProtocolError('INVALID_ARGUMENT', `Unknown player "${request.playerId}".`);
+          if (!instance.serviceLimiter.tryTake()) throw new ProtocolError('RATE_LIMITED', `More than ${LIMITS.servicesPerMinute} calls per minute.`);
+          const progress = await this.storage.loadProgress(this.userKey(request.playerId), this.prepared.set.meta.id);
+          return pickItems(this.prepared.set.items, progress, {
+            count: request.count,
+            now: new Date(),
+            random: Math.random,
+            ...(request.weights && { weights: request.weights }),
+            ...(request.types && { types: request.types }),
+            ...(request.exclude && { exclude: request.exclude }),
+            mode: this.options.studyModeFor?.(request.playerId),
+            history: this.answerHistory.get(request.playerId) ?? [],
+          });
         }),
     };
     return api;

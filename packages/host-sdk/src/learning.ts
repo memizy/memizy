@@ -161,3 +161,110 @@ export function newPerDay(unseen: number, mode: StudyMode | undefined, now: Date
   const days = daysUntilExam(mode, now);
   return days === null ? perDay : Math.max(1, Math.ceil(unseen / days));
 }
+
+// ============================================================================
+// Choosing the next items of a player (`pickItems`, SPEC 5.4)
+// ============================================================================
+
+/** Default weights of the levels 0–4 (memizy-learn's, proven with students). */
+export const PICK_WEIGHTS = [1, 1, 0.7, 0.4, 0.1] as const;
+
+/** One answer of the player in this game, oldest first (what the host saw through `recordAnswer`). */
+export interface PickHistoryEntry {
+  itemId: string;
+  correct: boolean;
+  /** The item had never been answered before this answer. */
+  wasNew: boolean;
+}
+
+export interface PickOptions {
+  count: number;
+  now: Date;
+  /** A number in [0, 1) (the host's own random; the game gets the result as an action). */
+  random: () => number;
+  weights?: readonly number[];
+  mode?: StudyMode;
+  /** Only these item types. */
+  types?: string[];
+  /** Not now (e.g. already in the game's queue). */
+  exclude?: string[];
+  /** This game's answers of the player, oldest first. */
+  history?: PickHistoryEntry[];
+}
+
+/** Other answers before a wrong one comes back, and how often it may come back in a game. */
+const AGAIN_AFTER = 3;
+const AGAIN_MAX = 2;
+/** The last answered items are not picked again (if anything else is left). */
+const RECENT = 3;
+
+/**
+ * The next items of a player (DECISIONS.md 2026-11-08): a wrong answer comes back after
+ * about three other answers (at most twice in a game); then by the levels' weights (due
+ * items count double, the last few answered not again, a new item at most every third
+ * question while others wait). In the long-term mode only due items and new ones at the
+ * day's pace; when none are left, the weakest. Every item type alike.
+ */
+export function pickItems(items: readonly OQSEAnyItem[], progress: Record<string, ProgressRecord>, options: PickOptions): string[] {
+  const weights = options.weights?.length === 5 ? options.weights : PICK_WEIGHTS;
+  const history = options.history ?? [];
+  const excluded = new Set(options.exclude ?? []);
+  const pool = items.filter((item) => !excluded.has(item.id) && (!options.types?.length || options.types.includes(item.type)));
+  const picked: string[] = [];
+  const take = (id: string) => {
+    if (!picked.includes(id)) picked.push(id);
+  };
+
+  // 1. Wrong answers come back soon.
+  const wrongTimes = new Map<string, number>();
+  history.forEach((entry, i) => {
+    if (entry.correct) return;
+    wrongTimes.set(entry.itemId, (wrongTimes.get(entry.itemId) ?? 0) + 1);
+    const since = history.length - 1 - i;
+    const later = history.slice(i + 1).some((e) => e.itemId === entry.itemId);
+    if (!later && since >= AGAIN_AFTER && (wrongTimes.get(entry.itemId) ?? 0) <= AGAIN_MAX && pool.some((item) => item.id === entry.itemId)) take(entry.itemId);
+  });
+
+  // 2. The rest by weights (or the long-term mode's due items).
+  const recent = new Set(history.slice(-RECENT).map((e) => e.itemId));
+  // Questions since the last new item (a new one at most every third question while others wait).
+  let sinceNew = history.length;
+  for (let i = history.length - 1; i >= 0; i--) if (history[i].wasNew) { sinceNew = history.length - 1 - i; break; }
+  let candidates = pool.filter((item) => !picked.includes(item.id));
+  if (options.mode?.mode === 'long') {
+    let fresh = newPerDay(candidates.filter((item) => isNew(progress[item.id])).length, options.mode, options.now) - history.filter((e) => e.wasNew).length;
+    const today = candidates.filter((item) => (isNew(progress[item.id]) ? fresh-- > 0 : isDue(progress[item.id], options.mode, options.now)));
+    candidates = today.length ? today : weakestFirst(candidates, progress).slice(0, Math.max(options.count * 3, 10));
+  }
+  const fresh = candidates.filter((item) => !recent.has(item.id));
+  if (fresh.length) candidates = fresh;
+  const newAllowed = () => sinceNew >= 2 || !candidates.some((item) => !isNew(progress[item.id]));
+  while (picked.length < options.count && candidates.length) {
+    const weightOf = (item: OQSEAnyItem) => {
+      const record = progress[item.id];
+      if (isNew(record)) return newAllowed() ? weights[0] : 0;
+      const w = weights[Math.min(4, Math.max(0, record!.bucket ?? 0))] ?? 0;
+      return isDue(record, options.mode, options.now) ? w * 2 : w;
+    };
+    const ws = candidates.map(weightOf);
+    const total = ws.reduce((a, b) => a + b, 0);
+    let index: number;
+    if (total <= 0) index = Math.floor(options.random() * candidates.length);
+    else {
+      let r = options.random() * total;
+      index = ws.findIndex((w) => (r -= w) < 0);
+      if (index < 0) index = ws.length - 1;
+    }
+    const [chosen] = candidates.splice(index, 1);
+    sinceNew = isNew(progress[chosen.id]) ? 0 : sinceNew + 1;
+    take(chosen.id);
+  }
+  return picked.slice(0, options.count);
+}
+
+/** Lowest level first, then the longest unpractised. */
+function weakestFirst(items: OQSEAnyItem[], progress: Record<string, ProgressRecord>): OQSEAnyItem[] {
+  const when = (record: ProgressRecord | undefined) => Date.parse(record?.lastAnswer?.answeredAt ?? '') || 0;
+  const level = (record: ProgressRecord | undefined) => record?.bucket ?? 0;
+  return [...items].sort((a, b) => level(progress[a.id]) - level(progress[b.id]) || when(progress[a.id]) - when(progress[b.id]));
+}

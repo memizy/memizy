@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { OQSEAnyItem, ProgressRecord } from '@memizy/oqse';
-import { daysUntilExam, dueAt, isDue, isNew, leitner, newPerDay, reviewIntervals } from './learning';
+import { daysUntilExam, dueAt, isDue, isNew, leitner, newPerDay, pickItems, reviewIntervals, type PickHistoryEntry } from './learning';
 
 const item = { id: 'q', type: 'mcq-single', question: 'Q', options: [{ id: 'a', text: 'A' }], correctId: 'a' } as OQSEAnyItem;
 const note = { id: 'n', type: 'note', title: 'T', content: 'C' } as OQSEAnyItem;
@@ -71,5 +71,69 @@ describe('due items and study modes', () => {
     expect(newPerDay(100, { mode: 'long', examDate: '2026-11-25' }, now)).toBe(20);
     expect(newPerDay(12, { mode: 'long', examDate: '2026-11-25' }, now)).toBe(3);
     expect(newPerDay(500, { mode: 'long' }, now)).toBe(20);
+  });
+});
+
+describe('pickItems: the next items of a player', () => {
+  const now = at('2026-11-20T12:00:00Z');
+  const mk = (id: string, type = 'flashcard') => ({ id, type, front: id, back: id }) as unknown as OQSEAnyItem;
+  const set = ['a', 'b', 'c', 'd', 'e', 'f'].map((id) => mk(id));
+  const known = (bucket: number, daysAgo = 0.01, ok = true) => ({ bucket, stats: { attempts: 1, incorrect: ok ? 0 : 1, streak: ok ? 1 : 0 }, lastAnswer: { isCorrect: ok, answeredAt: new Date(now.getTime() - daysAgo * 864e5).toISOString() } }) as ProgressRecord;
+  /** A fixed sequence of "random" numbers. */
+  const seq = (...values: number[]) => { let i = 0; return () => values[i++ % values.length]; };
+  const many = (progress: Record<string, ProgressRecord>, history: PickHistoryEntry[] = [], runs = 4000) => {
+    const counts: Record<string, number> = {};
+    for (let i = 0; i < runs; i++) for (const id of pickItems(set, progress, { count: 1, now, random: Math.random, history })) counts[id] = (counts[id] ?? 0) + 1;
+    return counts;
+  };
+
+  it('by the weights 1 / 1 / 0.7 / 0.4 / 0.1: mastered items come rarely', () => {
+    const progress = { a: known(1), b: known(2), c: known(3), d: known(4), e: known(4), f: known(4) };
+    const counts = many(progress);
+    const share = (id: string) => (counts[id] ?? 0) / 4000;
+    expect(share('a')).toBeGreaterThan(0.3); // 1 of 1 + 0.7 + 0.4 + 3 × 0.1 = 2.4 → 42 %
+    expect(share('d') + share('e') + share('f')).toBeLessThan(0.18); // 0.3 / 2.4 = 12.5 %
+    expect(share('b')).toBeGreaterThan(share('c'));
+  });
+
+  it('a wrong answer comes back after three others, at most twice; the last ones not again', () => {
+    const progress = { a: known(1, 0.01, false), b: known(2), c: known(2), d: known(2), e: known(2), f: known(2) };
+    const h = (...ids: [string, boolean][]) => ids.map(([itemId, correct]) => ({ itemId, correct, wasNew: false }));
+    expect(pickItems(set, progress, { count: 1, now, random: seq(0.99), history: h(['a', false], ['b', true], ['c', true]) })).not.toEqual(['a']); // only two since
+    expect(pickItems(set, progress, { count: 1, now, random: seq(0.99), history: h(['a', false], ['b', true], ['c', true], ['d', true]) })).toEqual(['a']);
+    // Wrong a third time: no more coming back first.
+    const third = h(['a', false], ['b', true], ['c', true], ['d', true], ['a', false], ['b', true], ['c', true], ['d', true], ['a', false], ['e', true], ['f', true], ['b', true]);
+    const thirdCounts = many(progress, third, 2000);
+    expect((thirdCounts.a ?? 0) / 2000).toBeLessThan(0.6); // only by its weight now (≈ 42 %), not always first
+    // The last three answered are not picked again while others are left.
+    const counts = many(progress, h(['d', true], ['e', true], ['f', true]));
+    expect(counts.d ?? 0).toBe(0);
+    expect(counts.e ?? 0).toBe(0);
+  });
+
+  it('a new item at most every third question while known ones wait', () => {
+    const progress = { a: known(2), b: known(2), c: known(2) };
+    const justNew = [{ itemId: 'd', correct: true, wasNew: true }];
+    const counts = many(progress, justNew, 500);
+    expect((counts.e ?? 0) + (counts.f ?? 0)).toBe(0); // e, f are new
+    const twoAgo = [{ itemId: 'd', correct: true, wasNew: true }, { itemId: 'a', correct: true, wasNew: false }, { itemId: 'b', correct: true, wasNew: false }];
+    expect((many(progress, twoAgo, 2000).e ?? 0)).toBeGreaterThan(0);
+    // Only new items left: they come.
+    expect(pickItems(set, {}, { count: 3, now, random: Math.random, history: justNew })).toHaveLength(3);
+  });
+
+  it('long-term mode: only due and new at the pace; when none is left, the weakest', () => {
+    const long = { mode: 'long' as const };
+    const progress = { a: known(4, 1), b: known(2, 5), c: known(3, 1), d: known(1, 2), e: known(2, 1), f: known(3, 2) };
+    const picked = pickItems(set, progress, { count: 6, now, random: Math.random, mode: long });
+    expect(picked.sort()).toEqual(['b', 'd']); // b: 3 days passed, d: 1 day passed
+    const none = { a: known(4, 0.1), b: known(2, 0.1), c: known(3, 0.1), d: known(1, 0.1), e: known(2, 0.1), f: known(3, 0.1) };
+    expect(pickItems(set, none, { count: 1, now, random: seq(0), mode: long })[0]).toBe('d'); // nothing due: the weakest
+  });
+
+  it('types and exclusions; every item type alike (notes too)', () => {
+    const mixed = [mk('n', 'note'), mk('q', 'mcq-single'), mk('c')];
+    expect(pickItems(mixed, {}, { count: 5, now, random: Math.random, types: ['note', 'flashcard'] }).sort()).toEqual(['c', 'n']);
+    expect(pickItems(mixed, {}, { count: 5, now, random: Math.random, exclude: ['q'] }).sort()).toEqual(['c', 'n']);
   });
 });

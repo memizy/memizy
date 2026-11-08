@@ -454,7 +454,71 @@ describe('finishing on request (SPEC 7, protocol 1.1)', () => {
     expect(init.features).toEqual([]);
     const current = await (await bare(newSession().session, 'board')).hello({ ...handshake, protocol: '1.1' });
     expect(current.protocol).toBe('1.1');
-    expect(current.features).toEqual(['finish-request']);
+    expect(current.features).toEqual(['finish-request', 'pick-items']);
+  });
+
+  it('ctx.nextItem: the queue the host refills by progress; without the feature a random item', async () => {
+    interface S { got: string[]; queue?: unknown }
+    const def = (pick: boolean): Omit<GameDefinition<S>, 'root'> => ({
+      ...(pick && { pickItems: { ahead: 2 } }),
+      initialState: () => ({ got: [] }),
+      actions: {
+        next(state, _p, ctx) { const item = ctx.nextItem(ctx.playerId); if (item) state.got.push(item.id); },
+        answer(state, payload: { ok: boolean }, ctx) { ctx.recordAnswer(state.got[state.got.length - 1], payload.ok); },
+      },
+      render: (state, ui) => `<p class="got">${state.got.join(',')}</p><p class="queue">${JSON.stringify((state as any).$picks?.[ui.self?.id ?? '']?.q ?? [])}</p><button class="n" data-act="next">n</button><button class="w" data-act="answer" data-payload='{"ok":false}'>w</button><button class="r" data-act="answer" data-payload='{"ok":true}'>r</button>`,
+    });
+    const { session } = newSession({ mode: 'solo', players: [{ id: 'me', name: 'Me' }], shuffleSeed: null });
+    const me = play(session, 'me', def(true));
+    await me.game.ready;
+    await wait(150);
+    // The host filled the queue at the start.
+    expect(JSON.parse(me.root.querySelector('.queue')!.textContent!)).toHaveLength(2);
+    const click = async (sel: string) => { (me.root.querySelector(sel) as HTMLButtonElement).click(); await wait(80); };
+    await click('.n');
+    await click('.w'); // the first item answered wrong
+    const wrong = me.root.querySelector('.got')!.textContent!.split(',')[0];
+    for (let i = 0; i < 3; i++) { await click('.n'); await click('.r'); }
+    await click('.n');
+    await wait(100);
+    const got = me.root.querySelector('.got')!.textContent!.split(',');
+    // Queued ahead: the wrong item comes back within the next picks.
+    for (let i = 0; i < 2 && got.at(-1) !== wrong; i++) { await click('.r'); await click('.n'); }
+    expect(me.root.querySelector('.got')!.textContent!.split(',').slice(4)).toContain(wrong);
+
+    // A game without pickItems still gets items (random), and never asks the host.
+    const { session: other } = newSession({ mode: 'solo', players: [{ id: 'me', name: 'Me' }] });
+    const plain = play(other, 'me', def(false));
+    await plain.game.ready;
+    await wait(100);
+    (plain.root.querySelector('.n') as HTMLButtonElement).click();
+    await wait(80);
+    expect(plain.root.querySelector('.got')!.textContent).toMatch(/^\S+$/);
+    expect(JSON.parse(plain.root.querySelector('.queue')!.textContent!)).toEqual([]);
+  });
+
+  it('pickItems: the authority asks for the next items of a player, by progress and the answers of this game', async () => {
+    const { session } = newSession({ shuffleSeed: null });
+    const board = await bare(session, 'board');
+    await board.hello({ ...handshake, protocol: '1.1', features: ['pick-items'] });
+    const anna = await bare(session, 'anna');
+    await anna.hello({ ...handshake, protocol: '1.1', features: ['pick-items'] });
+    const ids = session.prepared.set.items.map((i) => i.id);
+    const picked = await board.pickItems!({ playerId: 'anna', count: 2 });
+    expect(picked).toHaveLength(2);
+    expect(picked.every((id) => ids.includes(id))).toBe(true);
+    expect(await board.pickItems!({ playerId: 'anna', count: 5, exclude: [ids[0]] })).toEqual([ids[1]]);
+    await expect(anna.pickItems!({ playerId: 'anna', count: 1 })).rejects.toThrow(/NOT_AUTHORITY/);
+    await expect(board.pickItems!({ playerId: 'nobody', count: 1 })).rejects.toThrow(/INVALID_ARGUMENT/);
+    // A wrong answer comes back after three other answers.
+    await board.recordAnswer({ itemId: ids[0], isCorrect: false, playerId: 'anna' });
+    for (let i = 0; i < 3; i++) await board.recordAnswer({ itemId: ids[1], isCorrect: true, playerId: 'anna' });
+    expect((await board.pickItems!({ playerId: 'anna', count: 1 }))[0]).toBe(ids[0]);
+    // Without the feature in the handshake: not available.
+    const other = newSession().session;
+    const plain = await bare(other, 'board');
+    await plain.hello({ ...handshake, protocol: '1.1' });
+    await expect(plain.pickItems!({ playerId: 'anna', count: 1 })).rejects.toThrow(/UNKNOWN_METHOD/);
   });
 
   it('a game whose onFinish does not end reports it', async () => {
