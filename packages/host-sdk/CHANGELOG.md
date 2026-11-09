@@ -1,5 +1,9 @@
 # Changelog of @memizy/host-sdk
 
+## 1.1.0-rc.5 (unreleased)
+
+* Study plan before an exam: new items are spread over the days that leave the day before the exam for reviewing everything (`newPerDay`; exam in 3 days, 30 items: 15, 15, then the review day) – so every item can reach the top level before the exam. The exam tomorrow or the day after: all now.
+
 ## 1.1.0-rc.4 (unreleased)
 
 * No changes (the version follows the plugin SDK).

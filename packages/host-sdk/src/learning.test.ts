@@ -67,10 +67,18 @@ describe('due items and study modes', () => {
     expect(daysUntilExam(exam, at('2026-11-26T12:00:00'))).toBeNull();
   });
 
-  it('new items per day: spread over the days left, 20 without an exam', () => {
-    expect(newPerDay(100, { mode: 'long', examDate: '2026-11-25' }, now)).toBe(20);
-    expect(newPerDay(12, { mode: 'long', examDate: '2026-11-25' }, now)).toBe(3);
+  it('new items per day: spread over the days left but the day before the exam (the review day), 20 without an exam', () => {
+    const exam = { mode: 'long' as const, examDate: '2026-11-25' }; // 5 days: 4 with new items
+    expect(newPerDay(100, exam, now)).toBe(25);
+    expect(newPerDay(12, exam, now)).toBe(3);
     expect(newPerDay(500, { mode: 'long' }, now)).toBe(20);
+    // 30 items, the exam in 3 days: 15 today, 15 tomorrow, the third day only reviews
+    const inThree = { mode: 'long' as const, examDate: '2026-11-23' };
+    expect(newPerDay(30, inThree, now)).toBe(15);
+    expect(newPerDay(15, inThree, at('2026-11-21T12:00:00'))).toBe(15);
+    // the exam tomorrow or the day after: everything now
+    expect(newPerDay(30, { mode: 'long', examDate: '2026-11-22' }, now)).toBe(30);
+    expect(newPerDay(30, { mode: 'long', examDate: '2026-11-21' }, now)).toBe(30);
   });
 });
 

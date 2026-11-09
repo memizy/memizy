@@ -154,12 +154,15 @@ export function isNew(record: ProgressRecord | undefined): boolean {
 }
 
 /**
- * New items a day may bring: spread over the days before the exam, otherwise `perDay`
- * (default 20) – in the long-term mode the rest wait for the next days.
+ * New items a day may bring: before an exam spread over the days that leave the day before it
+ * for reviewing everything (exam in 3 days: new items today and tomorrow, then the review day;
+ * the exam tomorrow or the day after: all now) – so every item can be answered right a few
+ * times, up to the top level, before the exam. Otherwise `perDay` (default 20) – in the
+ * long-term mode the rest wait for the next days.
  */
 export function newPerDay(unseen: number, mode: StudyMode | undefined, now: Date, perDay = 20): number {
   const days = daysUntilExam(mode, now);
-  return days === null ? perDay : Math.max(1, Math.ceil(unseen / days));
+  return days === null ? perDay : Math.max(1, Math.ceil(unseen / Math.max(1, days - 1)));
 }
 
 // ============================================================================
