@@ -80,6 +80,9 @@ export function personalHostApi(remote: HostApi, firstPersonal: PersonalSet, fir
       };
     },
     async recordAnswer(answer: AnswerRecord) {
+      // Another player's answer (this instance is the authority of a host who plays): theirs to keep.
+      const owner = self();
+      if (answer.playerId && owner && answer.playerId !== owner) return remote.recordAnswer(answer);
       const known = byId.get(answer.itemId);
       if (!known) return; // not of the player's set (a generated item): nothing to keep here
       if (known.type === 'open-ended') return; // not checked automatically (SPEC 5.1)

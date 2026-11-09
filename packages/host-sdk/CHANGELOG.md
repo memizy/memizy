@@ -2,7 +2,7 @@
 
 ## 1.1.0-rc.3 (unreleased)
 
-* No changes (the version follows the plugin SDK).
+* Personal sets: the personal host API keeps only its own player's answers; another player's answer (the instance is the authority of a host who plays along with their own set) goes to the session, which keeps it for that player. Before, it was stored as the host's progress.
 
 ## 1.1.0-rc.2 (2026-11-09)
 
