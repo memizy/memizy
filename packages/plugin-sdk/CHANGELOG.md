@@ -2,7 +2,11 @@
 
 Plugins import `https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1`: every 1.x release reaches them.
 
-## 1.1.0-rc.2 (2026-11-09, to publish)
+## 1.1.0-rc.3 (unreleased)
+
+* `definePresentation({ polls, phone, navigation, dots, arrows, onSlide, onUpdate, actions })`: a page of `<section data-slide>` slides becomes a live presentation – the teacher moves the slides on the board, the phones show only the slide's polls (opinion polls or items of the set, live results on the board, the answer revealed by the teacher) and the author's own phone parts, or "Watch the board"; `navigation: 'free'` lets pupils go at their own pace; alone it is self-paced and "Done" on the last slide completes the course step. Built on `defineGame`, no protocol change. Without the SDK the page is a plain page.
+
+## 1.1.0-rc.2 (2026-11-09)
 
 * A shared set changes while the game runs: `itemsChanged(state, ctx, { added, removed, changed })` on the authority (a system change; the players' queues of picked items lose removed items and refill); package media of the new items are loaded. `ui.canChooseSet` / `ui.chooseSet()` open the app's set picker from the game (solo, the board, the host playing along).
 

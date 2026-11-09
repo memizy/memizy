@@ -2,7 +2,11 @@
 
 The protocol has its own changelog at the end of [SPEC.md](https://github.com/memizy/memizy/blob/main/packages/protocol/SPEC.md#changelog) (protocol 1.0, 2026-10-14). This file lists the releases of the npm package.
 
-## 1.1.0-rc.2 (2026-11-09, to publish)
+## 1.1.0-rc.3 (unreleased)
+
+* No changes (the version follows the plugin SDK).
+
+## 1.1.0-rc.2 (2026-11-09)
 
 * The shared set of a running game may change (SPEC 7, was reserved in 10): `setChanged` for every instance; `HostApi.chooseSet` and `CHOOSE_SET_FEATURE` (`choose-set`) – the game opens the host's set picker.
 

@@ -4,6 +4,7 @@
  */
 
 export { defineGame, SDK_VERSION, type GameHandle } from './game/defineGame';
+export { definePresentation, type PresentationOptions, type PresentationPoll, type PresentationState } from './game/presentation';
 export { checkAnswer } from './checkAnswer';
 /** Rich Content as plain text, for games that draw text themselves (e.g. on a canvas). */
 export { toPlainText, type PlainTextOptions } from '@memizy/oqse';

@@ -494,6 +494,58 @@ Every move goes through the host: in multiplayer about 50–150 ms there and bac
 
 **Co-op action that works:** each device moves its own character immediately (`ui.setLocal`, `afterRender`) and sends its position with an action only 10–15 times per second; the authority moves the enemies and decides hits with some tolerance; the other devices smooth the movement between updates themselves.
 
+### 6.6 Presentations and Simulations
+
+A lesson to show on the projector – with polls and interactive parts on the pupils' phones – is
+one HTML page of slides. **Without the SDK it is just a page** (it works projected, opened or
+sent anywhere). With `definePresentation` it becomes live:
+
+```html
+<!doctype html>
+<html lang="cs"><head><meta charset="utf-8">
+<script type="application/oqse-manifest+json">
+{ "version": "1.0", "id": "https://example.com/talks/planets", "appName": "Planety", "pluginVersion": "1.0.0",
+  "appSpecific": { "memizy": { "protocol": "1.1", "set": "none",
+    "modes": { "solo": {}, "multiplayer": { "players": { "min": 1, "max": 60 }, "hostAs": ["presenter"], "lateJoin": true } } } } }
+</script>
+<style> section[data-slide] { min-height: 100vh; display: grid; place-content: center; text-align: center; } </style>
+</head><body>
+  <section data-slide="intro"><h1>Planety Sluneční soustavy</h1></section>
+  <section data-slide="opinion"><h2>Je Pluto planeta?</h2><div data-poll="pluto"></div></section>
+  <section data-slide="orbit"><h2>Oběžná doba</h2><canvas id="orbit" width="600" height="400"></canvas></section>
+<script type="module">
+import { definePresentation } from 'https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1';
+definePresentation({
+  polls: { pluto: { question: 'Je Pluto planeta?', options: ['Ano', 'Ne', 'Nevím'] } },
+  // what a pupil's phone shows on a slide (besides its polls): a control of the simulation
+  phone: { orbit: (ui) => ui.html`<p>Rychlost času</p>${[1, 2, 5].map((v) => ui.html`<button data-act="speed" data-payload=${{ v }}>${v}×</button>`)}` },
+  // pupils' actions: keep their data in state.data
+  actions: { speed(state, p, ctx) { if (ctx.playerId && [1, 2, 5].includes(p?.v)) (state.data.speed ??= {})[ctx.playerId] = p.v; } },
+  onSlide(id, el) { if (id === 'orbit') startOrbit(el.querySelector('#orbit')); },
+  // after every change: the board's simulation follows the class (here: the average speed)
+  onUpdate(id, el, state) { const v = Object.values(state.data.speed ?? {}); speed = v.length ? v.reduce((a, b) => a + b, 0) / v.length : 1; },
+});
+let speed = 1;
+function startOrbit(canvas) { /* draw the simulation with requestAnimationFrame, using speed */ }
+</script>
+</body></html>
+```
+
+* **Slides** are `<section data-slide="id">` elements of the page; the SDK shows one at a time.
+* **The teacher moves the slides** (arrows, dots, the keyboard on the board); the pupils' phones
+  do not copy the board: they show the **polls** of the current slide, your own **`phone`** part,
+  or "Watch the board". `navigation: 'free'` lets every pupil go through the slides on their
+  phone instead. `dots: false` / `arrows: false` hide the controls.
+* **Polls**: `{ question, options, multiple? }` – an opinion (the answer may change), or
+  `{ item: 'id' }` – a question of the study set (`"set": "optional"`): recorded like any answer,
+  the teacher shows the right one. Put `<div data-poll="id"></div>` where the live results show.
+* **Your own interaction**: buttons in a `phone` part with `data-act` call your `actions` (on the
+  teacher's device, like a game's); keep what they set in `state.data` and draw it in `onUpdate`.
+* **Alone** (solo, or the file opened anywhere) the pupil goes at their own pace and "Done" on the
+  last slide completes the course step.
+* Need something else (a game, your own flow)? Use `defineGame` – a presentation is a game
+  without a set.
+
 ## 7. Study Set Items (OQSE 1.0)
 
 Every item has `id` and `type`. Common optional fields: `hints`, `explanation`, `tags`, `topic`, `skills`.

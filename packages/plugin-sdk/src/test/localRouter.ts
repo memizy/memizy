@@ -23,6 +23,7 @@ export class LocalRouter {
   readonly records: AnswerRecord[] = [];
   readonly saved: { address: string; scope: DataScope; value: unknown }[] = [];
   readonly errors: string[] = [];
+  readonly results: unknown[] = [];
   readonly players: Player[];
   readonly authority: string;
   private readonly options: RouterOptions;
@@ -86,7 +87,9 @@ export class LocalRouter {
         saveData: async (scope, value) => void this.saved.push({ address, scope, value }),
         updateSettings: async (update) => void this.settingsUpdates.push(update),
         getAsset: async () => new Blob(['x']),
-        end: async () => {},
+        end: async (result) => {
+          this.results.push(result);
+        },
         reportError: async (error) => void this.errors.push(`${address} ${error.code}: ${error.message}`),
         service: async (name) => { throw new ProtocolError('SERVICE_UNAVAILABLE', `No service "${name}" in tests.`); },
       };
