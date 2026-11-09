@@ -85,10 +85,40 @@ export interface GameContext {
    * Personal sets (protocol 1.1, `modes.multiplayer.sets` lists `personal`): every player
    * learns their own set on their device. The authority has no items then: `ctx.nextItem(pid)`
    * gives the ID (and type) of the player's next item, the player's device shows and checks it
-   * (`ui.question`), and the action gets `payload.correct` – use it instead of `checkAnswer`.
-   * `ctx.recordAnswer` for those items does nothing (the device records).
+   * (`ui.question`), and the action gets `payload.correct`. `ctx.checkAnswer`, `ctx.itemInfo`
+   * and `ctx.hasItems` work the same with shared and personal sets, so a game needs no second
+   * path; `ctx.recordAnswer`, `ctx.reveal` and `ctx.hide` do nothing for items the authority
+   * does not have (the device records, and it has the answers).
    */
   readonly personal: boolean;
+  /**
+   * Whether a player's answer to an item is right, with shared and personal sets alike:
+   * `payload` is the action's payload (`{ itemId, answer }` from `ui.question`). The authority
+   * checks it against the item (`checkAnswer`); with personal sets another player's own item is
+   * checked on their device, which adds `payload.correct`. A note counts as right. `null` when
+   * it cannot be told: no answer, an unknown item, an `open-ended` item.
+   */
+  checkAnswer(itemId: string, payload: unknown): boolean | null;
+  /**
+   * What the authority knows about an item, also a player's own one with personal sets (from
+   * `ctx.nextItem`): its type and the length of its text in characters (for reading times –
+   * questions, cards, notes and options as plain text). `null` for an unknown item.
+   * `forPlayer` (default `ctx.playerId`) looks in that player's items first.
+   */
+  itemInfo(itemId: string, forPlayer?: string | null): ItemInfo | null;
+  /**
+   * Whether the game has items to ask (of these types): the shared set's items; with personal
+   * sets always `true` (the players bring their own sets, which the authority cannot see).
+   */
+  hasItems(types?: string[]): boolean;
+}
+
+/** `ctx.itemInfo`: what the authority knows about an item without having it. */
+export interface ItemInfo {
+  id: string;
+  type: string;
+  /** Characters of the item's text as plain text (question, front and back, note, options). */
+  textLength: number;
 }
 
 export interface RecordAnswerOptions {

@@ -4,6 +4,8 @@ Plugins import `https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1`: every 1.x re
 
 ## 1.1.0-rc.3 (unreleased)
 
+* One path for shared and personal sets: `ctx.checkAnswer(itemId, payload)` (the authority checks; with personal sets another player's device did, and its `correct` counts), `ctx.itemInfo(id)` (`{ id, type, textLength }`, also of a player's own item: their device sends the text length with its next items), `ctx.hasItems(types?)` (always `true` with personal sets). A host who plays along with personal sets learns the host's set on the authority: `ctx.nextItem` gives them items (by progress with `pickItems`) – before, they got none.
+
 * `definePresentation({ polls, phone, navigation, dots, arrows, onSlide, onUpdate, actions })`: a page of `<section data-slide>` slides becomes a live presentation – the teacher moves the slides on the board, the phones show only the slide's polls (opinion polls or items of the set, live results on the board, the answer revealed by the teacher) and the author's own phone parts, or "Watch the board"; `navigation: 'free'` lets pupils go at their own pace; alone it is self-paced and "Done" on the last slide completes the course step. Built on `defineGame`, no protocol change. Without the SDK the page is a plain page.
 
 ## 1.1.0-rc.2 (2026-11-09)

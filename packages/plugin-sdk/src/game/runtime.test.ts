@@ -294,6 +294,68 @@ describe('personal sets (SPEC 3.4)', () => {
     await tick(3000);
     expect(queue(session, 'anna')).toEqual(['q1', 'q2']);
   });
+
+  // One path for shared and personal sets: ctx.checkAnswer, ctx.itemInfo, ctx.hasItems.
+  const helperGame: GameDefinition<any> = {
+    initialState: () => ({ cur: {}, ok: {}, info: {}, has: null }),
+    actions: {
+      next(state, _payload, ctx) {
+        const id = ctx.nextItem(ctx.playerId!)?.id ?? null;
+        state.cur[ctx.playerId!] = id;
+        state.info[ctx.playerId!] = id ? ctx.itemInfo(id) : null;
+        state.has = ctx.hasItems(['true-false']);
+      },
+      answer(state, payload, ctx) {
+        state.ok[ctx.playerId!] = ctx.checkAnswer(payload.itemId, payload);
+      },
+    },
+    render: () => '',
+  };
+
+  it('ctx.checkAnswer, itemInfo and hasItems with a shared set: the authority checks (a sent "correct" is ignored)', async () => {
+    const session = new FakeSession(helperGame);
+    session.start();
+    await tick();
+    session.get('anna').dispatch('next', null);
+    await tick();
+    const board = session.get('board').state as any;
+    expect(board.info.anna).toEqual({ id: board.cur.anna, type: board.cur.anna === 'q2' ? 'true-false' : 'mcq-single', textLength: expect.any(Number) });
+    expect(board.has).toBe(true);
+    session.get('anna').dispatch('answer', { itemId: 'q1', answer: 'a', correct: true });
+    session.get('ben').dispatch('answer', { itemId: 'q1', answer: 'b' });
+    await tick();
+    expect((session.get('board').state as any).ok).toEqual({ anna: false, ben: true });
+  });
+
+  it("ctx.checkAnswer with personal sets: a phone's own check counts; itemInfo knows the type and text length it sent", async () => {
+    const session = new FakeSession(helperGame, { personal: true });
+    session.start();
+    await tick();
+    session.get('anna').dispatch('next', null);
+    await tick();
+    const board = session.get('board').state as any;
+    expect(board.cur.anna).toBe('q1');
+    expect(board.info.anna).toEqual({ id: 'q1', type: 'mcq-single', textLength: 5 }); // "A?" + a, b, c
+    expect(board.has).toBe(true);
+    session.get('anna').dispatch('answer', { itemId: 'zz', answer: 'x', correct: true });
+    session.get('ben').dispatch('answer', { itemId: 'q1', answer: 'b' });
+    await tick();
+    expect((session.get('board').state as any).ok).toEqual({ anna: true, ben: null });
+  });
+
+  it('a host who plays with personal sets learns the set on the authority: items and checks there', async () => {
+    const session = new FakeSession(helperGame, { personal: true, hostAs: 'player', players: ['host', 'anna'] });
+    session.start();
+    await tick();
+    session.get('host').dispatch('next', null);
+    await tick();
+    const state = session.get('host').state as any;
+    expect(['q1', 'q2', 'q3']).toContain(state.cur.host);
+    expect(state.info.host.textLength).toBeGreaterThan(0);
+    session.get('host').dispatch('answer', { itemId: 'q2', answer: true, correct: false }); // its own "correct" is not trusted
+    await tick();
+    expect((session.get('host').state as any).ok.host).toBe(true);
+  });
 });
 
 describe('a shared set changed (SDK 1.1)', () => {

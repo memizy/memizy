@@ -23,6 +23,16 @@ import {
   jsonByteSize,
 } from '@memizy/protocol/internal';
 import type { OQSEAnyItem } from '@memizy/oqse';
+import { checkAnswer } from '../checkAnswer';
+import { itemTextLength, MAX_TEXT_LENGTH } from './itemText';
+
+/** A player's queue in `state.$picks`: item IDs, the last given, and – personal sets – types and text lengths. */
+interface OwnPicks {
+  q: string[];
+  r: string[];
+  t?: Record<string, string>;
+  l?: Record<string, number>;
+}
 import type { GameContext, GameDefinition, RecordAnswerOptions } from '../types';
 import { diffJson } from './diff';
 import { SeededRandom } from './random';
@@ -283,9 +293,13 @@ export class GameRuntime<S = unknown> {
     return Math.min(10, Math.max(1, Number.isFinite(ahead) ? Math.round(ahead) : 2));
   }
 
-  /** The host chooses by progress: the game asked for it and the host offers it. */
-  private get picksFromHost(): boolean {
-    return this.isAuthority && !this.personal && !!this.def.pickItems && this.init.features.includes(PICK_ITEMS_FEATURE) && typeof this.host.pickItems === 'function';
+  /**
+   * The host chooses a player's items by progress: the game asked for it and the host offers it.
+   * With personal sets only for the player on the authority's own device (a host who plays):
+   * the others' devices send their own items.
+   */
+  private picksFromHost(playerId: string): boolean {
+    return this.isAuthority && (!this.personal || playerId === this.selfPlayerId()) && !!this.def.pickItems && this.init.features.includes(PICK_ITEMS_FEATURE) && typeof this.host.pickItems === 'function';
   }
 
   /**
@@ -311,7 +325,7 @@ export class GameRuntime<S = unknown> {
       .pickItems({ playerId: self, count, exclude: [...queue] })
       .then((ids) => {
         this.ownPicksPending = false;
-        const items = (Array.isArray(ids) ? ids : []).map((id) => this.itemsById.get(id)).filter((i): i is OQSEAnyItem => !!i).map((i) => ({ id: i.id, type: i.type }));
+        const items = (Array.isArray(ids) ? ids : []).map((id) => this.itemsById.get(id)).filter((i): i is OQSEAnyItem => !!i).map((i) => ({ id: i.id, type: i.type, len: itemTextLength(i) }));
         if (items.length) this.dispatch('$picks', { items });
         this.retryOwnPicks(2000); // lost on the way (a reconnect, the authority away): send again
       })
@@ -394,17 +408,19 @@ export class GameRuntime<S = unknown> {
     }
     const items = list
       .slice(0, 20)
-      .filter((i): i is { id: string; type: string } => !!i && typeof i.id === 'string' && i.id.length <= 128 && typeof i.type === 'string' && i.type.length <= 64);
+      .filter((i): i is { id: string; type: string; len?: unknown } => !!i && typeof i.id === 'string' && i.id.length <= 128 && typeof i.type === 'string' && i.type.length <= 64);
     if (!items.length) return;
     this.run(
       (draft) => {
-        const picks = ((draft as Record<string, unknown>).$picks ??= {}) as Record<string, { q: string[]; r: string[]; t?: Record<string, string> }>;
+        const picks = ((draft as Record<string, unknown>).$picks ??= {}) as Record<string, OwnPicks>;
         const entry = (picks[playerId] ??= { q: [], r: [] });
         entry.t ??= {};
         for (const item of items) {
           if (entry.q.includes(item.id) || entry.q.length >= 20) continue;
           entry.q.push(item.id);
           entry.t[item.id] = item.type;
+          const len = Number(item.len);
+          if (Number.isFinite(len) && len >= 0) (entry.l ??= {})[item.id] = Math.min(MAX_TEXT_LENGTH, Math.round(len));
         }
       },
       null,
@@ -415,7 +431,7 @@ export class GameRuntime<S = unknown> {
 
   /** Asks the host for more items of a player when their queue is short; the answer arrives as a system change. */
   private requestPicks(playerId: string): void {
-    if (!this.picksFromHost || this.picksPending.has(playerId) || this.ended) return;
+    if (!this.picksFromHost(playerId) || this.picksPending.has(playerId) || this.ended) return;
     const queue = ((this.state as { $picks?: Record<string, { q?: string[] }> } | undefined)?.$picks?.[playerId]?.q ?? []) as string[];
     const count = this.picksAhead - queue.length;
     if (count <= 0) return;
@@ -893,7 +909,8 @@ export class GameRuntime<S = unknown> {
         const known = (id: string) => this.itemsById.get(id) ?? (this.personal ? ({ id, type: (entry as { t?: Record<string, string> }).t?.[id] ?? 'unknown' } as OQSEAnyItem) : undefined);
         const at = entry.q.findIndex((id) => fits(known(id)));
         if (at >= 0) chosen = known(entry.q.splice(at, 1)[0]);
-        if (!chosen && this.personal) return null; // the player's device sends more soon
+        // the player's device sends more soon (a host who plays learns the set on this device)
+        if (!chosen && this.personal && pid !== this.selfPlayerId()) return null;
         if (!chosen) {
           // Not chosen by the host (no feature, or the queue is empty): random, not one of the last given.
           const all = items.filter(fits);
@@ -905,6 +922,37 @@ export class GameRuntime<S = unknown> {
         entry.r = [...entry.r.filter((id) => id !== chosen!.id), chosen.id].slice(-3);
         effects.push({ type: 'pick', playerId: pid });
         return this.itemsById.get(chosen.id) ?? chosen;
+      },
+      checkAnswer: (itemId, payload) => {
+        const p = payload && typeof payload === 'object' ? (payload as { answer?: unknown; correct?: unknown }) : {};
+        // Personal sets: another player's device checked its own item (the authority may not have it).
+        if (this.personal && playerId !== null && playerId !== this.selfPlayerId()) return typeof p.correct === 'boolean' ? p.correct : null;
+        const item = typeof itemId === 'string' ? this.itemsById.get(itemId) : undefined;
+        if (!item) return null;
+        if (item.type === 'note') return true;
+        if (item.type === 'open-ended' || p.answer === undefined || p.answer === null) return null;
+        try {
+          return checkAnswer(item, p.answer);
+        } catch {
+          return false;
+        }
+      },
+      itemInfo: (itemId, forPlayer) => {
+        if (typeof itemId !== 'string') return null;
+        const item = this.itemsById.get(itemId);
+        if (item) return { id: item.id, type: item.type, textLength: itemTextLength(item) };
+        if (!this.personal) return null;
+        const picks = ((scope.draft?.() ?? this.state) as { $picks?: Record<string, OwnPicks> } | undefined)?.$picks ?? {};
+        const pid = forPlayer ?? playerId;
+        const entries = [...(pid && picks[pid] ? [picks[pid]] : []), ...Object.values(picks)];
+        const entry = entries.find((e) => typeof e?.t?.[itemId] === 'string');
+        return entry ? { id: itemId, type: entry.t![itemId], textLength: entry.l?.[itemId] ?? 0 } : null;
+      },
+      hasItems: (types) => {
+        // Personal sets: the players bring their own sets, which the authority cannot see.
+        if (this.personal) return true;
+        const list = Array.isArray(types) && types.length ? types : null;
+        return items.some((item) => !list || list.includes(item.type));
       },
       hide: (itemIds, options = {}) => {
         const ids = (Array.isArray(itemIds) ? itemIds : [itemIds]).filter((id) => typeof id === 'string' && this.itemsById.has(id));
