@@ -11,6 +11,9 @@
  */
 
 import { startGame, type GameHandle, type StartOptions } from './defineGame';
+
+/** This kit's own actions (names reserved for the SDK's kits, SPEC 9). */
+const KIT_ACTIONS = ['mzPresGo', 'mzPresVote', 'mzPresReveal', 'mzPresDone'] as const;
 import { checkAnswer } from '../checkAnswer';
 import { escapeHtml } from '../text/richText';
 import type { GameContext, GameDefinition, GameUI, RenderResult } from '../types';
@@ -297,7 +300,7 @@ export function startPresentation(options: PresentationOptions = {}, start: Star
     e.preventDefault();
   };
   doc.addEventListener('keydown', onKey);
-  const handle = startGame(def, start);
+  const handle = startGame(def, { ...start, kitActions: KIT_ACTIONS });
   const destroy = handle.destroy;
   handle.destroy = () => {
     doc.removeEventListener('keydown', onKey);

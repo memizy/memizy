@@ -1,6 +1,10 @@
 # Changelog of @memizy/host-sdk
 
-## 1.1.0-rc.3 (unreleased)
+## 1.1.0-rc.4 (unreleased)
+
+* No changes (the version follows the plugin SDK).
+
+## 1.1.0-rc.3 (2026-11-09)
 
 * Personal sets: the personal host API keeps only its own player's answers; another player's answer (the instance is the authority of a host who plays along with their own set) goes to the session, which keeps it for that player. Before, it was stored as the host's progress.
 

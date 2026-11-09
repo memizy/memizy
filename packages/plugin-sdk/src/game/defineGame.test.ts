@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterEach, vi } from 'vitest';
 import type { OQSEAnyItem } from '@memizy/oqse';
 import { startGame, type GameHandle } from './defineGame';
 import { checkAnswer } from '../checkAnswer';
@@ -208,6 +208,20 @@ describe('defineGame end to end', () => {
       expect.stringMatching(/ACTION_FAILED: .*sneaky.*reserved for the SDK/),
       expect.stringMatching(/ACTION_FAILED: .*sneakyKey.*reserved for the SDK/),
     ]);
+  });
+
+  it('names "mz" + a capital letter are reserved for the kits: a game is warned, not refused (1.0 games keep working)', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const router = new LocalRouter({ items, mode: 'solo' });
+    const root = mount(router, 'me', { initialState: () => ({}), actions: { mzMine() {}, mzone() {} }, render: () => '<p>ok</p>' });
+    await handles.at(-1)!.ready;
+    await router.start();
+    await wait();
+    expect(root.textContent).toBe('ok');
+    const warned = warn.mock.calls.map((c) => String(c[0]));
+    expect(warned.some((w) => w.includes('actions.mzMine') && w.includes('reserved'))).toBe(true);
+    expect(warned.some((w) => w.includes('actions.mzone'))).toBe(false); // a small letter after mz is the game's
+    warn.mockRestore();
   });
 
   it('data-local runs a device-only handler and re-renders; unknown handlers are reported', async () => {

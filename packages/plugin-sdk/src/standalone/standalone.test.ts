@@ -83,7 +83,10 @@ describe('standalone mode (the game outside Memizy)', () => {
     await wait(50);
     expect(root.querySelector('.set')!.textContent).toContain('What is the capital of **France**?');
     expect(root.querySelector('.lang')!.textContent).toBe('en-GB');
-    expect(document.querySelector('.mz-standalone-button')!.textContent).toContain('Sample set');
+    // the tab at the top centre (default): the set's title in its label
+    const tab = document.querySelector('.mz-standalone-button')!;
+    expect(tab.classList.contains('mz-standalone-tab')).toBe(true);
+    expect(tab.getAttribute('title')).toContain('Sample set');
   });
 
   it('loads the player’s own set from a file, keeps its progress apart, and remembers it', async () => {
@@ -101,7 +104,7 @@ describe('standalone mode (the game outside Memizy)', () => {
     expect(document.querySelector('.mz-standalone-menu')).toBeNull();
     await wait(100);
     expect(root.querySelector('.set')!.textContent).toBe('1:Moje otázka?'); // only the types this game plays
-    expect(document.querySelector('.mz-standalone-button')!.textContent).toContain('Moje sada');
+    expect(document.querySelector('.mz-standalone-button')!.getAttribute('title')).toContain('Moje sada');
 
     (root.querySelector('.right') as HTMLButtonElement).click();
     await wait(100);

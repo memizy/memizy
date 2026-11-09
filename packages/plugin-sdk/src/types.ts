@@ -285,9 +285,10 @@ export interface GameDefinition<S = any> {
    * The game opened outside Memizy (the file itself, another site's preview): a small button
    * opens a menu to load the player's own set (an OQSE file or link) and change the settings.
    * `controls: 'hidden'` hides the button (call `game.openStandaloneMenu()` from your own);
-   * `position` moves it (default `'top-right'`). Inside Memizy nothing is shown.
+   * `position` moves it (default `'tab'`: a tiny handle at the top centre, like the app's menu
+   * tab on phones – keep that place free). Inside Memizy nothing is shown.
    */
-  standalone?: { controls?: 'auto' | 'hidden'; position?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' };
+  standalone?: { controls?: 'auto' | 'hidden'; position?: 'tab' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' };
   initialState(ctx: GameContext): S;
   actions: Record<string, ActionHandler<S>>;
   /**

@@ -75,6 +75,8 @@ export interface GameHandle {
 }
 
 export interface StartOptions {
+  /** A kit of the SDK (`definePresentation`): its own action names (`mz` + a capital letter). */
+  kitActions?: readonly string[];
   /** Custom connection (tests, the Plugin Lab). Default: iframe host or standalone preview. */
   connector?: Connector;
   document?: Document;
@@ -108,7 +110,7 @@ export function startGame<S>(definition: GameDefinition<S>, options: StartOption
   };
 
   const ready = (async () => {
-    validateDefinition(definition);
+    validateDefinition(definition, options.kitActions ?? []);
     const root = definition.root ?? doc.body;
     injectStyles(doc);
     allowZoom = preventZoom(doc);
@@ -820,7 +822,10 @@ class SettingsController extends BaseController {
 // Helpers
 // ============================================================================
 
-function validateDefinition(def: GameDefinition<any>): void {
+/** Action names of the SDK's kits (SPEC 9: reserved since 1.1; a game is warned, not refused). */
+const KIT_ACTION = /^mz[A-Z]/;
+
+function validateDefinition(def: GameDefinition<any>, kitActions: readonly string[] = []): void {
   const problems: string[] = [];
   if (!def || typeof def !== 'object') throw new Error('defineGame needs an object: defineGame({ initialState, actions, render })');
   if (typeof def.initialState !== 'function') problems.push('initialState must be a function returning the initial state');
@@ -829,6 +834,9 @@ function validateDefinition(def: GameDefinition<any>): void {
     for (const [name, fn] of Object.entries(def.actions)) {
       if (name.startsWith('$')) problems.push(`actions.${name}: names starting with $ are reserved for the SDK`);
       else if (typeof fn !== 'function') problems.push(`actions.${name} must be a function`);
+      else if (KIT_ACTION.test(name) && !kitActions.includes(name)) {
+        console.warn(`[memizy] actions.${name}: names starting with "mz" and a capital letter are reserved for the SDK's kits (definePresentation); rename it.`);
+      }
     }
   if (typeof def.render !== 'function') problems.push('render must be a function returning HTML');
   if (def.onFinish !== undefined && typeof def.onFinish !== 'function') problems.push('onFinish must be a function (state, ctx) => void that calls ctx.end');

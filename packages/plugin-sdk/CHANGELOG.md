@@ -2,7 +2,12 @@
 
 Plugins import `https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1`: every 1.x release reaches them.
 
-## 1.1.0-rc.3 (unreleased)
+## 1.1.0-rc.4 (unreleased)
+
+* Standalone mode: the menu button is a tiny tab at the top centre by default (`standalone.position: 'tab'`; the corners stay as options) – the same place as Memizy's menu tab on phones; games keep it free.
+* Action names `mz` + a capital letter are reserved for the SDK's kits (`definePresentation`'s `mzPres…`, SPEC 9); a game using one gets a console warning (not refused: 1.0 games keep working).
+
+## 1.1.0-rc.3 (2026-11-09)
 
 * One path for shared and personal sets: `ctx.checkAnswer(itemId, payload)` (the authority checks; with personal sets another player's device did, and its `correct` counts), `ctx.itemInfo(id)` (`{ id, type, textLength }`, also of a player's own item: their device sends the text length with its next items), `ctx.hasItems(types?)` (always `true` with personal sets). A host who plays along with personal sets learns the host's set on the authority: `ctx.nextItem` gives them items (by progress with `pickItems`) – before, they got none.
 

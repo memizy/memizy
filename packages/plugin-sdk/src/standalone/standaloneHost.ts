@@ -18,7 +18,7 @@ import { openMenu, showMenuButton, type MenuPosition } from './menu';
 export interface StandaloneMenuOptions {
   /** `'auto'` (default): a small button opens the menu; `'hidden'`: the game opens it (`game.openStandaloneMenu()`). */
   controls?: 'auto' | 'hidden';
-  /** Where the button sits (default `'top-right'`). */
+  /** Where the button sits (default `'tab'`: a handle at the top centre). */
   position?: MenuPosition;
 }
 
@@ -221,7 +221,7 @@ export function standaloneHost(options: StandaloneOptions): Standalone {
           restart();
         },
       });
-    if (options.menu?.controls !== 'hidden') showMenuButton(set.meta.title, options.menu?.position ?? 'top-right', () => menuOpen?.());
+    if (options.menu?.controls !== 'hidden') showMenuButton(set.meta.title, options.menu?.position ?? 'tab', () => menuOpen?.());
     if (urlError) {
       menuOpen();
       urlError = null; // shown once

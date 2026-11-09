@@ -6,7 +6,8 @@
 import { localize, type SettingDefinition } from '@memizy/protocol';
 import { escapeHtml } from '../text/richText';
 
-export type MenuPosition = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+/** `tab` (the default): a tiny handle at the top centre, like the app's menu tab on phones. */
+export type MenuPosition = 'tab' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
 
 export interface MenuState {
   locale: string;
@@ -74,9 +75,12 @@ export function showMenuButton(title: string, position: MenuPosition, open: () =
   document.querySelector('.mz-standalone-button')?.remove();
   const button = document.createElement('button');
   button.type = 'button';
-  button.className = `mz-standalone-button mz-standalone-${position}`;
-  button.textContent = `☰ ${title}`;
+  button.className = position === 'tab' ? 'mz-standalone-button mz-standalone-tab' : `mz-standalone-button mz-standalone-${position}`;
+  // the tab: a chevron (Heroicons chevron-down, MIT), the set's title in its label
+  if (position === 'tab') button.innerHTML = '<svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd"/></svg>';
+  else button.textContent = `☰ ${title}`;
   button.title = title;
+  button.setAttribute('aria-label', `☰ ${title}`);
   button.addEventListener('click', (event) => {
     event.stopPropagation();
     open();
