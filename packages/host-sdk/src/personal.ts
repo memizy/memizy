@@ -55,6 +55,8 @@ export function personalHostApi(remote: HostApi, firstPersonal: PersonalSet, fir
   let setId = prepared.set.meta.id;
   const algorithm = () => personal.algorithm ?? leitner;
   const history: PickHistoryEntry[] = [];
+  /** A pass in order: the items given to the queue in it (the game picks a few ahead). */
+  const given = new Set<string>();
   const progress = () => personal.storage.loadProgress(personal.userKey, setId);
   let features: string[] = [];
 
@@ -68,6 +70,7 @@ export function personalHostApi(remote: HostApi, firstPersonal: PersonalSet, fir
       items = prepared.set.items as OQSEAnyItem[];
       for (const item of items) byId.set(item.id, item); // the earlier ones stay known
       setId = prepared.set.meta.id;
+      given.clear(); // the queue starts again with the new set
       return { set: { meta: structuredClone(prepared.set.meta), items: structuredClone(items) }, progress: await progress() };
     },
     ...remote,
@@ -105,7 +108,10 @@ export function personalHostApi(remote: HostApi, firstPersonal: PersonalSet, fir
         if (!remote.pickItems) throw new ProtocolError('UNKNOWN_METHOD', 'pickItems is not available here.');
         return remote.pickItems(request);
       }
-      return pickItems(items, await progress(), { count: request.count, now: new Date(), random: Math.random, weights: request.weights, types: request.types, exclude: request.exclude, mode: personal.mode, order: personal.order, history });
+      const sequence = personal.order?.order === 'sequence';
+      const picked = pickItems(items, await progress(), { count: request.count, now: new Date(), random: Math.random, weights: request.weights, types: request.types, exclude: request.exclude, mode: personal.mode, order: personal.order, ...(sequence && { given: [...given] }), history });
+      if (sequence) for (const id of picked) given.add(id);
+      return picked;
     },
     async getAsset(key, itemId) {
       const media = resolveAsset(key, itemId ? byId.get(itemId) : undefined, prepared.set.meta);

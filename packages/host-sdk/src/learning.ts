@@ -207,6 +207,8 @@ export interface PickOptions {
   history?: PickHistoryEntry[];
   /** By progress (default) or the set in order, each item once (`PickOrder`). */
   order?: PickOrder;
+  /** A pass in order: items given to the game in it already (in its queue, not answered yet). */
+  given?: string[];
 }
 
 /** Other answers before a wrong one comes back, and how often it may come back in a game. */
@@ -235,7 +237,7 @@ export function pickItems(items: readonly OQSEAnyItem[], progress: Record<string
   // 0. A pass in order: the items not answered in it yet, as they are in the set.
   if (options.order?.order === 'sequence') {
     const since = Date.parse(options.order.since ?? '');
-    const done = new Set(history.map((entry) => entry.itemId));
+    const done = new Set([...history.map((entry) => entry.itemId), ...(options.given ?? [])]);
     const answeredSince = (id: string) => Number.isFinite(since) && Date.parse(progress[id]?.lastAnswer?.answeredAt ?? '') >= since;
     const next = pool.filter((item) => !done.has(item.id) && !answeredSince(item.id)).slice(0, options.count);
     if (next.length) return next.map((item) => item.id);

@@ -240,6 +240,8 @@ export class LocalSession {
   private readonly algorithm: LearningAlgorithm;
   /** This game's answers per player, oldest first (for `pickItems`: mistakes back soon, new items' pace). */
   private readonly answerHistory = new Map<string, PickHistoryEntry[]>();
+  /** A pass in order: the items given to each player's queue in it (games pick a few ahead). */
+  private readonly passGiven = new Map<string, Set<string>>();
   /** Items the authority revealed (`revealItems`): to every instance, and per player. */
   private readonly revealedAll = new Set<string>();
   private readonly revealedTo = new Map<string, Set<string>>();
@@ -957,7 +959,9 @@ export class LocalSession {
           if (!this.roster.some((p) => p.id === request.playerId)) throw new ProtocolError('INVALID_ARGUMENT', `Unknown player "${request.playerId}".`);
           if (!instance.serviceLimiter.tryTake()) throw new ProtocolError('RATE_LIMITED', `More than ${LIMITS.servicesPerMinute} calls per minute.`);
           const progress = await this.storage.loadProgress(this.userKey(request.playerId), this.prepared.set.meta.id);
-          return pickItems(this.prepared.set.items, progress, {
+          const order = this.options.pickOrderFor?.(request.playerId);
+          const given = this.passGiven.get(request.playerId) ?? new Set<string>();
+          const picked = pickItems(this.prepared.set.items, progress, {
             count: request.count,
             now: new Date(),
             random: Math.random,
@@ -965,9 +969,15 @@ export class LocalSession {
             ...(request.types && { types: request.types }),
             ...(request.exclude && { exclude: request.exclude }),
             mode: this.options.studyModeFor?.(request.playerId),
-            order: this.options.pickOrderFor?.(request.playerId),
+            order,
+            ...(order?.order === 'sequence' && { given: [...given] }),
             history: this.answerHistory.get(request.playerId) ?? [],
           });
+          if (order?.order === 'sequence') {
+            for (const id of picked) given.add(id);
+            this.passGiven.set(request.playerId, given);
+          }
+          return picked;
         }),
     };
     return api;

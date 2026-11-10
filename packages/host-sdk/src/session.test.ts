@@ -577,9 +577,12 @@ describe('finishing on request (SPEC 7, protocol 1.1)', () => {
     const board = await bare(session, 'board');
     await board.hello({ ...handshake, protocol: '1.1', features: ['pick-items'] });
     const ids = session.prepared.set.items.map((i) => i.id);
-    expect(await board.pickItems!({ playerId: 'anna', count: 5 })).toEqual(ids);
+    expect(await board.pickItems!({ playerId: 'anna', count: 1 })).toEqual([ids[0]]);
+    // the first is in the game's queue, not answered yet: the next one
+    expect(await board.pickItems!({ playerId: 'anna', count: 1, exclude: [ids[0]] })).toEqual([ids[1]]);
     await board.recordAnswer({ itemId: ids[0], isCorrect: false, playerId: 'anna' });
-    expect(await board.pickItems!({ playerId: 'anna', count: 5 })).toEqual(ids.slice(1));
+    // the pass is over (both given): by progress again
+    expect(await board.pickItems!({ playerId: 'anna', count: 1 })).toHaveLength(1);
   });
 
   it('a game whose onFinish does not end reports it', async () => {

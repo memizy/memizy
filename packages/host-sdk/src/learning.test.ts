@@ -110,6 +110,8 @@ describe('pickItems: the next items of a player', () => {
     expect(pickItems(set, {}, { count: 2, now, random: Math.random, order })).toEqual(['a', 'b']);
     // a and b answered (b wrong): c and d next, b does not come back in the pass
     expect(pickItems(set, {}, { count: 2, now, random: Math.random, order, history: h(['a', true], ['b', false]) })).toEqual(['c', 'd']);
+    // given to the game's queue earlier in the pass (not answered yet): not again
+    expect(pickItems(set, {}, { count: 2, now, random: Math.random, order, given: ['a', 'b'] })).toEqual(['c', 'd']);
     // what is in the game's queue already is left out; only some types
     expect(pickItems(set, {}, { count: 2, now, random: Math.random, order, exclude: ['a'] })).toEqual(['b', 'c']);
     // since the pass started (a reload: no history), by the answers in the progress
