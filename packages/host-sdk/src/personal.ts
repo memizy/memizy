@@ -8,7 +8,7 @@
 
 import { resolveAsset, type OQSEAnyItem, type OQSEFile } from '@memizy/oqse';
 import { ProtocolError, type AnswerRecord, type HostApi, type InitPayload } from '@memizy/protocol';
-import { isNew, leitner, pickItems, type LearningAlgorithm, type PickHistoryEntry, type StudyMode } from './learning';
+import { isNew, leitner, pickItems, type LearningAlgorithm, type PickHistoryEntry, type PickOrder, type StudyMode } from './learning';
 import type { HostStorage } from './storage';
 import type { PreparedSet } from './plugin';
 
@@ -22,6 +22,8 @@ export interface PersonalSet {
   userKey: string;
   /** How the player studies this set (for choosing the next items). */
   mode?: StudyMode;
+  /** By progress (default) or a pass in the set's order (`PickOrder`). */
+  order?: PickOrder;
   algorithm?: LearningAlgorithm;
   /** Media of the set that are not URLs (a package). */
   loadAsset?: (key: string, itemId: string | undefined) => Promise<Blob>;
@@ -103,7 +105,7 @@ export function personalHostApi(remote: HostApi, firstPersonal: PersonalSet, fir
         if (!remote.pickItems) throw new ProtocolError('UNKNOWN_METHOD', 'pickItems is not available here.');
         return remote.pickItems(request);
       }
-      return pickItems(items, await progress(), { count: request.count, now: new Date(), random: Math.random, weights: request.weights, types: request.types, exclude: request.exclude, mode: personal.mode, history });
+      return pickItems(items, await progress(), { count: request.count, now: new Date(), random: Math.random, weights: request.weights, types: request.types, exclude: request.exclude, mode: personal.mode, order: personal.order, history });
     },
     async getAsset(key, itemId) {
       const media = resolveAsset(key, itemId ? byId.get(itemId) : undefined, prepared.set.meta);

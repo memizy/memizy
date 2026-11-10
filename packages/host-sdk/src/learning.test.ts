@@ -104,6 +104,25 @@ describe('pickItems: the next items of a player', () => {
     expect(share('b')).toBeGreaterThan(share('c'));
   });
 
+  it('a pass in order: each item once in the order of the set, wrong ones not back, then by progress', () => {
+    const h = (...ids: [string, boolean][]) => ids.map(([itemId, correct]) => ({ itemId, correct, wasNew: false }));
+    const order = { order: 'sequence' as const };
+    expect(pickItems(set, {}, { count: 2, now, random: Math.random, order })).toEqual(['a', 'b']);
+    // a and b answered (b wrong): c and d next, b does not come back in the pass
+    expect(pickItems(set, {}, { count: 2, now, random: Math.random, order, history: h(['a', true], ['b', false]) })).toEqual(['c', 'd']);
+    // what is in the game's queue already is left out; only some types
+    expect(pickItems(set, {}, { count: 2, now, random: Math.random, order, exclude: ['a'] })).toEqual(['b', 'c']);
+    // since the pass started (a reload: no history), by the answers in the progress
+    const since = new Date(now.getTime() - 3600_000).toISOString();
+    const progress = { a: known(2, 0.01), b: known(1, 0.01, false), c: known(3, 5) }; // c answered before the pass
+    expect(pickItems(set, progress, { count: 2, now, random: Math.random, order: { order: 'sequence', since } })).toEqual(['c', 'd']);
+    // the pass over: by progress, the wrong one (level 1) the likeliest
+    const all = h(['a', true], ['b', false], ['c', true], ['d', true], ['e', true], ['f', true]);
+    const after = pickItems(set, { a: known(4), b: known(1, 0.01, false), c: known(4), d: known(4), e: known(4), f: known(4) }, { count: 1, now, random: seq(0.01), order, history: all });
+    expect(after).toHaveLength(1);
+    expect(after).toEqual(['b']);
+  });
+
   it('a wrong answer comes back after three others, at most twice; the last ones not again', () => {
     const progress = { a: known(1, 0.01, false), b: known(2), c: known(2), d: known(2), e: known(2), f: known(2) };
     const h = (...ids: [string, boolean][]) => ids.map(([itemId, correct]) => ({ itemId, correct, wasNew: false }));

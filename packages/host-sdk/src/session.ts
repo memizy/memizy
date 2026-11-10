@@ -44,7 +44,7 @@ import {
   parseHostCall,
 } from '@memizy/protocol/internal';
 import { resolveAsset, type OQSEFile, type ProgressRecord } from '@memizy/oqse';
-import { isNew, leitner, pickItems, type LearningAlgorithm, type PickHistoryEntry, type StudyMode } from './learning';
+import { isNew, leitner, pickItems, type LearningAlgorithm, type PickHistoryEntry, type PickOrder, type StudyMode } from './learning';
 import { MemoryStorage, type HostStorage } from './storage';
 import { prepareSetForPlugin, type LoadedPlugin, type PreparedSet } from './plugin';
 import { HOST_SDK_VERSION } from './version';
@@ -78,6 +78,8 @@ export interface SessionConfig {
    * `pickItems`; default: learn it fast.
    */
   studyModeFor?: (playerId: string) => StudyMode | undefined;
+  /** How a player's next items are chosen for `pickItems`: by progress (default) or a pass in the set's order (`PickOrder`). */
+  pickOrderFor?: (playerId: string) => PickOrder | undefined;
   /**
    * Whose questions (SPEC 3.4, protocol 1.1; the plugin must list it in
    * `modes.multiplayer.sets`): `personal` – every player their own set, checked on their
@@ -963,6 +965,7 @@ export class LocalSession {
             ...(request.types && { types: request.types }),
             ...(request.exclude && { exclude: request.exclude }),
             mode: this.options.studyModeFor?.(request.playerId),
+            order: this.options.pickOrderFor?.(request.playerId),
             history: this.answerHistory.get(request.playerId) ?? [],
           });
         }),

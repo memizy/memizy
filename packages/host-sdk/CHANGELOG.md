@@ -1,6 +1,10 @@
 # Changelog of @memizy/host-sdk
 
-## 1.1.0-rc.5 (unreleased)
+## 1.1.0-rc.6 (unreleased)
+
+* A pass in order (`PickOrder`, `pickItems({ order })`, `SessionConfig.pickOrderFor`, `PersonalSet.order`): `order: 'sequence'` gives the items in the set's order, each once – a wrong answer does not come back in the pass – and after the last one by progress again (the weakest first). An item is done in the pass when it was answered in this game or, with `since`, since then (in the progress): the pass goes on after a reload and over sets of any size.
+
+## 1.1.0-rc.5 (2026-11-09)
 
 * Study plan before an exam: new items are spread over the days that leave the day before the exam for reviewing everything (`newPerDay`; exam in 3 days, 30 items: 15, 15, then the review day) – so every item can reach the top level before the exam. The exam tomorrow or the day after: all now.
 

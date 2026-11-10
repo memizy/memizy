@@ -572,6 +572,16 @@ describe('finishing on request (SPEC 7, protocol 1.1)', () => {
     await expect(plain.pickItems!({ playerId: 'anna', count: 1 })).rejects.toThrow(/UNKNOWN_METHOD/);
   });
 
+  it('pickItems in a pass in order (pickOrderFor): the set as it is, a wrong answer not back', async () => {
+    const { session } = newSession({ shuffleSeed: null, pickOrderFor: (playerId) => (playerId === 'anna' ? { order: 'sequence' } : undefined) });
+    const board = await bare(session, 'board');
+    await board.hello({ ...handshake, protocol: '1.1', features: ['pick-items'] });
+    const ids = session.prepared.set.items.map((i) => i.id);
+    expect(await board.pickItems!({ playerId: 'anna', count: 5 })).toEqual(ids);
+    await board.recordAnswer({ itemId: ids[0], isCorrect: false, playerId: 'anna' });
+    expect(await board.pickItems!({ playerId: 'anna', count: 5 })).toEqual(ids.slice(1));
+  });
+
   it('a game whose onFinish does not end reports it', async () => {
     const { session, events } = newSession();
     play(session, 'board', { ...finishing, onFinish: () => {} });

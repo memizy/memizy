@@ -7,7 +7,7 @@
     },
     "packages/host-sdk": {
       "name": "@memizy/host-sdk",
-      "version": "1.1.0-rc.5",
+      "version": "1.1.0-rc.6",
       "dependencies": {
         "@memizy/oqse": "^1.0.0",
         "@memizy/protocol": "^1.1.0-rc.4",

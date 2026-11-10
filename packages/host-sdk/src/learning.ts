@@ -180,6 +180,18 @@ export interface PickHistoryEntry {
   wasNew: boolean;
 }
 
+/**
+ * How the next items are chosen: by progress (the default), or `sequence` – the items in the
+ * set's order, each once, a wrong answer not coming back; after the last one by progress again
+ * (the weakest first). An item counts as done in the pass when it was answered in this game or
+ * – with `since` (an ISO time, e.g. when the pass started) – since then, so a pass continues
+ * after a reload and over any number of items.
+ */
+export interface PickOrder {
+  order: 'progress' | 'sequence';
+  since?: string;
+}
+
 export interface PickOptions {
   count: number;
   now: Date;
@@ -193,6 +205,8 @@ export interface PickOptions {
   exclude?: string[];
   /** This game's answers of the player, oldest first. */
   history?: PickHistoryEntry[];
+  /** By progress (default) or the set in order, each item once (`PickOrder`). */
+  order?: PickOrder;
 }
 
 /** Other answers before a wrong one comes back, and how often it may come back in a game. */
@@ -217,6 +231,16 @@ export function pickItems(items: readonly OQSEAnyItem[], progress: Record<string
   const take = (id: string) => {
     if (!picked.includes(id)) picked.push(id);
   };
+
+  // 0. A pass in order: the items not answered in it yet, as they are in the set.
+  if (options.order?.order === 'sequence') {
+    const since = Date.parse(options.order.since ?? '');
+    const done = new Set(history.map((entry) => entry.itemId));
+    const answeredSince = (id: string) => Number.isFinite(since) && Date.parse(progress[id]?.lastAnswer?.answeredAt ?? '') >= since;
+    const next = pool.filter((item) => !done.has(item.id) && !answeredSince(item.id)).slice(0, options.count);
+    if (next.length) return next.map((item) => item.id);
+    // The pass is over: by progress from here on.
+  }
 
   // 1. Wrong answers come back soon.
   const wrongTimes = new Map<string, number>();

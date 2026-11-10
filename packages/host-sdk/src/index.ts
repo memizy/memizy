@@ -28,7 +28,7 @@ export {
 } from './session';
 export { mountPlugin, PLUGIN_SANDBOX, type MountOptions, type MountedPlugin } from './frame';
 export { MemoryStorage, type HostStorage } from './storage';
-export { leitner, LEITNER_INTERVAL_DAYS, RELEARN_DAYS, PICK_WEIGHTS, dueAt, isDue, isNew, reviewIntervals, daysUntilExam, newPerDay, pickItems, type LearningAlgorithm, type StudyMode, type PickOptions, type PickHistoryEntry } from './learning';
+export { leitner, LEITNER_INTERVAL_DAYS, RELEARN_DAYS, PICK_WEIGHTS, dueAt, isDue, isNew, reviewIntervals, daysUntilExam, newPerDay, pickItems, type LearningAlgorithm, type StudyMode, type PickOptions, type PickOrder, type PickHistoryEntry } from './learning';
 export { RelayHost, type RelayHostOptions, type RelayHostEvent, type AttachOptions, type HostSeat } from './relay/host';
 export { personalHostApi, personalSetInfo, type PersonalSet } from './personal';
 export { RelayPlayer, type RelayPlayerOptions, type RelayPlayerEvent, type FrameFactory, type RemoteFrame } from './relay/player';
