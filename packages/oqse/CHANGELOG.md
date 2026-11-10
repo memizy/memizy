@@ -2,6 +2,10 @@
 
 The format itself has its own changelog at the end of [oqse.md](https://github.com/memizy/memizy/blob/main/packages/oqse/oqse.md#version-10-2026-10-14) (OQSE 1.0, 2026-10-14). This file lists the releases of the npm package.
 
+## Unreleased
+
+* **OQSEC 1.0 – courses** ([oqse-course.md](./oqse-course.md)): a course folder (`course.json`, sets as folders shaped like OQSE containers – `index.json` or `index.oqse.md` – pages and games as HTML files) or one `.oqsec` file; sections nesting above lessons and steps (`read`, `practise` with an optional game, `check`, `page`, `watch`, `listen`, `link`), checkpoints, views and OQSEC View files. `loadOQSECourse`, `OQSECourseSchema`, `validateOQSECourse`, `safeValidateOQSECourse`, `checkOQSECourse`, `applyCourseView`, `walkCourse`, `isSafeRelativePath`, `OQSECourseViewSchema`, `validateOQSECourseView`, `safeValidateOQSECourseView`; the types in `course.ts`; JSON Schemas `oqse-course-v1.0.json`, `oqse-course-view-v1.0.json`. OQSE itself is unchanged (1.0).
+
 ## 1.0.0 (2026-10-21)
 
 The first stable release: the contract of 1.0.0-rc.7, unchanged. From now on 1.x versions only add (see the README).

@@ -9,6 +9,7 @@ import { OQSEFileSchema } from '../src/oqseValidation';
 import { OQSEManifestSchema } from '../src/manifestValidation';
 import { OQSEProgressSchema } from '../src/progressValidation';
 import { OQSEHeaderSchema } from '../src/headerValidation';
+import { OQSECourseSchema, OQSECourseViewSchema } from '../src/courseValidation';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -55,3 +56,11 @@ fs.writeFileSync(
   JSON.stringify(headerJsonSchema, null, 2)
 );
 console.log('✅ Vytvořeno: schemas/oqse-header-v1.0.json');
+
+const courseJsonSchema = z.toJSONSchema(OQSECourseSchema, { target: 'draft-07' });
+fs.writeFileSync(path.join(schemasDir, 'oqse-course-v1.0.json'), JSON.stringify(courseJsonSchema, null, 2));
+console.log('✅ Vytvořeno: schemas/oqse-course-v1.0.json');
+
+const courseViewJsonSchema = z.toJSONSchema(OQSECourseViewSchema, { target: 'draft-07' });
+fs.writeFileSync(path.join(schemasDir, 'oqse-course-view-v1.0.json'), JSON.stringify(courseViewJsonSchema, null, 2));
+console.log('✅ Vytvořeno: schemas/oqse-course-view-v1.0.json');

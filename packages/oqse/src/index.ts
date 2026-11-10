@@ -24,3 +24,6 @@ export * from './features';
 export * from './compatibility';
 export { missingMustUnderstand } from './mustUnderstand';
 export { KNOWN_ITEM_PROPERTIES } from './knownProperties.generated';
+
+export * from './course';
+export * from './courseValidation';

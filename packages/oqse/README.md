@@ -5,11 +5,12 @@ Official TypeScript SDK for the Open Quiz & Study Exchange ecosystem, published 
 🚀 **[OQSE Web Validator](https://memizy.github.io/memizy/)** - Online tool for easy testing and debugging of OQSE JSON structures in the browser (source: [`docs/`](https://github.com/memizy/memizy/blob/main/packages/oqse/docs/), published by GitHub Pages).
 
 This repository contains:
-- The human-readable specifications split into four standalone documents:
+- The human-readable specifications split into five standalone documents:
   - [OQSE (Study Sets)](./oqse.md)
   - [OQSEM (Application Manifests)](./oqse-manifest.md)
   - [OQSEP (User Progress)](./oqse-progress.md)
-   - [OQSEH (Set Headers)](./oqse-header.md)
+  - [OQSEH (Set Headers)](./oqse-header.md)
+  - [OQSEC (Courses and course views)](./oqse-course.md)
 - Runtime validators built with Zod.
 - Manually authored TypeScript types for developer ergonomics.
 - Auto-generated JSON Schemas distributed with the package.
@@ -17,7 +18,7 @@ This repository contains:
 ## Package
 
 - Name: @memizy/oqse
-- Purpose: validate, parse, and type OQSE, OQSEM (Application Manifest), and OQSEP (User Progress) data.
+- Purpose: validate, parse, and type OQSE, OQSEM (Application Manifest), OQSEP (User Progress), OQSEH (Set Headers) and OQSEC (Courses) data.
 
 ## Usage
 
@@ -44,13 +45,15 @@ The auto-generated JSON Schemas are published with this repository and are avail
 - Manifest Schema: https://cdn.jsdelivr.net/npm/@memizy/oqse@1/schemas/oqse-manifest-v1.0.json
 - Progress Schema: https://cdn.jsdelivr.net/npm/@memizy/oqse@1/schemas/oqse-progress-v1.0.json
 - Header Schema: https://cdn.jsdelivr.net/npm/@memizy/oqse@1/schemas/oqse-header-v1.0.json
+- Course Schema: https://cdn.jsdelivr.net/npm/@memizy/oqse@1/schemas/oqse-course-v1.0.json
+- Course View Schema: https://cdn.jsdelivr.net/npm/@memizy/oqse@1/schemas/oqse-course-view-v1.0.json
 
 ## Architecture & Single Source of Truth
 
 The human-readable Markdown specifications are the **absolute single source of truth** for the OQSE ecosystem.
 
 1. **The Specifications**
-   The four Markdown files ([oqse.md](./oqse.md), [oqse-manifest.md](./oqse-manifest.md), [oqse-progress.md](./oqse-progress.md), and [oqse-header.md](./oqse-header.md)) constitute the normative documentation for concepts, rules, and semantics. 
+   The five Markdown files ([oqse.md](./oqse.md), [oqse-manifest.md](./oqse-manifest.md), [oqse-progress.md](./oqse-progress.md), [oqse-header.md](./oqse-header.md), and [oqse-course.md](./oqse-course.md)) constitute the normative documentation for concepts, rules, and semantics. 
 
 2. **Zod Schemas**
    Runtime validators (`*Validation.ts`) are implementations. They **MUST match** the rules defined in the Markdown specs. They are not the source of truth; if they disagree with the text spec, the code is considered a bug.
