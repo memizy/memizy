@@ -38,4 +38,17 @@ describe('personalHostApi', () => {
     expect(passed).toHaveLength(1);
     expect((await storage.loadProgress('me', id(0)))[id(1)]?.stats.attempts).toBe(2);
   });
+
+  it('a pass in order on the player’s own set: in the set’s order, given ones not again, a wrong one not back', async () => {
+    const loaded = loadPluginFromHtml(`<!doctype html><script type="application/oqse-manifest+json">${JSON.stringify(manifest)}</script>`);
+    if (!loaded.success) throw new Error(loaded.errors.join('; '));
+    const q = (n: number) => ({ id: id(n), type: 'mcq-single', question: `Q${n}?`, options: [{ id: 'x', text: 'x' }, { id: 'y', text: 'y' }], correctId: 'y' });
+    const four = loadOQSEFile({ ...setFile, items: [q(1), q(2), q(3), q(4)] }).data as OQSEFile;
+    const api = personalHostApi({} as HostApi, { file: four, storage: new MemoryStorage(), userKey: 'me', order: { order: 'sequence', since: new Date().toISOString() } }, prepareSetForPlugin(four, loaded.plugin.manifest), () => 'me');
+    const pick = (count: number, exclude: string[] = []) => api.pickItems!({ playerId: 'me', count, exclude });
+    expect(await pick(2)).toEqual([id(1), id(2)]); // the game's queue
+    await api.recordAnswer({ playerId: 'me', itemId: id(1), isCorrect: false });
+    expect(await pick(1, [id(2)])).toEqual([id(3)]); // 2 waits in the queue, 1 was wrong: neither again
+    expect(await pick(1)).toEqual([id(4)]);
+  });
 });
