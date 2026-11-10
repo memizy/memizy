@@ -101,7 +101,9 @@ A page or a game is **one HTML file**. It runs in the application's sandbox (as 
 an opaque origin, no access to the application's storage) and MAY load libraries from public
 CDNs. Its own files (images, data) sit in its folder and are loaded by relative URLs, which
 applications resolve against that folder (e.g. with a `<base>`). Applications MAY refuse other
-scripts than the HTML file itself and public CDNs.
+scripts than the HTML file itself and public CDNs, and MAY route the CDN addresses (and the
+page's own files) through their own proxy – e.g. so that a learner's device talks only to the
+application's domain. Libraries SHOULD therefore be referenced at exact versions.
 
 * A **plain page** needs nothing else and also works when opened on its own.
 * A page or game **with the Memizy plugin SDK** carries its [OQSEM manifest](./oqse-manifest.md)
