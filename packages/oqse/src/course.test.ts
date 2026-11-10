@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { CourseLesson, CourseSection, OQSECourse } from './course';
-import { applyCourseView, isSafeRelativePath, loadOQSECourse, validateOQSECourseView } from './courseValidation';
+import { applyCourseView, checkpointSelections, fillCourseIds, isSafeRelativePath, loadOQSECourse, validateOQSECourseView } from './courseValidation';
 
 const id = (n: number) => `019a7c00-0000-7000-8000-${String(n).padStart(12, '0')}`;
 const SET = id(10), PAGE = id(20);
@@ -186,5 +186,43 @@ describe('OQSEC View files', () => {
 
   it('refuses a view file without the course it adapts', () => {
     expect(() => validateOQSECourseView({ version: '1.0', meta: course().meta, view: {} })).toThrow();
+  });
+});
+
+describe('OQSEC: authoring helpers (1.1.0-rc.2)', () => {
+  it('a checkpoint without sets is valid and tests what its section teaches', () => {
+    const c = course();
+    delete (c.outline[0] as CourseSection).checkpoint!.sets;
+    expect(loadOQSECourse(c)).toMatchObject({ success: true, warnings: [] });
+    // the section has a practise step and a check step, both on SET
+    expect(checkpointSelections(c.outline[0] as CourseSection)).toEqual([{ set: SET }, { set: SET }]);
+    const withSets = course();
+    expect(checkpointSelections(withSets.outline[0] as CourseSection)).toEqual([{ set: SET }]);
+  });
+
+  it('fills in missing IDs (and keeps the existing ones), so the file can be written back', () => {
+    const raw = {
+      version: '1.0',
+      meta: { language: 'cs', title: 'Bez ID', createdAt: '2026-11-10T12:00:00Z', updatedAt: '2026-11-10T12:00:00Z' },
+      sets: [{ id: SET, title: 'Otázky', path: 'sets/otazky/index.json' }],
+      outline: [
+        { kind: 'section', title: 'A', children: [{ kind: 'lesson', title: 'L', steps: [{ kind: 'practise', sets: [{ set: SET }] }, { kind: 'check', id: id(7), sets: [{ set: SET }] }] }], checkpoint: {} },
+      ],
+      views: [{ title: 'V', add: [{ parent: null, after: null, node: { kind: 'lesson', title: 'Navíc', steps: [{ kind: 'link', url: 'https://example.com' }] } }] }],
+    };
+    expect(loadOQSECourse(raw).success).toBe(false);
+    const { data, filled } = fillCourseIds(raw);
+    expect(filled).toBe(8); // meta, section, lesson, a step, the checkpoint, the view, the added lesson and its step
+    expect(loadOQSECourse(data).errors).toEqual([]);
+    expect(((data.outline[0] as { children: { steps: { id: string }[] }[] }).children[0].steps[1]).id).toBe(id(7));
+    expect(raw.meta).not.toHaveProperty('id'); // the input is not changed
+    expect(fillCourseIds(data).filled).toBe(0);
+  });
+
+  it('applies a view to any outline (an application\'s own tree, no metadata)', () => {
+    const outline = [{ kind: 'lesson', id: id(1), title: 'a', steps: [{ kind: 'x', id: id(2) }] }, { kind: 'lesson', id: id(3), title: 'b', steps: [] }] as never;
+    const applied = applyCourseView({ outline }, { hide: [id(1)], order: 'free' });
+    expect(applied.outline.map((n) => n.id)).toEqual([id(3)]);
+    expect(applied.order).toBe('free');
   });
 });

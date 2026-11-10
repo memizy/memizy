@@ -27,7 +27,7 @@
     },
     "packages/oqse": {
       "name": "@memizy/oqse",
-      "version": "1.1.0-rc.1",
+      "version": "1.1.0-rc.2",
       "dependencies": {
         "uuid": "^14.0.0",
         "yaml": "^2.9.1",

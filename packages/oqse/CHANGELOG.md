@@ -2,6 +2,18 @@
 
 The format itself has its own changelog at the end of [oqse.md](https://github.com/memizy/memizy/blob/main/packages/oqse/oqse.md#version-10-2026-10-14) (OQSE 1.0, 2026-10-14). This file lists the releases of the npm package.
 
+## 1.1.0-rc.2 (2026-11-11, tag `next`)
+
+* OQSEC: a checkpoint without `sets` tests what its section teaches – `checkpointSelections(section)`
+  gives the selections (the `practise` and `check` steps of the section and its nested sections).
+* `fillCourseIds(data)`: fills in the missing IDs of a course or an OQSEC View file (sections,
+  lessons, steps, checkpoints, views, pages, nodes a view adds) with UUIDv7 for authoring tools,
+  which write the file back; existing IDs never change. The spec: IDs are written in the file,
+  applications never invent them for a course they read.
+* `applyCourseView` takes any outline (`{ outline, views?, meta?: { order? } }`) – an
+  application's own tree of the course too.
+* The OQSE validator page validates courses and OQSEC View files and has "Fill in missing IDs".
+
 ## 1.1.0-rc.1 (2026-11-10, tag `next`)
 
 * **OQSEC 1.0 – courses** ([oqse-course.md](./oqse-course.md)): a course folder (`course.json`, sets as folders shaped like OQSE containers – `index.json` or `index.oqse.md` – pages and games as HTML files) or one `.oqsec` file; sections nesting above lessons and steps (`read`, `practise` with an optional game, `check`, `page`, `watch`, `listen`, `link`), checkpoints, views and OQSEC View files. `loadOQSECourse`, `OQSECourseSchema`, `validateOQSECourse`, `safeValidateOQSECourse`, `checkOQSECourse`, `applyCourseView`, `walkCourse`, `isSafeRelativePath`, `OQSECourseViewSchema`, `validateOQSECourseView`, `safeValidateOQSECourseView`; the types in `course.ts`; JSON Schemas `oqse-course-v1.0.json`, `oqse-course-view-v1.0.json`. OQSE itself is unchanged (1.0).

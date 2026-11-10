@@ -234,6 +234,13 @@ it knows.
 lessons. **Order is the order in the arrays.** Every node has `kind` and `id` (a UUID unique
 within the course, across sections, lessons and steps).
 
+**IDs are written in the file.** Progress is bound to them, so an application MUST NOT invent
+IDs for a course it reads from someone else's source (they would change with every load and
+the learners' progress would be lost). Authors – people and AI assistants – need not write
+them by hand: tools fill in the missing ones and write them back to the file before it is
+published (`fillCourseIds` of `@memizy/oqse`, the "Fill in missing IDs" button of the OQSE
+validator). New IDs SHOULD be UUIDv7, as in OQSE.
+
 ### Section
 
 | Key | Type | Required | Description |
@@ -271,7 +278,7 @@ A lesson takes **5–15 minutes**, is done in one sitting and has one goal.
 | Key | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
 | `id` | string | Yes | UUID (it has its own progress). |
-| `sets` | SetSelection[] | Yes | The items of the test. |
+| `sets` | SetSelection[] | No | The items of the test. **Without it**, the test takes every item the `practise` and `check` steps of the section (and of its nested sections) use – what the section teaches; the usual case. |
 | `passScore` | number | No | 0–100. Default `80`. |
 | `minutes` | number | No | |
 
@@ -434,8 +441,11 @@ them. After loading, applications MUST check that the course's `meta.id` equals 
 
 **Reference implementation:** `loadOQSECourse` (the structure, limits and checks together),
 `OQSECourseSchema`, `validateOQSECourse`, `safeValidateOQSECourse`, `checkOQSECourse`
-(references, duplicates, limits, view targets), `applyCourseView`, `walkCourse`,
-`isSafeRelativePath`, and `OQSECourseViewSchema` / `validateOQSECourseView` in the
+(references, duplicates, limits, view targets), `applyCourseView` (on any outline – an
+application's own tree of the course, too), `checkpointSelections` (what a checkpoint
+without `sets` tests), `fillCourseIds` (missing IDs of a course or a view file, for authoring
+tools), `walkCourse`, `isSafeRelativePath`, and `OQSECourseViewSchema` /
+`validateOQSECourseView` in the
 `@memizy/oqse` package; JSON Schemas `schemas/oqse-course-v1.0.json` and
 `schemas/oqse-course-view-v1.0.json`.
 
@@ -505,4 +515,6 @@ content suggests (`read` for notes, `practise` and `check` for questions).
 
 The first version: the course folder and `.oqsec`, sets as folders shaped like OQSE
 containers (JSON or OQSE Markdown), pages and games as single HTML files, sections nesting
-above lessons and steps, checkpoints, views and OQSEC View files.
+above lessons and steps, checkpoints, views and OQSEC View files. Settled before the first
+release: a checkpoint without `sets` tests what its section teaches; IDs are written in the
+file, and tools fill in the missing ones (`fillCourseIds`).

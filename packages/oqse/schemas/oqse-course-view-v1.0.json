@@ -839,8 +839,7 @@
                 }
               },
               "required": [
-                "id",
-                "sets"
+                "id"
               ],
               "additionalProperties": {}
             }

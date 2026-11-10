@@ -87,6 +87,8 @@
                 <option value="manifest">📦 OQSEM</option>
                 <option value="progress">📈 OQSEP</option>
                 <option value="header">🪪 OQSEH</option>
+                <option value="course">🎓 OQSEC (course.json)</option>
+                <option value="courseView">🎓 OQSEC View (view.json)</option>
             </select>
             <div id="oqseSampleAction" class="mt-4">
                 <button id="loadSampleSetBtn" class="w-full sm:w-auto px-4 py-2 rounded-lg border border-blue-200 bg-blue-50 text-primary-blue-dark font-semibold hover:bg-blue-100 transition-colors">
@@ -107,6 +109,10 @@
                 <textarea id="jsonInput" class="w-full p-4 border border-gray-300 rounded-lg font-mono text-sm h-64 focus:ring-2 focus:ring-primary-blue focus:border-primary-blue outline-none transition-all" placeholder="{&#10;  &quot;meta&quot;: { ... },&#10;  &quot;items&quot;: [ ... ]&#10;}"></textarea>
             </div>
             <button id="validateJsonBtn" class="btn-primary-gradient text-white w-full py-4 rounded-xl text-lg font-bold shadow-soft hover:shadow-soft-hover transition-all transform hover:-translate-y-0.5">Validate JSON</button>
+            <div id="fillIdsAction" class="hidden mt-3">
+                <button id="fillIdsBtn" class="w-full px-4 py-3 rounded-xl border border-blue-200 bg-blue-50 text-primary-blue-dark font-semibold hover:bg-blue-100 transition-colors">Fill in missing IDs</button>
+                <p id="fillIdsStatus" class="mt-2 text-sm text-text-gray">Sections, lessons, steps, checkpoints and views get new UUIDs (existing ones stay). Then save the text back to your file: progress is bound to the IDs.</p>
+            </div>
         </div>
 
         <div id="url-tab" class="tab-content mb-6">
@@ -145,6 +151,8 @@
     <script type="module">
         // OQSE 1.x reference implementation from a CDN (no build needed).
         import { safeValidateOQSEFile, safeValidateOQSEManifest, safeValidateOQSEProgress, safeValidateOQSEHeader, formatOQSEErrors, formatOQSEIssues } from 'https://esm.sh/@memizy/oqse@1';
+        // OQSEC (courses) comes with @memizy/oqse 1.1; until 1.1.0 is final, its release candidate.
+        import { loadOQSECourse, safeValidateOQSECourseView, fillCourseIds } from 'https://esm.sh/@memizy/oqse@1.1.0-rc.2';
 
         const tabs = document.querySelectorAll('.tab');
         const tabContents = document.querySelectorAll('.tab-content');
@@ -190,6 +198,18 @@
                 urlLabel: 'URL with OQSEP JSON (CORS allowed):',
                 urlPlaceholder: 'https://example.com/progress.json'
             },
+            course: {
+                jsonLabel: 'OQSEC course.json content:',
+                jsonPlaceholder: '{\n  "version": "1.0",\n  "meta": { ... },\n  "sets": [ ... ],\n  "outline": [ ... ]\n}',
+                urlLabel: 'URL of a course.json (CORS allowed):',
+                urlPlaceholder: 'https://example.com/course.json'
+            },
+            courseView: {
+                jsonLabel: 'OQSEC View view.json content:',
+                jsonPlaceholder: '{\n  "version": "1.0",\n  "meta": { ... },\n  "course": { ... },\n  "view": { ... }\n}',
+                urlLabel: 'URL of a view.json (CORS allowed):',
+                urlPlaceholder: 'https://example.com/view.json'
+            },
             header: {
                 jsonLabel: 'OQSEH JSON content (single object or array):',
                 jsonPlaceholder: '{\n  "id": "...",\n  "title": "...",\n  "language": "en",\n  "updatedAt": "...",\n  "url": "https://..."\n}',
@@ -212,7 +232,21 @@
                 oqseSampleAction.classList.add('hidden');
                 sampleSetStatus.textContent = '';
             }
+            document.getElementById('fillIdsAction').classList.toggle('hidden', type !== 'course' && type !== 'courseView');
         }
+
+        // Courses: fill in missing IDs (authors need not write UUIDs by hand), then validate again.
+        document.getElementById('fillIdsBtn').addEventListener('click', () => {
+            const status = document.getElementById('fillIdsStatus');
+            try {
+                const { data, filled } = fillCourseIds(JSON.parse(jsonInput.value));
+                jsonInput.value = JSON.stringify(data, null, 2);
+                status.textContent = filled ? `Added ${filled} ID(s). Save the text back to your file.` : 'Every node already has an ID.';
+                validateData(jsonInput.value);
+            } catch (e) {
+                status.textContent = `Not valid JSON: ${e.message}`;
+            }
+        });
 
         syncValidationLabels();
         validationType.addEventListener('change', syncValidationLabels);
@@ -391,6 +425,20 @@
                         showResult(false, `Found ${errors.length} error(s) in the OQSE set:`, [...errors, ...warnings]);
                     }
                     return;
+                } else if (type === 'course') {
+                    const course = loadOQSECourse(parsed);
+                    const warnings = course.warnings.map((w) => `Warning: ${w.message}`);
+                    if (course.success) {
+                        showResult(true, warnings.length
+                            ? `The course is valid, with ${warnings.length} warning(s):<br>${warnings.map(esc).join('<br>')}`
+                            : 'The course is fully valid according to the OQSEC specification.');
+                    } else {
+                        showResult(false, `Found ${course.errors.length} error(s) in the course:`, [...course.errors, ...warnings]);
+                    }
+                    return;
+                } else if (type === 'courseView') {
+                    result = safeValidateOQSECourseView(parsed);
+                    typeName = 'OQSEC View';
                 } else if (type === 'manifest') {
                     result = safeValidateOQSEManifest(parsed);
                     typeName = 'OQSE Manifest';

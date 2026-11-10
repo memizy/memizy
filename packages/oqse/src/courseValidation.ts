@@ -32,7 +32,7 @@ import {
   TranslationObjectSchema,
   UUIDSchema,
 } from './oqseValidation';
-import { MAX_JSON_DEPTH, validateJsonDepth } from './utils';
+import { MAX_JSON_DEPTH, generateUUID, validateJsonDepth } from './utils';
 
 export const OQSEC_VERSION = '1.0';
 /** Most sections, lessons, steps and checkpoints in one course. */
@@ -174,7 +174,7 @@ export const CourseStepSchema = z.looseObject({
 
 export const CheckpointSchema = z.looseObject({
   id: UUIDSchema,
-  sets: z.array(SetSelectionSchema).min(1, 'A checkpoint needs at least one set'),
+  sets: z.array(SetSelectionSchema).min(1, 'A checkpoint with "sets" needs at least one (or leave it out: the section\'s questions)').optional(),
   passScore: PercentSchema.optional(),
   minutes: MinutesSchema.optional(),
 });
@@ -301,7 +301,7 @@ export interface CourseIssue {
 /** Calls `fn` for every section, lesson, step and checkpoint, depth first, in order. */
 export function walkCourse(
   nodes: CourseNode[],
-  fn: (node: CourseNode | CourseStep | { kind: 'checkpoint'; id: string; sets: SetSelection[] }, parent: CourseSection | CourseLesson | null) => void,
+  fn: (node: CourseNode | CourseStep | { kind: 'checkpoint'; id: string; sets?: SetSelection[] }, parent: CourseSection | CourseLesson | null) => void,
   parent: CourseSection | CourseLesson | null = null,
 ): void {
   for (const node of nodes) {
@@ -352,7 +352,7 @@ export function checkOQSECourse(course: OQSECourse): CourseIssue[] {
     count++;
     seen(node.id, node.kind);
     if (node.kind === 'section' || node.kind === 'lesson') return;
-    if (node.kind === 'checkpoint') return selections((node as { sets: SetSelection[] }).sets, `The checkpoint ${node.id}`);
+    if (node.kind === 'checkpoint') return selections((node as { sets?: SetSelection[] }).sets, `The checkpoint ${node.id}`);
     const step = node as CourseStep & { sets?: SetSelection[]; page?: string; audience?: string; mode?: string };
     if (!known(KNOWN_STEP_KINDS, step.kind)) warn('unknown-value', `Unknown step kind "${step.kind}" (shown as not supported)`, step.id);
     if (!known(KNOWN_AUDIENCES, step.audience)) warn('unknown-value', `Unknown audience "${step.audience}" (treated as "anyone")`, step.id);
@@ -417,6 +417,58 @@ export function loadOQSECourse(input: unknown): OQSECourseLoadResult {
 // Applying a view
 // ============================================================================
 
+/**
+ * What a section's checkpoint tests: its `sets`, or – without them – every selection of the
+ * `practise` and `check` steps of the section and its nested sections, in order.
+ */
+export function checkpointSelections(section: CourseSection): SetSelection[] {
+  if (section.checkpoint?.sets?.length) return section.checkpoint.sets;
+  const out: SetSelection[] = [];
+  const visit = (nodes: CourseNode[]) => {
+    for (const n of nodes) {
+      if (n.kind === 'section') visit(n.children);
+      else for (const s of n.steps) if ((s.kind === 'practise' || s.kind === 'check') && Array.isArray(s.sets)) out.push(...(s.sets as SetSelection[]));
+    }
+  };
+  visit(section.children);
+  return out;
+}
+
+/**
+ * Fills in the missing IDs of a course (or an OQSEC View file) – sections, lessons, steps,
+ * checkpoints, views, pages, nodes a view adds – with new UUIDv7, for authoring tools that
+ * then write the file back (oqse-course.md: IDs are written in the file). Works on raw JSON
+ * before validation; returns a copy and how many IDs it added. Existing IDs never change.
+ */
+export function fillCourseIds<T>(data: T): { data: T; filled: number } {
+  const copy = structuredClone(data) as Record<string, unknown>;
+  let filled = 0;
+  const give = (o: unknown) => {
+    if (o && typeof o === 'object' && !Array.isArray(o) && typeof (o as { id?: unknown }).id !== 'string') {
+      (o as { id: string }).id = generateUUID();
+      filled++;
+    }
+  };
+  const node = (n: unknown): void => {
+    if (!n || typeof n !== 'object') return;
+    const x = n as { kind?: unknown; children?: unknown; steps?: unknown; checkpoint?: unknown };
+    give(n);
+    if (Array.isArray(x.children)) x.children.forEach(node);
+    if (Array.isArray(x.steps)) x.steps.forEach(give);
+    if (x.checkpoint) give(x.checkpoint);
+  };
+  const viewChanges = (v: unknown) => {
+    const add = (v as { add?: unknown } | null)?.add;
+    if (Array.isArray(add)) for (const a of add) node((a as { node?: unknown } | null)?.node);
+  };
+  if (Array.isArray(copy.outline)) copy.outline.forEach(node);
+  if (Array.isArray(copy.pages)) copy.pages.forEach(give);
+  if (Array.isArray(copy.views)) for (const v of copy.views) { give(v); viewChanges(v); }
+  if (copy.view) viewChanges(copy.view);
+  if (copy.meta && typeof copy.meta === 'object') give(copy.meta);
+  return { data: copy as T, filled };
+}
+
 export interface AppliedCourseView {
   /** The outline as the view shows it (hidden parts removed, optional flags set, moves and additions done). */
   outline: CourseNode[];
@@ -471,11 +523,14 @@ const contains = (node: CourseNode | CourseStep, id: string): boolean =>
  * For an OQSEC View file pass `{ ...file.view, base: file.course.view }`.
  * The course is not changed.
  */
-export function applyCourseView(course: OQSECourse, view: ViewChanges & { base?: string; id?: string }): AppliedCourseView {
+export function applyCourseView(
+  course: Pick<OQSECourse, 'outline'> & { views?: OQSECourse['views']; meta?: { order?: CourseOrder } },
+  view: ViewChanges & { base?: string; id?: string },
+): AppliedCourseView {
   const outline: CourseNode[] = structuredClone(course.outline);
   const skipped: string[] = [];
   const hidden = new Set<string>();
-  let order: CourseOrder = course.meta.order ?? 'guided';
+  let order: CourseOrder = course.meta?.order ?? 'guided';
 
   const chain: (ViewChanges & { id?: string })[] = [view];
   const views = new Map((course.views ?? []).map((v) => [v.id, v as CourseView]));

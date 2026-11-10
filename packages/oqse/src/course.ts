@@ -121,7 +121,8 @@ export type CourseStep = ReadStep | PractiseStep | CheckStep | PageStep | UrlSte
 
 export interface Checkpoint {
   id: UUID;
-  sets: SetSelection[];
+  /** The items of the test; without it, what the section's practise and check steps use (`checkpointSelections`). */
+  sets?: SetSelection[];
   /** 0–100, default 80. */
   passScore?: number;
   minutes?: number;
