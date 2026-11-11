@@ -2,6 +2,10 @@
 
 The format itself has its own changelog at the end of [oqse.md](https://github.com/memizy/memizy/blob/main/packages/oqse/oqse.md#version-10-2026-10-14) (OQSE 1.0, 2026-10-14). This file lists the releases of the npm package.
 
+## 1.1.0 (2026-11-12)
+
+* The release of 1.1 – everything in the release candidates below (tag `latest`; `@1` on jsDelivr).
+
 ## 1.1.0-rc.2 (2026-11-11, tag `next`)
 
 * OQSEC: a checkpoint without `sets` tests what its section teaches – `checkpointSelections(section)`

@@ -2,11 +2,15 @@
 
 The protocol has its own changelog at the end of [SPEC.md](https://github.com/memizy/memizy/blob/main/packages/protocol/SPEC.md#changelog) (protocol 1.0, 2026-10-14). This file lists the releases of the npm package.
 
-## 1.1.0-rc.5 (unreleased)
+## 1.1.0 (2026-11-12)
+
+* The release of 1.1 – everything in the release candidates below (tag `latest`; `@1` on jsDelivr).
+
+## 1.1.0-rc.5
 
 * `players.min` may be 0 (SPEC 2): a presentation (`hostAs: ["presenter"]`) or a game the players join later (`lateJoin`) can start before anyone has joined. A negative value is refused.
 
-## 1.1.0-rc.4 (unreleased)
+## 1.1.0-rc.4
 
 * SPEC 9: action names starting with `mz` and a capital letter are reserved for the SDK's kits.
 

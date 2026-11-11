@@ -2,11 +2,16 @@
 
 Plugins import `https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1`: every 1.x release reaches them.
 
-## 1.1.0-rc.5 (unreleased)
+## 1.1.0 (2026-11-12)
+
+* The release of 1.1 – everything in the release candidates below (tag `latest`; `@1` on jsDelivr).
+* The guide for writing plugins with AI is in the package: `@memizy/plugin-sdk/ai-plugin-guide.md` (the same file as the repository's `docs/ai-plugin-guide.md`), so hosts and tools take the version that matches the SDK.
+
+## 1.1.0-rc.5
 
 * Protocol 1.1.0-rc.5: a manifest may declare `players.min: 0` (a presentation the teacher starts before the pupils join). The AI guide's presentation example does.
 
-## 1.1.0-rc.4 (unreleased)
+## 1.1.0-rc.4
 
 * Standalone mode: the menu button is a tiny tab at the top centre by default (`standalone.position: 'tab'`; the corners stay as options) – the same place as Memizy's menu tab on phones; games keep it free.
 * Action names `mz` + a capital letter are reserved for the SDK's kits (`definePresentation`'s `mzPres…`, SPEC 9); a game using one gets a console warning (not refused: 1.0 games keep working).

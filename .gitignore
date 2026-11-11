@@ -29,3 +29,6 @@ Thumbs.db
 
 # Local-only: legacy code, PoCs and notes kept for reference (see docs/ARCHITEKTURA-A-PLAN.md)
 /archive/
+
+# A copy of docs/ai-plugin-guide.md made by the plugin SDK build (published in the package)
+packages/plugin-sdk/ai-plugin-guide.md
