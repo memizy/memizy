@@ -132,7 +132,7 @@ export function openMenu(state: MenuState, actions: MenuActions): void {
     ${state.sample ? '' : `<button type="button" class="mz-standalone-sample">${escapeHtml(t.backToSample)}</button>`}
     ${state.settings.length ? `<form class="mz-standalone-settings"><h3>${escapeHtml(t.settings)}</h3>${state.settings.map((def) => settingField(def, state.values[def.id] ?? def.default, state.locale)).join('')}<button type="submit">${escapeHtml(t.apply)}</button></form>` : ''}
     <button type="button" class="mz-standalone-reset">${escapeHtml(t.reset)}</button>
-    <p class="mz-standalone-note"><a href="https://memizy.com/play/" target="_blank" rel="noopener">${escapeHtml(t.memizy)}</a></p>
+    <p class="mz-standalone-note"><a href="https://memizy.com/app/" target="_blank" rel="noopener">${escapeHtml(t.memizy)}</a></p>
     <button type="button" class="mz-standalone-close">${escapeHtml(t.close)}</button>
   </div>`;
   const status = backdrop.querySelector('.mz-standalone-status') as HTMLElement;

@@ -2,6 +2,10 @@
 
 Plugins import `https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1`: every 1.x release reaches them.
 
+## Unreleased
+
+* The standalone menu links the Memizy app at its new address `memizy.com/app/` (the old `/play/` redirects there).
+
 ## 1.1.0 (2026-11-12)
 
 * The release of 1.1 – everything in the release candidates below (tag `latest`; `@1` on jsDelivr).

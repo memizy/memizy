@@ -45,7 +45,7 @@ This repository is a [Bun workspaces](https://bun.sh/docs/install/workspaces) mo
 | `docs/` | Architecture notes and the guide for game authors |
 
 The Plugin Lab and the example games are part of Memizy Play at
-[memizy.com/play](https://memizy.com/play/).
+[memizy.com/app](https://memizy.com/app/).
 
 ```bash
 bun install      # install all workspaces

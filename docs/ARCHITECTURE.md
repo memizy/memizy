@@ -2,7 +2,7 @@
 
 The open-source engine of Memizy: the **OQSE** study-set format, the **Memizy Plugin
 Protocol**, the SDKs for games and hosts and the **relay** multiplayer server. The reference
-host – Memizy Play with the Plugin Lab – runs at [memizy.com/play](https://memizy.com/play/)
+host – Memizy Play with the Plugin Lab – runs at [memizy.com/app](https://memizy.com/app/)
 and uses only the published packages. This document explains how the parts fit
 together and why. The normative texts are the specifications it links to; where this
 document and a specification differ, the specification wins.
@@ -26,7 +26,7 @@ document and a specification differ, the specification wins.
  (inside every game)        ▲
                             │
    hosts (Memizy Play at            services/multiplayer-server (relay)
-   memizy.com/play, your app)      uses @memizy/protocol only
+   memizy.com/app, your app)      uses @memizy/protocol only
 ```
 
 | Part | Role |
@@ -302,7 +302,7 @@ the host.
 - `bun run test` builds the packages and runs every workspace's tests: unit tests, real SDK
   games in `LocalSession` (jsdom), the relay end to end (a real server process) and the
   OQSE conversion script.
-- The Plugin Lab (memizy.com/play/lab) runs automated checks of a game, including a
+- The Plugin Lab (memizy.com/app/lab) runs automated checks of a game, including a
   "naughty player".
 - **OQSE validator**: GitHub Pages from `packages/oqse/docs` (`.github/workflows/oqse-pages.yml`).
 - **Relay**: Docker compose (relay + cloudflared) on a Netcup server reachable over
