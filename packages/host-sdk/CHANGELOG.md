@@ -1,6 +1,8 @@
 # Changelog of @memizy/host-sdk
 
-## Unreleased (for 1.1.0)
+## 1.1.0-rc.7 (unreleased)
+
+* Protocol 1.1.0-rc.5: a game with `players.min: 0` starts with no players (a presentation; pupils join later).
 
 * `RelayPlayer.changePersonalSet(null)` goes back to the host's set: a player who chose a set of their own (or joined late and tried one) can learn the class's set again. Before, the only way back was to leave and join again.
 

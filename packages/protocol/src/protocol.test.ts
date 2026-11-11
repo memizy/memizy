@@ -233,6 +233,14 @@ describe('plugin manifest', () => {
     expect(result.success && (result.manifest as unknown as { registry: unknown }).registry).toEqual({ isStandaloneFile: true });
   });
 
+  it('accepts players.min 0 (1.1: a presentation or a game the players join later) and rejects a negative one', () => {
+    const show = safeParsePluginManifest(manifest({ protocol: '1.1', modes: { multiplayer: { players: { min: 0, max: 60 }, hostAs: ['presenter'], lateJoin: true } } }));
+    expect(show.success ? [] : show.errors).toEqual([]);
+    expect(show.success && show.runtime.multiplayer?.players.min).toBe(0);
+    const negative = safeParsePluginManifest(manifest({ protocol: '1.1', modes: { multiplayer: { players: { min: -1, max: 60 }, hostAs: ['presenter'] } } }));
+    expect(negative.success).toBe(false);
+  });
+
   it.each([
     ['missing Memizy block', { ...manifest({}), appSpecific: {} }, /Missing the Memizy runtime block/],
     ['no modes', manifest({ protocol: '1.0', modes: {} }), /declare "solo" and\/or "multiplayer"/],

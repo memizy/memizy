@@ -2,6 +2,10 @@
 
 Plugins import `https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1`: every 1.x release reaches them.
 
+## 1.1.0-rc.5 (unreleased)
+
+* Protocol 1.1.0-rc.5: a manifest may declare `players.min: 0` (a presentation the teacher starts before the pupils join). The AI guide's presentation example does.
+
 ## 1.1.0-rc.4 (unreleased)
 
 * Standalone mode: the menu button is a tiny tab at the top centre by default (`standalone.position: 'tab'`; the corners stay as options) – the same place as Memizy's menu tab on phones; games keep it free.

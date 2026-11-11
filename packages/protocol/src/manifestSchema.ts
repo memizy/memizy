@@ -20,7 +20,8 @@ export const HostAsSchema = z.enum(['presenter', 'player']);
 export const MultiplayerModeSchema = z.looseObject({
   players: z
     .looseObject({
-      min: z.number().int().min(1, 'players.min must be at least 1'),
+      // 0 (1.1): the game may start before anyone joins – a presentation, players coming later (lateJoin).
+      min: z.number().int().min(0, 'players.min must not be negative'),
       max: z.number().int().max(200, 'players.max must be at most 200'),
       recommended: z.number().int().positive().optional(),
     })

@@ -500,7 +500,8 @@ Every move goes through the host: in multiplayer about 50–150 ms there and bac
 
 A lesson to show on the projector – with polls and interactive parts on the pupils' phones – is
 one HTML page of slides. **Without the SDK it is just a page** (it works projected, opened or
-sent anywhere). With `definePresentation` it becomes live:
+sent anywhere). With `definePresentation` it becomes live (`"min": 0`: the teacher can start
+before the pupils join):
 
 ```html
 <!doctype html>
@@ -508,7 +509,7 @@ sent anywhere). With `definePresentation` it becomes live:
 <script type="application/oqse-manifest+json">
 { "version": "1.0", "id": "https://example.com/talks/planets", "appName": "Planety", "pluginVersion": "1.0.0",
   "appSpecific": { "memizy": { "protocol": "1.1", "set": "none",
-    "modes": { "solo": {}, "multiplayer": { "players": { "min": 1, "max": 60 }, "hostAs": ["presenter"], "lateJoin": true } } } } }
+    "modes": { "solo": {}, "multiplayer": { "players": { "min": 0, "max": 60 }, "hostAs": ["presenter"], "lateJoin": true } } } } }
 </script>
 <style> section[data-slide] { min-height: 100vh; display: grid; place-content: center; text-align: center; } </style>
 </head><body>
