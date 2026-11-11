@@ -126,6 +126,8 @@ export class RelayPlayer {
   private mountQueue: Promise<void> = Promise.resolve();
   /** Personal sets: the host API of the running game with the player's own set. */
   private personalApi: PersonalHostApi | null = null;
+  /** The host's set as this player's own (what a player who chose no set of their own learns). */
+  private sharedPersonal: PersonalSet | null = null;
   private pluginManifest: PluginManifestLike | null = null;
   /** The current game instance was told that its session ended (`sessionEnded`). */
   private sessionEndedSent = false;
@@ -183,10 +185,13 @@ export class RelayPlayer {
   /**
    * Personal sets: switches this player's set while the game runs – edits reloaded (items the
    * person's AI added), another set or another choice of items. The game keeps its place and
-   * score; questions come from the new set. Returns `false` when the game cannot (not a game
+   * score; questions come from the new set. `null` goes back to the host's set (what a player
+   * learns who chose no set of their own). Returns `false` when the game cannot (not a game
    * with personal sets, or the game does not support set changes).
    */
-  async changePersonalSet(next: PersonalSet): Promise<boolean> {
+  async changePersonalSet(set: PersonalSet | null): Promise<boolean> {
+    const next = set ?? this.sharedPersonal;
+    if (!next) return false;
     const api = this.personalApi;
     const plugin = this.plugin;
     if (!api || !plugin || !this.pluginManifest || !api.gameFeatures.includes(SET_CHANGES_FEATURE) || !plugin.setChanged) return false;
@@ -402,7 +407,8 @@ export class RelayPlayer {
         const loaded = loadPluginFromHtml(bundle.pluginHtml);
         if (!loaded.success) throw new Error(loaded.errors.join('; '));
         const shared = bundle.set as { meta: OQSEFile['meta']; items: OQSEFile['items'] };
-        const own = (await this.options.personal?.()) ?? { file: { version: '1.0', meta: shared.meta, items: shared.items } as OQSEFile, storage: new MemoryStorage(), userKey: 'me' };
+        this.sharedPersonal = { file: { version: '1.0', meta: shared.meta, items: shared.items } as OQSEFile, storage: new MemoryStorage(), userKey: 'me' };
+        const own = (await this.options.personal?.()) ?? this.sharedPersonal;
         if (this.gen !== gen) return;
         const api = personalHostApi(hostApi, own, prepareSetForPlugin(own.file, loaded.plugin.manifest), () => this.playerId);
         this.personalApi = api;

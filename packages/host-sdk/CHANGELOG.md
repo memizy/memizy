@@ -1,5 +1,9 @@
 # Changelog of @memizy/host-sdk
 
+## Unreleased (for 1.1.0)
+
+* `RelayPlayer.changePersonalSet(null)` goes back to the host's set: a player who chose a set of their own (or joined late and tried one) can learn the class's set again. Before, the only way back was to leave and join again.
+
 ## 1.1.0-rc.6 (unreleased)
 
 * A pass in order (`PickOrder`, `pickItems({ order })`, `SessionConfig.pickOrderFor`, `PersonalSet.order`): `order: 'sequence'` gives the items in the set's order, each once – a wrong answer does not come back in the pass – and after the last one by progress again (the weakest first). An item is done in the pass when it was answered in this game or, with `since`, since then (in the progress): the pass goes on after a reload and over sets of any size.

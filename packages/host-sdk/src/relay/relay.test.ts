@@ -518,6 +518,13 @@ describe('relayed multiplayer', () => {
     await until(() => anna.root()!.querySelector('.mz-q-question')?.textContent?.trim() === 'Hund?');
     option(anna.root()!, 'pes').click();
     await until(() => anna.root()!.querySelector('.score')?.textContent === '2');
+
+    // …and back to the teacher's set (null), e.g. a late joiner who tried their own first.
+    expect(await anna.player.changePersonalSet(null)).toBe(true);
+    await until(() => {
+      const titles = board.querySelector('.sets')?.textContent?.split(',') ?? [];
+      return !titles.includes('Němčina') && titles.includes('Set');
+    });
     host.close();
   }, 30_000);
 
