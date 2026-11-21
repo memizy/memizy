@@ -5,6 +5,8 @@ Plugins import `https://cdn.jsdelivr.net/npm/@memizy/plugin-sdk@1`: every 1.x re
 ## Unreleased
 
 * The standalone menu links the Memizy app at its new address `memizy.com/app/` (the old `/play/` redirects there).
+* Presentations move by every key a presenter's clicker may send, as presentation programs do: forward also ↓, Enter and N, back also ↑, Backspace and P (before only →, PageDown, Space and ←, PageUp). Enter and Space on a focused button or link stay the button's; keys with Ctrl, Alt or Meta are left to the browser.
+* Presentations in Czech: a poll without votes says "0 hlasů" (it said "0 hlasy").
 
 ## 1.1.0 (2026-11-12)
 

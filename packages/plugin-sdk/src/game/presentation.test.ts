@@ -137,6 +137,44 @@ describe('definePresentation', () => {
     expect(router.results).toEqual([expect.objectContaining({ summary: 'done' })]);
   });
 
+  it('the keyboard: every key a clicker may send moves the slides; a focused button keeps Enter', async () => {
+    const router = new LocalRouter({ items, mode: 'solo' });
+    const me = device(router, 'me');
+    await me.handle.ready;
+    await router.start();
+    await wait(300);
+    const press = async (key: string, target: EventTarget = document.body, init: KeyboardEventInit = {}) => {
+      target.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...init }));
+      await wait(60);
+      return me.visible()[0];
+    };
+    for (const [forward, back] of [['ArrowRight', 'ArrowLeft'], ['ArrowDown', 'ArrowUp'], ['PageDown', 'PageUp'], [' ', 'Backspace'], ['Enter', 'p'], ['n', 'P'], ['N', 'ArrowLeft']]) {
+      expect(await press(forward), forward).toBe('opinion');
+      expect(await press(back), back).toBe('intro');
+    }
+    expect(await press('b')).toBe('intro'); // "black screen" and other keys: nothing
+    expect(await press('n', document.body, { ctrlKey: true })).toBe('intro'); // the browser's shortcuts stay its own
+    await press('ArrowRight');
+    const option = me.layer().querySelector('.mz-pres-opt') as HTMLElement;
+    expect(await press('Enter', option)).toBe('opinion'); // Enter on a poll's option is the option's
+    expect(await press(' ', option)).toBe('opinion');
+    expect(await press('ArrowDown', option)).toBe('quiz'); // the moving keys still move
+  });
+
+  it('a poll without votes counts "0 hlasů"', async () => {
+    const router = new LocalRouter({ items, mode: 'solo' });
+    const me = device(router, 'me');
+    await me.handle.ready;
+    await router.start();
+    await wait(300);
+    click(me.layer().querySelector('.mz-pres-arrow[title="Další"]'));
+    await wait(100);
+    expect(me.page.querySelector('[data-poll="like"] small')?.textContent).toBe('0 hlasů');
+    click(me.layer().querySelector('.mz-pres-opt'));
+    await wait(100);
+    expect(me.page.querySelector('[data-poll="like"] small')?.textContent).toBe('1 hlas');
+  });
+
   it("navigation: 'free' – every phone shows the slides and goes on its own", async () => {
     const router = new LocalRouter({ items });
     const board = device(router, 'board', { navigation: 'free' });

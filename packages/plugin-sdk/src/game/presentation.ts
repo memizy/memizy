@@ -61,7 +61,7 @@ export interface PresentationState {
 }
 
 const T = {
-  cs: { watch: 'Sleduj tabuli 👀', slide: 'Snímek', done: 'Hotovo ✓', reveal: 'Ukázat odpověď', votes: (n: number) => `${n} ${n === 1 ? 'hlas' : n < 5 ? 'hlasy' : 'hlasů'}`, sent: 'Odesláno ✓', prev: 'Předchozí', next: 'Další' },
+  cs: { watch: 'Sleduj tabuli 👀', slide: 'Snímek', done: 'Hotovo ✓', reveal: 'Ukázat odpověď', votes: (n: number) => `${n} ${n === 1 ? 'hlas' : n >= 2 && n <= 4 ? 'hlasy' : 'hlasů'}`, sent: 'Odesláno ✓', prev: 'Předchozí', next: 'Další' },
   en: { watch: 'Watch the board 👀', slide: 'Slide', done: 'Done ✓', reveal: 'Show the answer', votes: (n: number) => `${n} ${n === 1 ? 'vote' : 'votes'}`, sent: 'Sent ✓', prev: 'Previous', next: 'Next' },
 };
 const texts = (ui: GameUI) => (String(ui.locale).toLowerCase().startsWith('cs') ? T.cs : T.en);
@@ -283,11 +283,17 @@ export function startPresentation(options: PresentationOptions = {}, start: Star
     },
   };
 
-  // The keyboard: the board (the teacher), solo and own-pace phones.
+  // The keyboard: the board (the teacher), solo and own-pace phones. The keys are the ones
+  // presentation programs move by, so any presenter's clicker works (they send different ones).
+  const NEXT_KEYS = ['ArrowRight', 'ArrowDown', 'PageDown', ' ', 'Enter', 'n', 'N'];
+  const PREV_KEYS = ['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace', 'p', 'P'];
   const onKey = (e: KeyboardEvent) => {
     const ui = (layer as HTMLElement & { mzUi?: GameUI }).mzUi;
-    if (!ui || (e.target as HTMLElement | null)?.closest?.('input,textarea,select,[contenteditable]')) return;
-    const dir = ['ArrowRight', 'PageDown', ' '].includes(e.key) ? 1 : ['ArrowLeft', 'PageUp'].includes(e.key) ? -1 : 0;
+    const target = e.target as HTMLElement | null;
+    if (!ui || e.ctrlKey || e.altKey || e.metaKey || target?.closest?.('input,textarea,select,[contenteditable]')) return;
+    // Enter and Space on a button or a link press it (a poll's option, the author's own controls).
+    if ((e.key === 'Enter' || e.key === ' ') && target?.closest?.('button,a,[role="button"]')) return;
+    const dir = NEXT_KEYS.includes(e.key) ? 1 : PREV_KEYS.includes(e.key) ? -1 : 0;
     if (!dir) return;
     const ownPace = ui.view === 'solo' || (free && ui.view === 'controller');
     if (ownPace) {
